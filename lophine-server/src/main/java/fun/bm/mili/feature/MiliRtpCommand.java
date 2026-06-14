@@ -29,10 +29,8 @@ import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * mili - /rtp 核心命令：区块优先预加载的安全随机传送 / Core RTP command with chunk-first preloading.
@@ -131,6 +129,10 @@ public class MiliRtpCommand extends RootNode {
      *
      * <p>此方法内所有操作都在正确的区域线程上，可以安全调用 NMS API /
      * All operations here are on the correct region thread, safe to call NMS APIs.
+     *
+     * <p><b>关键: 全程非阻塞! / Critical: fully non-blocking!</b>
+     * 使用回调链代替 {@code future.get()} 以避免阻塞区域线程触发 watchdog /
+     * Uses callback chain instead of future.get() to avoid blocking the region thread.
      */
     private void executeOnRegionThread(Player bukkitPlayer) {
         try {
@@ -141,41 +143,40 @@ public class MiliRtpCommand extends RootNode {
             // 步骤 1: 随机目标 / Step 1: Random target
             final Location roughTarget = randomTarget(origin);
 
-            // 步骤 2: ★ 内圈区块同步预加载 — 核心! / Step 2: Inner chunk sync preload — CORE!
-            final boolean loaded = preloadInnerChunks(level, roughTarget);
-            if (!loaded) {
-                finishTeleport(bukkitPlayer, false, "区块加载超时，请重试 / Chunk loading timed out");
-                return;
-            }
-            if (!bukkitPlayer.isOnline()) {
-                finishTeleport(bukkitPlayer, false, null);
-                return;
-            }
+            // 步骤 2: ★ 内圈区块非阻塞预加载，回调中继续 / Step 2: Non-blocking preload, continue in callback
+            preloadInnerChunksAsync(level, roughTarget, () -> {
+                // 此回调在区域线程触发，区块已加载 / This callback fires on region thread, chunks loaded
+                if (!bukkitPlayer.isOnline()) {
+                    finishTeleport(bukkitPlayer, false, null);
+                    return;
+                }
 
-            // 步骤 3: 安全着陆点搜索 / Step 3: Safe landing search
-            final Location safeSpot = findSafeLocation(bukkitPlayer.getWorld(), roughTarget);
-            if (safeSpot == null) {
-                finishTeleport(bukkitPlayer, false, "未找到安全着陆点，请重试 / No safe landing found");
-                return;
-            }
+                // 步骤 3: 安全着陆点搜索 / Step 3: Safe landing search
+                final Location safeSpot = findSafeLocation(bukkitPlayer.getWorld(), roughTarget);
+                if (safeSpot == null) {
+                    finishTeleport(bukkitPlayer, false, "未找到安全着陆点，请重试 / No safe landing found");
+                    return;
+                }
 
-            // 步骤 4: 外圈区块异步预加载 (不阻塞) / Step 4: Outer chunk async preload (non-blocking)
-            preloadOuterChunks(level, safeSpot);
+                // 步骤 4: 外圈区块异步预加载 (不阻塞) / Step 4: Outer chunk async preload (non-blocking)
+                preloadOuterChunks(level, safeSpot);
 
-            // 步骤 5: 触发 MiliChunkPreloader 扩展预加载 / Step 5: Trigger MiliChunkPreloader extended preload
-            MiliChunkPreloader.onPlayerTeleport(nmsPlayer, level, BlockPos.containing(safeSpot.getX(), safeSpot.getY(), safeSpot.getZ()));
+                // 步骤 5: 触发 MiliChunkPreloader 扩展预加载 / Step 5: Trigger extended preload
+                MiliChunkPreloader.onPlayerTeleport(nmsPlayer, level,
+                        BlockPos.containing(safeSpot.getX(), safeSpot.getY(), safeSpot.getZ()));
 
-            // 步骤 6: 执行传送 / Step 6: Execute teleport
-            final boolean teleported = bukkitPlayer.teleport(safeSpot);
-            if (!teleported) {
-                finishTeleport(bukkitPlayer, false, "传送失败 / Teleport failed");
-                return;
-            }
+                // 步骤 6: 执行传送 / Step 6: Execute teleport
+                final boolean teleported = bukkitPlayer.teleport(safeSpot);
+                if (!teleported) {
+                    finishTeleport(bukkitPlayer, false, "传送失败 / Teleport failed");
+                    return;
+                }
 
-            // 步骤 7: 设置无敌 / Step 7: Set invulnerability
-            applyInvulnerability(nmsPlayer);
+                // 步骤 7: 设置无敌 / Step 7: Set invulnerability
+                applyInvulnerability(nmsPlayer);
 
-            finishTeleport(bukkitPlayer, true, null);
+                finishTeleport(bukkitPlayer, true, null);
+            });
 
         } catch (Throwable t) {
             finishTeleport(bukkitPlayer, false, "内部错误 / Internal error: " + t.getMessage());
@@ -185,42 +186,28 @@ public class MiliRtpCommand extends RootNode {
     // ==================== 区块预加载 / Chunk pre-loading ====================
 
     /**
-     * 内圈区块同步预加载 — 阻塞直到完成或超时 / Inner chunk sync preload — blocks until done or timeout.
+     * 内圈区块非阻塞预加载 / Inner chunk non-blocking preload.
      *
      * <p>直接使用 {@code moonrise$loadChunksAsync} + {@link ChunkHolderManager#addTicketAtLevel}
-     * 确保区块不仅加载，而且通过 DELAYED ticket 保持加载状态 / Ensures chunks are loaded AND
-     * held via DELAYED tickets.
+     * 确保区块加载并通过 DELAYED ticket 保持 / Loads chunks and holds via DELAYED tickets.
+     * 加载完成后在回调中执行 {@code onComplete} / Runs onComplete in callback when done.
      *
-     * @return true 如果全部加载成功 / true if all chunks loaded successfully
+     * <p><b>不阻塞区域线程! / Does NOT block the region thread!</b>
      */
-    private boolean preloadInnerChunks(ServerLevel level, Location center) {
+    private void preloadInnerChunksAsync(ServerLevel level, Location center, Runnable onComplete) {
         final int cx = center.getBlockX() >> 4;
         final int cz = center.getBlockZ() >> 4;
         final int radius = RtpConfig.preloadInnerRadius;
         final int minX = cx - radius, maxX = cx + radius;
         final int minZ = cz - radius, maxZ = cz + radius;
-        final int total = (maxX - minX + 1) * (maxZ - minZ + 1);
 
-        final CompletableFuture<Boolean> future = new CompletableFuture<>();
-        final AtomicInteger loaded = new AtomicInteger(0);
-
-        // 使用 Moonrise 直接加载 / Use Moonrise direct loading
+        // 使用 Moonrise 直接加载 — 完全异步 / Moonrise direct load — fully async
         level.moonrise$loadChunksAsync(minX, maxX, minZ, maxZ,
                 ChunkStatus.FULL, Priority.HIGHEST, chunks -> {
-                    // 回调在区域线程上: 添加 DELAYED ticket 保持区块 / Callback on region thread: add DELAYED tickets
+                    // 回调在区域线程触发: 添加 DELAYED ticket 并继续 / Callback on region thread: add tickets & continue
                     addDelayedTickets(level, minX, maxX, minZ, maxZ);
-                    loaded.set(total);
-                    future.complete(true);
+                    onComplete.run();
                 });
-
-        // 超时等待 / Timeout wait
-        try {
-            return future.get(RtpConfig.chunkLoadTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-        } catch (java.util.concurrent.TimeoutException e) {
-            return loaded.get() >= total * 0.6; // 60% 加载即可继续 / Allow if 60% loaded
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     /**
