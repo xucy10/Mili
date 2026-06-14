@@ -186,6 +186,20 @@ public final class MiliChunkPreloader {
         TRACK_STATES.remove(player.getUUID());
     }
 
+    /**
+     * 清理所有断开连接玩家的状态 (由 MiliMemoryOptimizer 调用) /
+     * Clean all disconnected players' states (called by MiliMemoryOptimizer).
+     * 可安全从任意线程调用 / Safe to call from any thread.
+     */
+    public static void cleanupOfflinePlayers() {
+        final var server = net.minecraft.server.MinecraftServer.getServer();
+        if (server == null) return;
+        TRACK_STATES.keySet().removeIf(uuid -> {
+            final var player = server.getPlayerList().getPlayer(uuid);
+            return player == null || player.hasDisconnected();
+        });
+    }
+
     // ==================== 内部方法 / Internal methods ====================
 
     /**

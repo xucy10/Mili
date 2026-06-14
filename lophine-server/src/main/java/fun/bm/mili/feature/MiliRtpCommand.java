@@ -285,16 +285,17 @@ public class MiliRtpCommand extends RootNode {
             final int z = roughTarget.getBlockZ() + rng.nextInt(-32, 33);
 
             for (int y = maxY; y >= minY; y--) {
-                final Material below = world.getBlockAt(x, y - 1, z).getType();
-                final Material feet = world.getBlockAt(x, y, z).getType();
-                final Material head1 = world.getBlockAt(x, y + 1, z).getType();
-                final Material head2 = world.getBlockAt(x, y + 2, z).getType();
+                final var belowBlock = world.getBlockAt(x, y - 1, z);
+                final var feetBlock = world.getBlockAt(x, y, z);
+                final var head1Block = world.getBlockAt(x, y + 1, z);
+                final var head2Block = world.getBlockAt(x, y + 2, z);
+                final Material below = belowBlock.getType();
 
                 if (!below.isSolid()) continue;
-                if (!feet.isAir() && !feet.isPassable()) continue;
-                if (!head1.isAir() && !head1.isPassable()) continue;
-                if (!head2.isAir() && !head2.isPassable()) continue;
-                if (HAZARDOUS.contains(below) || HAZARDOUS.contains(feet)) continue;
+                if (!feetBlock.isPassable()) continue;
+                if (!head1Block.isPassable()) continue;
+                if (!head2Block.isPassable()) continue;
+                if (HAZARDOUS.contains(below) || HAZARDOUS.contains(feetBlock.getType())) continue;
 
                 return new Location(world, x + 0.5, y, z + 0.5, rng.nextFloat() * 360f, 0f);
             }
