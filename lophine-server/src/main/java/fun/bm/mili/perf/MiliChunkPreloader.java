@@ -12,7 +12,6 @@ import com.mojang.logging.LogUtils;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 玩家行为预测区块预加载引擎 / Predictive chunk pre-loading engine.
@@ -43,9 +42,6 @@ public final class MiliChunkPreloader {
 
     /** 每玩家状态追踪 / Per-player state tracker. */
     private static final ConcurrentHashMap<UUID, PlayerTrackState> TRACK_STATES = new ConcurrentHashMap<>();
-
-    /** 预加载 ticket 唯一标识生成器 / Unique ticket identifier generator. */
-    private static final AtomicInteger TICKET_ID_GEN = new AtomicInteger(1);
 
     /** 玩家移动模式 / Player movement mode. */
     enum MoveMode {
@@ -274,16 +270,17 @@ public final class MiliChunkPreloader {
         final var scheduler = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel) level)
                 .moonrise$getChunkTaskScheduler();
         final var holderManager = scheduler.chunkHolderManager;
-        final Long ticketId = Long.valueOf(TICKET_ID_GEN.getAndIncrement());
         final int ticketLevel = ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkHolderManager.FULL_LOADED_TICKET_LEVEL;
 
+        // DELAYED ticket 类型的 comparator 为 null，因此 identifier 必须为 null
+        // DELAYED ticket type has null comparator, so identifier must be null
         for (int cx = minX; cx <= maxX; cx++) {
             for (int cz = minZ; cz <= maxZ; cz++) {
                 holderManager.addTicketAtLevel(
                         net.minecraft.server.level.TicketType.DELAYED,
                         new ChunkPos(cx, cz),
                         ticketLevel,
-                        ticketId
+                        null
                 );
             }
         }
