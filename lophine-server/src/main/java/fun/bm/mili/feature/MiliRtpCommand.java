@@ -111,23 +111,54 @@ public class MiliRtpCommand extends RootNode {
         final ServerLevel level = nmsPlayer.level();
         triggerPreload(nmsPlayer, level, target);
 
-        // 步骤 2: teleportAsync (Folia 原生，内部处理区块加载和跨区域迁移)
-        // Step 2: teleportAsync (Folia-native, handles chunk loading & cross-region migration)
-        final Location finalTarget = target;
-        bukkitPlayer.teleportAsync(finalTarget).thenAccept(success -> {
-            inFlight.remove(uuid);
-            if (success) {
-                // 步骤 3: 设置无敌 / Step 3: Apply invulnerability
-                applyInvulnerability(nmsPlayer);
-                bukkitPlayer.sendMessage(Component.text("传送成功! / Teleported!", NamedTextColor.GREEN));
-            } else {
-                cooldowns.remove(uuid); // 失败时移除冷却 / Remove cooldown on failure
-                bukkitPlayer.sendMessage(Component.text("传送失败，请重试 / Teleport failed, please retry", NamedTextColor.RED));
+        // 步骤 2: 异步加载目标区块并查找安全 Y / Step 2: Async load target chunk & find safe Y
+        final int targetX = target.getBlockX();
+        final int targetZ = target.getBlockZ();
+        final World world = target.getWorld();
+
+        world.getChunkAtAsync(targetX >> 4, targetZ >> 4).thenAccept(chunk -> {
+            // 最终安全检查: 确认无附近玩家 / Final safety: confirm no nearby players
+            if (RtpConfig.avoidPlayerRadius > 0) {
+                for (Player nearby : world.getPlayers()) {
+                    double dx = nearby.getX() - targetX;
+                    double dz = nearby.getZ() - targetZ;
+                    if (dx * dx + dz * dz < (double) RtpConfig.avoidPlayerRadius * RtpConfig.avoidPlayerRadius) {
+                        inFlight.remove(uuid);
+                        cooldowns.remove(uuid);
+                        bukkitPlayer.sendMessage(Component.text(
+                                "请重试 / Please retry",
+                                NamedTextColor.YELLOW));
+                        return;
+                    }
+                }
             }
+
+            // 区块已加载，查询高度图 / Chunk loaded, query heightmap
+            final int safeY = world.getHighestBlockYAt(targetX, targetZ) + 1;
+            final Location safeTarget = new Location(world, targetX + 0.5, safeY, targetZ + 0.5,
+                    ThreadLocalRandom.current().nextFloat() * 360f, 0f);
+
+            // 步骤 3: teleportAsync (Folia 原生) / Step 3: teleportAsync (Folia-native)
+            bukkitPlayer.teleportAsync(safeTarget).thenAccept(success -> {
+                inFlight.remove(uuid);
+                if (success) {
+                    // 步骤 4: 设置无敌 / Step 4: Apply invulnerability
+                    applyInvulnerability(nmsPlayer);
+                    bukkitPlayer.sendMessage(Component.text("传送成功! / Teleported!", NamedTextColor.GREEN));
+                } else {
+                    cooldowns.remove(uuid);
+                    bukkitPlayer.sendMessage(Component.text("传送失败，请重试 / Teleport failed, please retry", NamedTextColor.RED));
+                }
+            }).exceptionally(ex -> {
+                inFlight.remove(uuid);
+                cooldowns.remove(uuid);
+                bukkitPlayer.sendMessage(Component.text("传送异常 / Teleport error: " + ex.getMessage(), NamedTextColor.RED));
+                return null;
+            });
         }).exceptionally(ex -> {
             inFlight.remove(uuid);
             cooldowns.remove(uuid);
-            bukkitPlayer.sendMessage(Component.text("传送异常 / Teleport error: " + ex.getMessage(), NamedTextColor.RED));
+            bukkitPlayer.sendMessage(Component.text("区块加载失败 / Chunk load failed: " + ex.getMessage(), NamedTextColor.RED));
             return null;
         });
     }

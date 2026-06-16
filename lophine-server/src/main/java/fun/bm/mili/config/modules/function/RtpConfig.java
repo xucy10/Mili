@@ -63,6 +63,27 @@ public class RtpConfig implements IConfigModule {
             推荐 / Recommended: 5-9.""")
     public static int preloadOuterRadius = 7;
 
+    @ConfigInfo(name = "require-generated", comments = """
+            仅传送到已生成的区块 / Only teleport to pre-generated chunks.
+            启用后位置池只包含已生成的区块，避免实时生成地形 / Pool only contains
+            generated chunks, avoiding real-time terrain generation.
+            配合 Chunky 预生成效果最佳 / Works best with Chunky pre-generation.""")
+    public static boolean requireGenerated = true;
+
+    @ConfigInfo(name = "avoid-player-radius", comments = """
+            避开玩家的最小距离 (方块) / Minimum distance from any player (blocks).
+            位置池填充时会检查此范围内是否有玩家或玩家建筑 / Pool fill checks
+            for players and player structures within this radius.
+            推荐 / Recommended: 200-500.""")
+    public static int avoidPlayerRadius = 400;
+
+    @ConfigInfo(name = "generated-check-radius", comments = """
+            已生成区块检查半径 (区块) / Generated chunk check radius (chunks).
+            确保目标周围区块也已生成，避免传送后出现区块边界 / Ensures surrounding
+            chunks are also generated to avoid chunk borders after teleport.
+            推荐 / Recommended: 2-5.""")
+    public static int generatedCheckRadius = 3;
+
     @DoNotLoad
     private static MiliRtpCommand command;
 
