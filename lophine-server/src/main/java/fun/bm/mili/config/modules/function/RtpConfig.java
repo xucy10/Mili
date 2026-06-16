@@ -2,6 +2,7 @@ package fun.bm.mili.config.modules.function;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import fun.bm.mili.feature.MiliRtpCommand;
+import fun.bm.mili.feature.MiliRtpLocationPool;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -44,22 +45,23 @@ public class RtpConfig implements IConfigModule {
             or mob damage after landing.""")
     public static int invulnerableSeconds = 15;
 
+    @ConfigInfo(name = "pool-size", comments = """
+            每个世界的预计算位置池大小 / Pre-computed location pool size per world.
+            玩家进服后后台自动搜索填充，冷却期间继续补充 / Auto-filled in background
+            after player joins, replenished during cooldown. 推荐 / Recommended: 5-20.""")
+    public static int poolSize = 18;
+
     @ConfigInfo(name = "preload-inner-radius", comments = """
             内圈预加载半径 (区块) / Inner preload radius (chunks).
-            这些区块在传送前必须完成加载 / These chunks must finish loading before teleport.
+            传送时以 HIGHEST 优先级加载 / Loaded at HIGHEST priority during teleport.
             推荐 / Recommended: 2-4.""")
     public static int preloadInnerRadius = 3;
 
     @ConfigInfo(name = "preload-outer-radius", comments = """
             外圈预加载半径 (区块) / Outer preload radius (chunks).
-            传送后后台继续加载，消除区块边界 / Loaded in background after teleport.
+            传送后后台继续加载 / Loaded in background after teleport.
             推荐 / Recommended: 5-9.""")
     public static int preloadOuterRadius = 7;
-
-    @ConfigInfo(name = "chunk-load-timeout-ms", comments = """
-            区块加载超时 (毫秒) / Chunk loading timeout (milliseconds).
-            超过此时间强制传送 / Force teleport after timeout.""")
-    public static long chunkLoadTimeoutMs = 8000;
 
     @DoNotLoad
     private static MiliRtpCommand command;
@@ -71,11 +73,13 @@ public class RtpConfig implements IConfigModule {
                 command = new MiliRtpCommand();
             }
             command.register();
+            MiliRtpLocationPool.start();
         }
     }
 
     @Override
     public void onUnloaded(CommentedFileConfig configInstance) {
+        MiliRtpLocationPool.stop();
         if (command != null) {
             command.unregister();
             command = null;
