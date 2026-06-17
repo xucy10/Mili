@@ -17,3 +17,4 @@ build
 "jdk-21.0.10_windows-x64_bin.zip" 
 "jdk-21.0.10_windows-x64_bin/" 
 nul
+mili-server/src/minecraft/java
