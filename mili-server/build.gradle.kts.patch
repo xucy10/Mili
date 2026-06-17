@@ -9,19 +9,19 @@
 +        forks = luminol
 +        upstream.patchRepo("paperServer") {
 +            upstreamRepo = luminol.patchedRepo("paperServer")
-+            patchesDir = rootDirectory.dir("lophine-server/paper-patches")
++            patchesDir = rootDirectory.dir("mili-server/paper-patches")
 +            outputDir = rootDirectory.dir("paper-server")
 +        }
 +
 +        upstream.patchDir("luminolServer") {
 +            upstreamPath = "luminol-server"
 +            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-+            patchesDir = rootDirectory.dir("lophine-server/luminol-patches")
++            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
 +            outputDir = rootDirectory.dir("luminol-server")
 +        }
 +    }
 +
-+    activeFork = lophine
+    activeFork = mili
  
  
      spigot {
@@ -47,7 +47,7 @@
  
  dependencies {
 -    implementation(project(":luminol-api")) // Luminol
-+    implementation(project(":lophine-api")) // Lophine
++    implementation(project(":mili-api")) // Mili
      // Luminol start - Dependenices insert
      implementation("net.objecthunter:exp4j:0.4.8")
      implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
@@ -55,18 +55,14 @@
          val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
--            "Implementation-Title" to "Luminol",
-+            "Implementation-Title" to "Lophine",
+            "Implementation-Title" to "Mili",
              "Implementation-Version" to implementationVersion,
              "Implementation-Vendor" to date,
--            "Specification-Title" to "Luminol",
-+            "Specification-Title" to "Lophine",
+            "Specification-Title" to "Mili",
              "Specification-Version" to project.version,
-             "Specification-Vendor" to "LuminolMC org",
--            "Brand-Id" to "luminolmc:luminol",
--            "Brand-Name" to "Luminol",
-+            "Brand-Id" to "luminolmc:lophine",
-+            "Brand-Name" to "Lophine",
+             "Specification-Vendor" to "MiliMC org",
+             "Brand-Id" to "mili",
+             "Brand-Name" to "Mili",
              "Build-Number" to (build ?: ""),
              "Build-Time" to buildTime.toString(),
              "Git-Branch" to gitBranch,
@@ -75,7 +71,7 @@
  
  fill {
 -    project("luminol")
-+    project("lophine")
++    project("mili")
      versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
      version(paperweight.minecraftVersion)
  
