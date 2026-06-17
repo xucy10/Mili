@@ -20,5 +20,5 @@ plugins {
 
 rootProject.name = "mili"
 
-include("lophine-api")
-include("lophine-server")
+include("mili-api")
+include("mili-server")
