@@ -69,14 +69,14 @@ public final class MiliMemoryOptimizer {
         if (server == null) return;
 
         try {
-            // 通过反射或直接调用清理 MiliChunkPreloader 中的 TRACK_STATES
-            // Clean TRACK_STATES in MiliChunkPreloader via its public cleanup method
-            MiliChunkPreloader.cleanupOfflinePlayers();
+            // 清理 MiliChunkPreloader 中断开玩家的状态 / Clean disconnected player states
+            int removed = MiliChunkPreloader.cleanupOfflinePlayers();
 
             if (MemoryOptConfig.debug) {
                 long usedMB = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
                 long maxMB = Runtime.getRuntime().maxMemory() / (1024 * 1024);
-                LOGGER.debug("[MemOpt] Memory: {}MB / {}MB, cleanup cycle complete", usedMB, maxMB);
+                LOGGER.debug("[MemOpt] Memory: {}MB / {}MB | ChunkPreloader cleaned {} entries",
+                        usedMB, maxMB, removed);
             }
         } catch (Throwable t) {
             LOGGER.debug("[MemOpt] State cleanup failed: {}", t.getMessage());

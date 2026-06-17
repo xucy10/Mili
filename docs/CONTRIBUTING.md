@@ -1,4 +1,4 @@
-为Lophine贡献代码
+为Mili贡献代码
 ===============
 
 [English](./CONTRIBUTING_EN.md) | **中文**

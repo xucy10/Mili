@@ -1,4 +1,4 @@
-Contributing to Lophine
+Contributing to Mili
 =======================
 
 **English** | [中文](./CONTRIBUTING.md)

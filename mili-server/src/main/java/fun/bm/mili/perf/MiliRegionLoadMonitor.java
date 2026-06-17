@@ -171,8 +171,10 @@ public class MiliRegionLoadMonitor implements IConfigModule {
                     sample.lastTps = tps;
                 }
 
-                // Load score = chunks + 8 * entities, entities dominate tick cost
-                double loadScore = chunkCount + 8.0 * entityCount;
+                // Load score: MSPT-weighted composite score (higher MSPT = heavier load)
+                // chunks base + entities (tick cost) + players (network) + MSPT (actual impact)
+                double loadScore = chunkCount + 2.0 * entityCount + 10.0 * playerCount;
+                if (mspt >= 0) loadScore += mspt * 50.0;
                 if (loadScore > sample.peakLoadScore) {
                     sample.peakLoadScore = loadScore;
                 }
@@ -319,13 +321,40 @@ public class MiliRegionLoadMonitor implements IConfigModule {
             double lastTps,
             long samplesTaken,
             int consecutiveSlow,
-            String loadTag
+            String loadTag,
+            double hotspotScore,
+            String balanceAdvice
     ) {
         RegionDisplayData(long id, RegionSample s) {
             this(id, s.levelName, s.chunkCount, s.entityCount, s.playerCount,
                     s.emaLoadScore, s.peakLoadScore, s.lastMspt, s.emaMspt,
                     s.peakMspt, s.lastTps, s.samplesTaken, s.consecutiveSlow,
-                    computeLoadTag(s).trim());
+                    computeLoadTag(s).trim(),
+                    computeHotspotScore(s),
+                    computeBalanceAdvice(s));
+        }
+
+        private static double computeHotspotScore(RegionSample s) {
+            // MSPT 权重 + 实体数权重 / MSPT weight + entity weight
+            double score = 0;
+            if (s.lastMspt >= 0) score += s.lastMspt * 2.0;
+            score += s.entityCount * 0.1;
+            score += s.consecutiveSlow * 5.0;
+            return score;
+        }
+
+        private static String computeBalanceAdvice(RegionSample s) {
+            if (s.consecutiveSlow < slowRegionConsecutive) return "";
+            if (s.entityCount > 500) {
+                return "实体过多 (" + s.entityCount + "), 建议迁移牧场/农场 / Too many entities, move farms";
+            }
+            if (s.playerCount > 5) {
+                return s.playerCount + " 玩家集中, 建议分散活动 / players concentrated, spread out";
+            }
+            if (s.chunkCount > 100) {
+                return "区块过多 (" + s.chunkCount + "), 减少视距 / Too many chunks, reduce view distance";
+            }
+            return "MSPT=" + String.format("%.1f", s.lastMspt) + ", 监控中 / monitoring";
         }
     }
 

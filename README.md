@@ -3,7 +3,7 @@
   
   *Mili 是一个基于Lophine的分支，具有许多有用的优化和可配置的原版特性，目标是在Folia上实现更多生电的内容（请注意，完整生电请使用Fabric）*
 
-  *在本分支出现问题请不要 前往Lophine提交issues
+  在本分支出现问题请不要 前往Lophine提交issues
   
   ![Created At](https://img.shields.io/github/created-at/LuminolMC/Lophine?style=for-the-badge&color=blue)
   [![License](https://img.shields.io/github/license/LuminolMC/Lophine?style=for-the-badge&color=green)](LICENSE.md)

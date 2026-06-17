@@ -2,10 +2,10 @@ package fun.bm.mili.feature;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.function.RtpConfig;
+import fun.bm.mili.util.FoliaSchedulerUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -46,10 +46,9 @@ public final class MiliRtpLocationPool {
     public static void start() {
         if (!RUNNING.compareAndSet(false, true)) return;
 
-        Bukkit.getAsyncScheduler().runAtFixedRate(
-                MinecraftInternalPlugin.INSTANCE,
-                task -> fillAllPools(),
-                2, 2, java.util.concurrent.TimeUnit.SECONDS
+        FoliaSchedulerUtil.runTaskTimerAsynchronously(
+                () -> fillAllPools(),
+                40, 40  // 2 秒 = 40 ticks / 2 seconds = 40 ticks
         );
         LOGGER.info("mili-rtp location pool started (target: {})", RtpConfig.poolSize);
     }

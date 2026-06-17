@@ -89,11 +89,14 @@ public final class MiliChunkPreloader {
         final int interval = Math.max(1, ChunkPreloadConfig.sampleIntervalTicks);
         if (state.tickCounter % interval != 0) return;
 
-        // 计算速度 (blocks/tick) / Calculate velocity (blocks/tick)
+        // 计算速度 (blocks/tick) — EMA 平滑避免瞬间抖动 / Calculate velocity with EMA smoothing
         final double dx = player.getX() - state.lastX;
         final double dz = player.getZ() - state.lastZ;
-        state.vx = dx / interval;
-        state.vz = dz / interval;
+        final double rawVx = dx / interval;
+        final double rawVz = dz / interval;
+        // EMA alpha=0.3: 70% 历史值 + 30% 新采样 / 70% history + 30% new sample
+        state.vx = state.vx * 0.7 + rawVx * 0.3;
+        state.vz = state.vz * 0.7 + rawVz * 0.3;
         state.speed = Math.sqrt(state.vx * state.vx + state.vz * state.vz);
         state.lastX = player.getX();
         state.lastZ = player.getZ();
@@ -121,8 +124,21 @@ public final class MiliChunkPreloader {
         state.lastPredictedChunkX = predChunkX;
         state.lastPredictedChunkZ = predChunkZ;
 
-        // 计算预加载半径 / Calculate preload radius
-        final int radius = calculateRadius(state);
+        // 计算预加载半径: 基础 + 速度 + 自适应 MSPT / Calculate radius: base + speed + adaptive MSPT
+        int radius = calculateRadius(state);
+
+        // 自适应: 高 MSPT 时缩减预加载以保护 TPS / Adaptive: reduce preload when MSPT is high
+        try {
+            final var region = io.papermc.paper.threadedregions.TickRegionScheduler.getCurrentRegion();
+            if (region != null && region.getData() != null) {
+                final var report = region.getData().getRegionSchedulingHandle().getTickReport5s(System.nanoTime());
+                if (report != null) {
+                    final double mspt = report.timePerTickData().segmentAll().average() / 1.0E6;
+                    if (mspt > 40) radius = Math.max(1, radius / 2);
+                    else if (mspt > 30) radius = Math.max(1, (int)(radius * 0.7));
+                }
+            }
+        } catch (Throwable ignored) {}
 
         // 触发预加载 / Trigger preload
         final ServerLevel level = (ServerLevel) player.level();
@@ -190,14 +206,18 @@ public final class MiliChunkPreloader {
      * 清理所有断开连接玩家的状态 (由 MiliMemoryOptimizer 调用) /
      * Clean all disconnected players' states (called by MiliMemoryOptimizer).
      * 可安全从任意线程调用 / Safe to call from any thread.
+     *
+     * @return 清理的条目数 / Number of entries removed
      */
-    public static void cleanupOfflinePlayers() {
+    public static int cleanupOfflinePlayers() {
         final var server = net.minecraft.server.MinecraftServer.getServer();
-        if (server == null) return;
+        if (server == null) return 0;
+        final int before = TRACK_STATES.size();
         TRACK_STATES.keySet().removeIf(uuid -> {
             final var player = server.getPlayerList().getPlayer(uuid);
             return player == null || player.hasDisconnected();
         });
+        return before - TRACK_STATES.size();
     }
 
     // ==================== 内部方法 / Internal methods ====================

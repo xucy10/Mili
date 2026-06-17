@@ -1,6 +1,7 @@
 package fun.bm.mili.feature;
 
 import ca.spottedleaf.moonrise.common.time.TickData;
+import fun.bm.mili.util.FoliaSchedulerUtil;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.threadedregions.ThreadedRegionizer;
 import io.papermc.paper.threadedregions.TickRegionScheduler;
@@ -78,7 +79,7 @@ public class MiliTpsAllCommand extends RootNode {
             if (Bukkit.isPrimaryThread()) {
                 send.run();
             } else {
-                Bukkit.getScheduler().runTask(MinecraftInternalPlugin.INSTANCE, send);
+                FoliaSchedulerUtil.runTask(send);
             }
         };
 

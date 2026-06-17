@@ -5,6 +5,7 @@ import ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel
 import ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkHolderManager;
 import fun.bm.mili.config.modules.function.RtpConfig;
 import fun.bm.mili.perf.MiliChunkPreloader;
+import fun.bm.mili.util.FoliaSchedulerUtil;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,7 +26,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.command.CommandContext;
 import org.leavesmc.leaves.command.RootNode;
-import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 
 import java.util.Set;
 import java.util.UUID;
@@ -238,9 +238,8 @@ public class MiliRtpCommand extends RootNode {
                         RtpConfig.invulnerableSeconds + "s invulnerability granted",
                 NamedTextColor.GREEN));
 
-        Bukkit.getGlobalRegionScheduler().runDelayed(
-                MinecraftInternalPlugin.INSTANCE,
-                task -> {
+        FoliaSchedulerUtil.runTaskLater(
+                () -> {
                     if (nmsPlayer.getBukkitEntity().isOnline()) {
                         nmsPlayer.setInvulnerable(false);
                         nmsPlayer.getBukkitEntity().sendMessage(Component.text(
