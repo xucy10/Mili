@@ -15,7 +15,9 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -31,26 +33,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * mili - /rtp 核心命令: 位置池 + 区块预加载 + teleportAsync / Core RTP with pool + preload + teleportAsync.
+ * mili - /rtp 核心命令: 位置池 + 区域线程验证 + teleportAsync / Core RTP with pool + region-thread validation.
  *
  * <p>架构 / Architecture:
  * <pre>
- *   玩家进服 → MiliRtpLocationPool 后台预计算位置 (每 2s 填充)
- *   /rtp 执行 → 从池中取位置 (O(1)) → 触发区块预加载 → teleportAsync → 无敌
- *   冷却期间 → 后台自动补充位置池
+ *   异步线程 → MiliRtpLocationPool 纯数学填充坐标 (零世界 API)
+ *   /rtp 执行 → player.getScheduler().run() → 区域线程验证 → 异步传送
  * </pre>
  *
- * <p><b>全程非阻塞 / Fully non-blocking:</b>
+ * <p><b>关键: 所有世界 API 调用在区域线程 / All world API calls on region thread:</b>
  * <ul>
- *   <li>位置池: 异步调度器填充 / Pool filled by async scheduler</li>
- *   <li>区块预加载: moonrise$loadChunksAsync (fire-and-forget) / Chunk preload: fire-and-forget</li>
- *   <li>传送: teleportAsync (Folia 原生) / Teleport: Folia-native</li>
- *   <li>无敌: setInvulnerable + GlobalRegionScheduler 定时取消 / Timed removal</li>
+ *   <li>isChunkGenerated — 仅区域线程安全 / Region thread only</li>
+ *   <li>getPlayers + 距离计算 — 区域线程 / Region thread</li>
+ *   <li>getTileEntities — 区域线程扫描 / Region thread scan</li>
+ *   <li>teleportAsync — Folia 原生 / Folia-native</li>
  * </ul>
  */
 public class MiliRtpCommand extends RootNode {
 
-    // ==================== 状态追踪 / State tracking ====================
+    /** 最大验证尝试次数 / Max validation attempts before giving up. */
+    private static final int MAX_ATTEMPTS = 10;
 
     private final ConcurrentHashMap<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
@@ -96,44 +98,153 @@ public class MiliRtpCommand extends RootNode {
         }
 
         setCooldown(uuid);
+        bukkitPlayer.sendMessage(Component.text("正在寻找安全位置... / Finding safe location...", NamedTextColor.GRAY));
 
-        // 从位置池取，池空则随机生成 / Pick from pool, random fallback if empty
-        Location target = MiliRtpLocationPool.pick(bukkitPlayer.getWorld());
-        if (target == null) {
-            target = randomTarget(bukkitPlayer.getWorld(), bukkitPlayer.getLocation());
-        }
+        // ★ 在玩家区域线程上执行所有验证和传送 / Execute all validation & teleport on player's region thread
+        bukkitPlayer.getScheduler().run(MinecraftInternalPlugin.INSTANCE, task -> {
+            if (!bukkitPlayer.isOnline()) {
+                inFlight.remove(uuid);
+                cooldowns.remove(uuid);
+                return;
+            }
+            executeOnRegionThread(bukkitPlayer);
+        }, () -> {
+            inFlight.remove(uuid);
+            cooldowns.remove(uuid);
+        });
+    }
 
-        bukkitPlayer.sendMessage(Component.text(
-                "正在传送... / Teleporting...", NamedTextColor.GRAY));
+    /**
+     * 在区域线程上执行: 验证 + 预加载 + 传送 / Execute on region thread: validate + preload + teleport.
+     * 从池中取候选位置，验证失败则尝试下一个 / Picks candidates from pool, retries on validation failure.
+     */
+    private void executeOnRegionThread(Player bukkitPlayer) {
+        final UUID uuid = bukkitPlayer.getUniqueId();
+        final World world = bukkitPlayer.getWorld();
 
-        // 步骤 1: 触发区块预加载 (fire-and-forget) / Step 1: Trigger chunk preload (fire-and-forget)
-        final ServerPlayer nmsPlayer = ((CraftPlayer) bukkitPlayer).getHandle();
-        final ServerLevel level = nmsPlayer.level();
-        triggerPreload(nmsPlayer, level, target);
-
-        // 步骤 2: 异步加载目标区块并查找安全 Y / Step 2: Async load target chunk & find safe Y
-        final int targetX = target.getBlockX();
-        final int targetZ = target.getBlockZ();
-        final World world = target.getWorld();
-
-        world.getChunkAtAsync(targetX >> 4, targetZ >> 4).thenAccept(chunk -> {
-            // 最终安全检查: 确认无附近玩家 / Final safety: confirm no nearby players
-            if (RtpConfig.avoidPlayerRadius > 0) {
-                for (Player nearby : world.getPlayers()) {
-                    double dx = nearby.getX() - targetX;
-                    double dz = nearby.getZ() - targetZ;
-                    if (dx * dx + dz * dz < (double) RtpConfig.avoidPlayerRadius * RtpConfig.avoidPlayerRadius) {
-                        inFlight.remove(uuid);
-                        cooldowns.remove(uuid);
-                        bukkitPlayer.sendMessage(Component.text(
-                                "请重试 / Please retry",
-                                NamedTextColor.YELLOW));
-                        return;
-                    }
-                }
+        // 尝试多个候选位置 / Try multiple candidate locations
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            Location candidate = MiliRtpLocationPool.pick(world);
+            if (candidate == null) {
+                candidate = randomTarget(world, bukkitPlayer.getLocation());
             }
 
-            // 区块已加载，查询高度图 / Chunk loaded, query heightmap
+            if (validateLocation(world, candidate.getBlockX(), candidate.getBlockZ())) {
+                // 验证通过: 执行传送 / Validation passed: execute teleport
+                executeTeleport(bukkitPlayer, candidate);
+                return;
+            }
+            // 验证失败: 尝试下一个 / Validation failed: try next
+        }
+
+        // 所有候选都失败 / All candidates failed
+        inFlight.remove(uuid);
+        cooldowns.remove(uuid);
+        bukkitPlayer.sendMessage(Component.text(
+                "未找到安全位置，请稍后重试 / No safe location found, please retry later",
+                NamedTextColor.YELLOW));
+    }
+
+    // ==================== 区域线程安全验证 / Region-thread safety validation ====================
+
+    /**
+     * 在区域线程上验证位置安全性 / Validate location safety on region thread.
+     *
+     * <p>多层检查 / Multi-layer checks:
+     * <ol>
+     *   <li>区块已生成 (isChunkGenerated) / Chunk is generated</li>
+     *   <li>周围区块也已生成 / Surrounding chunks also generated</li>
+     *   <li>无附近玩家 / No nearby players</li>
+     *   <li>无玩家建筑 (TileEntity 扫描) / No player structures (TileEntity scan)</li>
+     * </ol>
+     */
+    private boolean validateLocation(World world, int x, int z) {
+        final int cx = x >> 4;
+        final int cz = z >> 4;
+
+        // 检查 1: 区块已生成 / Check 1: Chunk is generated
+        if (RtpConfig.requireGenerated) {
+            if (!world.isChunkGenerated(cx, cz)) return false;
+
+            // 周围区块检查 / Surrounding chunk check
+            final int r = RtpConfig.generatedCheckRadius;
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (!world.isChunkGenerated(cx + dx, cz + dz)) return false;
+                }
+            }
+        }
+
+        // 检查 2: 无附近玩家 / Check 2: No nearby players
+        final double avoidR = RtpConfig.avoidPlayerRadius;
+        if (avoidR > 0) {
+            final double avoidRSq = avoidR * avoidR;
+            for (Player p : world.getPlayers()) {
+                double dx = p.getX() - x;
+                double dz = p.getZ() - z;
+                if (dx * dx + dz * dz < avoidRSq) return false;
+            }
+        }
+
+        // 检查 3: 无玩家建筑 (扫描已加载区块) / Check 3: No player structures (scan loaded chunks)
+        if (hasPlayerStructuresNearby(world, cx, cz, 2)) return false;
+
+        return true;
+    }
+
+    /**
+     * 扫描多区块范围内的玩家建筑指示方块 / Scan loaded chunks for player structure indicators.
+     * 只检查已加载区块 (不触发加载) / Only checks loaded chunks (no load trigger).
+     */
+    private static boolean hasPlayerStructuresNearby(World world, int cx, int cz, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (!world.isChunkLoaded(cx + dx, cz + dz)) continue;
+                try {
+                    final Chunk chunk = world.getChunkAt(cx + dx, cz + dz);
+                    for (var te : chunk.getTileEntities()) {
+                        final Material type = te.getType();
+                        if (isPlayerIndicator(type)) return true;
+                    }
+                } catch (Throwable ignored) {
+                    // 线程安全问题时跳过此区块 / Skip chunk on thread-safety issue
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 判断方块是否为玩家活动指示器 / Check if block indicates player activity. */
+    private static boolean isPlayerIndicator(Material mat) {
+        return switch (mat) {
+            case CHEST, TRAPPED_CHEST, BARREL,
+                 FURNACE, BLAST_FURNACE, SMOKER,
+                 CRAFTING_TABLE, ANVIL, ENCHANTING_TABLE, BREWING_STAND,
+                 OAK_DOOR, IRON_DOOR, SPRUCE_DOOR, BIRCH_DOOR,
+                 JUNGLE_DOOR, ACACIA_DOOR, DARK_OAK_DOOR,
+                 CRIMSON_DOOR, WARPED_DOOR,
+                 OAK_SIGN, OAK_WALL_SIGN,
+                 BEACON, HOPPER, DROPPER, DISPENSER,
+                 ENDER_CHEST, SHULKER_BOX -> true;
+            default -> mat.name().endsWith("_BED");
+        };
+    }
+
+    // ==================== 传送执行 / Teleport execution ====================
+
+    private void executeTeleport(Player bukkitPlayer, Location target) {
+        final UUID uuid = bukkitPlayer.getUniqueId();
+        final ServerPlayer nmsPlayer = ((CraftPlayer) bukkitPlayer).getHandle();
+        final ServerLevel level = nmsPlayer.level();
+        final World world = target.getWorld();
+        final int targetX = target.getBlockX();
+        final int targetZ = target.getBlockZ();
+
+        // 步骤 1: 触发区块预加载 (fire-and-forget) / Step 1: Trigger preload (fire-and-forget)
+        triggerPreload(nmsPlayer, level, target);
+
+        // 步骤 2: 异步加载目标区块查高度图 → 传送 / Step 2: Async load → find Y → teleport
+        world.getChunkAtAsync(targetX >> 4, targetZ >> 4).thenAccept(chunk -> {
             final int safeY = world.getHighestBlockYAt(targetX, targetZ) + 1;
             final Location safeTarget = new Location(world, targetX + 0.5, safeY, targetZ + 0.5,
                     ThreadLocalRandom.current().nextFloat() * 360f, 0f);
@@ -142,12 +253,11 @@ public class MiliRtpCommand extends RootNode {
             bukkitPlayer.teleportAsync(safeTarget).thenAccept(success -> {
                 inFlight.remove(uuid);
                 if (success) {
-                    // 步骤 4: 设置无敌 / Step 4: Apply invulnerability
                     applyInvulnerability(nmsPlayer);
                     bukkitPlayer.sendMessage(Component.text("传送成功! / Teleported!", NamedTextColor.GREEN));
                 } else {
                     cooldowns.remove(uuid);
-                    bukkitPlayer.sendMessage(Component.text("传送失败，请重试 / Teleport failed, please retry", NamedTextColor.RED));
+                    bukkitPlayer.sendMessage(Component.text("传送失败，请重试 / Teleport failed", NamedTextColor.RED));
                 }
             }).exceptionally(ex -> {
                 inFlight.remove(uuid);
@@ -165,43 +275,26 @@ public class MiliRtpCommand extends RootNode {
 
     // ==================== 区块预加载 / Chunk pre-loading ====================
 
-    /**
-     * 触发非阻塞区块预加载 / Trigger non-blocking chunk preload.
-     *
-     * <p>fire-and-forget: 发起加载请求后立即返回，不等待完成 / Fires and forgets:
-     * requests load and returns immediately without waiting.
-     * teleportAsync 会自行处理区块加载 / teleportAsync handles its own chunk loading.
-     * 此预加载只是给 Moonrise 一个提前量 / This preload just gives Moonrise a head start.
-     */
     private void triggerPreload(ServerPlayer nmsPlayer, ServerLevel level, Location target) {
         final int cx = target.getBlockX() >> 4;
         final int cz = target.getBlockZ() >> 4;
         final int inner = RtpConfig.preloadInnerRadius;
         final int outer = RtpConfig.preloadOuterRadius;
 
-        // 内圈 HIGHEST / Inner circle HIGHEST priority
         level.moonrise$loadChunksAsync(
                 cx - inner, cx + inner, cz - inner, cz + inner,
-                ChunkStatus.FULL, Priority.HIGHEST, chunks -> {
-                    addDelayedTickets(level, cx - inner, cx + inner, cz - inner, cz + inner);
-                });
+                ChunkStatus.FULL, Priority.HIGHEST, chunks ->
+                        addDelayedTickets(level, cx - inner, cx + inner, cz - inner, cz + inner));
 
-        // 外圈 HIGH / Outer circle HIGH priority
         level.moonrise$loadChunksAsync(
                 cx - outer, cx + outer, cz - outer, cz + outer,
-                ChunkStatus.FULL, Priority.HIGH, chunks -> {
-                    addDelayedTickets(level, cx - outer, cx + outer, cz - outer, cz + outer);
-                });
+                ChunkStatus.FULL, Priority.HIGH, chunks ->
+                        addDelayedTickets(level, cx - outer, cx + outer, cz - outer, cz + outer));
 
-        // 触发 MiliChunkPreloader 扩展预加载 / Trigger MiliChunkPreloader extended preload
         MiliChunkPreloader.onPlayerTeleport(nmsPlayer, level,
                 BlockPos.containing(target.getX(), target.getY(), target.getZ()));
     }
 
-    /**
-     * 添加 DELAYED ticket 保持区块 / Add DELAYED tickets to hold chunks.
-     * <b>identifier 必须为 null (DELAYED comparator 为 null) / identifier MUST be null.</b>
-     */
     private static void addDelayedTickets(ServerLevel level, int minX, int maxX, int minZ, int maxZ) {
         final ChunkHolderManager hm = ((ChunkSystemServerLevel) level).moonrise$getChunkTaskScheduler().chunkHolderManager;
         final int ticketLevel = ChunkHolderManager.FULL_LOADED_TICKET_LEVEL;
@@ -212,7 +305,7 @@ public class MiliRtpCommand extends RootNode {
         }
     }
 
-    // ==================== 无敌系统 / Invulnerability system ====================
+    // ==================== 无敌系统 / Invulnerability ====================
 
     private void applyInvulnerability(ServerPlayer nmsPlayer) {
         nmsPlayer.setInvulnerable(true);
@@ -234,15 +327,14 @@ public class MiliRtpCommand extends RootNode {
         );
     }
 
-    // ==================== 工具方法 / Utility ====================
+    // ==================== 工具 / Utility ====================
 
     private Location randomTarget(World world, Location origin) {
         final ThreadLocalRandom rng = ThreadLocalRandom.current();
         final double angle = rng.nextDouble() * Math.PI * 2;
         final double dist = rng.nextDouble(RtpConfig.minDistance, RtpConfig.maxDistance);
         return new Location(world,
-                origin.getX() + Math.cos(angle) * dist,
-                128,
+                origin.getX() + Math.cos(angle) * dist, 128,
                 origin.getZ() + Math.sin(angle) * dist);
     }
 
