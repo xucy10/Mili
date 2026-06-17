@@ -39,6 +39,9 @@ public final class MiliRtpLocationPool {
     /** 后台填充任务是否运行 / Whether background fill task is running. */
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
 
+    /** 定时任务引用 (用于取消) / Scheduled task handle (for cancellation). */
+    private static volatile Object fillTaskHandle = null;
+
     /**
      * 启动后台填充任务 / Start background fill task.
      * 每 2 秒补充坐标 (纯数学计算，零世界 API 调用) / Replenishes every 2s (pure math, zero world API calls).
@@ -46,7 +49,7 @@ public final class MiliRtpLocationPool {
     public static void start() {
         if (!RUNNING.compareAndSet(false, true)) return;
 
-        FoliaSchedulerUtil.runTaskTimerAsynchronously(
+        fillTaskHandle = FoliaSchedulerUtil.runTaskTimerAsynchronously(
                 () -> fillAllPools(),
                 40, 40  // 2 秒 = 40 ticks / 2 seconds = 40 ticks
         );
@@ -55,6 +58,10 @@ public final class MiliRtpLocationPool {
 
     public static void stop() {
         RUNNING.set(false);
+        if (fillTaskHandle != null) {
+            FoliaSchedulerUtil.cancelTask(fillTaskHandle);
+            fillTaskHandle = null;
+        }
         POOLS.clear();
     }
 

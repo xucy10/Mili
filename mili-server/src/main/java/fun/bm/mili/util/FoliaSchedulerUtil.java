@@ -16,13 +16,11 @@ import java.util.concurrent.TimeUnit;
  * <p>本项目为 Folia-only，无需 Bukkit 兼容分支 / This project is Folia-only,
  * no Bukkit compatibility branch needed.
  *
- * <p>用法 / Usage:
- * <pre>
- *   FoliaSchedulerUtil.runTask(() -> { ... });
- *   FoliaSchedulerUtil.runTaskLater(() -> { ... }, 20L);
- *   FoliaSchedulerUtil.runTaskAsynchronously(() -> { ... });
- *   FoliaSchedulerUtil.runTaskTimerAsynchronously(() -> { ... }, 0L, 40L);
- * </pre>
+ * <p><b>重要: 全局区域调度 ≠ 实体区域调度 / Global region ≠ entity region!</b>
+ * <ul>
+ *   <li>{@link #runTask} / {@link #runTaskLater} → 全局区域线程 (global region thread)</li>
+ *   <li>实体状态修改必须使用 {@code entity.getScheduler()} → 实体所属区域线程</li>
+ * </ul>
  */
 public final class FoliaSchedulerUtil {
 
@@ -34,71 +32,87 @@ public final class FoliaSchedulerUtil {
 
     /**
      * 全局区域调度 (下一 tick) / Run on global region (next tick).
+     *
+     * @return ScheduledTask 引用，可传给 {@link #cancelTask(Object)} / task handle
      */
-    public static void runTask(Runnable task) {
-        Bukkit.getGlobalRegionScheduler().run(plugin(), a -> task.run());
+    public static Object runTask(Runnable task) {
+        return Bukkit.getGlobalRegionScheduler().run(plugin(), a -> task.run());
     }
 
     /**
      * 延迟全局区域调度 / Delayed global region scheduling.
      *
-     * @param task  任务 / Task
-     * @param delay 延迟 tick 数 / Delay in ticks (min 1)
+     * @param delay 延迟 tick 数 (min 1) / Delay in ticks
+     * @return ScheduledTask 引用 / task handle
      */
-    public static void runTaskLater(Runnable task, long delay) {
+    public static Object runTaskLater(Runnable task, long delay) {
         delay = Math.max(1, delay);
-        Bukkit.getGlobalRegionScheduler().runDelayed(plugin(), a -> task.run(), delay);
+        return Bukkit.getGlobalRegionScheduler().runDelayed(plugin(), a -> task.run(), delay);
     }
 
     /**
      * 循环全局区域调度 / Repeating global region scheduling.
      *
-     * @param task   任务 / Task
-     * @param delay  初始延迟 tick / Initial delay in ticks (min 1)
-     * @param period 间隔 tick / Period in ticks (min 1)
+     * @param delay  初始延迟 tick (min 1) / Initial delay
+     * @param period 间隔 tick (min 1) / Period
+     * @return ScheduledTask 引用 / task handle
      */
-    public static void runTaskTimer(Runnable task, long delay, long period) {
+    public static Object runTaskTimer(Runnable task, long delay, long period) {
         delay = Math.max(1, delay);
         period = Math.max(1, period);
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin(), a -> task.run(), delay, period);
+        return Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin(), a -> task.run(), delay, period);
     }
 
     /**
      * 异步调度 (立即) / Async scheduling (immediate).
+     *
+     * @return ScheduledTask 引用 / task handle
      */
-    public static void runTaskAsynchronously(Runnable task) {
-        Bukkit.getAsyncScheduler().runNow(plugin(), a -> task.run());
+    public static Object runTaskAsynchronously(Runnable task) {
+        return Bukkit.getAsyncScheduler().runNow(plugin(), a -> task.run());
     }
 
     /**
      * 延迟异步调度 / Delayed async scheduling.
      *
-     * @param task  任务 / Task
      * @param delay 延迟 tick 数 / Delay in ticks
+     * @return ScheduledTask 引用 / task handle
      */
-    public static void runTaskLaterAsynchronously(Runnable task, long delay) {
+    public static Object runTaskLaterAsynchronously(Runnable task, long delay) {
         delay = Math.max(1, delay);
-        Bukkit.getAsyncScheduler().runDelayed(plugin(), a -> task.run(), delay * 50, TimeUnit.MILLISECONDS);
+        return Bukkit.getAsyncScheduler().runDelayed(plugin(), a -> task.run(), delay * 50, TimeUnit.MILLISECONDS);
     }
 
     /**
      * 循环异步调度 / Repeating async scheduling.
      *
-     * @param task   任务 / Task
-     * @param delay  初始延迟 tick / Initial delay in ticks
-     * @param period 间隔 tick / Period in ticks
+     * @param delay  初始延迟 tick / Initial delay
+     * @param period 间隔 tick / Period
+     * @return ScheduledTask 引用 / task handle
      */
-    public static void runTaskTimerAsynchronously(Runnable task, long delay, long period) {
+    public static Object runTaskTimerAsynchronously(Runnable task, long delay, long period) {
         delay = Math.max(1, delay);
         period = Math.max(1, period);
-        Bukkit.getAsyncScheduler().runAtFixedRate(plugin(), a -> task.run(),
+        return Bukkit.getAsyncScheduler().runAtFixedRate(plugin(), a -> task.run(),
                 delay * 50, period * 50, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * 取消所有调度任务 / Cancel all scheduled tasks.
+     * 取消单个任务 / Cancel a single task.
+     *
+     * @param taskHandle {@link #runTask} 等方法返回的引用 / handle from run methods
      */
-    public static void cancelTask() {
+    public static void cancelTask(Object taskHandle) {
+        if (taskHandle instanceof io.papermc.paper.threadedregions.scheduler.ScheduledTask st) {
+            st.cancel();
+        }
+    }
+
+    /**
+     * 取消所有通过本工具调度的任务 / Cancel ALL tasks scheduled via this utility.
+     * <b>慎用 / Use with caution!</b>
+     */
+    public static void cancelAll() {
         Bukkit.getGlobalRegionScheduler().cancelTasks(plugin());
         Bukkit.getAsyncScheduler().cancelTasks(plugin());
     }

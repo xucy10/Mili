@@ -5,7 +5,6 @@ import ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel
 import ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkHolderManager;
 import fun.bm.mili.config.modules.function.RtpConfig;
 import fun.bm.mili.perf.MiliChunkPreloader;
-import fun.bm.mili.util.FoliaSchedulerUtil;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -26,6 +25,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.command.CommandContext;
 import org.leavesmc.leaves.command.RootNode;
+import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 
 import java.util.Set;
 import java.util.UUID;
@@ -231,21 +231,38 @@ public class MiliRtpCommand extends RootNode {
 
     // ==================== 无敌系统 / Invulnerability ====================
 
+    /**
+     * 应用无敌效果 / Apply invulnerability.
+     *
+     * <p><b>线程安全</b>: 使用 {@code player.getScheduler().runDelayed()} 确保
+     * setInvulnerable 在玩家所属区域线程执行 / Uses entity scheduler to ensure
+     * setInvulnerable runs on the player's region thread.
+     *
+     * <p><b>注意</b>: 此处不能使用 FoliaSchedulerUtil.runTaskLater()，因为它调度到
+     * 全局区域线程，而不是玩家的区域线程 / Cannot use FoliaSchedulerUtil.runTaskLater()
+     * because it schedules on global region, not the player's region.
+     */
     private void applyInvulnerability(ServerPlayer nmsPlayer) {
+        final Player bukkitEntity = nmsPlayer.getBukkitEntity();
+
+        // 设置无敌 (sendMessage 是线程安全的) / Set invulnerable (sendMessage is thread-safe)
         nmsPlayer.setInvulnerable(true);
-        nmsPlayer.getBukkitEntity().sendMessage(Component.text(
+        bukkitEntity.sendMessage(Component.text(
                 "你获得了 " + RtpConfig.invulnerableSeconds + " 秒无敌 / " +
                         RtpConfig.invulnerableSeconds + "s invulnerability granted",
                 NamedTextColor.GREEN));
 
-        FoliaSchedulerUtil.runTaskLater(
-                () -> {
-                    if (nmsPlayer.getBukkitEntity().isOnline()) {
+        // ★ 使用实体调度器在玩家区域线程上取消无敌 / Use entity scheduler on player's region thread
+        bukkitEntity.getScheduler().runDelayed(
+                MinecraftInternalPlugin.INSTANCE,
+                task -> {
+                    if (bukkitEntity.isOnline()) {
                         nmsPlayer.setInvulnerable(false);
-                        nmsPlayer.getBukkitEntity().sendMessage(Component.text(
+                        bukkitEntity.sendMessage(Component.text(
                                 "无敌效果已结束 / Invulnerability expired", NamedTextColor.GRAY));
                     }
                 },
+                null,
                 RtpConfig.invulnerableSeconds * 20L
         );
     }
