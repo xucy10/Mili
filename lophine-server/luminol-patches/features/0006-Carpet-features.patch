@@ -1,11 +1,8 @@
-From 2632213956a06b97b39ebed1263c6445fbc16305 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Bacteriawa <A3167717663@hotmail.com>
-Date: Wed, 17 Jun 2026 21:30:06 +0800
+Date: Sun, 22 Mar 2026 01:39:17 +0800
 Subject: [PATCH] Carpet features
 
----
- src/main/java/me/earthme/luminol/config/ConfigManager.java | 7 +++++++
- 1 file changed, 7 insertions(+)
 
 diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/main/java/me/earthme/luminol/config/ConfigManager.java
 index 58757d63d092d44dcc2425c53f80c318cd1c3dad..d403ce5f935d6a65f398cdd5b80def51fbbfb713 100644
@@ -24,7 +21,4 @@ index 58757d63d092d44dcc2425c53f80c318cd1c3dad..d403ce5f935d6a65f398cdd5b80def51
 +        )); // add lophine carpet config
          preLoad();
      }
- 
--- 
-2.54.0.windows.1
 
