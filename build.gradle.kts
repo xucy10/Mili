@@ -43,25 +43,6 @@ paperweight {
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 val menthaMavenPublicUrl = "https://repo.menthamc.org/repository/maven-public/";
 
-tasks.register("createBaseTags") {
-    doLast {
-        val repos = listOf(
-            file(".gradle/caches/paperweight/upstreams/folia"),
-            file(".gradle/caches/paperweight/upstreams/paper"),
-            file(".gradle/caches/paperweight/upstreams/luminol")
-        )
-        for (repo in repos) {
-            if (repo.isDirectory) {
-                val r = ProcessBuilder("git", "tag", "-f", "base", "HEAD")
-                    .directory(repo)
-                    .redirectErrorStream(true)
-                    .start().run { inputStream.readBytes(); waitFor() }
-                logger.lifecycle(if (r == 0) "[hook] Tagged ${repo.name}" else "[hook] Failed tagging ${repo.name} ($r)")
-            }
-        }
-    }
-}
-
 subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
@@ -126,11 +107,3 @@ subprojects {
         }
     }
 }
-
-
-
-
-
-
-
-
