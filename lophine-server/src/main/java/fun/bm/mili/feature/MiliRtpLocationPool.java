@@ -7,7 +7,6 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.TileState;
 import org.bukkit.entity.Player;
 import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 import org.slf4j.Logger;
@@ -203,13 +202,6 @@ public final class MiliRtpLocationPool {
             }
         }
 
-        // 检查 4: 无附近玩家实体/生物 (指示玩家活动区) / Check 4: No nearby player entities
-        try {
-            if (hasPlayerActivity(world, x, z)) {
-                return false;
-            }
-        } catch (Throwable ignored) {}
-
         return true;
     }
 
@@ -242,22 +234,5 @@ public final class MiliRtpLocationPool {
             }
         }
         return false;
-    }
-
-    /**
-     * 检测位置附近的玩家活动痕迹 / Detect player activity near location.
-     *
-     * <p>检查是否有玩家放置的实体 (物品展示框、盔甲架等) /
-     * Checks for player-placed entities (item frames, armor stands, etc.).
-     * 这些实体通常表示玩家在该区域有活动 / These usually indicate player activity.
-     */
-    private static boolean hasPlayerActivity(World world, int x, int z) {
-        // 检查 100 格内是否有非自然实体 / Check for non-natural entities within 100 blocks
-        final Location center = new Location(world, x, world.getSeaLevel(), z);
-        var nearby = world.getNearbyEntities(center, 100, 100, 100,
-                entity -> entity instanceof org.bukkit.entity.ItemFrame
-                        || entity instanceof org.bukkit.entity.ArmorStand
-                        || entity instanceof org.bukkit.entity.LeashHitch);
-        return nearby.iterator().hasNext();
     }
 }
