@@ -18,7 +18,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "mili"
+rootProject.name = "lophine"
 
-include("mili-api")
-include("mili-server")
+include("lophine-api")
+include("lophine-server")
