@@ -1,0 +1,65 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Helvetica Volubi <suisuroru@blue-millennium.fun>
+Date: Wed, 10 Jun 2026 12:00:00 +0800
+Subject: [PATCH] Add Folia-safe bot iteration
+
+Replace bots.forEach() cross-region access with MiliBotUtil.forEachSafe()
+to prevent data corruption in Folia's region-based multithreading model.
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 7c2d83ca863c2e50c6871938efc426ddefff9b5c..0000000000000000000000000000000000000000 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -2132,9 +2132,10 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+                 this.lastSentHealth = -1.0F;
+                 this.lastSentFood = -1;
+                 this.teleportSpectators(teleportTransition, serverLevel);
+                 // Leaves start - bot support
+                 if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
+-                    this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(this, true)); // Leaves - render bot
++                    // Lophine - Folia-safe: use forEachSafe to avoid cross-region access
++                    org.leavesmc.leaves.bot.MiliBotUtil.forEachSafe(this.server.getBotList().bots, bot -> ((org.leavesmc.leaves.bot.ServerBot) bot).sendFakeDataIfNeed(this, true));
+                 }
+                 // Leaves end - bot support
+                 // CraftBukkit start
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 3a5319739f0687fc6f09b2ac8ee31716593fe0de..0000000000000000000000000000000000000000 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -317,16 +317,19 @@ public abstract class PlayerList {
+ 
+         org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerJoin(player);
+ 
+         // Leaves start - bot support
+         if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
+             org.leavesmc.leaves.bot.ServerBot bot = this.server.getBotList().getBotByName(player.getScoreboardName());
+             if (bot != null) {
+                 this.server.getBotList().removeBot(bot, org.leavesmc.leaves.event.bot.BotRemoveEvent.RemoveReason.INTERNAL, player.getBukkitEntity(), false, false);
+             }
+-            this.server.getBotList().bots.forEach(bot1 -> {
+-                bot1.sendPlayerInfo(player);
+-                bot1.sendFakeDataIfNeed(player, true);
+-            }); // Leaves - render bot
++            // Lophine start - Folia-safe: use forEachSafe to avoid cross-region access
++            org.leavesmc.leaves.bot.MiliBotUtil.forEachSafe(this.server.getBotList().bots, bot1 -> {
++                org.leavesmc.leaves.bot.ServerBot sb = (org.leavesmc.leaves.bot.ServerBot) bot1;
++                sb.sendPlayerInfo(player);
++                sb.sendFakeDataIfNeed(player, true);
++            });
++            // Lophine end
+         }
+         // Leaves end - bot support
+ 
+@@ -791,10 +794,11 @@ public abstract class PlayerList {
+         ).callEvent();
+         // Paper end
+ 
+         // Leaves start - bot support
+         if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
+-            this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(serverPlayer, true)); // Leaves - render bot
++            // Lophine - Folia-safe: use forEachSafe to avoid cross-region access
++            org.leavesmc.leaves.bot.MiliBotUtil.forEachSafe(this.server.getBotList().bots, bot -> ((org.leavesmc.leaves.bot.ServerBot) bot).sendFakeDataIfNeed(serverPlayer, true));
+         }
+         // Leaves end - bot support
+ 
+         return serverPlayer;

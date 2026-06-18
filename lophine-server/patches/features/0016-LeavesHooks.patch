@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Helvetica Volubi <suisuroru@blue-millennium.fun>
+Date: Sun, 16 Nov 2025 17:47:48 +0800
+Subject: [PATCH] LeavesHooks
+
+
+diff --git a/ca/spottedleaf/moonrise/paper/PaperHooks.java b/ca/spottedleaf/moonrise/paper/PaperHooks.java
+index faf62f8c9453f8e7a21b1e141577f1f4539cd2f9..4e5985a3e4969f466980558190324350019ba8af 100644
+--- a/ca/spottedleaf/moonrise/paper/PaperHooks.java
++++ b/ca/spottedleaf/moonrise/paper/PaperHooks.java
+@@ -29,7 +29,7 @@ import net.minecraft.world.phys.AABB;
+ import java.util.List;
+ import java.util.function.Predicate;
+ 
+-public final class PaperHooks extends BaseChunkSystemHooks implements PlatformHooks {
++public class PaperHooks extends BaseChunkSystemHooks implements PlatformHooks {
+ 
+     private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
+ 

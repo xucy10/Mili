@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Lophine <lophine@dev.null>
+Date: Fri, 12 Jun 2026 00:00:00 +0800
+Subject: [PATCH] Chunk preload on player tick
+
+Injects predictive chunk pre-loading into ServerPlayer.tick().
+Analyzes player velocity and direction to pre-load chunks
+ahead of the player's predicted position.
+
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -954,6 +954,8 @@
+         // KioCG start - ChunkHot
+         if (this.tickCount % 20 == 0){
+             this.nearbyChunkHot = this.refreshNearbyChunkHot();
+         }
+         // KioCG end
++        // mili - 玩家行为预测区块预加载 / Predictive chunk pre-loading
++        fun.bm.mili.perf.MiliChunkPreloader.onPlayerTick(this);
+     }
+ 

@@ -1,0 +1,98 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: violetc <58360096+s-yh-china@users.noreply.github.com>
+Date: Mon, 3 Feb 2025 13:51:26 +0800
+Subject: [PATCH] Leaves: Alternative block placement Protocol
+
+Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
+As a part of : Leaves (https://github.com/LeavesMC/Leaves)
+Licensed under: MIT
+
+This patch is Powered by
+carpet-extra(https://github.com/gnembon/carpet-extra)
+MasaGadget(https://github.com/plusls/MasaGadget)
+litematica(https://github.com/maruohon/litematica)
+
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 8386757c5fd3d8df3ae77a4eeeb25a2f28840cda..fd74636d911596daae8cfe563c2dd5e3d37a1549 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -2134,7 +2134,7 @@ public class ServerGamePacketListenerImpl
+                 if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.player.level(), blockPos.getX() >> 4, blockPos.getZ() >> 4, 8) && this.player.isWithinBlockInteractionRange(blockPos, 1.0)) { // Folia - do not allow players to interact with blocks outside the current region
+                     Vec3 vec3 = location.subtract(Vec3.atCenterOf(blockPos));
+                     double d = 1.0000001;
+-                    if (Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) {
++                    if (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
+                         Direction direction = hitResult.getDirection();
+                         this.player.resetLastActionTime();
+                         int maxY = this.player.level().getMaxY();
+diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
+index 73ce7c82c0bd28c2e43ca40ba35c4603b21375ad..a5d3caab2072b2c9bf8fdcbdb7c52c2dee16cfaf 100644
+--- a/net/minecraft/world/item/BlockItem.java
++++ b/net/minecraft/world/item/BlockItem.java
+@@ -147,7 +147,7 @@ public class BlockItem extends Item {
+     }
+ 
+     protected @Nullable BlockState getPlacementState(BlockPlaceContext context) {
+-        BlockState stateForPlacement = this.getBlock().getStateForPlacement(context);
++        BlockState stateForPlacement = this.getBlock().getRealStateForPlacement(context); // Leaves - alternativeBlockPlacement
+         return stateForPlacement != null && this.canPlace(context, stateForPlacement) ? stateForPlacement : null;
+     }
+ 
+diff --git a/net/minecraft/world/item/StandingAndWallBlockItem.java b/net/minecraft/world/item/StandingAndWallBlockItem.java
+index d75c95d728efc0b4064f562ca80b68b23883feaf..be685383b8e7c8111e976fc560f16d43d6545a34 100644
+--- a/net/minecraft/world/item/StandingAndWallBlockItem.java
++++ b/net/minecraft/world/item/StandingAndWallBlockItem.java
+@@ -26,14 +26,14 @@ public class StandingAndWallBlockItem extends BlockItem {
+ 
+     @Override
+     protected @Nullable BlockState getPlacementState(BlockPlaceContext context) {
+-        BlockState stateForPlacement = this.wallBlock.getStateForPlacement(context);
++        BlockState stateForPlacement = this.wallBlock.getRealStateForPlacement(context); // Leaves - alternativeBlockPlacement
+         BlockState blockState = null;
+         LevelReader level = context.getLevel();
+         BlockPos clickedPos = context.getClickedPos();
+ 
+         for (Direction direction : context.getNearestLookingDirections()) {
+             if (direction != this.attachmentDirection.getOpposite()) {
+-                BlockState blockState1 = direction == this.attachmentDirection ? this.getBlock().getStateForPlacement(context) : stateForPlacement;
++                BlockState blockState1 = direction == this.attachmentDirection ? this.getBlock().getRealStateForPlacement(context) : stateForPlacement; // Leaves - alternativeBlockPlacement
+                 if (blockState1 != null && this.canPlace(level, blockState1, clickedPos)) {
+                     blockState = blockState1;
+                     break;
+diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
+index 492b1615d96133c5082e0f16015f114299f8082f..fb47a2acb0e4232359f5da061c1620a7b1d6c476 100644
+--- a/net/minecraft/world/level/block/Block.java
++++ b/net/minecraft/world/level/block/Block.java
+@@ -489,6 +489,32 @@ public class Block extends BlockBehaviour implements ItemLike {
+     public void stepOn(Level level, BlockPos pos, BlockState state, Entity entity) {
+     }
+ 
++    // Leaves start - alternativeBlockPlacement
++    public @Nullable BlockState getRealStateForPlacement(BlockPlaceContext context) {
++        BlockState vanillaState = this.getStateForPlacement(context);
++        switch (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
++            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET -> {
++                BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacement(this, context);
++                if (tryState != null) {
++                    return tryState;
++                }
++            }
++            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET_FIX -> {
++                BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacementFix(this, context);
++                if (tryState != null) {
++                    return tryState;
++                }
++            }
++            case fun.bm.mili.enums.EnumAlternativePlaceType.LITEMATICA -> {
++                if (vanillaState != null) {
++                    return org.leavesmc.leaves.protocol.LitematicaEasyPlaceProtocol.applyPlacementProtocol(vanillaState, context);
++                }
++            }
++        }
++        return vanillaState;
++    }
++    // Leaves end - alternativeBlockPlacement
++
+     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+         return this.defaultBlockState();
+     }
