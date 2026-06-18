@@ -5,7 +5,6 @@ Subject: [PATCH] mili - wire perf monitor into global region tick
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
-index 8d32d906f87a1cb866a7497ee0de3045e9adce2c..0000000 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
 @@ -332,6 +332,9 @@

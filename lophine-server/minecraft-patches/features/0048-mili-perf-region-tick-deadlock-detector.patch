@@ -5,7 +5,6 @@ Subject: [PATCH] mili - wire deadlock detector into per-region tick
 
 
 diff --git a/io/papermc/paper/threadedregions/TickRegions.java b/io/papermc/paper/threadedregions/TickRegions.java
-index 3d86e21198f2888422330b6f7c27712f40a6aabc..0000000 100644
 --- a/io/papermc/paper/threadedregions/TickRegions.java
 +++ b/io/papermc/paper/threadedregions/TickRegions.java
 @@ -484,7 +484,13 @@
