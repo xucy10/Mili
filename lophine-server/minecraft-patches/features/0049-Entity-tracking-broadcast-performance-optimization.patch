@@ -8,6 +8,7 @@ entities are near players. Uses hash-based round-robin budget distribution
 to spread updates evenly across ticks and TPS-aware throttling during lag.
 
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 9f70b979756bf1879ca7971174b7182fae176263..0000000 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
 @@ -1067,6 +1067,8 @@
