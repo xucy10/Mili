@@ -5,17 +5,15 @@ Subject: [PATCH] mili - wire perf monitor into global region tick
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
-index 42601378f01fea0f31e7dd33ac8d88db0bd107e7..f41dcfa6e4d0db9e6bcff9de77d0855918a4450c 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -332,6 +332,9 @@ public final class RegionizedServer {
+@@ -332,6 +332,9 @@
          this.randomWalk();
           */
-         final long tickStartNanos = System.nanoTime();
          ++this.tickCount;
 +        // mili start - perf hook
 +        fun.bm.mili.perf.MiliTickSchedulerHook.onGlobalTick();
 +        // mili end - perf hook
-         // Luminol start - Add a config to enable tick command
-         if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
-             try {
+         // expire invalid click command callbacks
+         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
+         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
