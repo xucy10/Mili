@@ -8,6 +8,7 @@ When a player teleports, pre-loads a wide radius around the
 destination at highest priority for near-instant availability.
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 040c0f8d26554ba583ecf370e2df3690d8f48dd6..0000000 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
 @@ -4485,6 +4485,10 @@

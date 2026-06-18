@@ -9,3 +9,6 @@
 
 # Binary files should be left untouched
 *.jar           binary
+
+# Patch files must use LF to match source code line endings on Linux CI
+*.patch         text eol=lf
