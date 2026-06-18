@@ -8,7 +8,7 @@ Analyzes player velocity and direction to pre-load chunks
 ahead of the player's predicted position.
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 2407f0d015ec655806a83f664ffe07bbed9f7a46..0000000 100644
+index bc94a9094e3cee5d5d4c5b919bf4c2a1d9a73ea4..0000000 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -954,6 +954,8 @@
