@@ -8,7 +8,7 @@ Analyzes player velocity and direction to pre-load chunks
 ahead of the player's predicted position.
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index bc94a9094e3cee5d5d4c5b919bf4c2a1d9a73ea4..0000000 100644
+index 607ce65a719e333ce2275346a356032327d00ccf..0000000 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -954,6 +954,8 @@
@@ -20,3 +20,4 @@ index bc94a9094e3cee5d5d4c5b919bf4c2a1d9a73ea4..0000000 100644
 +        // mili - 玩家行为预测区块预加载 / Predictive chunk pre-loading
 +        fun.bm.mili.perf.MiliChunkPreloader.onPlayerTick(this);
      }
+ 
