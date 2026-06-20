@@ -109,9 +109,10 @@ public final class ChunkIndependentScheduler {
             try {
                 tickScheduler();
                 LockSupport.parkNanos("mili-scheduler", 1_000_000L);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+                if (Thread.interrupted()) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             } catch (Exception e) {
                 LOGGER.error("Scheduler loop error", e);
             }
