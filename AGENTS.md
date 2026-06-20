@@ -285,14 +285,30 @@ Phase 2 (tick 结束后): CrossChunkBus 收集所有待处理边界更新
 
 ### Integration
 
-CIS is designed as **standalone utility classes** under `fun.bm.mili.scheduler.*`.
-No patches to Minecraft/Folia code are required. Key design decisions:
+CIS/Kaiiju source files live under `fun.bm.mili.scheduler.*` and `fun.bm.mili.kaiiju.*`.
+They are standalone utility classes that work without Minecraft patches.
 
+To hook them into the Minecraft lifecycle (optional), generate patches via:
+
+```bash
+# 1. Apply all existing patches
+./gradlew applyAllPatches
+
+# 2. Edit patched source to add lifecycle hooks:
+#    - RegionizedServer.java: add initChunkIndependentScheduler() / stopChunkIndependentScheduler()
+#    - ServerLevel.java: add CIS border capture call in region tick
+#    - RegionizedServer.java: add tickLimiterStart/Finish + drainAsyncPathfinding
+
+# 3. Generate correct patches
+./gradlew :mili-server:rebuildPatches
+```
+
+Key design decisions:
 - **ChunkWorker** only performs READ-ONLY border analysis (block state sampling).
   Never calls chunk.tick() — entity ticking remains on Folia region threads.
 - **CrossChunkBus** coordinator thread only coordinates; never holds worker locks.
 - **EntityMigrationBus** uses entity.getScheduler().run() for Folia-safe migration.
-- High-interaction chunks (redstone/fluid/piston) auto-report to Folia region mode.
+- High-interaction chunks auto-report to Folia region mode.
 - Enables via config: `chunk_independent_scheduler.enabled: true`.
 
 ### Functional Verification Matrix
