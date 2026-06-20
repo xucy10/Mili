@@ -1,0 +1,76 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <dev@bm.fun>
+Date: Sat, 20 Jun 2026 00:00:00 +0800
+Subject: [PATCH] Chunk Independent Scheduler - core
+
+Inject ChunkIndependentScheduler into RegionizedServer lifecycle.
+When enabled, eligible chunks tick independently instead of being
+grouped into fixed regions.
+Two-phase commit protocol for cross-chunk redstone/fluid/piston.
+CrossChunkBus provides deadlock-free coordination with dedicated thread.
+
+diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
+index 0000000..0000000 100644
+--- a/io/papermc/paper/threadedregions/RegionizedServer.java
++++ b/io/papermc/paper/threadedregions/RegionizedServer.java
+@@ -0,0 +0,0 @@
++    // Mili start - Chunk Independent Scheduler
++    private fun.bm.mili.scheduler.ChunkIndependentScheduler chunkIndependentScheduler;
++
++    public fun.bm.mili.scheduler.ChunkIndependentScheduler getChunkIndependentScheduler() {
++        return this.chunkIndependentScheduler;
++    }
++
++    public void initChunkIndependentScheduler(net.minecraft.server.level.ServerLevel level) {
++        if (fun.bm.mili.config.modules.misc.ChunkIndependentConfig.enabled) {
++            this.chunkIndependentScheduler = new fun.bm.mili.scheduler.ChunkIndependentScheduler(level);
++            this.chunkIndependentScheduler.start();
++        }
++    }
++
++    public void stopChunkIndependentScheduler() {
++        if (this.chunkIndependentScheduler != null) {
++            this.chunkIndependentScheduler.stop();
++            this.chunkIndependentScheduler = null;
++        }
++    }
++    // Mili end - Chunk Independent Scheduler
++
++    // Mili start - Async Pathfinding drain
++    private boolean asyncPathfindingInitialized;
++
++    public void initAsyncPathfinding() {
++        if (!this.asyncPathfindingInitialized) {
++            fun.bm.mili.kaiiju.AsyncPathfindingExecutor.setEnabled(
++                fun.bm.mili.config.modules.misc.ChunkIndependentConfig.enabled);
++            this.asyncPathfindingInitialized = true;
++        }
++    }
++
++    public void drainAsyncPathfinding() {
++        if (this.asyncPathfindingInitialized) {
++            fun.bm.mili.kaiiju.AsyncPathfindingExecutor.drainResults();
++        }
++    }
++    // Mili end - Async Pathfinding drain
++
++    // Mili start - Kaiiju Entity Throttler
++    public void tickLimiterStart(io.papermc.paper.threadedregions.RegionizedWorldData regionData) {
++        if (fun.bm.mili.kaiiju.MiliEntityLimitsConfig.enabled) {
++            fun.bm.mili.kaiiju.MiliEntityThrottler.getOrCreate(regionData).tickLimiterStart();
++        }
++    }
++
++    public void tickLimiterFinish(io.papermc.paper.threadedregions.RegionizedWorldData regionData) {
++        if (fun.bm.mili.kaiiju.MiliEntityLimitsConfig.enabled) {
++            fun.bm.mili.kaiiju.MiliEntityThrottler.getOrCreate(regionData).tickLimiterFinish();
++        }
++    }
++
++    public boolean shouldSkipEntityTick(io.papermc.paper.threadedregions.RegionizedWorldData regionData, net.minecraft.world.entity.Entity entity) {
++        if (fun.bm.mili.kaiiju.MiliEntityLimitsConfig.enabled) {
++            return fun.bm.mili.kaiiju.MiliEntityThrottler.getOrCreate(regionData).shouldSkipTick(entity);
++        }
++        return false;
++    }
++    // Mili end - Kaiiju Entity Throttler

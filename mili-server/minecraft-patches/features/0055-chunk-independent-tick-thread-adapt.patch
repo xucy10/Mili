@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <dev@bm.fun>
+Date: Sat, 20 Jun 2026 00:00:10 +0800
+Subject: [PATCH] Chunk Independent Scheduler - TickThread adaptation
+
+Register CIS worker thread via ThreadLocal so TickThread.isTickThreadFor
+recognises the worker as the owner of its assigned chunk.
+
+diff --git a/ca/spottedleaf/moonrise/common/util/TickThread.java b/ca/spottedleaf/moonrise/common/util/TickThread.java
+index 0000000..0000000 100644
+--- a/ca/spottedleaf/moonrise/common/util/TickThread.java
++++ b/ca/spottedleaf/moonrise/common/util/TickThread.java
+@@ -0,0 +0,0 @@
++    // Mili start - CIS worker thread recognition
++    static final ThreadLocal<boolean> isCisWorker = ThreadLocal.withInitial(() -> false);
++    static final ThreadLocal<int> cisWorkerChunkX = new ThreadLocal<>();
++    static final ThreadLocal<int> cisWorkerChunkZ = new ThreadLocal<>();
++
++    public static void markCisWorker(int cx, int cz) {
++        isCisWorker.set(true);
++        cisWorkerChunkX.set(cx);
++        cisWorkerChunkZ.set(cz);
++    }
++
++    public static void unmarkCisWorker() {
++        isCisWorker.remove();
++        cisWorkerChunkX.remove();
++        cisWorkerChunkZ.remove();
++    }
++    // Mili end - CIS worker thread recognition

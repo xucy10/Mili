@@ -4,6 +4,7 @@ import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
+import me.earthme.luminol.config.flags.DoNotLoad;
 import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
 import org.leavesmc.leaves.bot.ServerBot;
@@ -81,11 +82,16 @@ public class FakeplayerConfig implements IConfigModule {
     @ConfigInfo(name = "enable-locator-bar", comments = """
             Enable locator bar for fakeplayers""")
     public static boolean enableLocatorBar = false;
+
+    @ConfigInfo(name = "tick-type", comments = """
+            Tick type for fakeplayers (ENTITY_LIST or TICK_ALWAYS)""")
     public static ServerBot.TickType tickType = ServerBot.TickType.ENTITY_LIST;
 
-    private BotCommand command = null;
+    @DoNotLoad
+    private static BotCommand command = null;
 
-    private boolean registered = false;
+    @DoNotLoad
+    private static volatile boolean registered = false;
 
     public static int getSimulationDistance(ServerBot bot) {
         return simulationDistance == -1 ? bot.getBukkitEntity().getSimulationDistance() : simulationDistance;

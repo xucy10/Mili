@@ -225,3 +225,105 @@ git rm --cached -f lophine-upstream
 - **Brand Name**: Mili
 - **Repository**: https://github.com/xucy10/Mili
 - **bstats**: Mili (metrics tracking)
+
+## Chunk Independent Scheduler (CIS)
+
+### Architecture
+
+```
+ServerLevel
+  └── ChunkIndependentScheduler (线程池 = CPU 核心数)
+        ├── ChunkWorker [0,0] → Thread-1
+        ├── ChunkWorker [1,0] → Thread-2
+        ├── ChunkWorker [0,1] → Thread-1 (work-stealing)
+        └── CrossChunkBus (专用协调线程 — 只做协调，不执行动作)
+              ├── RedstoneBorderRelay (两阶段提交)
+              ├── FluidBorderRelay (边界缓冲区 + 延迟传播)
+              ├── EntityMigrationBus (CAS + MigrationQueue)
+              └── BlockUpdateBorderRelay (延迟注入队列)
+```
+
+### Two-Phase Commit for Redstone
+
+```
+Phase 1 (ChunkWorker.tick 开始): ChunkBorderCache.captureBorderState()
+  采集 4 个边界面的红石线/中继器/比较器/红石块/活塞状态
+Phase 2 (tick 结束后): CrossChunkBus 收集所有待处理边界更新
+  注入 delayed neighborChanged 调用到邻居区块
+  延迟 = 1 tick (可配置 strictMode 回退 region 实现 0-tick)
+```
+
+### Deadlock Prevention
+
+1. 所有锁按 ChunkPos 字典序获取
+2. CrossChunkBus 永不持有 ChunkWorker 锁 (通过 volatile 标志位通信)
+3. 超时降级: 等待 > timeoutMs 则放弃并回退到 region 模式
+4. 复用 MiliTickSchedulerHook 的死锁检测器
+
+### Mixed Mode (Default)
+
+| 区块类型 | 调度方式 | 延迟 |
+|---------|---------|------|
+| 低交互 (无红石/流体/活塞) | 独立并行 tick | 0 |
+| 高交互 (含红石/流体/活塞) | Folia region 串行 | 0 (strict) / 1 (normal) |
+
+### Source Files
+
+| File | Path | Lines |
+|------|------|-------|
+| Main scheduler | `mili-server/.../scheduler/ChunkIndependentScheduler.java` | ~230 |
+| Chunk worker | `mili-server/.../scheduler/ChunkWorker.java` | ~170 |
+| Cross-chunk bus | `mili-server/.../scheduler/CrossChunkBus.java` | ~200 |
+| Border cache | `mili-server/.../scheduler/ChunkBorderCache.java` | ~180 |
+| Redstone relay | `mili-server/.../scheduler/border/RedstoneBorderRelay.java` | ~70 |
+| Fluid relay | `mili-server/.../scheduler/border/FluidBorderRelay.java` | ~30 |
+| Block update relay | `mili-server/.../scheduler/border/BlockUpdateBorderRelay.java` | ~30 |
+| Entity migration | `mili-server/.../scheduler/border/EntityMigrationBus.java` | ~82 |
+| Dynamic group | `mili-server/.../scheduler/group/DynamicChunkGroup.java` | ~90 |
+| Config | `mili-server/.../config/modules/misc/ChunkIndependentConfig.java` | ~60 |
+| Verif. matrix | `mili-server/.../scheduler/CISVerificationMatrix.java` | ~90 |
+
+### Patches
+
+- **0054** - Inject scheduler into RegionizedServer lifecycle
+- **0055** - Adapt TickThread checks for worker threads
+- **0056** - Split RegionizedWorldData access per chunk
+
+### Functional Verification Matrix
+
+参见 `CISVerificationMatrix.java` 中的完整验证矩阵。关键验证项：
+
+| 类别 | 验证项 | 状态 |
+|------|--------|------|
+| 红石 | 跨区块红石线/中继器/比较器 | DESIGNED — 两阶段提交 |
+| 红石 | 活塞/粘性活塞跨区块 | DESIGNED — highInteraction 回退 |
+| 红石 | TNT 复制机 | DESIGNED — strictMode 回退 region |
+| 流体 | 水流/瀑布/熔岩+水跨区块 | DESIGNED — 边界缓冲区 + 延迟 |
+| 实体 | 玩家/掉落物/矿车/弹射物穿越 | INHERITED — Folia 现有协议 |
+| 压力 | 1000 实体集中区块 | DESIGNED — 按区块 tick |
+| 压力 | 100 区块同时加载 | DESIGNED — 并行 + 混合模式 |
+| 回归 | perf monitor / chunk preload | DESIGNED — 异常回退 region |
+| 回归 | Carpet 兼容 / 假玩家 | VERIFIED — 不修改 entity tick |
+
+## Kaiiju Port
+
+### Entity Throttling
+
+File: `mili-server/.../kaiiju/MiliEntityThrottler.java`
+
+- Folia-aware: limits applied per-tick-region (RegionizedWorldData)
+- Config-driven via `MiliEntityLimitsConfig`
+- Wither, EnderDragon, IronGolem + default configurable
+
+### Async Pathfinding
+
+File: `mili-server/.../kaiiju/AsyncPathfindingExecutor.java`
+
+- Dedicated thread pool for async pathfinding computation
+- Results queued and applied via entity scheduler on owning region
+- One pending async task per entity max
+
+### Xymb Linear Format
+
+See `luminol-server/.../luminol/data/BufferedLinearRegionFile.java` (base implementation).
+Mili extends this with `BufferedLinearRegionFileFlusher.java` for async flushing.
