@@ -81,8 +81,8 @@ public final class EntityMigrationBus {
                     // Use Folia's entity scheduler to migrate on the proper region thread.
                     entity.getBukkitEntity().getScheduler().run(
                         MinecraftInternalPlugin.INSTANCE,
-                        () -> { /* Folia handles chunk transfer */ },
-                        null, 1L
+                        (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> { },
+                        null
                     );
                     drained++;
                 } catch (Exception e) {

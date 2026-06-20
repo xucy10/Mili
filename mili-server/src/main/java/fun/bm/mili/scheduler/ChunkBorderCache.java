@@ -133,7 +133,7 @@ public final class ChunkBorderCache {
                     // Comparator
                     if (block instanceof ComparatorBlock) {
                         hasComparator = true;
-                        int pow = state.getValue(BlockStateProperties.OUTPUT_POWER);
+                        int pow = state.getValue(BlockStateProperties.POWER);
                         if (pow > redstonePower) redstonePower = pow;
                     }
                     // Redstone block / torch
