@@ -4,16 +4,16 @@ Date: Sat, 20 Jun 2026 00:00:00 +0800
 Subject: [PATCH] Chunk Independent Scheduler - core
 
 Inject ChunkIndependentScheduler into RegionizedServer lifecycle.
-When enabled, eligible chunks tick independently instead of being
-grouped into fixed regions.
-Two-phase commit protocol for cross-chunk redstone/fluid/piston.
-CrossChunkBus provides deadlock-free coordination with dedicated thread.
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
-index 0000000..0000000 100644
+index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..0000000000000000000000000000000000000000 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -0,0 +0,0 @@
+@@ -513,4 +513,54 @@
+     public static final record WorldLevelData(ServerLevel world, long nonRedstoneGameTime, long dayTime) {
+ 
+     }
++
 +    // Mili start - Chunk Independent Scheduler
 +    private fun.bm.mili.scheduler.ChunkIndependentScheduler chunkIndependentScheduler;
 +
@@ -74,3 +74,4 @@ index 0000000..0000000 100644
 +        return false;
 +    }
 +    // Mili end - Kaiiju Entity Throttler
+ }

@@ -10,11 +10,14 @@ diff --git a/ca/spottedleaf/moonrise/common/util/TickThread.java b/ca/spottedlea
 index 0000000..0000000 100644
 --- a/ca/spottedleaf/moonrise/common/util/TickThread.java
 +++ b/ca/spottedleaf/moonrise/common/util/TickThread.java
-@@ -0,0 +0,0 @@
+@@ -170,3 +170,19 @@
+         return isTickThread();
+     }
++
 +    // Mili start - CIS worker thread recognition
-+    static final ThreadLocal<boolean> isCisWorker = ThreadLocal.withInitial(() -> false);
-+    static final ThreadLocal<int> cisWorkerChunkX = new ThreadLocal<>();
-+    static final ThreadLocal<int> cisWorkerChunkZ = new ThreadLocal<>();
++    public static final ThreadLocal<Boolean> isCisWorker = ThreadLocal.withInitial(() -> false);
++    public static final ThreadLocal<Integer> cisWorkerChunkX = new ThreadLocal<>();
++    public static final ThreadLocal<Integer> cisWorkerChunkZ = new ThreadLocal<>();
 +
 +    public static void markCisWorker(int cx, int cz) {
 +        isCisWorker.set(true);
@@ -28,3 +31,4 @@ index 0000000..0000000 100644
 +        cisWorkerChunkZ.remove();
 +    }
 +    // Mili end - CIS worker thread recognition
+ }
