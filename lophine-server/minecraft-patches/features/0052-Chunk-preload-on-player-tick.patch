@@ -11,7 +11,7 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 index 607ce65a719e333ce2275346a356032327d00ccf..0000000 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -954,6 +954,8 @@
+@@ -954,5 +954,7 @@
          // KioCG start - ChunkHot
          if (this.tickCount % 20 == 0){
              this.nearbyChunkHot = this.refreshNearbyChunkHot();
