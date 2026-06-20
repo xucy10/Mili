@@ -20,7 +20,7 @@ index bca2c5410aa543d2bb421e53893e9163508b3568..0000000 100644
              }
          }
          profiler.addCounter(ca.spottedleaf.leafprofiler.LProfilerRegistry.TRACKED_ENTITY_COUNTS, (long)totalEntities); // Folia - profiler
-@@ -1078,3 +1080,4 @@
+@@ -1078,4 +1080,5 @@
      protected void tick() {
 +        fun.bm.mili.utils.EntityTrackingThrottle.onTickStart(); // Lophine - Entity tracking perf
          // Paper start - optimise entity tracker
