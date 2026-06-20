@@ -7,7 +7,7 @@ Register CIS worker thread via ThreadLocal so TickThread.isTickThreadFor
 recognises the worker as the owner of its assigned chunk.
 
 diff --git a/ca/spottedleaf/moonrise/common/util/TickThread.java b/ca/spottedleaf/moonrise/common/util/TickThread.java
-index 0000000..0000000 100644
+index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..0000000000000000000000000000000000000000 100644
 --- a/ca/spottedleaf/moonrise/common/util/TickThread.java
 +++ b/ca/spottedleaf/moonrise/common/util/TickThread.java
 @@ -170,3 +170,19 @@

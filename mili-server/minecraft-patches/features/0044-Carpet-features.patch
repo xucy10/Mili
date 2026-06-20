@@ -18,18 +18,18 @@ index 8d32d906f87a1cb866a7497ee0de3045e9adce2c..8dbf7a1f448277cc2a40dec8d9627a85
 @@ -369,6 +370,8 @@ public final class RegionizedServer {
          }
          // Luminol end - Add a config to enable tick command
-
+ 
 +        fun.bm.mili.protocol.tiscm.TISCMProtocol.broadcastMsptSample(this.tickCount, System.nanoTime() - tickStartNanos);
 +
          org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handleTick(); // Leaves - protocol
-
+ 
          // tick connections
 @@ -526,4 +529,4 @@ public final class RegionizedServer {
      public static final record WorldLevelData(ServerLevel world, long nonRedstoneGameTime, long dayTime) {
-
+ 
      }
 -}
-\ No newline at end of file
+ \ No newline at end of file
 +}
 diff --git a/net/minecraft/commands/arguments/blocks/BlockInput.java b/net/minecraft/commands/arguments/blocks/BlockInput.java
 index f9a5058e50c7fc6ebc2fc311bbc7064bfbd89035..9b737c3fcfae1f6afeee42cd4a4d83ba56f7c3e9 100644
@@ -37,7 +37,7 @@ index f9a5058e50c7fc6ebc2fc311bbc7064bfbd89035..9b737c3fcfae1f6afeee42cd4a4d83ba
 +++ b/net/minecraft/commands/arguments/blocks/BlockInput.java
 @@ -65,7 +65,9 @@ public class BlockInput implements Predicate<BlockInWorld> {
      }
-
+ 
      public boolean place(ServerLevel level, BlockPos pos, @Block.UpdateFlags int flags) {
 -        BlockState blockState = (flags & Block.UPDATE_KNOWN_SHAPE) != 0 ? this.state : Block.updateFromNeighbourShapes(this.state, level, pos);
 +        BlockState blockState = (flags & Block.UPDATE_KNOWN_SHAPE) != 0 || fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates()
@@ -51,7 +51,7 @@ index b21ce33550e2516562607b847e5f0f89c2ea3fc7..e6433818288b3b41742c524dc5bef9ad
 --- a/net/minecraft/core/Direction.java
 +++ b/net/minecraft/core/Direction.java
 @@ -138,7 +138,7 @@ public enum Direction implements StringRepresentable, ca.spottedleaf.moonrise.pa
-
+ 
      public static Direction[] orderedByNearest(Entity entity) {
          float f = entity.getViewXRot(1.0F) * (float) (Math.PI / 180.0);
 -        float f1 = -entity.getViewYRot(1.0F) * (float) (Math.PI / 180.0);
@@ -88,7 +88,7 @@ index 99096896a4512eed579b234e7fa0c6e9c3e8c246..daddf1892ba250e08da295c7608e8f7c
                  .then(
                      Commands.literal("rate")
 @@ -116,6 +116,10 @@ public class TickCommand {
-
+ 
      private static int setFreeze(CommandSourceStack source, boolean frozen) {
          ServerTickRateManager serverTickRateManager = source.getServer().tickRateManager();
 +        if (frozen && fun.bm.mili.carpet.config.modules.GeneralCompatConfig.tickFreezeCommandToggleable && serverTickRateManager.isFrozen()) {
@@ -112,7 +112,7 @@ index f7f4060370e896316acf5d50dba09c2aeece8bd8..aed0c60d4235776eb6495666693bba6b
 --- a/net/minecraft/server/dedicated/DedicatedPlayerList.java
 +++ b/net/minecraft/server/dedicated/DedicatedPlayerList.java
 @@ -14,7 +14,7 @@ public class DedicatedPlayerList extends PlayerList {
-
+ 
      public DedicatedPlayerList(DedicatedServer server, LayeredRegistryAccess<RegistryLayer> registries, PlayerDataStorage playerIo) {
          super(server, registries, playerIo, server.notificationManager());
 -        this.setViewDistance(server.viewDistance());
@@ -140,7 +140,7 @@ index e6ec0788b88d3431c06134c879b4bae9c769dac1..bc94a9094e3cee5d5d4c5b919bf4c2a1
 +            this.updateOptions(that.lastKnownClientInformation);
 +        }
      }
-
+ 
      private void transferInventoryXpAndScore(Player player) {
 @@ -3027,6 +3031,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          this.particleStatus = clientInformation.particleStatus();
@@ -150,7 +150,7 @@ index e6ec0788b88d3431c06134c879b4bae9c769dac1..bc94a9094e3cee5d5d4c5b919bf4c2a1
 +            this.lastKnownClientInformation = clientInformation;
 +        }
      }
-
+ 
      public ClientInformation clientInformation() {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da1637e89224 100644
@@ -185,7 +185,7 @@ index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da16
 @@ -2251,7 +2259,8 @@ public class ServerGamePacketListenerImpl
                  }
                  // CraftBukkit end
-
+ 
 -                if (this.player.gameMode.useItem(this.player, serverLevel, itemInHand, hand) instanceof InteractionResult.Success success
 +                ItemStack itemInHandToUse = itemInHand;
 +                if (this.runInteractionWithConfiguredUpdates(() -> this.player.gameMode.useItem(this.player, serverLevel, itemInHandToUse, hand)) instanceof InteractionResult.Success success
@@ -195,7 +195,7 @@ index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da16
 @@ -2259,6 +2268,14 @@ public class ServerGamePacketListenerImpl
          }
      }
-
+ 
 +    private <T> T runInteractionWithConfiguredUpdates(java.util.function.Supplier<T> action) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.interactionUpdates) {
 +            return action.get();
@@ -217,7 +217,7 @@ index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da16
              this.send(new ClientboundSystemChatPacket(Component.translatable("chat.cannotSend").withStyle(ChatFormatting.RED), false));
          } else {
 @@ -2660,6 +2679,9 @@ public class ServerGamePacketListenerImpl
-
+ 
      // Spigot start - spam exclusions
      private void detectRateSpam(String message) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.antiSpamDisabled) {
@@ -269,7 +269,7 @@ index 29d904b02a2c7b3d25261ca26c7c0479b00999ef..34dc71daf2182805465742b1455e13b9
                  if (i > 0) {
 @@ -371,6 +385,10 @@ public class ExperienceOrb extends Entity {
      }
-
+ 
      private int repairPlayerItems(ServerPlayer player, int value) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.powerfulExpMending) {
 +            return this.repairAllPlayerItems(player, value);
@@ -281,7 +281,7 @@ index 29d904b02a2c7b3d25261ca26c7c0479b00999ef..34dc71daf2182805465742b1455e13b9
 @@ -402,6 +420,76 @@ public class ExperienceOrb extends Entity {
          }
      }
-
+ 
 +    private int repairAllPlayerItems(ServerPlayer player, int value) {
 +        List<MendingCandidate> candidates = new java.util.ArrayList<>();
 +        net.minecraft.world.entity.player.Inventory inventory = player.getInventory();
@@ -389,16 +389,16 @@ index fd1db18764be58bc5ed5983b98e669c76f7ff427..a0d7658435cb838415121882e4c3bb3d
          this.yo = y;
          this.zo = z;
 @@ -78,7 +82,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
-
+ 
      @Override
      protected void defineSynchedData(SynchedEntityData.Builder builder) {
 -        builder.define(DATA_FUSE_ID, 80);
 +        builder.define(DATA_FUSE_ID, getConfiguredFuseTime());
          builder.define(DATA_BLOCK_STATE_ID, DEFAULT_BLOCK_STATE);
      }
-
+ 
 @@ -175,7 +179,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
-
+ 
      @Override
      protected void readAdditionalSaveData(ValueInput input) {
 -        this.setFuse(input.getShortOr("fuse", (short)80));
@@ -409,7 +409,7 @@ index fd1db18764be58bc5ed5983b98e669c76f7ff427..a0d7658435cb838415121882e4c3bb3d
 @@ -198,6 +202,10 @@ public class PrimedTnt extends Entity implements TraceableEntity {
          this.entityData.set(DATA_FUSE_ID, life);
      }
-
+ 
 +    private static int getConfiguredFuseTime() {
 +        return fun.bm.mili.carpet.config.modules.GeneralCompatConfig.normalizedTntFuseDuration();
 +    }
@@ -450,7 +450,7 @@ index 8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da..0a6f1478856f503408a10c131d20ec3b
 +++ b/net/minecraft/world/entity/player/Player.java
 @@ -564,7 +564,13 @@ public abstract class Player extends Avatar implements ContainerUser {
              }
-
+ 
              if (!list.isEmpty()) {
 -                this.touch(Util.getRandom(list, this.random));
 +                if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.xpNoCooldown) {
@@ -462,9 +462,9 @@ index 8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da..0a6f1478856f503408a10c131d20ec3b
 +                }
              }
          }
-
+ 
 @@ -1074,6 +1080,22 @@ public abstract class Player extends Avatar implements ContainerUser {
-
+ 
          if (playerAttackEntityEvent.callEvent() && willAttack) { // Logic moved to willAttack local variable.
          // Paper end - PlayerAttackEntityEvent
 +            if (this.level() instanceof ServerLevel serverLevel
@@ -489,7 +489,7 @@ index 8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da..0a6f1478856f503408a10c131d20ec3b
 @@ -1131,6 +1153,16 @@ public abstract class Player extends Avatar implements ContainerUser {
          }
      }
-
+ 
 +    private void creativeInstantKill(ServerLevel level, Entity target) {
 +        if (target instanceof EnderDragonPart enderDragonPart) {
 +            java.util.Arrays.stream(enderDragonPart.parentMob.getSubEntities()).forEach(part -> part.kill(level));
@@ -520,14 +520,14 @@ index 44786e4f77285f1fbd4643f560105e410035afeb..77b3c8b4bb9ae2c7dede35f74c38febd
 +                    ? context.getPlayer().canSpectatingPlace(world, state, context.getClickedPos(), collisionContext)
 +                    : world.checkEntityCollision(state, player, collisionContext, context.getClickedPos(), true))); // Paper - Cancel hit for vanished players // Leaves - creative no clip
          org.bukkit.entity.Player bukkitPlayer = (context.getPlayer() instanceof ServerPlayer) ? (org.bukkit.entity.Player) context.getPlayer().getBukkitEntity() : null;
-
+ 
          org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(
 diff --git a/net/minecraft/world/item/ServerItemCooldowns.java b/net/minecraft/world/item/ServerItemCooldowns.java
 index 8725fe35812ee5f7ace0ac3dce466738b6eefc53..9f5311bec541f5efa5e8c60a7ea98824f7eb5cad 100644
 --- a/net/minecraft/world/item/ServerItemCooldowns.java
 +++ b/net/minecraft/world/item/ServerItemCooldowns.java
 @@ -22,6 +22,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
-
+ 
      @Override
      public void addCooldown(ItemStack item, int duration) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeNoItemCooldown && this.player.isCreative()) {
@@ -537,7 +537,7 @@ index 8725fe35812ee5f7ace0ac3dce466738b6eefc53..9f5311bec541f5efa5e8c60a7ea98824
          final io.papermc.paper.event.player.PlayerItemCooldownEvent event = new io.papermc.paper.event.player.PlayerItemCooldownEvent(
              this.player.getBukkitEntity(),
 @@ -38,6 +41,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
-
+ 
      @Override
      public void addCooldown(Identifier groupId, int duration, boolean callEvent) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeNoItemCooldown && this.player.isCreative()) {
@@ -561,14 +561,14 @@ index 4e0b0d630e18bde916a07889bcaf0e7accf064ca..05ace66c11a206443f12537fa829b018
      public RecipeMap recipes = RecipeMap.EMPTY;
      private Map<ResourceKey<RecipePropertySet>, RecipePropertySet> propertySets = Map.of();
 @@ -83,10 +86,73 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
-
+ 
      @Override
      protected void apply(RecipeMap object, ResourceManager resourceManager, ProfilerFiller profiler) {
 +        this.injectCompatRecipes(object);
          this.recipes = object;
          LOGGER.info("Loaded {} recipes", object.values().size());
      }
-
+ 
 +    private void injectCompatRecipes(RecipeMap recipeMap) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.betterCraftableBoneBlock) {
 +            addCompatRecipe(recipeMap, createBetterCraftableBoneBlockRecipe());
@@ -652,11 +652,11 @@ index 7803ff8e2e37b44d6e1b094e3141e0c99137659a..81db88c8a25ade71b88fcf5b90880f18
 @@ -1185,7 +1189,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
                  }
              }
-
+ 
 -            if ((flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
 +            if (!skipInteractionUpdates && (flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
                  int i = flags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
-
+ 
                  // CraftBukkit start
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
 index e7223540a7cef20b661bdb857ffba962d0f5d348..4b6fbaa33b3db4d514fae7d0913b5530a4a44214 100644
@@ -692,7 +692,7 @@ index e7223540a7cef20b661bdb857ffba962d0f5d348..4b6fbaa33b3db4d514fae7d0913b5530
 +                : level.noCollision(entityType.getSpawnAABB(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5)));
          return success ? PreSpawnStatus.SUCCESS : PreSpawnStatus.FAIL; // Paper - PreCreatureSpawnEvent
      }
-
+ 
      private static @Nullable Mob getMobForSpawn(ServerLevel level, EntityType<?> entityType) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.lagFreeSpawning) {
 +            Mob cachedMob = fun.bm.mili.carpet.LagFreeSpawningCompatHelper.getOrCreateMob(level, entityType);
@@ -731,7 +731,7 @@ index 33ee967d8a7d4ce2c455db9ffaac740cd589e6f3..4dc8dda135b2d43604058ae832ce63de
 +++ b/net/minecraft/world/level/ServerExplosion.java
 @@ -379,6 +379,10 @@ public class ServerExplosion implements Explosion {
      }
-
+ 
      private List<BlockPos> calculateExplodedPositions() {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.explosionNoBlockDamage) {
 +            return List.of();
@@ -739,7 +739,7 @@ index 33ee967d8a7d4ce2c455db9ffaac740cd589e6f3..4dc8dda135b2d43604058ae832ce63de
 +
          // Paper start - collision optimisations
          final ObjectArrayList<BlockPos> ret = new ObjectArrayList<>();
-
+ 
 diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 index b45e5f571e72028996f641157473039ba9dd3520..8eeabbcf708644069e34503ad736c49b38c787d1 100644
 --- a/net/minecraft/world/level/block/CarvedPumpkinBlock.java
@@ -752,7 +752,7 @@ index b45e5f571e72028996f641157473039ba9dd3520..8eeabbcf708644069e34503ad736c49b
 +            || this.getOrCreateCopperGolemBase().find(level, pos) != null
 +            || this.canSpawnShulkerGolem(level, pos);
      }
-
+ 
      private void trySpawnGolem(Level level, BlockPos pos) {
 @@ -92,6 +93,8 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
                  copperGolem.spawn(this.getWeatherStateFromPattern(blockPatternMatch2));
@@ -761,12 +761,12 @@ index b45e5f571e72028996f641157473039ba9dd3520..8eeabbcf708644069e34503ad736c49b
 +
 +        this.trySpawnShulkerGolem(level, pos);
      }
-
+ 
      private WeatheringCopper.WeatherState getWeatherStateFromPattern(BlockPattern.BlockPatternMatch patternMatch) {
 @@ -159,6 +162,42 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
          builder.add(FACING);
      }
-
+ 
 +    private boolean canSpawnShulkerGolem(LevelReader level, BlockPos pos) {
 +        return fun.bm.mili.carpet.config.modules.GeneralCompatConfig.shulkerGolem
 +            && PUMPKINS_PREDICATE.test(level.getBlockState(pos))
@@ -847,7 +847,7 @@ index eb21b20a72062fc53b8f94aa98dcd380c8ad4db3..38bc450afb3cecc349290391f2c23586
 +                turnToDirt(entity, state, level, pos);
 +            }
          }
-
+ 
          // super.fallOn(level, state, pos, entity, fallDistance); // CraftBukkit - moved up
 diff --git a/net/minecraft/world/level/block/ObserverBlock.java b/net/minecraft/world/level/block/ObserverBlock.java
 index 17c371f4c24e8a81705bdd322b1de5de4b8be8b7..ec049a5473b334032ce77cb44e144de687c14c21 100644
@@ -855,7 +855,7 @@ index 17c371f4c24e8a81705bdd322b1de5de4b8be8b7..ec049a5473b334032ce77cb44e144de6
 +++ b/net/minecraft/world/level/block/ObserverBlock.java
 @@ -88,6 +88,9 @@ public class ObserverBlock extends DirectionalBlock {
      }
-
+ 
      private void startSignal(LevelReader level, ScheduledTickAccess scheduledTickAccess, BlockPos pos) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.observerNoDetection) {
 +            return;
@@ -889,7 +889,7 @@ index 5c154d15e5aa45988436722595c7fca74e166c9a..070c9ad76193690e91bfbfe791ef4fa7
                  this.updateSurroundingRedstone(level, pos, state, null, true); // Vanilla/Eigencraft
 @@ -378,7 +380,8 @@ public class RedStoneWireBlock extends Block {
              }
-
+ 
              // Paper start - optimize redstone - replace call to updatePowerStrength
 -            if (level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.fastRedstoneDust
@@ -899,7 +899,7 @@ index 5c154d15e5aa45988436722595c7fca74e166c9a..070c9ad76193690e91bfbfe791ef4fa7
                  this.updateSurroundingRedstone(level, pos, state, null, false); // Vanilla/Eigencraft
 @@ -397,7 +400,8 @@ public class RedStoneWireBlock extends Block {
              }
-
+ 
              // Paper start - optimize redstone - replace call to updatePowerStrength
 -            if (level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.fastRedstoneDust
@@ -922,7 +922,7 @@ index e820cd03e695649a8f83e23ae822524a8f78e23b..6c58bc561116cff645d60f98294bc66f
 --- a/net/minecraft/world/level/block/ShulkerBoxBlock.java
 +++ b/net/minecraft/world/level/block/ShulkerBoxBlock.java
 @@ -74,9 +74,10 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
-
+ 
      @Override
      protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
 +        boolean canOpenForcibly = fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeOpenContainerForcibly && player.isCreative();
@@ -948,7 +948,7 @@ index 00da328f21e5ce5de6f968323b14a7832a6cbd62..a68ffb1197a19173f00577f656b5894f
              }
          }
 @@ -55,7 +56,9 @@ public class TntBlock extends Block {
-
+ 
      @Override
      protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, @Nullable Orientation orientation, boolean movedByPiston) {
 -        if (level.hasNeighborSignal(pos) && prime(level, pos, () -> org.bukkit.craftbukkit.event.CraftEventFactory.callTNTPrimeEvent(level, pos, org.bukkit.event.block.TNTPrimeEvent.PrimeCause.REDSTONE, null, null))) { // CraftBukkit - TNTPrimeEvent
@@ -995,7 +995,7 @@ index ed906ec726fa0eb12c0108dc751af2dcadf2bfb1..0942fd82d4ea32f5c75f255ecd6c7b16
                          ItemStack itemStack = HopperBlockEntity.addItem(blockEntity, attachedContainer, org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(event.getItem()), opposite);
                          // CraftBukkit end
 +                        int moved = origCount - itemStack.getCount();
-
+ 
 -                        if (itemStack.isEmpty()) {
 +                        if (moved > 0) {
                              attachedContainer.setChanged();
@@ -1008,7 +1008,7 @@ index ed906ec726fa0eb12c0108dc751af2dcadf2bfb1..0942fd82d4ea32f5c75f255ecd6c7b16
 +                        if (itemStack.isEmpty()) {
                              return true;
                          }
-
+ 
                          item.setCount(count);
                          // Spigot start
 -                        item.shrink(origCount - itemStack.getCount());
@@ -1021,7 +1021,7 @@ index 31907239431e83515b4e9c8b53dc1ee4d6f29e4d..6fed824d42e034f9a315c8ab74e05ba3
 --- a/net/minecraft/world/level/block/piston/PistonBaseBlock.java
 +++ b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
 @@ -369,7 +369,7 @@ public class PistonBaseBlock extends DirectionalBlock {
-
+ 
              for (int i1 = toPush.size() - 1; i1 >= 0; i1--) {
                  // Paper start - fix a variety of piston desync dupes
 -                boolean allowDesync = io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowPistonDuplication;
@@ -1035,7 +1035,7 @@ index 0de2f6627fb6295d7927ac3e37026f4daf68cfd3..727abe6be81fdaa0753035bbf89ffead
 +++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
 @@ -828,6 +828,9 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
          }
-
+ 
          public Vec3 getOffset(BlockPos pos) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.bambooModelNoOffset && (this.getBlock() == Blocks.BAMBOO || this.getBlock() == Blocks.BAMBOO_SAPLING)) {
 +                return Vec3.ZERO;
@@ -1061,7 +1061,7 @@ index b1829ac08ba90e8e1522ee790b7f96515da2b9c4..8f5e19a15f42aadedfe7c998568f8466
                              if (blockEntity != null) {
                                  blockEntity.preRemoveSideEffects(pos, blockState);
 @@ -421,6 +422,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
-
+ 
                      if ((flag || block instanceof BaseRailBlock)
                          && this.level instanceof ServerLevel serverLevel
 +                        && !skipInteractionUpdates
@@ -1079,7 +1079,7 @@ index b1829ac08ba90e8e1522ee790b7f96515da2b9c4..8f5e19a15f42aadedfe7c998568f8466
 +                        && (!this.level.getCurrentWorldData().captureBlockStates || block instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
                          state.onPlace(this.level, pos, blockState, flag1);
                      }
-
+ 
 diff --git a/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java b/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java
 index 48187686126139a4229f454a3d4427f6593fa71b..562a27a051e1a5059e5bb81b64dc4c6def9f8673 100644
 --- a/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java
@@ -1096,7 +1096,7 @@ index 48187686126139a4229f454a3d4427f6593fa71b..562a27a051e1a5059e5bb81b64dc4c6d
 +                            )) {
 +                                level.removeBlock(blockPos, false);
 +                            }
-
+ 
 -                        for (BlockPos blockPos : BlockPos.betweenClosed(
 -                            new BlockPos(endSpike.getCenterX() - 10, endSpike.getHeight() - 10, endSpike.getCenterZ() - 10),
 -                            new BlockPos(endSpike.getCenterX() + 10, endSpike.getHeight() + 10, endSpike.getCenterZ() + 10)
@@ -1119,14 +1119,14 @@ index 70bb9a6742d236bb2f8f9b6bc43e973838ec5842..d111e19380372fd46059cddbaa1d3343
 +++ b/net/minecraft/world/level/levelgen/feature/SpikeFeature.java
 @@ -66,6 +66,10 @@ public class SpikeFeature extends Feature<SpikeConfiguration> {
      }
-
+ 
      private void placeSpike(ServerLevelAccessor level, RandomSource random, SpikeConfiguration config, SpikeFeature.EndSpike spike) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.preventEndSpikeRespawn && config.getCrystalBeamTarget() != null) {
 +            return;
 +        }
 +
          int radius = spike.getRadius();
-
+ 
          for (BlockPos blockPos : BlockPos.betweenClosed(
 diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
 index 32488203ff074b675f5c8831d157b1d91bae48a9..2c5f4006cf56921bee30223bf76b18a8e2ef56c6 100644
@@ -1143,7 +1143,7 @@ index 32488203ff074b675f5c8831d157b1d91bae48a9..2c5f4006cf56921bee30223bf76b18a8
          if ((flags & Block.UPDATE_SKIP_SHAPE_UPDATE_ON_WIRE) == 0 || !blockState.is(Blocks.REDSTONE_WIRE)) {
              BlockState blockState1 = blockState.updateShape(level, level, pos, direction, neighborPos, neighborState, level.getRandom());
 @@ -48,6 +51,9 @@ public interface NeighborUpdater {
-
+ 
      static void executeUpdate(Level level, BlockState state, BlockPos pos, Block neighborBlock, @Nullable Orientation orientation, boolean movedByPiston, BlockPos sourcePos) {
          // Paper end - Add source block to BlockPhysicsEvent
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) {
