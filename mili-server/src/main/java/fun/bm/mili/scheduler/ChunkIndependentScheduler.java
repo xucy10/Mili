@@ -118,7 +118,7 @@ public final class ChunkIndependentScheduler {
         }
     }
 
-    /** Collect workers that are ready to tick this cycle */
+    /** Collect workers that are ready this cycle, capture border state in parallel */
     private void tickScheduler() {
         List<ChunkWorker> ready = new ArrayList<>();
         synchronized (workerLock) {
@@ -130,62 +130,35 @@ public final class ChunkIndependentScheduler {
         }
         if (ready.isEmpty()) return;
 
-        // Classify: high-interaction chunks tick sequentially (region fallback)
-        List<ChunkWorker> independent = new ArrayList<>();
-        List<ChunkWorker> sequential = new ArrayList<>();
-
+        // Phase 1: Capture border state in parallel (read-only, thread-safe)
+        CountDownLatch latch = new CountDownLatch(ready.size());
         for (ChunkWorker w : ready) {
-            if (mixedMode && !strictMode && isHighInteraction(w)) {
-                sequential.add(w);
-            } else {
-                independent.add(w);
-            }
-        }
-
-        // Tick independent workers in parallel via thread pool
-        if (!independent.isEmpty()) {
-            CountDownLatch latch = new CountDownLatch(independent.size());
-            for (ChunkWorker w : independent) {
-                workerPool.submit(() -> {
-                    try {
-                        w.tick();
-                    } catch (Throwable t) {
-                        LOGGER.error("Worker tick failed: {}", t.getMessage());
-                    } finally {
-                        latch.countDown();
-                    }
-                });
-            }
-            try {
-                if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
-                    LOGGER.warn("{} chunk workers timed out, falling back to region mode",
-                        independent.stream().filter(w -> !w.waitForTickCompletion(0)).count());
+            workerPool.submit(() -> {
+                try {
+                    w.captureBorder();
+                } finally {
+                    latch.countDown();
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            });
+        }
+        try {
+            if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                LOGGER.warn("{} workers timed out during border capture",
+                    ready.stream().filter(w -> !w.waitForCapture(0)).count());
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
-        // Tick sequential workers on scheduler thread (simulates Folia region)
-        for (ChunkWorker w : sequential) {
-            w.tick();
-        }
-
-        // Reset for next tick
+        // Report high-interaction chunks to Folia region scheduler for merging
+        int highCount = 0;
         for (ChunkWorker w : ready) {
+            if (w.isHighInteraction()) highCount++;
             w.resetForNextTick();
         }
-    }
-
-    private boolean isHighInteraction(ChunkWorker worker) {
-        ChunkBorderCache cache = worker.getBorderCache();
-        if (cache == null) return true;
-        // Force capture on first tick
-        if (!cache.isReady()) {
-            LevelChunk chunk = worker.getChunk();
-            if (chunk != null) cache.captureBorderState(chunk);
+        if (mixedMode && !strictMode && highCount > 0) {
+            LOGGER.debug("CIS: {} high-interaction chunks (will be merged into Folia regions)", highCount);
         }
-        return cache.isHighInteraction();
     }
 
     // ======================== Worker Registration ========================

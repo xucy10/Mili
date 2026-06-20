@@ -3,7 +3,6 @@ From: Bacteriawa <A3167717663@hotmail.com>
 Date: Sun, 22 Mar 2026 01:39:15 +0800
 Subject: [PATCH] Carpet features
 
-
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
 index 8d32d906f87a1cb866a7497ee0de3045e9adce2c..8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java

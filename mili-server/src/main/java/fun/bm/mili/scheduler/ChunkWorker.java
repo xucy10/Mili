@@ -1,6 +1,5 @@
 package fun.bm.mili.scheduler;
 
-import ca.spottedleaf.moonrise.common.util.TickThread;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -24,16 +23,10 @@ public final class ChunkWorker {
     private volatile LevelChunk chunk;
     private volatile boolean released;
     private volatile boolean highInteraction;
+    private volatile boolean borderCaptured;
 
-    // Two-phase commit flags
-    private volatile boolean phase1Complete;  // border captured
-    private volatile boolean phase2Ready;     // ready for cross-chunk injection
-
-    private final AtomicBoolean ticking = new AtomicBoolean(false);
-    private final AtomicLong lastTickNanos = new AtomicLong(0);
-
-    // Dedicated thread for this worker (null if using thread pool)
-    private volatile Thread workerThread;
+    private final AtomicBoolean capturing = new AtomicBoolean(false);
+    private final AtomicLong lastCaptureNanos = new AtomicLong(0);
 
     public ChunkWorker(ServerLevel level, int chunkX, int chunkZ,
                        ChunkIndependentScheduler scheduler) {
@@ -45,81 +38,50 @@ public final class ChunkWorker {
     }
 
     /**
-     * Execute a full tick cycle with two-phase commit protocol.
+     * Phase 1 only: capture border state.
      *
-     * Phase 1: Capture border state (reads only, no writes to neighbors)
-     * Phase 2: Execute chunk tick (mutates own chunk only)
-     * Phase 3: Signal cross-chunk readiness
-     * Phase 4: Accept injected border updates from CrossChunkBus
+     * SAFETY: This is a READ-ONLY operation — it reads block states at the
+     * chunk border but writes nothing to the level or entities. It can safely
+     * run from any thread.
+     *
+     * The actual chunk tick (entity tick, block tick, block entity tick)
+     * MUST remain on the Folia region thread. CIS does NOT replace Folia's
+     * region tick; it only analyzes chunk interactions to provide scheduling
+     * hints.
+     *
+     * Entity bugs (teleporting, spawn failure, no display, knockback
+     * anomalies) were caused by calling chunk.tick() from a non-owning
+     * thread, which corrupts Folia's region-local entity state.
      */
-    public void tick() {
-        if (!ticking.compareAndSet(false, true)) return;
+    public void captureBorder() {
+        if (!capturing.compareAndSet(false, true)) return;
         try {
             if (released || chunk == null || !chunk.isLoaded()) return;
 
-            // Register current thread for TickThread.isTickThreadFor compatibility
-            Thread currentThread = Thread.currentThread();
-            this.workerThread = currentThread;
-            if (scheduler != null) {
-                scheduler.registerWorkerThread(currentThread, this);
-            }
-
-            try {
-                // Phase 1: Capture border state (read-only)
-                borderCache.captureBorderState(chunk);
-                phase1Complete = true;
-
-                // Classify: high-interaction chunks use strict serialization
-                highInteraction = borderCache.isHighInteraction();
-
-                // Phase 2: Execute chunk tick
-                if (chunk != null && chunk.isLoaded()) {
-                    // Hook into Minecraft chunk tick via EntityTickList / BlockEntityTicker
-                    // This is the integration point patched into ServerLevel / ChunkMap
-                    chunk.tick(level);
-                }
-
-                // Phase 3: Signal cross-chunk readiness
-                phase2Ready = true;
-
-                // Phase 4: Process any border updates queued by CrossChunkBus
-                // for low-interaction chunks only (high-interaction chunks use
-                // Folia region fallback which handles this natively)
-                if (!highInteraction) {
-                    scheduler.getCrossChunkBus().processBorderUpdates(this);
-                }
-
-            } finally {
-                // Clear thread registration
-                if (scheduler != null) {
-                    scheduler.unregisterWorkerThread(currentThread);
-                }
-                this.workerThread = null;
-            }
-
-            lastTickNanos.set(System.nanoTime());
+            borderCache.captureBorderState(chunk);
+            highInteraction = borderCache.isHighInteraction();
+            borderCaptured = true;
+            lastCaptureNanos.set(System.nanoTime());
 
         } catch (Exception e) {
-            LOGGER.error("ChunkWorker tick error at ({}, {}): {}", chunkX, chunkZ, e.getMessage());
+            LOGGER.error("ChunkWorker border capture error at ({}, {}): {}", chunkX, chunkZ, e.getMessage());
         } finally {
-            ticking.set(false);
+            capturing.set(false);
         }
     }
 
     public void resetForNextTick() {
-        phase1Complete = false;
-        phase2Ready = false;
+        borderCaptured = false;
     }
 
-    public boolean waitForTickCompletion(long timeoutNanos) {
+    public boolean waitForCapture(long timeoutNanos) {
         long deadline = System.nanoTime() + timeoutNanos;
-        while (ticking.get() && System.nanoTime() < deadline) {
+        while (capturing.get() && System.nanoTime() < deadline) {
             LockSupport.parkNanos("chunk-worker-wait", 100_000L);
         }
-        return !ticking.get();
+        return !capturing.get();
     }
 
-    /** Assign (or re-assign) the chunk this worker is responsible for. */
     public void assignChunk(LevelChunk newChunk) {
         this.chunk = Objects.requireNonNull(newChunk);
         this.released = false;
@@ -127,7 +89,6 @@ public final class ChunkWorker {
         resetForNextTick();
     }
 
-    /** Release this worker; it will no longer tick. */
     public void release() {
         this.released = true;
         this.chunk = null;
@@ -142,10 +103,9 @@ public final class ChunkWorker {
     public ChunkBorderCache getBorderCache() { return borderCache; }
     public boolean isHighInteraction() { return highInteraction; }
     public boolean isReleased() { return released; }
-    public boolean isPhase1Complete() { return phase1Complete; }
-    public boolean isPhase2Ready() { return phase2Ready; }
-    public boolean isTicking() { return ticking.get(); }
-    public long getLastTickNanos() { return lastTickNanos.get(); }
+    public boolean isBorderCaptured() { return borderCaptured; }
+    public boolean isCapturing() { return capturing.get(); }
+    public long getLastCaptureNanos() { return lastCaptureNanos.get(); }
 
     @Override
     public String toString() {
