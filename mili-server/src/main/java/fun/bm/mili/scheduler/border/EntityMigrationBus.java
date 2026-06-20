@@ -79,10 +79,12 @@ public final class EntityMigrationBus {
                     if (entity == null || entity.isRemoved() || entity.level() != level) continue;
 
                     // Use Folia's entity scheduler to migrate on the proper region thread.
-                    entity.getBukkitEntity().getScheduler().run(
+                    // runDelayed with 1 tick to prevent chunk processing race conditions.
+                    entity.getBukkitEntity().getScheduler().runDelayed(
                         MinecraftInternalPlugin.INSTANCE,
                         (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> { },
-                        null
+                        null,
+                        1L
                     );
                     drained++;
                 } catch (Exception e) {
