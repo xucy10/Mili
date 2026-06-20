@@ -5,8 +5,6 @@ import fun.bm.mili.config.modules.misc.MemoryOptConfig;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 
-import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -84,29 +82,25 @@ public final class MiliMemoryOptimizer {
     }
 
     /**
-     * GC 提示 — 仅建议 JVM 回收 / GC hint — only suggests JVM to collect.
+     * GC 提示 — 已禁用 System.gc()，仅记录日志 / GC hint — System.gc() disabled, log only.
      *
-     * <p>不强制 GC (避免 STW 停顿) / Does not force GC (avoids STW pauses).
-     * 通过分配并丢弃临时对象来增加 GC 压力 / Allocates and discards temp objects to increase GC pressure.
+     * <p>不再调用 System.gc() 或分配临时对象，因为 STW 停顿会导致实体追踪去同步 /
+     * No longer calls System.gc() or allocates temp objects, as STW pauses
+     * cause entity tracking desynchronization.
      */
     private static void hintGC() {
         if (!MemoryOptConfig.gcHintEnabled) return;
 
-        // 软引用压力: 分配并丢弃一个小数组，触发软引用清理
-        // Soft-reference pressure: allocate and discard a small array to trigger soft ref cleanup
-        Reference<Object> pressure = new SoftReference<>(new byte[1024]);
-        pressure.clear();
-
-        // 如果堆使用率超过阈值，建议 System.gc()
-        // Suggest System.gc() if heap usage exceeds threshold
         final long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         final long max = Runtime.getRuntime().maxMemory();
         final double usagePct = (double) used / max * 100.0;
 
         if (usagePct > MemoryOptConfig.gcHintHeapThreshold) {
-            System.gc(); // 仅建议 / Hint only — JVM may ignore
+            // 不再调用 System.gc() — STW 停顿会导致实体瞬移/打不到
+            // No longer calls System.gc() — STW pauses cause entity teleport/desync
             if (MemoryOptConfig.debug) {
-                LOGGER.debug("[MemOpt] GC hint sent, heap usage: {}%", String.format("%.1f", usagePct));
+                LOGGER.debug("[MemOpt] Heap usage high: {}% (GC hint suppressed to avoid entity stutter)",
+                        String.format("%.1f", usagePct));
             }
         }
     }

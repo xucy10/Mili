@@ -54,7 +54,7 @@ public class MiliAffinityAutoTuner implements IConfigModule {
             AMD Zen 5) where naive OS scheduling can land tick threads on
             E-cores. On a 4-core E-core host this can deliver 60-90% of an
             8-core P-core's effective tick throughput.""")
-    public static boolean autoTuneEnabled = true;
+    public static boolean autoTuneEnabled = false;
 
     @TransformedConfig(name = "strategy", directory = {"perf", "auto_tune_affinity"})
     @HotReloadUnsupported

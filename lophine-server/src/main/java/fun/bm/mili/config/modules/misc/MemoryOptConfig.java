@@ -17,14 +17,19 @@ public class MemoryOptConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
             启用内存优化器 / Enable memory optimizer.
             周期性清理断开玩家的追踪状态并管理 GC 压力 / Periodically cleans
-            disconnected player states and manages GC pressure.""")
-    public static boolean enabled = true;
+            disconnected player states and manages GC pressure.
+            注意: 默认关闭，开启后 System.gc() 可能导致实体卡顿 / Note: disabled by
+            default, System.gc() can cause entity stuttering.""")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "gc-hint-enabled", comments = """
             启用 GC 提示 / Enable GC hint.
             当堆使用率超过阈值时建议 JVM 执行 GC / Hints JVM to GC when heap
-            usage exceeds threshold. 不会强制 GC (避免卡顿) / Does not force GC.""")
-    public static boolean gcHintEnabled = true;
+            usage exceeds threshold.
+            警告: System.gc() 触发 STW 停顿，会导致实体瞬移/打不到 / WARNING:
+            System.gc() triggers STW pauses causing entity teleport/desync.
+            默认关闭 / Disabled by default.""")
+    public static boolean gcHintEnabled = false;
 
     @ConfigInfo(name = "gc-hint-interval-seconds", comments = """
             GC 提示最小间隔 (秒) / Minimum GC hint interval (seconds).
