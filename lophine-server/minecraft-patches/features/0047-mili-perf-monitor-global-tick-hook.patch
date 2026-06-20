@@ -8,13 +8,11 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
 index 17108636a5728efe98a064001e00e3ca098b1f51..0000000 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -332,6 +332,9 @@
-         this.randomWalk();
-          */
-         ++this.tickCount;
+@@ -327,6 +327,9 @@
+     private void globalTick(final long tickCount) {
 +        // mili start - perf hook
 +        fun.bm.mili.perf.MiliTickSchedulerHook.onGlobalTick();
 +        // mili end - perf hook
-         // expire invalid click command callbacks
-         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
-         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
+         /*
+         if (false) {
+             io.papermc.paper.threadedregions.ThreadedTicketLevelPropagator.main(null);
