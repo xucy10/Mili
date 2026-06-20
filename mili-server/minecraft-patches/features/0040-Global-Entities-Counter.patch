@@ -116,20 +116,18 @@ diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mo
 index c6985d2a9d1093943d754d77089bd4c3d5baf3ee..a8807f80f1b11d7f5dae3b96a0e215e3e105fdd0 100644
 --- a/net/minecraft/world/entity/Mob.java
 +++ b/net/minecraft/world/entity/Mob.java
-@@ -806,6 +806,46 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
+@@ -806,6 +806,44 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
                  }
              }
          } else {
 +            // Mili start - fix some bug if player is cross scheduler >> to remove monster if the region don't have any valid player
-+            // Mili - FIX: only use local players in this region instead of all server players to avoid cross-region impact
 +            if (fun.bm.mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
-+                io.papermc.paper.threadedregions.RegionizedWorldData _rwd = this.level().getCurrentWorldData();
-+                if (_rwd == null) { this.noActionTime = 0; return; } // Mili - guard: skip if world data unavailable
-+                List<net.minecraft.server.level.ServerPlayer> playerList = _rwd.getLocalPlayers();
++                List<net.minecraft.server.level.ServerPlayer> playerList = this.level().getServer().getPlayerList().getPlayers();
 +                if (!playerList.isEmpty()) {
 +                    double d = -1.0;
 +                    Vec3 vec3 = null;
 +                    for (net.minecraft.server.level.ServerPlayer player1 : playerList) {
++                        if (player1.level() != this.level()) continue;
 +                        double d1 = player1.distanceToSqr(this.position());
 +                        if (d == -1.0 || d1 < d) {
 +                            d = d1;
