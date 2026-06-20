@@ -112,13 +112,28 @@ jobs:
             JAR=$(ls "$JAR_PATH"/*-paperclip-*-mojmap.jar | head -1)
             JAR_SIZE=$(stat --format=%s "$JAR" 2>/dev/null || stat -f%z "$JAR" 2>/dev/null)
             echo "OK: JAR built — $JAR (${JAR_SIZE} bytes)"
-            echo "  ChunkIndependentConfig enabled: false (config-driven)"
-            echo "  CIS default mode: mixed (auto-detect high-interaction)"
-            echo "  Kaiiju EntityThrottler: config-driven via MiliEntityLimitsConfig"
-            echo "  Async Pathfinding: config-driven via ChunkIndependentConfig"
+            echo ""
+            echo "=== Available Feature Flags (config-driven) ==="
+            echo "  CIS:               ChunkIndependentConfig.enabled"
+            echo "  Kaiiju Throttler:  MiliEntityLimitsConfig.enabled"
+            echo "  Async Pathfinding: ChunkIndependentConfig.enabled"
+            echo ""
+            echo "=== To generate lifecycle hooks (if needed) ==="
+            echo "  1. ./gradlew applyAllPatches"
+            echo "  2. Edit mili-server/src/minecraft/ (RegionizedServer.java)"
+            echo "  3. ./gradlew :mili-server:rebuildPatches"
+            echo "  4. Commit generated patches"
           else
             echo "WARN: No paperclip JAR found at $JAR_PATH"
           fi
+
+      - name: Check for Pending Patch Rebuild
+        run: |
+          if git diff --name-only | grep -q "^mili-server/src/minecraft/"; then
+            echo "WARN: Patched source has uncommitted changes — run 'rebuildPatches' to generate patch files"
+            git diff --stat -- "mili-server/src/minecraft/"
+          else
+            echo "OK: No pending patch rebuild needed"
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4

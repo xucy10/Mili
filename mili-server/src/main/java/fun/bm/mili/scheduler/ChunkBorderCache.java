@@ -7,8 +7,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.core.Direction;
 import org.slf4j.Logger;
 
 public final class ChunkBorderCache {
@@ -23,6 +25,8 @@ public final class ChunkBorderCache {
 
         final Direction direction;
         BorderFace(Direction d) { this.direction = d; }
+
+        public Direction getDirection() { return direction; }
 
         public BorderFace opposite() {
             return switch (this) {
@@ -129,7 +133,7 @@ public final class ChunkBorderCache {
                     // Comparator
                     if (block instanceof ComparatorBlock) {
                         hasComparator = true;
-                        int pow = state.getValue(ComparatorBlock.POWER_OUT);
+                        int pow = state.getValue(BlockStateProperties.OUTPUT_POWER);
                         if (pow > redstonePower) redstonePower = pow;
                     }
                     // Redstone block / torch
@@ -145,7 +149,7 @@ public final class ChunkBorderCache {
                     if (!fluid.isEmpty()) hasFluid = true;
 
                     // Piston
-                    if (block instanceof PistonBaseBlock || block instanceof PistonHeadBlock) {
+                    if (block == Blocks.PISTON || block == Blocks.STICKY_PISTON || block == Blocks.PISTON_HEAD) {
                         hasPiston = true;
                     }
                 }
@@ -183,7 +187,7 @@ public final class ChunkBorderCache {
 
             if (col.redstonePower() > 0 || col.hasRepeater() || col.hasComparator()) {
                 BlockPos targetPos = new BlockPos(tx, level.getMinY() + 1, tz);
-                level.neighborChanged(targetPos, Blocks.REDSTONE_WIRE, (net.minecraft.core.Orientation) null);
+                level.neighborChanged(targetPos, Blocks.REDSTONE_WIRE, null);
             }
             if (col.hasFluid()) {
                 BlockPos fluidPos = new BlockPos(tx, level.getMinY() + 1, tz);

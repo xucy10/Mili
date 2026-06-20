@@ -56,7 +56,7 @@ public final class ChunkWorker {
     public void captureBorder() {
         if (!capturing.compareAndSet(false, true)) return;
         try {
-            if (released || chunk == null || !chunk.isLoaded()) return;
+            if (released || chunk == null) return;
 
             borderCache.captureBorderState(chunk);
             highInteraction = borderCache.isHighInteraction();

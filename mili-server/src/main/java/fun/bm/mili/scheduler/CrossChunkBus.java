@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * Cross-chunk coordination bus (专用协调线程).
@@ -135,23 +133,8 @@ public final class CrossChunkBus {
                 continue;
             }
 
-            // Wait for target to complete Phase 2 (volatile flag, no lock)
-            long deadline = System.nanoTime() + timeoutNanos;
-            while (!target.isPhase2Ready() && System.nanoTime() < deadline) {
-                LockSupport.parkNanos("cross-chunk-deliver", 100_000L);
-            }
-
-            if (!target.isPhase2Ready()) {
-                LOGGER.debug("CrossChunkBus: timeout waiting for chunk ({},{}), skipping {} injections",
-                    tx, tz, injections.size());
-                iter.remove();
-                continue;
-            }
-
-            // Deliver: run injections on coordinator thread.
-            // This is safe because the target chunk has finished its tick
-            // and is only reading data. The injections write to the level,
-            // which is thread-safe for neighbor updates.
+            // Deliver injections on coordinator thread.
+            // Border capture is complete (read-only, fast).
             synchronized (injections) {
                 for (Runnable injection : injections) {
                     try {

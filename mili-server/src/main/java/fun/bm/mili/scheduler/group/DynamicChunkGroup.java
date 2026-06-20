@@ -74,7 +74,7 @@ public final class DynamicChunkGroup {
     public void tickAll() {
         for (ChunkWorker worker : workers) {
             if (!worker.isReleased()) {
-                worker.tick();
+                worker.captureBorder();
             }
         }
     }

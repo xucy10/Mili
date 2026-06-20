@@ -41,8 +41,8 @@ public final class RedstoneBorderRelay {
 
         // Broadcast to all 4 neighbors
         for (ChunkBorderCache.BorderFace face : ChunkBorderCache.BorderFace.values()) {
-            int nx = worker.getChunkX() + face.direction.getStepX();
-            int nz = worker.getChunkZ() + face.direction.getStepZ();
+            int nx = worker.getChunkX() + face.getDirection().getStepX();
+            int nz = worker.getChunkZ() + face.getDirection().getStepZ();
 
             ChunkWorker neighbor = ChunkIndependentScheduler.getInstance(level).getWorker(nx, nz);
             if (neighbor == null || neighbor.isReleased()) continue;

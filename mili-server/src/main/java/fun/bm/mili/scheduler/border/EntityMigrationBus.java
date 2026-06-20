@@ -3,7 +3,7 @@ package fun.bm.mili.scheduler.border;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.entity.EntityAccess;
+import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 import org.slf4j.Logger;
 
 import java.util.Queue;
@@ -79,12 +79,9 @@ public final class EntityMigrationBus {
                     if (entity == null || entity.isRemoved() || entity.level() != level) continue;
 
                     // Use Folia's entity scheduler to migrate on the proper region thread.
-                    // This is the ONLY safe way to move entities between chunks in Folia.
                     entity.getBukkitEntity().getScheduler().run(
-                        (org.bukkit.entity.Entity e) -> {
-                            // Folia handles chunk transfer internally when the entity moves
-                            // We just need to ensure the entity is in the correct position
-                        },
+                        MinecraftInternalPlugin.INSTANCE,
+                        () -> { /* Folia handles chunk transfer */ },
                         null, 1L
                     );
                     drained++;

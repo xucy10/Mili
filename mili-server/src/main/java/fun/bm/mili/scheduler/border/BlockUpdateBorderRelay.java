@@ -21,7 +21,7 @@ public final class BlockUpdateBorderRelay {
         bus.enqueueBorderUpdate(source, targetKey, () -> {
             ServerLevel level = source.getLevel();
             if (level == null) return;
-            level.neighborChanged(pos, level.getBlockState(pos).getBlock(), (net.minecraft.core.Orientation) null);
+            level.neighborChanged(pos, level.getBlockState(pos).getBlock(), null);
         });
     }
 }

@@ -73,7 +73,7 @@ public final class ChunkIndependentScheduler {
         schedulerThread.set(st);
 
         INSTANCES.put(level, this);
-        LOGGER.info("ChunkIndependentScheduler started: {} workers on {}", workerCount, level.dimension().location());
+        LOGGER.info("ChunkIndependentScheduler started: {} workers on dim {}", workerCount, level.dimension().toString());
     }
 
     public void stop() {
@@ -123,7 +123,7 @@ public final class ChunkIndependentScheduler {
         List<ChunkWorker> ready = new ArrayList<>();
         synchronized (workerLock) {
             for (ChunkWorker worker : activeWorkers.values()) {
-                if (!worker.isReleased() && worker.getChunk() != null && worker.getChunk().isLoaded()) {
+                if (!worker.isReleased() && worker.getChunk() != null) {
                     ready.add(worker);
                 }
             }
