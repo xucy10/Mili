@@ -134,6 +134,7 @@ jobs:
             git diff --stat -- "mili-server/src/minecraft/"
           else
             echo "OK: No pending patch rebuild needed"
+          fi
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
