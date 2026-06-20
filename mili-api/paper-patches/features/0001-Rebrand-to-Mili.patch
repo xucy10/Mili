@@ -1,13 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mili <dev@bm.fun>
-Date: Sat, 20 Jun 2026 00:00:00 +0800
-Subject: [PATCH] Add missing BRAND_MILI_ID declaration
+Date: Sun, 8 Jun 2025 01:23:55 +0800
+Subject: [PATCH] Rebrand to Mili
 
-BRAND_MILI_ID is used in ServerBuildInfoImpl.java (patch 0001) but
-was never declared. Add the declaration to ServerBuildInfo.java.
 
 diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
-index 652ff54e7c50412503725d628bfe72ed03059790..ffbc71084f3bc534b750cdfd13a3890be9d7592f 100644
+index 652ff54e7c50412503725d628bfe72ed03059790..6201dd54d55385609d0f6d8e29536285dc2e65fe 100644
 --- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
 +++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
 @@ -17,6 +17,11 @@ public interface ServerBuildInfo {
