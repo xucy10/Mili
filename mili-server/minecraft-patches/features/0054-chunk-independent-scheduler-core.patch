@@ -3,17 +3,17 @@ From: Mili <dev@bm.fun>
 Date: Sat, 20 Jun 2026 00:00:00 +0800
 Subject: [PATCH] Chunk Independent Scheduler - core
 
-Inject ChunkIndependentScheduler into RegionizedServer lifecycle.
+Inject ChunkIndependentScheduler lifecycle + Kaiiju EntityThrottler +
+AsyncPathfinding drain into RegionizedServer.
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
-index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..0000000000000000000000000000000000000000 100644
+index 1617da921465113dd17bd1daebb738fea0e329a5..bffd41831b83e8f2ecda60e11182e6a20b658c19 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -513,4 +513,65 @@
+@@ -513,4 +513,81 @@ public final class RegionizedServer {
      public static final record WorldLevelData(ServerLevel world, long nonRedstoneGameTime, long dayTime) {
- 
+
      }
- }
 +
 +    // Mili start - Chunk Independent Scheduler
 +    private fun.bm.mili.scheduler.ChunkIndependentScheduler chunkIndependentScheduler;
@@ -37,24 +37,6 @@ index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..00000000000000000000000000000000
 +    }
 +    // Mili end - Chunk Independent Scheduler
 +
-+    // Mili start - Async Pathfinding drain
-+    private boolean asyncPathfindingInitialized;
-+
-+    public void initAsyncPathfinding() {
-+        if (!this.asyncPathfindingInitialized) {
-+            fun.bm.mili.kaiiju.AsyncPathfindingExecutor.setEnabled(
-+                fun.bm.mili.config.modules.misc.ChunkIndependentConfig.enabled);
-+            this.asyncPathfindingInitialized = true;
-+        }
-+    }
-+
-+    public void drainAsyncPathfinding() {
-+        if (this.asyncPathfindingInitialized) {
-+            fun.bm.mili.kaiiju.AsyncPathfindingExecutor.drainResults();
-+        }
-+    }
-+    // Mili end - Async Pathfinding drain
-+
 +    // Mili start - Kaiiju Entity Throttler
 +    public void tickLimiterStart(io.papermc.paper.threadedregions.RegionizedWorldData regionData) {
 +        if (fun.bm.mili.kaiiju.MiliEntityLimitsConfig.enabled) {
@@ -75,4 +57,12 @@ index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..00000000000000000000000000000000
 +        return false;
 +    }
 +    // Mili end - Kaiiju Entity Throttler
-+}
++
++    // Mili start - Async Pathfinding drain
++    public void drainAsyncPathfinding() {
++        if (fun.bm.mili.config.modules.misc.ChunkIndependentConfig.enabled) {
++            fun.bm.mili.kaiiju.AsyncPathfindingExecutor.drainResults();
++        }
++    }
++    // Mili end - Async Pathfinding drain
+ }

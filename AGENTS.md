@@ -283,11 +283,17 @@ Phase 2 (tick 结束后): CrossChunkBus 收集所有待处理边界更新
 | Config | `mili-server/.../config/modules/misc/ChunkIndependentConfig.java` | ~60 |
 | Verif. matrix | `mili-server/.../scheduler/CISVerificationMatrix.java` | ~90 |
 
-### Patches
+### Integration
 
-- **0054** - Inject scheduler into RegionizedServer lifecycle
-- **0055** - Adapt TickThread checks for worker threads
-- **0056** - Split RegionizedWorldData access per chunk
+CIS is designed as **standalone utility classes** under `fun.bm.mili.scheduler.*`.
+No patches to Minecraft/Folia code are required. Key design decisions:
+
+- **ChunkWorker** only performs READ-ONLY border analysis (block state sampling).
+  Never calls chunk.tick() — entity ticking remains on Folia region threads.
+- **CrossChunkBus** coordinator thread only coordinates; never holds worker locks.
+- **EntityMigrationBus** uses entity.getScheduler().run() for Folia-safe migration.
+- High-interaction chunks (redstone/fluid/piston) auto-report to Folia region mode.
+- Enables via config: `chunk_independent_scheduler.enabled: true`.
 
 ### Functional Verification Matrix
 

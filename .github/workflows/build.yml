@@ -76,60 +76,22 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew --refresh-dependencies applyAllPatches
 
-      - name: CIS Integration - Manual Hook Wiring
-        run: |
-          # CIS 手动集成步骤（Chunk Independent Scheduler 核心钩子）
-          # 注入点到 patched source (mili-server/src/minecraft/):
-          # 1. RegionizedServer.java — 调度器生命周期
-          # 2. TickThread.java — CIS worker 线程标记
-          # 3. ServerLevel.java — 区块 tick 路由
-
-          echo "=== CIS Integration: wiring hooks ==="
-
-          # Step 1: 注入 ChunkIndependentScheduler 到 RegionizedServer
-          CIS_SRC="mili-server/src/minecraft/io/papermc/paper/threadedregions/RegionizedServer.java"
-          if [ -f "$CIS_SRC" ]; then
-            grep -q "chunkIndependentScheduler" "$CIS_SRC" || \
-              echo "WARN: CIS hook not found in RegionizedServer — run rebuildPatches after manual edit"
-          fi
-
-          # Step 2: 注入 TickThread ThreadLocal 标记
-          TICK_THREAD_SRC="mili-server/src/minecraft/ca/spottedleaf/moonrise/common/util/TickThread.java"
-          if [ -f "$TICK_THREAD_SRC" ]; then
-            grep -q "markCisWorker" "$TICK_THREAD_SRC" || \
-              echo "WARN: CIS hook not found in TickThread — run rebuildPatches after manual edit"
-          fi
-
-          # Step 3: 注入 ChunkWorker tick 路由到 ServerLevel
-          LEVEL_SRC="mili-server/src/minecraft/net/minecraft/server/level/ServerLevel.java"
-          if [ -f "$LEVEL_SRC" ]; then
-            grep -q "ChunkIndependentScheduler" "$LEVEL_SRC" || \
-              echo "WARN: CIS hook not found in ServerLevel — run rebuildPatches after manual edit"
-          fi
-
-          echo "=== CIS Integration: verification complete ==="
-
-      - name: CIS Rebuild Patches
-        run: |
-          echo "=== Rebuilding patches with CIS hooks ==="
-          ./gradlew :mili-server:rebuildPatches || \
-            echo "WARN: rebuildPatches failed — manual integration required; see AGENTS.md §CIS"
-
       - name: Kaiiju Entity Throttle Validation
         run: |
           echo "=== Kaiiju Port: verifying entity throttler ==="
-          if [ -f "mili-server/src/main/java/fun/bm/mili/kaiiju/MiliEntityThrottler.java" ]; then
-            echo "OK: MiliEntityThrottler found ($(wc -l < mili-server/src/main/java/fun/bm/mili/kaiiju/MiliEntityThrottler.java) lines)"
-          else
-            echo "WARN: MiliEntityThrottler not found — port missing"
-          fi
-          if [ -f "mili-server/src/main/java/fun/bm/mili/kaiiju/AsyncPathfindingExecutor.java" ]; then
-            echo "OK: AsyncPathfindingExecutor found ($(wc -l < mili-server/src/main/java/fun/bm/mili/kaiiju/AsyncPathfindingExecutor.java) lines)"
-          else
-            echo "WARN: AsyncPathfindingExecutor not found"
-          fi
+          for f in "MiliEntityThrottler.java" "MiliEntityLimitsConfig.java" "AsyncPathfindingExecutor.java"; do
+            path="mili-server/src/main/java/fun/bm/mili/kaiiju/$f"
+            if [ -f "$path" ]; then
+              echo "OK: $f ($(wc -l < $path) lines)"
+            else
+              echo "WARN: $f not found"
+            fi
+          done
 
       - name: Verify CIS Source Files
+        run: |
+          CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
+          COUNT=0
         run: |
           CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
           COUNT=0
@@ -207,14 +169,6 @@ jobs:
             echo "Branch is NOT in expected prefixes"
             echo "unexpect=true" >> $GITHUB_ENV
           fi
-
-      - name: Publish To Repo
-        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !( inputs.force-release == '2' )) || inputs.force-push == '1'
-        continue-on-error: true
-        run: ./gradlew generateDevelopmentBundle publish -PpublishDevBundle=true
-        env:
-          PRIVATE_MAVEN_REPO_PASSWORD: ${{ secrets.PRIVATE_MAVEN_REPO_PASSWORD }}
-          PRIVATE_MAVEN_REPO_USERNAME: ${{ secrets.PRIVATE_MAVEN_REPO_USERNAME }}
 
       - name: Create Release - Pre Process
         if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == '2')) || inputs.force-release == '1'
