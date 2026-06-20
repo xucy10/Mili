@@ -137,7 +137,7 @@ jobs:
           fi
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.project_id_b }} CI Artifacts
           path: mili-server/build/libs/*-paperclip-*-mojmap.jar
