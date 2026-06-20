@@ -13,28 +13,28 @@ paperweight {
 
         patchFile {
             path = "luminol-server/build.gradle.kts"
-            outputFile = file("lophine-server/build.gradle.kts")
-            patchFile = file("lophine-server/build.gradle.kts.patch")
+            outputFile = file("mili-server/build.gradle.kts")
+            patchFile = file("mili-server/build.gradle.kts.patch")
         }
         patchFile {
             path = "luminol-api/build.gradle.kts"
-            outputFile = file("lophine-api/build.gradle.kts")
-            patchFile = file("lophine-api/build.gradle.kts.patch")
+            outputFile = file("mili-api/build.gradle.kts")
+            patchFile = file("mili-api/build.gradle.kts.patch")
         }
         patchRepo("paperApi") {
             upstreamPath = "paper-api"
-            patchesDir = file("lophine-api/paper-patches")
+            patchesDir = file("mili-api/paper-patches")
             outputDir = file("paper-api")
         }
         patchRepo("foliaApi") {
             upstreamPath = "folia-api"
-            patchesDir = file("lophine-api/folia-patches")
+            patchesDir = file("mili-api/folia-patches")
             outputDir = file("folia-api")
         }
         patchDir("luminolApi") {
             upstreamPath = "luminol-api"
             excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches")
-            patchesDir = file("lophine-api/luminol-patches")
+            patchesDir = file("mili-api/luminol-patches")
             outputDir = file("luminol-api")
         }
     }

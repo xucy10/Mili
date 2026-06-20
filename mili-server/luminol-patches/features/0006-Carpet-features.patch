@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bacteriawa <A3167717663@hotmail.com>
+Date: Sun, 22 Mar 2026 01:39:17 +0800
+Subject: [PATCH] Carpet features
+
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/main/java/me/earthme/luminol/config/ConfigManager.java
+index 58757d6..d403ce5 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigManager.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigManager.java
+@@ -25,6 +25,13 @@ public class ConfigManager {
+     public static void initConfigs() {
+         configfiles.put("luminol", ConfigsInstance.of("luminol", "me.earthme.luminol.config.modules"));
+         configfiles.put("mili", ConfigsInstance.of("mili", "fun.bm.mili.config.modules")); // add mili global config
++        configfiles.put("mili_carpet", ConfigsInstance.of(
++                new java.io.File("mili_config"),
++                "mili_carpet",
++                "mili_carpet_config.toml",
++                "milicarpetconfig",
++                "fun.bm.mili.carpet.config.modules"
++        )); // add mili carpet config
+         preLoad();
+     }
+ 

@@ -1,0 +1,111 @@
+package net.minecraft.server.dedicated;
+
+import com.google.common.collect.Streams;
+import com.mojang.logging.LogUtils;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.stream.Collectors;
+import net.minecraft.CrashReport;
+import net.minecraft.CrashReportCategory;
+import net.minecraft.ReportType;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.util.TimeUtil;
+import net.minecraft.util.Util;
+import net.minecraft.world.level.gamerules.GameRules;
+import org.slf4j.Logger;
+
+public class ServerWatchdog implements Runnable {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final long MAX_SHUTDOWN_TIME = 10000L;
+    private static final int SHUTDOWN_STATUS = 1;
+    private final DedicatedServer server;
+    private final long maxTickTimeNanos;
+
+    public ServerWatchdog(DedicatedServer server) {
+        this.server = server;
+        this.maxTickTimeNanos = server.getMaxTickLength() * TimeUtil.NANOSECONDS_PER_MILLISECOND;
+    }
+
+    @Override
+    public void run() {
+        while (this.server.isRunning()) {
+            long nextTickTime = this.server.getNextTickTime();
+            long nanos = Util.getNanos();
+            long l = nanos - nextTickTime;
+            if (l > this.maxTickTimeNanos) {
+                LOGGER.error(
+                    LogUtils.FATAL_MARKER,
+                    "A single server tick took {} seconds (should be max {})",
+                    String.format(Locale.ROOT, "%.2f", (float)l / (float)TimeUtil.NANOSECONDS_PER_SECOND),
+                    String.format(Locale.ROOT, "%.2f", this.server.tickRateManager().millisecondsPerTick() / (float)TimeUtil.MILLISECONDS_PER_SECOND)
+                );
+                LOGGER.error(LogUtils.FATAL_MARKER, "Considering it to be crashed, server will forcibly shutdown.");
+                CrashReport crashReport = createWatchdogCrashReport("Watching Server", this.server.getRunningThread().threadId());
+                this.server.fillSystemReport(crashReport.getSystemReport());
+                CrashReportCategory crashReportCategory = crashReport.addCategory("Performance stats");
+                crashReportCategory.setDetail("Random tick rate", () -> this.server.getWorldData().getGameRules().getAsString(GameRules.RANDOM_TICK_SPEED));
+                crashReportCategory.setDetail(
+                    "Level stats",
+                    () -> Streams.stream(this.server.getAllLevels())
+                        .map(level -> level.dimension().identifier() + ": " + level.getWatchdogStats())
+                        .collect(Collectors.joining(",\n"))
+                );
+                Bootstrap.realStdoutPrintln("Crash report:\n" + crashReport.getFriendlyReport(ReportType.CRASH));
+                Path path = this.server.getServerDirectory().resolve("crash-reports").resolve("crash-" + Util.getFilenameFormattedDateTime() + "-server.txt");
+                if (crashReport.saveToFile(path, ReportType.CRASH)) {
+                    LOGGER.error("This crash report has been saved to: {}", path.toAbsolutePath());
+                } else {
+                    LOGGER.error("We were unable to save this crash report to disk.");
+                }
+
+                this.exit();
+            }
+
+            try {
+                Thread.sleep((nextTickTime + this.maxTickTimeNanos - nanos) / TimeUtil.NANOSECONDS_PER_MILLISECOND);
+            } catch (InterruptedException var10) {
+            }
+        }
+    }
+
+    public static CrashReport createWatchdogCrashReport(String title, long threadId) {
+        ThreadMXBean threadMxBean = ManagementFactory.getThreadMXBean();
+        ThreadInfo[] threadInfos = threadMxBean.dumpAllThreads(true, true);
+        StringBuilder stringBuilder = new StringBuilder();
+        Error error = new Error("Watchdog");
+
+        for (ThreadInfo threadInfo : threadInfos) {
+            if (threadInfo.getThreadId() == threadId) {
+                error.setStackTrace(threadInfo.getStackTrace());
+            }
+
+            stringBuilder.append(threadInfo);
+            stringBuilder.append("\n");
+        }
+
+        CrashReport crashReport = new CrashReport(title, error);
+        CrashReportCategory crashReportCategory = crashReport.addCategory("Thread Dump");
+        crashReportCategory.setDetail("Threads", stringBuilder);
+        return crashReport;
+    }
+
+    private void exit() {
+        try {
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Runtime.getRuntime().halt(1);
+                }
+            }, 10000L);
+            System.exit(1);
+        } catch (Throwable var2) {
+            Runtime.getRuntime().halt(1);
+        }
+    }
+}
