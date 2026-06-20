@@ -1,4 +1,4 @@
-name: lophine CI
+name: mili CI
 
 on:
   push:
