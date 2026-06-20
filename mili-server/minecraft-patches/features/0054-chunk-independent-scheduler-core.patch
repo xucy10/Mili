@@ -9,10 +9,11 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
 index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..0000000000000000000000000000000000000000 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -513,4 +513,54 @@
+@@ -513,4 +513,65 @@
      public static final record WorldLevelData(ServerLevel world, long nonRedstoneGameTime, long dayTime) {
  
      }
+ }
 +
 +    // Mili start - Chunk Independent Scheduler
 +    private fun.bm.mili.scheduler.ChunkIndependentScheduler chunkIndependentScheduler;
@@ -74,4 +75,4 @@ index 8dbf7a1f448277cc2a40dec8d9627a8571f2b5a3..00000000000000000000000000000000
 +        return false;
 +    }
 +    // Mili end - Kaiiju Entity Throttler
- }
++}
