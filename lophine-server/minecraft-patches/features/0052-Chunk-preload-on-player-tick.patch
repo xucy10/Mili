@@ -11,12 +11,9 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 index 607ce65a719e333ce2275346a356032327d00ccf..0000000 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -949,6 +949,8 @@
-         this.trackEnteredOrExitedLavaOnVehicle();
-         this.updatePlayerAttributes();
+@@ -951,3 +951,5 @@
          this.advancements.flushDirty(this, true);
 +        // mili - 玩家行为预测区块预加载 / Predictive chunk pre-loading
 +        fun.bm.mili.perf.MiliChunkPreloader.onPlayerTick(this);
- 
      }
  
