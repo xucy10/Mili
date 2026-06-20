@@ -8,11 +8,14 @@ Analyzes player velocity and direction to pre-load chunks
 ahead of the player's predicted position.
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 607ce65a719e333ce2275346a356032327d00ccf..0000000 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -951,3 +951,5 @@
-         this.advancements.flushDirty(this, true);
+@@ -954,7 +954,9 @@
+         // KioCG start - ChunkHot
+         if (this.tickCount % 20 == 0){
+             this.nearbyChunkHot = this.refreshNearbyChunkHot();
+         }
+         // KioCG end
 +        // mili - 玩家行为预测区块预加载 / Predictive chunk pre-loading
 +        fun.bm.mili.perf.MiliChunkPreloader.onPlayerTick(this);
      }
