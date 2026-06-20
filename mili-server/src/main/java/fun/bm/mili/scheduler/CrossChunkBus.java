@@ -81,9 +81,10 @@ public final class CrossChunkBus {
                 deliverInjections();
 
                 LockSupport.parkNanos(COORDINATOR_POLL_NANOS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+                if (Thread.interrupted()) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             } catch (Exception e) {
                 LOGGER.error("CrossChunkBus coordinator error", e);
             }
