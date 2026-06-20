@@ -92,9 +92,6 @@ jobs:
         run: |
           CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
           COUNT=0
-        run: |
-          CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
-          COUNT=0
           for f in "$CIS_DIR"/*.java "$CIS_DIR"/border/*.java "$CIS_DIR"/group/*.java; do
             if [ -f "$f" ]; then
               LINES=$(wc -l < "$f")
