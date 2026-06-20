@@ -15,6 +15,6 @@ index 0942fd82d4ea32f5c75f255ecd6c7b160851706e..00000000000000000000000000000000
          this.getItems().set(index, stack);
          stack.limitSize(this.getMaxStackLeaves(stack)); // Leaves - item over-stack util
      }
-+    int lophineHopperIdleTicks = 0; // Lophine - hopper idle optimization
++    int miliHopperIdleTicks = 0; // Mili - hopper idle optimization
  
      @Override

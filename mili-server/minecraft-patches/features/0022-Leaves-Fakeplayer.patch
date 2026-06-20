@@ -28,7 +28,7 @@ index 9f444988d40208a1bfa9f147ef80489f81115e93..ab2fa0b86564622501238305714fff01
      // Spigot end
      private volatile @Nullable PacketListener disconnectListener;
 -    private volatile @Nullable PacketListener packetListener;
-+    public volatile @Nullable PacketListener packetListener; // Leaves - private -> protected // Lophine protected -> public
++    public volatile @Nullable PacketListener packetListener; // Leaves - private -> protected // Mili protected -> public
      private @Nullable DisconnectionDetails disconnectionDetails;
      private boolean encrypted;
      private final java.util.concurrent.atomic.AtomicBoolean disconnectionHandled = new java.util.concurrent.atomic.AtomicBoolean(false); // Folia - region threading - may be called concurrently during configuration stage
@@ -231,7 +231,7 @@ index 5fbcb5eac1d5449247da77b6120edbe2f2dd1d58..69cc67b7618d38e65ccb1f4c58013ef1
 @@ -263,6 +264,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
-         fun.bm.mili.utils.ServerI18nUtil.init(); // Lophine - I18n support
+         fun.bm.mili.utils.ServerI18nUtil.init(); // Mili - I18n support
 +        this.getBotList().loadResumeBotInfo(); // Leaves - load resident bot info
          if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save

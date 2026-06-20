@@ -30,7 +30,7 @@ index df66e24c61af9d57d619c91849e28f1bec64a036..8386757c5fd3d8df3ae77a4eeeb25a2f
  
      @Deprecated @io.papermc.paper.annotation.DoNotUse // Paper - Add PlayerLoadedWorldEvent
 -    private void markClientLoaded() {
-+    public void markClientLoaded() { // Lophine - private -> public
++    public void markClientLoaded() { // Mili - private -> public
          // Paper start - Add PlayerLoadedWorldEvent
          this.markClientLoaded(false);
      }

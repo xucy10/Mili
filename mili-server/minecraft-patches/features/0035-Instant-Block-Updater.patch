@@ -22,7 +22,7 @@ index 111fd492351601a22cd29391bc4e3602709adb54..166089c786210d645c22f96569f266cc
          this.blockLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, true);
          this.fluidLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, false);
 -        this.neighborUpdater = new CollectingNeighborUpdater(world, world.neighbourUpdateMax);
-+        this.neighborUpdater = fun.bm.mili.config.modules.experiment.RedStoneConfig.instantBlockUpdater ? new net.minecraft.world.level.redstone.InstantNeighborUpdater(world) : new CollectingNeighborUpdater(world, world.neighbourUpdateMax); // Lophine - Instant Block Updater
++        this.neighborUpdater = fun.bm.mili.config.modules.experiment.RedStoneConfig.instantBlockUpdater ? new net.minecraft.world.level.redstone.InstantNeighborUpdater(world) : new CollectingNeighborUpdater(world, world.neighbourUpdateMax); // Mili - Instant Block Updater
          this.nearbyPlayers = new NearbyPlayers(world);
          this.wireHandler = new alternate.current.wire.WireHandler(world);
          this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);
@@ -34,7 +34,7 @@ index 447b3e6149716a3ca4b9721746ea471c94c56e67..d8a2f8a1fbf0189e86ccbce70a84641a
          // Paper - rewrite chunk system
          profilerFiller.pop();
          profilerFiller.push("debugSynchronizers");
-+        // Lophine start - instant neighbor updates
++        // Mili start - instant neighbor updates
 +        if (regionizedWorldData.neighborUpdater instanceof net.minecraft.world.level.redstone.CollectingNeighborUpdater neighborUpdater) {
          if (this.debugSynchronizers.hasAnySubscriberFor(DebugSubscriptions.NEIGHBOR_UPDATES)) {
 -            regionizedWorldData.neighborUpdater // Folia - region threading
@@ -46,7 +46,7 @@ index 447b3e6149716a3ca4b9721746ea471c94c56e67..d8a2f8a1fbf0189e86ccbce70a84641a
 +            neighborUpdater.setDebugListener(null); // Folia - region threading
          }
 +        }
-+        // Lophine end - instant neighbor updates
++        // Mili end - instant neighbor updates
  
          this.debugSynchronizers.tick(this.server.debugSubscribers());
          profilerFiller.pop();

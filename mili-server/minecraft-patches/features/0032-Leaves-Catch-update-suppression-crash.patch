@@ -89,10 +89,10 @@ index 9345bdb2770e7c27488c547012020337fc651edc..447b3e6149716a3ca4b9721746ea471c
  
                                      profilerFiller.push("tick");
 -                                    this.guardEntityTick(this::tickNonPassenger, entity);
-+                                    // Lophine start - update suppression crash fix
++                                    // Mili start - update suppression crash fix
 +                                    if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                                        try {
-+                                            this.guardEntityTick(this::tickNonPassenger, entity); // Lophine changed
++                                            this.guardEntityTick(this::tickNonPassenger, entity); // Mili changed
 +                                            // Leaves start - update suppression crash fix - for dragon dupe
 +                                        } catch (org.leavesmc.leaves.util.UpdateSuppressionException exception) {
 +                                            exception.provideLevel(this);
@@ -102,7 +102,7 @@ index 9345bdb2770e7c27488c547012020337fc651edc..447b3e6149716a3ca4b9721746ea471c
 +                                    } else {
 +                                        this.guardEntityTick(this::tickNonPassenger, entity);
 +                                    }
-+                                    // Lophine end - update suppression crash fix
++                                    // Mili end - update suppression crash fix
                                      profilerFiller.pop();
                                  }
                              }
@@ -222,7 +222,7 @@ index af21821513f11011e7bf3841d2f79cb99e4cd517..32488203ff074b675f5c8831d157b1d9
              } finally { if (levelChunk != null) levelChunk.getChunkHot().stopTickingAndCount(); } // KioCG
              // Spigot start
          } catch (StackOverflowError ex) {
-+            // Lophine start - max redstone update depth guard
++            // Mili start - max redstone update depth guard
 +            if (fun.bm.mili.config.modules.experiment.RedStoneConfig.maxRedstoneUpdateDepth > 0) {
 +                int _depth = ex.getStackTrace().length;
 +                if (_depth > fun.bm.mili.config.modules.experiment.RedStoneConfig.maxRedstoneUpdateDepth) {
@@ -230,7 +230,7 @@ index af21821513f11011e7bf3841d2f79cb99e4cd517..32488203ff074b675f5c8831d157b1d9
 +                    return;
 +                }
 +            }
-+            // Lophine end - max redstone update depth guard
++            // Mili end - max redstone update depth guard
 +            // Leaves start - update suppression crash fix
 +            if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, level, neighborBlock, null, ex);

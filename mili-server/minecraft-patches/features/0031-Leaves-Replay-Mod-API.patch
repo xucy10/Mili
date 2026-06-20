@@ -323,7 +323,7 @@ index 8c1e6837b0328c66fdda322c3c7ceba31c4f017f..ca751564d9189e873d4a53be9a2c68b2
          this.loadGameTypes(input);
      }
 -    private void loadGameTypes(ValueInput input) {
-+    public void loadGameTypes(ValueInput input) { // Lophine - private -> public
++    public void loadGameTypes(ValueInput input) { // Mili - private -> public
          if (this.server.getForcedGameType() != null && this.server.getForcedGameType() != readPlayerMode(input, "playerGameType")) {
              if (new org.bukkit.event.player.PlayerGameModeChangeEvent(this.getBukkitEntity(), org.bukkit.GameMode.getByValue(this.server.getDefaultGameType().getId()), org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.DEFAULT_GAMEMODE, null).callEvent()) {
                  this.gameMode.setGameModeForPlayer(this.server.getForcedGameType(), GameType.DEFAULT_MODE);
@@ -415,7 +415,7 @@ index 36cd1a0307ff1a734eb5f4f3cc013781692e7ad8..0c3e6c1f70289c63bfe424a49374602f
 +        // Leaves end - bot support
 +
 +        final List<ServerPlayer> onlinePlayers = Lists.newArrayListWithExpectedSize(this.players.size() - 1);
-+        final List<ServerPlayer> playerList = List.copyOf(this.players); // Lophine - copy to avoid ConcurrentModificationException
++        final List<ServerPlayer> playerList = List.copyOf(this.players); // Mili - copy to avoid ConcurrentModificationException
 +        for (ServerPlayer serverPlayer : playerList) {
 +            if (serverPlayer == player || !bukkitPlayer.canSee(serverPlayer.getBukkitEntity())) {
 +                continue;

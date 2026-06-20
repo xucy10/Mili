@@ -12,7 +12,7 @@ index dcdb01fe5333d407a10f9872d09992c7b438ddeb..6df8f98afa7810815b8d7c86b3dac57c
      private int lastSentFood = -99999999;
      private boolean lastFoodSaturationZero = true;
      public int lastSentExp = -99999999;
-+    protected int spawnInvulnerableTime = 60; // Lophine - spawn invulnerable time
++    protected int spawnInvulnerableTime = 60; // Mili - spawn invulnerable time
      private ChatVisiblity chatVisibility = ChatVisiblity.FULL;
      public ParticleStatus particleStatus = ParticleStatus.ALL;
      private boolean canChatColor = true;
@@ -20,7 +20,7 @@ index dcdb01fe5333d407a10f9872d09992c7b438ddeb..6df8f98afa7810815b8d7c86b3dac57c
          this.connection.tickClientLoadTimeout();
          this.gameMode.tick();
          this.wardenSpawnTracker.tick();
-+        if (this.spawnInvulnerableTime > 0) --this.spawnInvulnerableTime; // Lophine - spawn invulnerable time
++        if (this.spawnInvulnerableTime > 0) --this.spawnInvulnerableTime; // Mili - spawn invulnerable time
          if (this.invulnerableTime > 0) {
              this.invulnerableTime--;
          }
@@ -28,13 +28,13 @@ index dcdb01fe5333d407a10f9872d09992c7b438ddeb..6df8f98afa7810815b8d7c86b3dac57c
          if (this.isInvulnerableTo(level, damageSource)) {
              return false;
          } else {
-+            // Lophine start - spawn invulnerable time
++            // Mili start - spawn invulnerable time
 +            if (fun.bm.mili.config.modules.function.OldFeatureConfig.spawnInvulnerableTime) {
 +                if (this.spawnInvulnerableTime > 0 && !damageSource.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) {
 +                    return false;
 +                }
 +            }
-+            // Lophine end - spawn invulnerable time
++            // Mili end - spawn invulnerable time
              Entity entity = damageSource.getEntity();
              if (!( // Paper - split the if statement. If below statement is false, hurtServer would not have been evaluated. Return false.
               !(entity instanceof Player player && !this.canHarmPlayer(player))
