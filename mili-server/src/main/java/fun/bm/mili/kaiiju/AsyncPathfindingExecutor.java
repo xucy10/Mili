@@ -65,14 +65,15 @@ public final class AsyncPathfindingExecutor {
         int drained = 0;
         while ((result = resultQueue.poll()) != null) {
             try {
-                Mob mob = result.mob;
+                final PathfindingResult captured = result;
+                Mob mob = captured.mob;
                 if (mob == null || mob.isRemoved()) continue;
 
                 mob.getBukkitEntity().getScheduler().runDelayed(
                     MinecraftInternalPlugin.INSTANCE,
                     (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> {
-                        if (!mob.isRemoved() && result.onComplete != null) {
-                            result.onComplete.accept(result.path);
+                        if (!mob.isRemoved() && captured.onComplete != null) {
+                            captured.onComplete.accept(captured.path);
                         }
                     },
                     null,
