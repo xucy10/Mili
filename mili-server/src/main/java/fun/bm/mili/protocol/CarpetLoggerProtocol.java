@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.protocol;
+package fun.bm.mili.protocol;
 
 import fun.bm.mili.carpet.config.modules.GeneralCompatConfig;
 import io.papermc.paper.adventure.PaperAdventure;

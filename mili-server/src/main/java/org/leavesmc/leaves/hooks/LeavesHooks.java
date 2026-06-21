@@ -15,7 +15,7 @@
  * along with Leaves. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.leavesmc.leaves.region;
+package org.leavesmc.leaves.hooks;
 
 import ca.spottedleaf.moonrise.paper.PaperHooks;
 import net.minecraft.server.level.ServerLevel;

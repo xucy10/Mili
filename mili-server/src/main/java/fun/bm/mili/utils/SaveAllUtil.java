@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.utils;
+package fun.bm.mili.utils;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
@@ -85,4 +85,4 @@ public class SaveAllUtil {
             return currentSaveAll != null;
         }
     }
-}\n    private SaveAllUtil() {}\n}\n
+}
