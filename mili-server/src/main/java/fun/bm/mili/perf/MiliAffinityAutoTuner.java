@@ -86,6 +86,9 @@ public class MiliAffinityAutoTuner implements IConfigModule {
     private static volatile boolean inited = false;
 
     @DoNotLoad
+    private static volatile boolean applied = false; // mili - ensure affinity is only set once
+
+    @DoNotLoad
     private static volatile int lastReportedCoreCount = -1;
 
     @DoNotLoad
@@ -128,17 +131,27 @@ public class MiliAffinityAutoTuner implements IConfigModule {
     /**
      * Apply the resolved affinity to a thread on its first invocation.
      * Called from the tick region thread factory. Idempotent and cheap.
+     * <p>
+     * mili fix: 确保只应用一次，避免每 tick JNI 调用导致延迟 /
+     * Ensure affinity is only set once to avoid per-tick JNI overhead.
      */
     public static void applyToCurrentThread() {
+        if (applied) {
+            return; // Already applied, skip JNI call
+        }
         BitSet set = getResolvedBitSet();
         if (set == null || set.isEmpty()) {
+            applied = true; // Mark as applied even if disabled
             return;
         }
         try {
             Affinity.setAffinity(set);
+            applied = true;
+            LOGGER.debug("mili auto-tuner: affinity applied to thread {}", Thread.currentThread().getName());
         } catch (Throwable t) {
             // openhft is best-effort; some platforms may refuse
             LOGGER.debug("mili auto-tuner: Affinity.setAffinity refused: {}", t.getMessage());
+            applied = true; // Still mark as applied to avoid retry spam
         }
     }
 
