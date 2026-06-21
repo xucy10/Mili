@@ -24,8 +24,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static net.minecraft.world.level.NaturalSpawner.getRoughBiome;
@@ -47,13 +45,10 @@ public class EntitiesCounterUtil {
 
     // mili - 已迁移到 lastUsedIdAtomic / migrated to lastUsedIdAtomic
 
-    // mili - perf: dedicated single-thread executor to avoid competing with ForkJoinPool common pool
-    private static final ExecutorService COUNTER_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "mili-EntitiesCounter");
-        t.setDaemon(true);
-        t.setPriority(Thread.NORM_PRIORITY - 1);
-        return t;
-    });
+    // mili - perf: dedicated single-thread executor - REMOVED: async entity reads from non-owning thread
+    // cause entity corruption (teleporting, no display, phantom spawns).
+    // All entity access must be on the owning region thread.
+    // See docs/entity-thread-safety.md for details.
 
     // mili - 使用 AtomicInteger 实现溢出安全的 ID 生成器
     // mili - Overflow-safe ID generator using AtomicInteger
@@ -155,22 +150,21 @@ public class EntitiesCounterUtil {
 
                 for (ReferenceList<Entity> data : snapshot) {
                     if (data == null) continue;
-                    for (Entity entity : GlobalEntitiesCounter.async ? data.copy() : data) {
+                    // SAFETY: Must run on the entity's owning region thread.
+                    // Asynchronous entity reads from a different thread corrupt entity state
+                    // (teleporting, no display, phantom spawns, knockback anomalies).
+                    for (Entity entity : data) {
                         if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
-                        // mili start - Copy from net/minecraft/world/level/NaturalSpawner
                         MobCategory category = entity.getType().getCategory();
                         if (category != MobCategory.MISC) {
-                            // Paper start - Only count natural spawns
                             if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
                                     !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
                                             entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
                                 continue;
                             }
-                            // Paper end - Only count natural spawns
                             map.addTo(category, 1);
                         }
                     }
-                    // mili end - Copy from net/minecraft/world/level/NaturalSpawner
                 }
                 mobsMap.put(level, map);
 
@@ -188,14 +182,7 @@ public class EntitiesCounterUtil {
                 LogUtils.getClassLogger().error("Failed to run task", e);
             }
         };
-        if (GlobalEntitiesCounter.async) {
-            tasks.put(level, CompletableFuture.runAsync(task, COUNTER_EXECUTOR).exceptionally(ex -> {
-                LogUtils.getClassLogger().error("Failed to run task", ex);
-                return null;
-            }));
-        } else {
-            task.run();
-        }
+        task.run(); // Always synchronous on the calling region thread
         // mili - perf: update last tick timestamp for throttling
         lastTickTime.computeIfAbsent(level, k -> new AtomicLong(0L)).set(System.currentTimeMillis());
     }

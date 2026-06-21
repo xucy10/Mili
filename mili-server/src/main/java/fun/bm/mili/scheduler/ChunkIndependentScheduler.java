@@ -46,7 +46,7 @@ public final class ChunkIndependentScheduler {
 
         this.workerCount = UnifiedSchedulerConfig.chunkWorkerThreads > 0
                 ? UnifiedSchedulerConfig.chunkWorkerThreads
-                : Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+                : Math.min(Math.max(1, Runtime.getRuntime().availableProcessors() - 1), 4);
         this.timeoutMs = UnifiedSchedulerConfig.chunkTimeoutMs;
         this.mixedMode = UnifiedSchedulerConfig.mixedMode;
         this.strictMode = UnifiedSchedulerConfig.crossChunkStrictMode;
@@ -108,8 +108,9 @@ public final class ChunkIndependentScheduler {
     private void schedulerLoop() {
         while (running) {
             try {
-                tickScheduler();
-                LockSupport.parkNanos("mili-scheduler", 1_000_000L);
+                boolean hadWork = tickScheduler();
+                // Sleep longer when idle to avoid starving Folia region threads
+                LockSupport.parkNanos("mili-scheduler", hadWork ? 1_000_000L : 50_000_000L);
                 if (Thread.interrupted()) {
                     Thread.currentThread().interrupt();
                     break;
@@ -120,8 +121,8 @@ public final class ChunkIndependentScheduler {
         }
     }
 
-    /** Collect workers that are ready this cycle, capture border state in parallel */
-    private void tickScheduler() {
+    /** @return true if any workers were processed */
+    private boolean tickScheduler() {
         List<ChunkWorker> ready = new ArrayList<>();
         synchronized (workerLock) {
             for (ChunkWorker worker : activeWorkers.values()) {
@@ -130,7 +131,7 @@ public final class ChunkIndependentScheduler {
                 }
             }
         }
-        if (ready.isEmpty()) return;
+        if (ready.isEmpty()) return false;
 
         // Phase 1: Capture border state in parallel (read-only, thread-safe)
         CountDownLatch latch = new CountDownLatch(ready.size());
@@ -161,6 +162,7 @@ public final class ChunkIndependentScheduler {
         if (mixedMode && !strictMode && highCount > 0) {
             LOGGER.debug("CIS: {} high-interaction chunks (will be merged into Folia regions)", highCount);
         }
+        return true;
     }
 
     // ======================== Worker Registration ========================

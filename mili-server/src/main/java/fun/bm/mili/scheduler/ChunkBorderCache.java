@@ -163,39 +163,6 @@ public final class ChunkBorderCache {
         this.dirty = false;
     }
 
-    /** Phase 2: inject delayed border updates into target chunk */
-    public void injectBorderUpdates(ChunkWorker neighbor, BorderFace face) {
-        if (!isReady()) return;
-        BorderColumn[] cols = faces[face.ordinal()];
-        if (cols == null) return;
-
-        ServerLevel level = neighbor.getLevel();
-        if (level == null) return;
-
-        for (int i = 0; i < 16; i++) {
-            BorderColumn col = cols[i];
-            if (col == null) continue;
-
-            int tx, tz;
-            switch (face.opposite()) {
-                case EAST  -> { tx = neighbor.getChunkX() * 16;     tz = neighbor.getChunkZ() * 16 + i; }
-                case WEST  -> { tx = neighbor.getChunkX() * 16 + 15; tz = neighbor.getChunkZ() * 16 + i; }
-                case SOUTH -> { tx = neighbor.getChunkX() * 16 + i;  tz = neighbor.getChunkZ() * 16;     }
-                case NORTH -> { tx = neighbor.getChunkX() * 16 + i;  tz = neighbor.getChunkZ() * 16 + 15; }
-                default    -> throw new AssertionError(face.opposite());
-            }
-
-            if (col.redstonePower() > 0 || col.hasRepeater() || col.hasComparator()) {
-                BlockPos targetPos = new BlockPos(tx, level.getMinY() + 1, tz);
-                level.neighborChanged(targetPos, Blocks.REDSTONE_WIRE, null);
-            }
-            if (col.hasFluid()) {
-                BlockPos fluidPos = new BlockPos(tx, level.getMinY() + 1, tz);
-                level.scheduleTick(fluidPos, net.minecraft.world.level.material.Fluids.WATER, 1);
-            }
-        }
-    }
-
     public boolean isHighInteraction() { return highInteraction; }
     public boolean isReady() { return !dirty; }
     public void markDirty() { this.dirty = true; this.highInteraction = false; }

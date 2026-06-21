@@ -76,13 +76,18 @@ public final class EntityMigrationBus {
             while ((migration = queue.poll()) != null) {
                 try {
                     Entity entity = migration.entity();
-                    if (entity == null || entity.isRemoved() || entity.level() != level) continue;
+                    if (entity == null) continue;
 
-                    // Use Folia's entity scheduler to migrate on the proper region thread.
-                    // runDelayed with 1 tick to prevent chunk processing race conditions.
+                    // Schedule on entity's owning region thread.
+                    // Entity state is checked inside the scheduled task, not here
+                    // (reading entity.isRemoved() from coordinator thread is unsafe).
                     entity.getBukkitEntity().getScheduler().runDelayed(
                         MinecraftInternalPlugin.INSTANCE,
-                        (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> { },
+                        (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> {
+                            // Entity is on its owning region thread here — safe to check state
+                            if (entity.isRemoved() || entity.level() != level) return;
+                            // Folia handles chunk transfer when entity moves
+                        },
                         null,
                         1L
                     );

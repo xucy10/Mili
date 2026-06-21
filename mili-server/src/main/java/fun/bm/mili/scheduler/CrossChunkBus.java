@@ -23,7 +23,7 @@ import java.util.concurrent.locks.LockSupport;
 public final class CrossChunkBus {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final long COORDINATOR_POLL_NANOS = 500_000L; // 0.5ms
+    private static final long COORDINATOR_POLL_NANOS = 50_000_000L; // 50ms (one game tick)
 
     // ---- Border Update Queues ----
     // Phase 1: captured border state (source -> target chunks)
