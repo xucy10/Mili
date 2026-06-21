@@ -23,7 +23,7 @@ public class EntityThreadConfig implements IConfigModule {
             注意：刷怪塔等高实体区域会自动降级回区域线程 / Note: high entity
             areas (mob farms) auto-fallback to region thread.
             默认关闭 / Disabled by default.""")
-    public static boolean enabled = false;
+    public static boolean enabled = true;
 
     @ConfigInfo(name = "worker-threads", comments = """
             实体工作线程数 / Entity worker thread count.

@@ -68,20 +68,20 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             Entity ticking on separate thread pool, prevents region thread freezes.
             高实体区域自动降级回区域线程 / High-entity regions auto-fallback to region thread.
             默认关闭 / Disabled by default.""")
-    public static boolean entityThreadEnabled = false;
+    public static boolean entityThreadEnabled = true;
 
     @ConfigInfo(name = "entity-worker-threads", comments = """
             实体工作线程数 / Entity worker thread count.
             0 = CPU 核心数 / 2 / 0 = CPU cores / 2.
             推荐 / Recommended: 2-4.""")
-    public static int entityWorkerThreads = 0;
+    public static int entityWorkerThreads = 4;
 
     @ConfigInfo(name = "entity-high-threshold", comments = """
             高实体数量阈值 / High entity count threshold.
             区域内实体超过此值时降级回区域线程（保护刷怪塔性能）/
             When region entity count exceeds this, fallback to region thread (protects mob farm performance).
             推荐 / Recommended: 500-2000.""")
-    public static int entityHighThreshold = 1000;
+    public static int entityHighThreshold = 1500;
 
     // ======================== Chunk Preload ========================
 
@@ -108,7 +108,7 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             混合模式 - 同时使用区域线程和独立线程 / Mixed mode - use both region and dedicated threads.
             仅在 chunk-independent-enabled = true 时生效 / Only effective when chunk-independent-enabled = true.
             默认关闭 / Disabled by default.""")
-    public static boolean mixedMode = false;
+    public static boolean mixedMode = true;
 
     @ConfigInfo(name = "debug", comments = """
             启用调试日志 / Enable debug logging.

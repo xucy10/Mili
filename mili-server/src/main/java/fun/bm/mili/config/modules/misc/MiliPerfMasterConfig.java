@@ -35,7 +35,7 @@ public class MiliPerfMasterConfig implements IConfigModule {
             默认关闭: 每 tick 调用 JNI 设置 CPU 亲和性可能增加低配服务器延迟 /
             Disabled by default: per-tick JNI call to set CPU affinity may add
             latency on low-spec servers.""")
-    public static boolean autoTuneAffinity = false;
+    public static boolean autoTuneAffinity = true;
 
     @ConfigInfo(name = "region-load-monitor", comments = """
             Convenience switch mirroring MiliRegionLoadMonitor.enabled.""")
