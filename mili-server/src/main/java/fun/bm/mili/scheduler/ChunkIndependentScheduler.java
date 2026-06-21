@@ -44,7 +44,7 @@ public final class ChunkIndependentScheduler {
         this.level = level;
         this.crossChunkBus = new CrossChunkBus(level);
 
-        ChunkIndependentConfig cfg = ChunkIndependentConfig.getInstance();
+        ChunkIndependentConfig cfg = UnifiedSchedulerConfig.getInstance();
         this.workerCount = cfg.workerThreads > 0 ? cfg.workerThreads : Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
         this.timeoutMs = cfg.timeoutMs;
         this.mixedMode = cfg.mixedMode;
