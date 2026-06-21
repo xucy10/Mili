@@ -332,9 +332,6 @@ public final class RegionizedServer {
         this.randomWalk();
          */
         ++this.tickCount;
-        // mili start - perf hook
-        fun.bm.mili.perf.MiliTickSchedulerHook.onGlobalTick();
-        // mili end - perf hook
         // expire invalid click command callbacks
         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
         io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
