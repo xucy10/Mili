@@ -11,7 +11,7 @@ grdversion=$(prop version)
 release=$(prop release)
 release_tag="$mcversion-$commitid"
 jarName="$project_id-$mcversion-paperclip.jar"
-jarName_dir="lophine-server/build/libs/$jarName"
+jarName_dir="mili-server/build/libs/$jarName"
 
 flag_release=false
 pre=false
@@ -25,7 +25,7 @@ elif [ "$release" = "2" ]; then
   make_latest=true
 fi
 
-mv lophine-server/build/libs/*-paperclip-$grdversion-mojmap.jar $jarName_dir
+mv mili-server/build/libs/*-paperclip-$grdversion-mojmap.jar $jarName_dir
 
 echo "project_id=$project_id" >> $GITHUB_ENV
 echo "project_id_b=$project_id_b" >> $GITHUB_ENV
