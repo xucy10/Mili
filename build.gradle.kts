@@ -87,14 +87,6 @@ subprojects {
     }
 
     extensions.configure<PublishingExtension> {
-        publications {
-            create<MavenPublication>("mili") {
-                groupId = project.group.toString()
-                artifactId = project.name
-                version = project.version.toString()
-                from(components["java"])
-            }
-        }
         repositories {
             maven("https://repo.menthamc.org/repository/maven-snapshots/") {
                 name = "MenthaMC"
