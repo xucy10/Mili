@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: lophine_api
-title: Lophine 服务端扩展 API
-scope:
-    - lophine-api/
-source_files: []
-depends_on: []
-related_to:
-    - path: lophine_server
