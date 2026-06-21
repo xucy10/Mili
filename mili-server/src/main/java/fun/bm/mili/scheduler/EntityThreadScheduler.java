@@ -1,4 +1,4 @@
-package fun.bm.mili.scheduler;
+﻿package fun.bm.mili.scheduler;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
@@ -48,7 +48,7 @@ public final class EntityThreadScheduler extends SchedulerBase {
     public EntityThreadScheduler(ServerLevel level) {
         this.level = level;
 
-        EntityThreadConfig cfg = EntityThreadConfig.getInstance();
+        UnifiedSchedulerConfig cfg = UnifiedSchedulerConfig.getInstance();
         this.enabled = cfg.enabled;
         this.workerThreads = cfg.workerThreads > 0 ? cfg.workerThreads : Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
         this.highEntityThreshold = cfg.highEntityThreshold;

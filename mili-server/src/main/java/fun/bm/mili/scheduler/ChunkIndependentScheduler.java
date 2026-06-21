@@ -1,7 +1,7 @@
-package fun.bm.mili.scheduler;
+﻿package fun.bm.mili.scheduler;
 
 import com.mojang.logging.LogUtils;
-import fun.bm.mili.config.modules.misc.ChunkIndependentConfig;
+import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -44,7 +44,7 @@ public final class ChunkIndependentScheduler {
         this.level = level;
         this.crossChunkBus = new CrossChunkBus(level);
 
-        ChunkIndependentConfig cfg = UnifiedSchedulerConfig.getInstance();
+        UnifiedSchedulerConfig cfg = UnifiedSchedulerConfig.getInstance();
         this.workerCount = cfg.workerThreads > 0 ? cfg.workerThreads : Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
         this.timeoutMs = cfg.timeoutMs;
         this.mixedMode = cfg.mixedMode;

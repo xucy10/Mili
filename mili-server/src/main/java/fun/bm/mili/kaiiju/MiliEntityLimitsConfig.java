@@ -1,6 +1,6 @@
-package fun.bm.mili.kaiiju;
+﻿package fun.bm.mili.kaiiju;
 
-import fun.bm.mili.config.modules.misc.ChunkIndependentConfig;
+import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;

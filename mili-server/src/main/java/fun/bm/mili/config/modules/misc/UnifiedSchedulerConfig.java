@@ -1,4 +1,4 @@
-package fun.bm.mili.config.modules.misc;
+﻿package fun.bm.mili.config.modules.misc;
 
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
@@ -8,8 +8,8 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 /**
  * 统一调度器配置 / Unified scheduler configuration.
  *
- * <p>合并原 ChunkIndependentConfig, EntityThreadConfig, ChunkPreloadConfig /
- * Merges original ChunkIndependentConfig, EntityThreadConfig, ChunkPreloadConfig.
+ * <p>合并原 UnifiedSchedulerConfig, UnifiedSchedulerConfig, UnifiedSchedulerConfig /
+ * Merges original UnifiedSchedulerConfig, UnifiedSchedulerConfig, UnifiedSchedulerConfig.
  *
  * <p>设计原则 / Design principles:
  * <ul>
