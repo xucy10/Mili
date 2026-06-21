@@ -8,21 +8,18 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 /**
  * 统一调度器配置 / Unified scheduler configuration.
  *
- * <p>合并原 UnifiedSchedulerConfig, UnifiedSchedulerConfig, UnifiedSchedulerConfig /
- * Merges original UnifiedSchedulerConfig, UnifiedSchedulerConfig, UnifiedSchedulerConfig.
- *
  * <p>设计原则 / Design principles:
  * <ul>
  *   <li>统一前缀：mili.scheduler.* / Unified prefix</li>
  *   <li>分层启用：master → submodule / Layered enablement</li>
- *   <li>智能默认：根据 CPU 核心数自动调整 / Smart defaults based on CPU cores</li>
+ *   <li>实验性功能默认关闭 / Experimental features disabled by default</li>
  * </ul>
- *
- * @author Mili Team
- * @since 1.21.11
  */
 @ConfigClassInfo(category = EnumConfigCategory.MISC, name = "mili-scheduler")
 public class UnifiedSchedulerConfig implements IConfigModule {
+
+    /** 单例实例 / Singleton instance. */
+    private static final UnifiedSchedulerConfig INSTANCE = new UnifiedSchedulerConfig();
 
     // ======================== Master Switch ========================
 
@@ -67,8 +64,9 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             实体 tick 分离到独立线程池，避免卡死区域线程 /
             Entity ticking on separate thread pool, prevents region thread freezes.
             高实体区域自动降级回区域线程 / High-entity regions auto-fallback to region thread.
+            警告：实验性功能 / Warning: experimental feature.
             默认关闭 / Disabled by default.""")
-    public static boolean entityThreadEnabled = true;
+    public static boolean entityThreadEnabled = false;
 
     @ConfigInfo(name = "entity-worker-threads", comments = """
             实体工作线程数 / Entity worker thread count.
@@ -83,32 +81,13 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             推荐 / Recommended: 500-2000.""")
     public static int entityHighThreshold = 1500;
 
-    // ======================== Chunk Preload ========================
-
-    @ConfigInfo(name = "preload-enabled", comments = """
-            启用区块预加载 / Enable chunk preloading.
-            基于玩家移动方向预测性加载区块 / Predictively loads chunks based on player movement direction.
-            默认启用 / Enabled by default.""")
-    public static boolean preloadEnabled = true;
-
-    @ConfigInfo(name = "preload-radius", comments = """
-            预加载半径（区块）/ Preload radius (chunks).
-            推荐 / Recommended: 2-4.""")
-    public static int preloadRadius = 3;
-
-    @ConfigInfo(name = "preload-on-teleport", comments = """
-            传送时预加载 / Preload on teleport.
-            传送到新位置时预加载周围区块 / Preloads chunks around teleport destination.
-            默认启用 / Enabled by default.""")
-    public static boolean preloadOnTeleport = true;
-
     // ======================== Advanced ========================
 
     @ConfigInfo(name = "mixed-mode", comments = """
             混合模式 - 同时使用区域线程和独立线程 / Mixed mode - use both region and dedicated threads.
             仅在 chunk-independent-enabled = true 时生效 / Only effective when chunk-independent-enabled = true.
             默认关闭 / Disabled by default.""")
-    public static boolean mixedMode = true;
+    public static boolean mixedMode = false;
 
     @ConfigInfo(name = "debug", comments = """
             启用调试日志 / Enable debug logging.
@@ -116,28 +95,8 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             默认关闭 / Disabled by default.""")
     public static boolean debug = false;
 
-    // ======================== Compatibility Aliases ========================
-    // 以下为 MiliChunkPreloader / EntityThreadScheduler / ChunkIndependentScheduler 兼容字段
-
-    public static boolean enabled = true;
-    public static int sampleIntervalTicks = 4;
-    public static int lookAheadTicks = 25;
-    public static double highSpeedThreshold = 0.7;
-    public static int teleportPreloadRadius = 8;
-    public static int basePreloadRadius = 4;
-    public static int maxSpeedRadius = 10;
-    public static double elytraMultiplier = 2.5;
-    public static double tridentMultiplier = 3.0;
-    public static int maxConcurrentLoadsPerPlayer = 32;
-
-    // ChunkIndependentScheduler aliases
-    public static int workerThreads = 0;
-    public static long timeoutMs = 100L;
-    public static boolean strictMode = false;
-
-    // EntityThreadScheduler aliases
-    public static int highEntityThreshold = 1500;
-
-    /** 兼容用单例访问 / Singleton access for compatibility. */
-    public static UnifiedSchedulerConfig getInstance() { return new UnifiedSchedulerConfig(); }
+    /** 获取单例 / Get singleton instance. */
+    public static UnifiedSchedulerConfig getInstance() {
+        return INSTANCE;
+    }
 }

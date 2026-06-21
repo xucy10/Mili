@@ -57,28 +57,11 @@ public final class MiliMemoryOptimizer {
     }
 
     /**
-     * 清理死亡/断开玩家的追踪状态 / Clean tracking states of dead/disconnected players.
-     *
-     * <p>遍历 {@link MiliChunkPreloader} 的追踪状态表，移除不再在线的玩家 /
-     * Iterates MiliChunkPreloader's tracking table, removing offline players.
+     * 清理断开玩家的状态 / Clean states of disconnected players.
+     * 当前为空实现（原 MiliChunkPreloader 已移除）/ Currently no-op (MiliChunkPreloader removed).
      */
     private static void cleanupStaleStates() {
-        final MinecraftServer server = MinecraftServer.getServer();
-        if (server == null) return;
-
-        try {
-            // 清理 MiliChunkPreloader 中断开玩家的状态 / Clean disconnected player states
-            int removed = MiliChunkPreloader.cleanupOfflinePlayers();
-
-            if (MemoryOptConfig.debug) {
-                long usedMB = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
-                long maxMB = Runtime.getRuntime().maxMemory() / (1024 * 1024);
-                LOGGER.debug("[MemOpt] Memory: {}MB / {}MB | ChunkPreloader cleaned {} entries",
-                        usedMB, maxMB, removed);
-            }
-        } catch (Throwable t) {
-            LOGGER.debug("[MemOpt] State cleanup failed: {}", t.getMessage());
-        }
+        // No-op: MiliChunkPreloader has been removed
     }
 
     /**
