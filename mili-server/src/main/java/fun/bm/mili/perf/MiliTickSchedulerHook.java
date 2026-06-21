@@ -16,7 +16,6 @@ public final class MiliTickSchedulerHook {
             MiliRegionLoadMonitor.maybeLogSummary();
             MiliTickProfiler.maybeLogSummary();
             MiliMemoryOptimizer.onGlobalTick();
-            MiliRegionBalancer.onGlobalTick();
             EntitySafetyGuard.onGlobalTick();
         } catch (Throwable t) {
             LOGGER.debug("mili perf hook (global): {}", t.getMessage());
