@@ -54,7 +54,7 @@ public abstract class SchedulerBase {
             startTimeMs.set(System.currentTimeMillis());
             try {
                 onStart();
-                logger.info("[{}] Scheduler started on dim {}", name, level.dimension().location());
+                logger.info("[{}] Scheduler started on dim {}", name, level.dimension().identifier());
             } catch (Throwable t) {
                 running.set(false);
                 logger.error("[{}] Failed to start scheduler", name, t);

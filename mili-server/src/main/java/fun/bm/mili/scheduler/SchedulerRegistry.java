@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Mili Team
  * @since 1.21.11
  */
-@ThreadSafe("Uses ConcurrentHashMap for thread-safe registry")
 public final class SchedulerRegistry {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -52,7 +51,7 @@ public final class SchedulerRegistry {
      */
     public void registerEntityScheduler(ServerLevel level, EntityThreadScheduler scheduler) {
         entitySchedulers.put(level, scheduler);
-        LOGGER.debug("[SchedulerRegistry] Registered EntityThreadScheduler for {}", level.dimension().location());
+        LOGGER.debug("[SchedulerRegistry] Registered EntityThreadScheduler for {}", level.dimension().identifier());
     }
 
     /**
@@ -64,7 +63,7 @@ public final class SchedulerRegistry {
         EntityThreadScheduler removed = entitySchedulers.remove(level);
         if (removed != null) {
             removed.stop();
-            LOGGER.debug("[SchedulerRegistry] Unregistered EntityThreadScheduler for {}", level.dimension().location());
+            LOGGER.debug("[SchedulerRegistry] Unregistered EntityThreadScheduler for {}", level.dimension().identifier());
         }
     }
 
@@ -88,7 +87,7 @@ public final class SchedulerRegistry {
      */
     public void registerChunkScheduler(ServerLevel level, ChunkIndependentScheduler scheduler) {
         chunkSchedulers.put(level, scheduler);
-        LOGGER.debug("[SchedulerRegistry] Registered ChunkIndependentScheduler for {}", level.dimension().location());
+        LOGGER.debug("[SchedulerRegistry] Registered ChunkIndependentScheduler for {}", level.dimension().identifier());
     }
 
     /**
@@ -100,7 +99,7 @@ public final class SchedulerRegistry {
         ChunkIndependentScheduler removed = chunkSchedulers.remove(level);
         if (removed != null) {
             removed.stop();
-            LOGGER.debug("[SchedulerRegistry] Unregistered ChunkIndependentScheduler for {}", level.dimension().location());
+            LOGGER.debug("[SchedulerRegistry] Unregistered ChunkIndependentScheduler for {}", level.dimension().identifier());
         }
     }
 
@@ -149,14 +148,14 @@ public final class SchedulerRegistry {
         sb.append(String.format("Entity Schedulers: %d active\n", entitySchedulers.size()));
         for (Map.Entry<ServerLevel, EntityThreadScheduler> entry : entitySchedulers.entrySet()) {
             sb.append(String.format("  %s: %s\n",
-                    entry.getKey().dimension().location(),
-                    entry.getValue().getStatsSummary()));
+                    entry.getKey().dimension().identifier(),
+                    entry.getValue().getStats()));
         }
         sb.append(String.format("\nChunk Schedulers: %d active\n", chunkSchedulers.size()));
         for (Map.Entry<ServerLevel, ChunkIndependentScheduler> entry : chunkSchedulers.entrySet()) {
             sb.append(String.format("  %s: %s\n",
-                    entry.getKey().dimension().location(),
-                    entry.getValue().getStatsSummary()));
+                    entry.getKey().dimension().identifier(),
+                    entry.getValue().isRunning() ? "running" : "stopped"));
         }
         sb.append("=== End Stats ===");
         return sb.toString();

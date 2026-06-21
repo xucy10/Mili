@@ -28,8 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Mili Team
  * @since 1.21.11
  */
-@ThreadSafe("Uses concurrent collections and atomic operations")
-public final class EntityThreadScheduler extends SchedulerBase {
+public final class EntityThreadScheduler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<ServerLevel, EntityThreadScheduler> INSTANCES = new ConcurrentHashMap<>();
@@ -105,7 +104,7 @@ public final class EntityThreadScheduler extends SchedulerBase {
                 tickTask.run();
                 processedEntities.incrementAndGet();
             } catch (Throwable t) {
-                LOGGER.debug("Entity tick failed for {}: {}", entity.getType().getName(), t.getMessage());
+                LOGGER.debug("Entity tick failed for {}: {}", entity.getName().getString(), t.getMessage());
             }
         });
 

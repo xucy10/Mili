@@ -115,4 +115,29 @@ public class UnifiedSchedulerConfig implements IConfigModule {
             输出调度器状态、线程分配、超时事件 / Logs scheduler state, thread assignments, timeout events.
             默认关闭 / Disabled by default.""")
     public static boolean debug = false;
+
+    // ======================== Compatibility Aliases ========================
+    // 以下为 MiliChunkPreloader / EntityThreadScheduler / ChunkIndependentScheduler 兼容字段
+
+    public static boolean enabled = true;
+    public static int sampleIntervalTicks = 4;
+    public static int lookAheadTicks = 25;
+    public static double highSpeedThreshold = 0.7;
+    public static int teleportPreloadRadius = 8;
+    public static int basePreloadRadius = 4;
+    public static int maxSpeedRadius = 10;
+    public static double elytraMultiplier = 2.5;
+    public static double tridentMultiplier = 3.0;
+    public static int maxConcurrentLoadsPerPlayer = 32;
+
+    // ChunkIndependentScheduler aliases
+    public static int workerThreads = 0;
+    public static long timeoutMs = 100L;
+    public static boolean strictMode = false;
+
+    // EntityThreadScheduler aliases
+    public static int highEntityThreshold = 1500;
+
+    /** 兼容用单例访问 / Singleton access for compatibility. */
+    public static UnifiedSchedulerConfig getInstance() { return new UnifiedSchedulerConfig(); }
 }
