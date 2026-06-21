@@ -956,8 +956,6 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
             this.nearbyChunkHot = this.refreshNearbyChunkHot();
         }
         // KioCG end
-        // mili - 玩家行为预测区块预加载 / Predictive chunk pre-loading
-        fun.bm.mili.perf.MiliChunkPreloader.onPlayerTick(this);
     }
 
     // KioCG start - ChunkHot

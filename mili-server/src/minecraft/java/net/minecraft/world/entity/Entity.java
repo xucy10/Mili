@@ -4487,11 +4487,6 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
         wrapped.callEvent();
         // Luminol end
 
-        // mili - 传送区块预加载 / Teleport chunk pre-loading
-        if (this instanceof net.minecraft.server.level.ServerPlayer sp) {
-            fun.bm.mili.perf.MiliChunkPreloader.onPlayerTeleport(sp, destination, net.minecraft.core.BlockPos.containing(pos));
-        }
-
         // check for same region
         if (destination == this.level()
                 && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(destination, ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkX(pos), ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkZ(pos), 8)

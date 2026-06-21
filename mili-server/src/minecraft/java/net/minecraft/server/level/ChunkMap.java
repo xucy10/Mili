@@ -1067,9 +1067,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
             ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$tick(nearbyPlayers.getChunk(entity.chunkPosition())); // Folia - region threading
             if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$hasPlayers()
                 || ((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)entity).moonrise$getChunkStatus().isOrAfter(FullChunkStatus.ENTITY_TICKING)) {
-                if (fun.bm.mili.utils.EntityTrackingThrottle.shouldBroadcast(entity)) { // Lophine - Entity tracking perf
                 tracker.serverEntity.sendChanges();
-                } // Lophine - Entity tracking perf
             }
         }
         profiler.addCounter(ca.spottedleaf.leafprofiler.LProfilerRegistry.TRACKED_ENTITY_COUNTS, (long)totalEntities); // Folia - profiler
@@ -1078,7 +1076,6 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
     // Paper end - optimise entity tracker
 
     protected void tick() {
-        fun.bm.mili.utils.EntityTrackingThrottle.onTickStart(); // Lophine - Entity tracking perf
         // Paper start - optimise entity tracker
         if (true) {
             this.newTrackerTick();
