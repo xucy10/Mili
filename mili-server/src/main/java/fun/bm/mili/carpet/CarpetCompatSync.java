@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.carpet;
+package fun.bm.mili.carpet;
 
 import fun.bm.mili.carpet.config.modules.CoreConfig;
 import fun.bm.mili.carpet.config.modules.CounterCompatConfig;
@@ -135,4 +135,4 @@ public final class CarpetCompatSync {
         CarpetServerProtocol.CarpetRules.register(CarpetServerProtocol.CarpetRule.of("carpet", "hopperCounters", CounterCompatConfig.hopperCounters));
         CarpetServerProtocol.CarpetRules.register(CarpetServerProtocol.CarpetRule.of("carpettisaddition", "hopperCountersUnlimitedSpeed", CounterCompatConfig.hopperCountersUnlimitedSpeed));
     }
-}\n    private CarpetCompatSync() {}\n}\n
+}

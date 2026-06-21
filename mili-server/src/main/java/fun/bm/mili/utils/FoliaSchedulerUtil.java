@@ -1,4 +1,4 @@
-package fun.bm.mili.util;
+package fun.bm.mili.utils;
 
 import org.bukkit.Bukkit;
 import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;

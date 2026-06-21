@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.carpet;
+package fun.bm.mili.carpet;
 
 import java.util.function.Supplier;
 
@@ -39,4 +39,4 @@ public final class InteractionUpdateCompatHelper {
             SUPPRESSED_DEPTH.set(depth - 1);
         }
     }
-}\n    private InteractionUpdateCompatHelper() {}\n}\n
+}

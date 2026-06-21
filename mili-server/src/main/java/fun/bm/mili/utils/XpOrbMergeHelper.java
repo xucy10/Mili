@@ -1,4 +1,4 @@
-package fun.bm.mili.util;
+package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.misc.ItemEntityPerfConfig;
 import net.minecraft.world.entity.ExperienceOrb;

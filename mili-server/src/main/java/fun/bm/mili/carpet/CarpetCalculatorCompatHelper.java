@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.carpet;
+package fun.bm.mili.carpet;
 
 import fun.bm.mili.carpet.config.modules.GeneralCompatConfig;
 import net.minecraft.ChatFormatting;
@@ -39,4 +39,4 @@ public final class CarpetCalculatorCompatHelper {
         }
         return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
-}\n    private CarpetCalculatorCompatHelper() {}\n}\n
+}
