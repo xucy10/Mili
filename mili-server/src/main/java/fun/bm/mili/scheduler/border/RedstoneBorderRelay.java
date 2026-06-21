@@ -1,10 +1,7 @@
 package fun.bm.mili.scheduler.border;
 
-import fun.bm.mili.scheduler.ChunkBorderCache;
-import fun.bm.mili.scheduler.ChunkIndependentScheduler;
 import fun.bm.mili.scheduler.ChunkWorker;
 import fun.bm.mili.scheduler.CrossChunkBus;
-import net.minecraft.server.level.ServerLevel;
 
 /**
  * Redstone border relay — two-phase commit for cross-chunk redstone.
@@ -25,34 +22,15 @@ public final class RedstoneBorderRelay {
 
     /**
      * Called after a chunk tick completes to relay border redstone changes
-     * to neighboring chunks. The actual injection is deferred by 1 tick
-     * via CrossChunkBus.
+     * to neighboring chunks.
+     *
+     * NOTE: Cross-chunk border injection is disabled because block state
+     * modification (neighborChanged, scheduleTick) must run on the owning
+     * Folia region thread, not on the CrossChunkBus coordinator thread.
+     * High-interaction chunks use Folia region fallback natively.
      */
     public void flushBorderUpdates(ChunkWorker worker) {
-        if (worker == null || worker.getBorderCache() == null) return;
-        // Only low-interaction chunks need border relay (high-interaction uses Folia region fallback)
-        if (worker.isHighInteraction()) return;
-
-        ChunkBorderCache cache = worker.getBorderCache();
-        if (cache == null) return;
-
-        ServerLevel level = worker.getLevel();
-        if (level == null) return;
-
-        // Broadcast to all 4 neighbors
-        for (ChunkBorderCache.BorderFace face : ChunkBorderCache.BorderFace.values()) {
-            int nx = worker.getChunkX() + face.getDirection().getStepX();
-            int nz = worker.getChunkZ() + face.getDirection().getStepZ();
-
-            ChunkWorker neighbor = ChunkIndependentScheduler.getInstance(level).getWorker(nx, nz);
-            if (neighbor == null || neighbor.isReleased()) continue;
-
-            long neighborKey = ((long) nx << 32) | (nz & 0xFFFFFFFFL);
-
-            bus.enqueueBorderUpdate(worker, neighborKey, () -> {
-                // This runs on CrossChunkBus coordinator thread, 1 tick later
-                cache.injectBorderUpdates(neighbor, face);
-            });
-        }
+        // Border updates handled by Folia region fallback for high-interaction chunks.
+        // Low-interaction chunks have no cross-border signals to relay.
     }
 }
