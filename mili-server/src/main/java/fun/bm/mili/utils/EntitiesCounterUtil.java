@@ -28,51 +28,31 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static net.minecraft.world.level.NaturalSpawner.getRoughBiome;
 
-public class EntitiesCounterUtil {
+public final class EntitiesCounterUtil {
+
     private static final Map<ServerLevel, Cache<Integer, ReferenceList<Entity>>> globalLoadedEntities = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, Object2IntOpenHashMap<MobCategory>> mobsMap = Collections.synchronizedMap(new WeakHashMap<>());
     private static final Map<ServerLevel, Cache<Integer, PositionCountingAreaMap<ServerPlayer>>> mobsAreaMap = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, Integer> spawnableChunkCount = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, CompletableFuture<Void>> tasks = new ConcurrentHashMap<>();
     private static final Set<Integer> UniqueIds = ConcurrentHashMap.newKeySet();
-
-    // mili - perf: track last successful tick time per level to enable throttling
     private static final Map<ServerLevel, AtomicLong> lastTickTime = new ConcurrentHashMap<>();
-    // mili - perf: minimum interval between async ticks per level (ms)
     private static final long MIN_TICK_INTERVAL_MS = 50L;
-    // mili - perf: cache version based on global loaded entities' reference identity hash
-    private static final Map<ServerLevel, Integer> cacheVersion = new ConcurrentHashMap<>();
 
-    // mili - 已迁移到 lastUsedIdAtomic / migrated to lastUsedIdAtomic
-
-    // mili - perf: dedicated single-thread executor - REMOVED: async entity reads from non-owning thread
-    // cause entity corruption (teleporting, no display, phantom spawns).
-    // All entity access must be on the owning region thread.
-    // See docs/entity-thread-safety.md for details.
-
-    // mili - 使用 AtomicInteger 实现溢出安全的 ID 生成器
-    // mili - Overflow-safe ID generator using AtomicInteger
     private static final java.util.concurrent.atomic.AtomicInteger lastUsedIdAtomic = new java.util.concurrent.atomic.AtomicInteger(1);
-    private static final int CLEANUP_INTERVAL = 200; // 每 200 次 ID 生成触发一次清理 / cleanup every 200 IDs
+    private static final int CLEANUP_INTERVAL = 200;
 
-    /**
-     * 生成唯一 ID，溢出安全 / Generate unique ID, overflow-safe.
-     * 使用 CAS 循环确保唯一性，溢出后回绕到 1 / Uses CAS loop for uniqueness, wraps to 1 on overflow.
-     */
     public static int generateUniqueId() {
         synchronized (UniqueIds) {
             int id;
             do {
                 id = lastUsedIdAtomic.incrementAndGet();
-                // 溢出到负数或零时回绕 / Wrap around on overflow to negative or zero
                 if (id <= 0) {
                     lastUsedIdAtomic.compareAndSet(id, 1);
                 }
             } while (id <= 0 || UniqueIds.contains(id));
 
-            // 周期性清理不再使用的 ID / Periodic cleanup of unused IDs
             if (id % CLEANUP_INTERVAL == 0) runCleanUp();
-
             UniqueIds.add(id);
             return id;
         }
@@ -84,7 +64,6 @@ public class EntitiesCounterUtil {
         if (entitiesCache != null) {
             entitiesCache.invalidate(uniqueId);
         }
-
         Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaCache = mobsAreaMap.get(level);
         if (areaCache != null) {
             areaCache.invalidate(uniqueId);
@@ -96,7 +75,6 @@ public class EntitiesCounterUtil {
         for (Cache<Integer, ReferenceList<Entity>> collection : globalLoadedEntities.values()) {
             logged.addAll(collection.asMap().keySet());
         }
-
         for (int num : UniqueIds) {
             if (logged.contains(num)) continue;
             UniqueIds.remove(num);
@@ -104,13 +82,15 @@ public class EntitiesCounterUtil {
     }
 
     public static void addDataToLoaded(ServerLevel level, ReferenceList<Entity> data, int uniqueId) {
-        Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
+        Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.computeIfAbsent(level,
+            k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
         if (data0.asMap().containsKey(uniqueId)) return;
         data0.put(uniqueId, data);
     }
 
     public static void reportAreaMap(ServerLevel level, PositionCountingAreaMap<ServerPlayer> areaMap, int uniqueId) {
-        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaMap0 = mobsAreaMap.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
+        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaMap0 = mobsAreaMap.computeIfAbsent(level,
+            k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
         if (areaMap0.asMap().containsKey(uniqueId)) return;
         areaMap0.put(uniqueId, areaMap);
     }
@@ -125,17 +105,10 @@ public class EntitiesCounterUtil {
 
     public static boolean canRunNewTask(ServerLevel level) {
         CompletableFuture<Void> task = tasks.get(level);
-        if (task != null && !task.isDone()) {
-            return false;
-        }
-        // mili - perf: throttle to avoid overwhelming scheduler when many regions tick
+        if (task != null && !task.isDone()) return false;
+
         AtomicLong last = lastTickTime.get(level);
-        if (last != null) {
-            long elapsed = System.currentTimeMillis() - last.get();
-            if (elapsed < MIN_TICK_INTERVAL_MS) {
-                return false;
-            }
-        }
+        if (last != null && System.currentTimeMillis() - last.get() < MIN_TICK_INTERVAL_MS) return false;
         return true;
     }
 
@@ -150,9 +123,6 @@ public class EntitiesCounterUtil {
 
                 for (ReferenceList<Entity> data : snapshot) {
                     if (data == null) continue;
-                    // SAFETY: Must run on the entity's owning region thread.
-                    // Asynchronous entity reads from a different thread corrupt entity state
-                    // (teleporting, no display, phantom spawns, knockback anomalies).
                     for (Entity entity : data) {
                         if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
                         MobCategory category = entity.getType().getCategory();
@@ -182,46 +152,41 @@ public class EntitiesCounterUtil {
                 LogUtils.getClassLogger().error("Failed to run task", e);
             }
         };
-        task.run(); // Always synchronous on the calling region thread
-        // mili - perf: update last tick timestamp for throttling
+        task.run();
         lastTickTime.computeIfAbsent(level, k -> new AtomicLong(0L)).set(System.currentTimeMillis());
     }
 
     public static NaturalSpawner.SpawnState runRemainingTasks(
-            ServerLevel level, Iterable<Entity> entities, NaturalSpawner.ChunkGetter chunkGetter, LocalMobCapCalculator calculator, final boolean countMobs
+            ServerLevel level, Iterable<Entity> entities, NaturalSpawner.ChunkGetter chunkGetter,
+            LocalMobCapCalculator calculator, final boolean countMobs
     ) {
         Object2IntOpenHashMap<MobCategory> map = getMobsMap(level);
-        if (map == null) return null; // skip if no data
-        // mili start - Copy from net/minecraft/world/level/NaturalSpawner
+        if (map == null) return null;
+
         PotentialCalculator potentialCalculator = new PotentialCalculator();
         for (Entity entity : entities) {
             if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
-            // Paper start - Only count natural spawns
             if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
                     !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
                             entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
                 continue;
             }
-            // Paper end - Only count natural spawns
             BlockPos blockPos = entity.blockPosition();
             chunkGetter.query(ChunkPos.asLong(blockPos), chunk -> {
                 MobSpawnSettings.MobSpawnCost mobSpawnCost = getRoughBiome(blockPos, chunk).getMobSettings().getMobSpawnCost(entity.getType());
                 if (mobSpawnCost != null) {
                     potentialCalculator.addCharge(entity.blockPosition(), mobSpawnCost.charge());
                 }
-
-                if (calculator != null && entity instanceof Mob) { // Paper - Optional per player mob spawns
+                if (calculator != null && entity instanceof Mob) {
                     calculator.addMob(chunk.getPos(), entity.getType().getCategory());
                 }
-
-                // Paper start - Optional per player mob spawns
                 if (countMobs) {
                     chunk.level.getChunkSource().chunkMap.updatePlayerMobTypeMap(entity);
                 }
-                // Paper end - Optional per player mob spawns
             });
         }
         return new NaturalSpawner.SpawnState(getTotalChunkCount(level), map, potentialCalculator, calculator);
-        // mili end - Copy from net/minecraft/world/level/NaturalSpawner
     }
+
+    private EntitiesCounterUtil() {}
 }

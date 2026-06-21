@@ -5,24 +5,14 @@ import io.papermc.paper.threadedregions.RegionizedWorldData;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
 import org.slf4j.Logger;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Folia-aware entity throttler, ported from Kaiiju.
- *
- * Tracks entity counts per tick-region and skips ticks when limits
- * are exceeded. Uses RegionizedWorldData as the scope for counting,
- * making it safe for Folia's multithreaded region model.
- */
 public final class MiliEntityThrottler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    // Per-region throttler instances (keyed by RegionizedWorldData identity)
     private static final Map<RegionizedWorldData, MiliEntityThrottler> INSTANCES = new ConcurrentHashMap<>();
 
     private final RegionizedWorldData regionData;
@@ -40,14 +30,12 @@ public final class MiliEntityThrottler {
         INSTANCES.remove(regionData);
     }
 
-    /** Call at start of region tick to reset counters */
     public void tickLimiterStart() {
         for (TickInfo info : tickInfoMap.values()) {
             info.currentTick = 0;
         }
     }
 
-    /** Check if an entity should be skipped this tick */
     public boolean shouldSkipTick(Entity entity) {
         if (entity == null || entity.isRemoved()) return false;
         if (!MiliEntityLimitsConfig.enabled) return false;
@@ -62,18 +50,14 @@ public final class MiliEntityThrottler {
 
         info.currentTick++;
 
-        // Removal threshold
         if (info.toRemove > 0 && info.currentTick <= info.toRemove) {
-            return false; // don't skip, but mark for removal
+            return false;
         }
-
-        // Tick limiting
-        if (info.currentTick < info.continueFrom) return true; // skip
-        if (info.currentTick - info.continueFrom < info.toTick) return false; // tick
-        return true; // skip (over limit)
+        if (info.currentTick < info.continueFrom) return true;
+        if (info.currentTick - info.continueFrom < info.toTick) return false;
+        return true;
     }
 
-    /** Call at end of region tick to update scheduling state */
     public void tickLimiterFinish() {
         for (var entry : tickInfoMap.entrySet()) {
             EntityType<?> type = entry.getKey();

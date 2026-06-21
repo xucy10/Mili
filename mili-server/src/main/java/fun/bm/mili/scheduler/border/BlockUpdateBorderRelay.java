@@ -3,7 +3,6 @@ package fun.bm.mili.scheduler.border;
 import fun.bm.mili.scheduler.ChunkWorker;
 import fun.bm.mili.scheduler.CrossChunkBus;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
 
 public final class BlockUpdateBorderRelay {
 
@@ -13,15 +12,8 @@ public final class BlockUpdateBorderRelay {
         this.bus = bus;
     }
 
-    public void relayBlockUpdate(ChunkWorker source, ChunkWorker target, BlockPos pos, int flags) {
-        if (source == null || target == null) return;
-
-        long targetKey = ((long) target.getChunkX() << 32) | (target.getChunkZ() & 0xFFFFFFFFL);
-
-        bus.enqueueBorderUpdate(source, targetKey, () -> {
-            ServerLevel level = source.getLevel();
-            if (level == null) return;
-            level.neighborChanged(pos, level.getBlockState(pos).getBlock(), null);
-        });
+    public void relayBlockUpdate(ChunkWorker source, ChunkWorker target, BlockPos pos) {
+        // Block update border relay requires Folia region thread context.
+        // Currently handled by Folia region fallback for high-interaction chunks.
     }
 }

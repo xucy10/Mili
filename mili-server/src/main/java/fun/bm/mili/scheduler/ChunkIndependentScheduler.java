@@ -2,16 +2,16 @@ package fun.bm.mili.scheduler;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
 public final class ChunkIndependentScheduler {
@@ -24,26 +24,18 @@ public final class ChunkIndependentScheduler {
     private final int workerCount;
     private final ExecutorService workerPool;
 
-    // Active workers indexed by ChunkPos.asLong
-    private final Long2ObjectOpenHashMap<ChunkWorker> activeWorkers = new Long2ObjectOpenHashMap<>();
+    private final Map<Long, ChunkWorker> activeWorkers = new HashMap<>();
     private final Object workerLock = new Object();
 
-    // Thread -> Worker mapping for TickThread.isTickThreadFor compatibility
-    private final Map<Thread, ChunkWorker> workerThreadMap = new ConcurrentHashMap<>();
-
-    // Scheduler state
-    private final AtomicReference<Thread> schedulerThread = new AtomicReference<>(null);
     private volatile boolean running;
 
-    // Config snapshot
-    private volatile long timeoutMs;
-    private volatile boolean mixedMode;
-    private volatile boolean strictMode;
+    private final long timeoutMs;
+    private final boolean mixedMode;
+    private final boolean strictMode;
 
     public ChunkIndependentScheduler(ServerLevel level) {
         this.level = level;
         this.crossChunkBus = new CrossChunkBus(level);
-
         this.workerCount = UnifiedSchedulerConfig.chunkWorkerThreads > 0
                 ? UnifiedSchedulerConfig.chunkWorkerThreads
                 : Math.min(Math.max(1, Runtime.getRuntime().availableProcessors() - 1), 4);
@@ -61,8 +53,6 @@ public final class ChunkIndependentScheduler {
         crossChunkBus.setTimeoutNanos(timeoutMs * 1_000_000L);
     }
 
-    // ======================== Lifecycle ========================
-
     public void start() {
         if (running) return;
         running = true;
@@ -71,7 +61,6 @@ public final class ChunkIndependentScheduler {
         Thread st = new Thread(this::schedulerLoop, "mili-chunk-scheduler");
         st.setDaemon(true);
         st.start();
-        schedulerThread.set(st);
 
         INSTANCES.put(level, this);
         LOGGER.info("ChunkIndependentScheduler started: {} workers on dim {}", workerCount, level.dimension().toString());
@@ -95,21 +84,16 @@ public final class ChunkIndependentScheduler {
         synchronized (workerLock) {
             activeWorkers.values().forEach(ChunkWorker::release);
             activeWorkers.clear();
-            workerThreadMap.clear();
         }
         crossChunkBus.clear();
-        schedulerThread.set(null);
         INSTANCES.remove(level);
         LOGGER.info("ChunkIndependentScheduler stopped");
     }
-
-    // ======================== Scheduler Loop ========================
 
     private void schedulerLoop() {
         while (running) {
             try {
                 boolean hadWork = tickScheduler();
-                // Sleep longer when idle to avoid starving Folia region threads
                 LockSupport.parkNanos("mili-scheduler", hadWork ? 1_000_000L : 50_000_000L);
                 if (Thread.interrupted()) {
                     Thread.currentThread().interrupt();
@@ -121,7 +105,6 @@ public final class ChunkIndependentScheduler {
         }
     }
 
-    /** @return true if any workers were processed */
     private boolean tickScheduler() {
         List<ChunkWorker> ready = new ArrayList<>();
         synchronized (workerLock) {
@@ -133,7 +116,6 @@ public final class ChunkIndependentScheduler {
         }
         if (ready.isEmpty()) return false;
 
-        // Phase 1: Capture border state in parallel (read-only, thread-safe)
         CountDownLatch latch = new CountDownLatch(ready.size());
         for (ChunkWorker w : ready) {
             workerPool.submit(() -> {
@@ -153,33 +135,28 @@ public final class ChunkIndependentScheduler {
             Thread.currentThread().interrupt();
         }
 
-        // Report high-interaction chunks to Folia region scheduler for merging
         int highCount = 0;
         for (ChunkWorker w : ready) {
             if (w.isHighInteraction()) highCount++;
             w.resetForNextTick();
         }
         if (mixedMode && !strictMode && highCount > 0) {
-            LOGGER.debug("CIS: {} high-interaction chunks (will be merged into Folia regions)", highCount);
+            LOGGER.debug("CIS: {} high-interaction chunks", highCount);
         }
         return true;
     }
-
-    // ======================== Worker Registration ========================
 
     public void registerChunk(LevelChunk chunk) {
         ChunkPos pos = chunk.getPos();
         long key = pos.toLong();
         synchronized (workerLock) {
-            if (!activeWorkers.containsKey(key)) {
+            ChunkWorker existing = activeWorkers.get(key);
+            if (existing == null) {
                 ChunkWorker worker = new ChunkWorker(level, pos.x, pos.z, this);
                 worker.assignChunk(chunk);
                 activeWorkers.put(key, worker);
-            } else {
-                ChunkWorker existing = activeWorkers.get(key);
-                if (existing.getChunk() != chunk) {
-                    existing.assignChunk(chunk);
-                }
+            } else if (existing.getChunk() != chunk) {
+                existing.assignChunk(chunk);
             }
         }
     }
@@ -189,27 +166,10 @@ public final class ChunkIndependentScheduler {
         synchronized (workerLock) {
             ChunkWorker w = activeWorkers.remove(key);
             if (w != null) {
-                workerThreadMap.values().remove(w);
                 w.release();
             }
         }
     }
-
-    /** Register worker thread for TickThread compatibility */
-    public void registerWorkerThread(Thread thread, ChunkWorker worker) {
-        workerThreadMap.put(thread, worker);
-    }
-
-    public void unregisterWorkerThread(Thread thread) {
-        workerThreadMap.remove(thread);
-    }
-
-    /** Find worker for current thread (used by TickThread extension) */
-    public ChunkWorker getWorkerForThread(Thread thread) {
-        return workerThreadMap.get(thread);
-    }
-
-    // ======================== Lookup ========================
 
     public ChunkWorker getWorker(int chunkX, int chunkZ) {
         long key = ChunkPos.asLong(chunkX, chunkZ);
@@ -231,8 +191,6 @@ public final class ChunkIndependentScheduler {
             return activeWorkers.size();
         }
     }
-
-    // ======================== Static Helpers ========================
 
     public static ChunkIndependentScheduler getInstance(ServerLevel level) {
         return INSTANCES.get(level);

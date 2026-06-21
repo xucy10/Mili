@@ -1,4 +1,4 @@
-package fun.bm.mili.protocol.tiscm;
+﻿package fun.bm.mili.protocol.tiscm;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.carpet.config.modules.GeneralCompatConfig;
@@ -19,9 +19,7 @@ import org.leavesmc.leaves.protocol.core.ProtocolHandler;
 import org.leavesmc.leaves.protocol.core.ProtocolUtils;
 import org.slf4j.Logger;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.*;import java.util.stream.Collectors;
 
 @LeavesProtocol.Register(namespace = TISCMProtocol.PROTOCOL_ID)
 public class TISCMProtocol implements LeavesProtocol {

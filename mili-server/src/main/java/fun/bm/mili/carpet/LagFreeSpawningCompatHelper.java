@@ -24,11 +24,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class LagFreeSpawningCompatHelper {
+
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<RegionizedWorldData, Map<EntityType<?>, Mob>> PRECOOKED_MOBS = new ConcurrentHashMap<>();
 
     public static boolean hasNoCollision(ServerLevel world, AABB bb) {
         if (!TickThread.isTickThreadFor(world, bb)) return world.noCollision(bb);
+
         int minX = Mth.floor(bb.minX);
         int minY = Mth.floor(bb.minY);
         int minZ = Mth.floor(bb.minZ);
@@ -48,6 +50,7 @@ public final class LagFreeSpawningCompatHelper {
 
         int maxX = Mth.ceil(bb.maxX) - 1;
         int maxZ = Mth.ceil(bb.maxZ) - 1;
+        int belowMin = Math.max(minY - 1, world.getMinY());
 
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
@@ -61,19 +64,14 @@ public final class LagFreeSpawningCompatHelper {
             }
         }
 
-        int minBelow = minY - 1;
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
-                blockPos.set(x, minBelow, z);
+                blockPos.set(x, belowMin, z);
                 BlockState state = world.getBlockState(blockPos);
                 Block block = state.getBlock();
-                if (state.is(BlockTags.FENCES)
-                        || state.is(BlockTags.WALLS)
-                        || block instanceof FenceGateBlock && !state.getValue(FenceGateBlock.OPEN)) {
-                    if (x == minX || x == maxX || z == minZ || z == maxZ) {
-                        return world.noCollision(bb);
-                    }
-                    return false;
+                if (state.is(BlockTags.FENCES) || state.is(BlockTags.FENCE_GATES)
+                    || block instanceof FenceGateBlock || state.is(BlockTags.WALLS)) {
+                    return world.noCollision(bb);
                 }
             }
         }
@@ -88,13 +86,13 @@ public final class LagFreeSpawningCompatHelper {
     public static @Nullable Mob getOrCreateMob(ServerLevel level, EntityType<?> entityType) {
         RegionizedWorldData data = level.getCurrentWorldData();
         if (data == null) return createMob(level, entityType, null);
+
         Map<EntityType<?>, Mob> cache = PRECOOKED_MOBS.computeIfAbsent(data, key -> new ConcurrentHashMap<>());
         Mob mob = cache.get(entityType);
         if (mob != null && !mob.isRemoved()) {
             if (!TickThread.isTickThreadFor(mob)) return createMob(level, entityType, data);
             return mob;
         }
-
         return createMob(level, entityType, data);
     }
 
@@ -113,7 +111,6 @@ public final class LagFreeSpawningCompatHelper {
         } catch (Exception exception) {
             LOGGER.warn("Failed to precook mob {}", entityType, exception);
         }
-
         return null;
     }
 
@@ -125,4 +122,6 @@ public final class LagFreeSpawningCompatHelper {
             cache.remove(entityType);
         }
     }
+
+    private LagFreeSpawningCompatHelper() {}
 }

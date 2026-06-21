@@ -1,4 +1,4 @@
-package fun.bm.mili.utils;
+﻿package fun.bm.mili.utils;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -316,4 +316,4 @@ public class ServerI18nUtil {
             }
         }
     }
-}
+}\n    private ServerI18nUtil() {}\n}\n

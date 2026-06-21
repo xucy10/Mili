@@ -1,4 +1,4 @@
-package fun.bm.mili.utils;
+﻿package fun.bm.mili.utils;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -56,4 +56,4 @@ public class RandomProfilePool {
             return newId;
         }
     }
-}
+}\n    private RandomProfilePool() {}\n}\n

@@ -37,22 +37,6 @@ public final class ChunkWorker {
         this.scheduler = scheduler;
     }
 
-    /**
-     * Phase 1 only: capture border state.
-     *
-     * SAFETY: This is a READ-ONLY operation — it reads block states at the
-     * chunk border but writes nothing to the level or entities. It can safely
-     * run from any thread.
-     *
-     * The actual chunk tick (entity tick, block tick, block entity tick)
-     * MUST remain on the Folia region thread. CIS does NOT replace Folia's
-     * region tick; it only analyzes chunk interactions to provide scheduling
-     * hints.
-     *
-     * Entity bugs (teleporting, spawn failure, no display, knockback
-     * anomalies) were caused by calling chunk.tick() from a non-owning
-     * thread, which corrupts Folia's region-local entity state.
-     */
     public void captureBorder() {
         if (!capturing.compareAndSet(false, true)) return;
         try {
@@ -62,7 +46,6 @@ public final class ChunkWorker {
             highInteraction = borderCache.isHighInteraction();
             borderCaptured = true;
             lastCaptureNanos.set(System.nanoTime());
-
         } catch (Exception e) {
             LOGGER.error("ChunkWorker border capture error at ({}, {}): {}", chunkX, chunkZ, e.getMessage());
         } finally {
@@ -94,8 +77,6 @@ public final class ChunkWorker {
         this.chunk = null;
     }
 
-    // ---- Getters ----
-
     public ServerLevel getLevel() { return level; }
     public int getChunkX() { return chunkX; }
     public int getChunkZ() { return chunkZ; }
@@ -105,7 +86,6 @@ public final class ChunkWorker {
     public boolean isReleased() { return released; }
     public boolean isBorderCaptured() { return borderCaptured; }
     public boolean isCapturing() { return capturing.get(); }
-    public long getLastCaptureNanos() { return lastCaptureNanos.get(); }
 
     @Override
     public String toString() {

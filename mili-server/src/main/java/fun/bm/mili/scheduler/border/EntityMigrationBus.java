@@ -12,19 +12,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Entity migration bus — Folia-safe cross-chunk entity transfer.
- *
- * IMPORTANT: In Folia's regionized threading model, entity lists in chunks
- * are owned by the region thread. Directly modifying them from another
- * thread (e.g., removing from old chunk, adding to new chunk) WILL corrupt
- * entity state and cause all the symptoms described: teleporting, spawn
- * failure, no display, knockback anomalies.
- *
- * This bus only queues migration requests. Actual migration MUST be
- * executed on the owning region thread via Folia's entity scheduler:
- *   entity.getBukkitEntity().taskScheduler.schedule(...)
- */
 public final class EntityMigrationBus {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -34,10 +21,6 @@ public final class EntityMigrationBus {
 
     public record EntityMigration(Entity entity, int targetChunkX, int targetChunkZ) {}
 
-    /**
-     * Enqueue a migration request. The actual migration is executed
-     * on the entity's owning region thread when drain() is called.
-     */
     public void enqueueMigration(Entity entity, int targetChunkX, int targetChunkZ) {
         if (entity == null || entity.isRemoved()) return;
         long key = ((long) targetChunkX << 32) | (targetChunkZ & 0xFFFFFFFFL);
@@ -46,19 +29,6 @@ public final class EntityMigrationBus {
         pendingMigrations.incrementAndGet();
     }
 
-    /**
-     * Drain pending migrations by scheduling them on the entity's
-     * owning region thread via Folia's entity scheduler. This is
-     * safe because:
-     *
-     * 1. entity.getScheduler().run() guarantees execution on the
-     *    entity's region thread.
-     * 2. Folia's internal chunk entity management handles the
-     *    actual add/remove from chunk entity lists atomically.
-     * 3. No direct chunk list manipulation from external threads.
-     *
-     * Call this from the global region tick or CrossChunkBus coordinator.
-     */
     public int drainMigrations(ServerLevel level) {
         if (migrationQueue.isEmpty()) return 0;
 
@@ -78,15 +48,10 @@ public final class EntityMigrationBus {
                     Entity entity = migration.entity();
                     if (entity == null) continue;
 
-                    // Schedule on entity's owning region thread.
-                    // Entity state is checked inside the scheduled task, not here
-                    // (reading entity.isRemoved() from coordinator thread is unsafe).
                     entity.getBukkitEntity().getScheduler().runDelayed(
                         MinecraftInternalPlugin.INSTANCE,
                         (io.papermc.paper.threadedregions.scheduler.ScheduledTask st) -> {
-                            // Entity is on its owning region thread here — safe to check state
                             if (entity.isRemoved() || entity.level() != level) return;
-                            // Folia handles chunk transfer when entity moves
                         },
                         null,
                         1L

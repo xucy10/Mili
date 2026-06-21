@@ -1,8 +1,6 @@
 package fun.bm.mili.scheduler.group;
 
 import com.mojang.logging.LogUtils;
-import fun.bm.mili.scheduler.ChunkBorderCache;
-import fun.bm.mili.scheduler.ChunkIndependentScheduler;
 import fun.bm.mili.scheduler.ChunkWorker;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -11,7 +9,6 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DynamicChunkGroup {
 
@@ -20,7 +17,6 @@ public final class DynamicChunkGroup {
     private final int groupId;
     private final LongSet members = new LongOpenHashSet();
     private final List<ChunkWorker> workers = new ArrayList<>();
-
     private volatile boolean highInteraction;
     private volatile boolean merged;
 
@@ -31,10 +27,11 @@ public final class DynamicChunkGroup {
     public void addMember(ChunkWorker worker) {
         long key = ChunkPos.asLong(worker.getChunkX(), worker.getChunkZ());
         synchronized (members) {
-            members.add(key);
-            workers.add(worker);
-            if (worker.isHighInteraction()) {
-                highInteraction = true;
+            if (members.add(key)) {
+                workers.add(worker);
+                if (worker.isHighInteraction()) {
+                    highInteraction = true;
+                }
             }
         }
     }
@@ -54,21 +51,23 @@ public final class DynamicChunkGroup {
 
     public boolean shouldMergeWith(DynamicChunkGroup other) {
         if (other == null || other == this) return false;
-        if (this.highInteraction || other.highInteraction) return true;
-        return false;
+        return this.highInteraction || other.highInteraction;
     }
 
     public DynamicChunkGroup merge(DynamicChunkGroup other) {
-        DynamicChunkGroup merged = new DynamicChunkGroup(Math.min(this.groupId, other.groupId));
-        synchronized (this.members) {
-            synchronized (other.members) {
-                for (ChunkWorker w : this.workers) merged.addMember(w);
-                for (ChunkWorker w : other.workers) merged.addMember(w);
+        DynamicChunkGroup result = new DynamicChunkGroup(Math.min(this.groupId, other.groupId));
+        DynamicChunkGroup first = this.groupId < other.groupId ? this : other;
+        DynamicChunkGroup second = this.groupId < other.groupId ? other : this;
+
+        synchronized (first.members) {
+            synchronized (second.members) {
+                for (ChunkWorker w : this.workers) result.addMember(w);
+                for (ChunkWorker w : other.workers) result.addMember(w);
             }
         }
         this.merged = true;
         other.merged = true;
-        return merged;
+        return result;
     }
 
     public void tickAll() {
