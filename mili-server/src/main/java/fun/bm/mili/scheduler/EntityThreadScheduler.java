@@ -47,10 +47,11 @@ public final class EntityThreadScheduler {
     public EntityThreadScheduler(ServerLevel level) {
         this.level = level;
 
-        UnifiedSchedulerConfig cfg = UnifiedSchedulerConfig.getInstance();
-        this.enabled = cfg.enabled;
-        this.workerThreads = cfg.workerThreads > 0 ? cfg.workerThreads : Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
-        this.highEntityThreshold = cfg.highEntityThreshold;
+        this.enabled = UnifiedSchedulerConfig.entityThreadEnabled;
+        this.workerThreads = UnifiedSchedulerConfig.entityWorkerThreads > 0
+                ? UnifiedSchedulerConfig.entityWorkerThreads
+                : Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+        this.highEntityThreshold = UnifiedSchedulerConfig.entityHighThreshold;
 
         this.entityPool = Executors.newFixedThreadPool(workerThreads, task -> {
             Thread t = new Thread(task, "mili-entity-worker");

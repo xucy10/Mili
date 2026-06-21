@@ -44,11 +44,12 @@ public final class ChunkIndependentScheduler {
         this.level = level;
         this.crossChunkBus = new CrossChunkBus(level);
 
-        UnifiedSchedulerConfig cfg = UnifiedSchedulerConfig.getInstance();
-        this.workerCount = cfg.workerThreads > 0 ? cfg.workerThreads : Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
-        this.timeoutMs = cfg.timeoutMs;
-        this.mixedMode = cfg.mixedMode;
-        this.strictMode = cfg.strictMode;
+        this.workerCount = UnifiedSchedulerConfig.chunkWorkerThreads > 0
+                ? UnifiedSchedulerConfig.chunkWorkerThreads
+                : Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+        this.timeoutMs = UnifiedSchedulerConfig.chunkTimeoutMs;
+        this.mixedMode = UnifiedSchedulerConfig.mixedMode;
+        this.strictMode = UnifiedSchedulerConfig.crossChunkStrictMode;
 
         this.workerPool = Executors.newFixedThreadPool(workerCount, task -> {
             Thread t = new Thread(task, "mili-chunk-worker");
