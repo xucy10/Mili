@@ -1,7 +1,7 @@
 package fun.bm.mili.scheduler;
 
 import com.mojang.logging.LogUtils;
-import fun.bm.mili.config.modules.misc.EntityThreadConfig;
+import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import org.slf4j.Logger;
@@ -24,8 +24,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>高实体区域保护机制：当区域内实体数超过阈值时，自动降级回区域线程 /
  * High entity count protection: falls back to region thread when entity
  * count exceeds threshold (e.g., mob farms).
+ *
+ * @author Mili Team
+ * @since 1.21.11
  */
-public final class EntityThreadScheduler {
+@ThreadSafe("Uses concurrent collections and atomic operations")
+public final class EntityThreadScheduler extends SchedulerBase {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<ServerLevel, EntityThreadScheduler> INSTANCES = new ConcurrentHashMap<>();
