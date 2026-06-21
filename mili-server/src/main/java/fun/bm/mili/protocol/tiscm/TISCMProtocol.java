@@ -20,6 +20,7 @@ import org.leavesmc.leaves.protocol.core.ProtocolUtils;
 import org.slf4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @LeavesProtocol.Register(namespace = TISCMProtocol.PROTOCOL_ID)
