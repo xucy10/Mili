@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.kaiiju;
+package fun.bm.mili.kaiiju;
 
 import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
 import me.earthme.luminol.config.IConfigModule;

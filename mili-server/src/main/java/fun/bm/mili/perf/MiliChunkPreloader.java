@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.perf;
+package fun.bm.mili.perf;
 
 import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;
 import net.minecraft.core.BlockPos;

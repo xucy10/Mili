@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.scheduler;
+package fun.bm.mili.scheduler;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.misc.UnifiedSchedulerConfig;

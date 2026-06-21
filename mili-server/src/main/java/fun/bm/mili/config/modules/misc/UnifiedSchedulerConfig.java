@@ -1,4 +1,4 @@
-﻿package fun.bm.mili.config.modules.misc;
+package fun.bm.mili.config.modules.misc;
 
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
