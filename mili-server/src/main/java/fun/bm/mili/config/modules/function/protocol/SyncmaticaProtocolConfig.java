@@ -22,7 +22,6 @@ public class SyncmaticaProtocolConfig implements IConfigModule {
             Maximum Projection File Size (in bytes)""")
     public static int quotaLimit = 40000000;
 
-    @Override
     public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
         SyncmaticaProtocol.init(enabled);
     }

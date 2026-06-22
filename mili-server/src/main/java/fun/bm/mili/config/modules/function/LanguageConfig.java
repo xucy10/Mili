@@ -12,7 +12,7 @@ public class LanguageConfig implements IConfigModule {
     @ConfigInfo(name = "lang", comments = """
             Please use the key from https://minecraft.wiki/w/Language
             Sample of format: en_us zh_cn zh_hk zh_tw""")
-    public static String lang = "zh_cn";
+    public static String lang = "en_us";
 
     @ConfigInfo(name = "full_blocking_load", comments = """
             Whether to allow blocking server loading when loading localized language.

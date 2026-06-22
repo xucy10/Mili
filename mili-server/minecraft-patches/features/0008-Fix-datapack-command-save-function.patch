@@ -12,7 +12,7 @@ index 504f21c5f1e3101e7164b97059aecce630d18cee..d5b680fc6e13ec26d0db2448009e4cbe
          return this.reloadResources(selectedIds, io.papermc.paper.event.server.ServerResourcesReloadedEvent.Cause.PLUGIN);
      }
  
-+    // Lophine start - region thread skip reload // TODO - add reload support
++    // Mili start - region thread skip reload // TODO - add reload support
 +    public void saveDatapacks(Collection<String> selectedIds) {
 +        this.packRepository.setSelected(selectedIds, false); // Paper - add pendingReload flag to determine required pack loading - false as this is *after* a reload (see above)
 +        WorldDataConfiguration worldDataConfiguration = new WorldDataConfiguration(
@@ -20,7 +20,7 @@ index 504f21c5f1e3101e7164b97059aecce630d18cee..d5b680fc6e13ec26d0db2448009e4cbe
 +        );
 +        this.worldData.setDataConfiguration(worldDataConfiguration);
 +    }
-+    // Lophine end - region thread skip reload // TODO - add reload support
++    // Mili end - region thread skip reload // TODO - add reload support
 +
      public CompletableFuture<Void> reloadResources(Collection<String> selectedIds, io.papermc.paper.event.server.ServerResourcesReloadedEvent.Cause cause) {
          // Paper end - Add ServerResourcesReloadedEvent
@@ -78,7 +78,7 @@ index fcca0babb4e7929cc168fc8b9ad47619e6feb1a5..bac5f4e023f8b73eebea0f31fd253e04
      private static final Logger LOGGER = LogUtils.getLogger();
  
      public static void reloadPacks(Collection<String> selectedIds, CommandSourceStack source) {
-+        // Lophine start - region thread skip reload // TODO - add reload support
++        // Mili start - region thread skip reload // TODO - add reload support
 +        source.getServer().saveDatapacks(selectedIds);
 +        source.getSender().sendMessage("You need to restart server to load datapacks update.");
 +        if (false) {
@@ -88,7 +88,8 @@ index fcca0babb4e7929cc168fc8b9ad47619e6feb1a5..bac5f4e023f8b73eebea0f31fd253e04
              return null;
          });
 +        }
-+        // Lophine end - region thread skip reload // TODO - add reload support
++        // Mili end - region thread skip reload // TODO - add reload support
      }
  
      private static Collection<String> discoverNewPacks(PackRepository packRepository, WorldData worldData, Collection<String> selectedIds) {
+

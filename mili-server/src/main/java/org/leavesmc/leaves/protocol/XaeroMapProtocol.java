@@ -62,3 +62,4 @@ public class XaeroMapProtocol implements LeavesProtocol {
         return XaeroMapProtocolConfig.enabled;
     }
 }
+

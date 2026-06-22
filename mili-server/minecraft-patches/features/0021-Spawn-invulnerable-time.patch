@@ -29,7 +29,7 @@ index dcdb01fe5333d407a10f9872d09992c7b438ddeb..6df8f98afa7810815b8d7c86b3dac57c
              return false;
          } else {
 +            // Mili start - spawn invulnerable time
-+            if (fun.bm.mili.config.modules.function.OldFeatureConfig.spawnInvulnerableTime) {
++            if (fun.bm.Mili.config.modules.function.OldFeatureConfig.spawnInvulnerableTime) {
 +                if (this.spawnInvulnerableTime > 0 && !damageSource.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) {
 +                    return false;
 +                }
@@ -38,3 +38,4 @@ index dcdb01fe5333d407a10f9872d09992c7b438ddeb..6df8f98afa7810815b8d7c86b3dac57c
              Entity entity = damageSource.getEntity();
              if (!( // Paper - split the if statement. If below statement is false, hurtServer would not have been evaluated. Return false.
               !(entity instanceof Player player && !this.canHarmPlayer(player))
+

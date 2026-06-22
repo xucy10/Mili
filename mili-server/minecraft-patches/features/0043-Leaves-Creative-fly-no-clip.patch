@@ -59,7 +59,7 @@ index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb
  
 +    // Leaves start - creative no clip
 +    public boolean isCreativeFlyOrSpectator() {
-+        return isSpectator() || (fun.bm.mili.config.modules.function.CreativeFlyNoClipConfig.enabled && isCreative() && getAbilities().flying);
++        return isSpectator() || (fun.bm.Mili.config.modules.function.CreativeFlyNoClipConfig.enabled && isCreative() && getAbilities().flying);
 +    }
 +
 +    public boolean canSpectatingPlace(net.minecraft.world.level.LevelReader world, BlockState state, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context) {
@@ -95,7 +95,7 @@ index 4bb36d2965785fadf628a9bfac4fa2aa305aaf65..44786e4f77285f1fbd4643f560105e41
 +        CollisionContext collisionContext = player == null ? CollisionContext.empty() : CollisionContext.placementContext(player);
          Level world = context.getLevel(); // Paper - Cancel hit for vanished players
 -        boolean canBuild = (!this.mustSurvive() || state.canSurvive(world, context.getClickedPos())) && world.checkEntityCollision(state, player, CollisionContext.placementContext(player), context.getClickedPos(), true); // Paper - Cancel hit for vanished players
-+        boolean canBuild = (!this.mustSurvive() || state.canSurvive(world, context.getClickedPos())) && ((fun.bm.mili.config.modules.function.CreativeFlyNoClipConfig.enabled && context.getPlayer() != null) ? context.getPlayer().canSpectatingPlace(world, state, context.getClickedPos(), collisionContext) : world.checkEntityCollision(state, player, collisionContext, context.getClickedPos(), true)); // Paper - Cancel hit for vanished players // Leaves - creative no clip
++        boolean canBuild = (!this.mustSurvive() || state.canSurvive(world, context.getClickedPos())) && ((fun.bm.Mili.config.modules.function.CreativeFlyNoClipConfig.enabled && context.getPlayer() != null) ? context.getPlayer().canSpectatingPlace(world, state, context.getClickedPos(), collisionContext) : world.checkEntityCollision(state, player, collisionContext, context.getClickedPos(), true)); // Paper - Cancel hit for vanished players // Leaves - creative no clip
          org.bukkit.entity.Player bukkitPlayer = (context.getPlayer() instanceof ServerPlayer) ? (org.bukkit.entity.Player) context.getPlayer().getBukkitEntity() : null;
  
          org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(
@@ -108,7 +108,7 @@ index be685383b8e7c8111e976fc560f16d43d6545a34..6a2219b45eae0ff6fc48de9a6e6cabf2
          // CraftBukkit start
          if (blockState != null) {
 -            boolean defaultReturn = level.isUnobstructed(blockState, clickedPos, CollisionContext.empty());
-+            boolean defaultReturn = (fun.bm.mili.config.modules.function.CreativeFlyNoClipConfig.enabled && context.getPlayer() != null) ? context.getPlayer().canSpectatingPlace(level, blockState, clickedPos, CollisionContext.empty()) : level.isUnobstructed(blockState, clickedPos, CollisionContext.empty()); // Leaves - creative no clip
++            boolean defaultReturn = (fun.bm.Mili.config.modules.function.CreativeFlyNoClipConfig.enabled && context.getPlayer() != null) ? context.getPlayer().canSpectatingPlace(level, blockState, clickedPos, CollisionContext.empty()) : level.isUnobstructed(blockState, clickedPos, CollisionContext.empty()); // Leaves - creative no clip
              org.bukkit.entity.Player player = (context.getPlayer() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) ? serverPlayer.getBukkitEntity() : null;
  
              org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(org.bukkit.craftbukkit.block.CraftBlock.at(context.getLevel(), clickedPos), player, org.bukkit.craftbukkit.block.data.CraftBlockData.fromData(blockState), defaultReturn, org.bukkit.craftbukkit.CraftEquipmentSlot.getHand(context.getHand())); // Paper - Expose hand in BlockCanBuildEvent
@@ -146,3 +146,4 @@ index 1d60054146f970ec24054d2c76a27e2d8620ec67..a5469971734a3f4f08d676426821fbf0
          NOCLIP.set(noClipDirection);
          Vec3 vec3 = entity.position();
          entity.move(MoverType.PISTON, new Vec3(progress * direction.getStepX(), progress * direction.getStepY(), progress * direction.getStepZ()));
+

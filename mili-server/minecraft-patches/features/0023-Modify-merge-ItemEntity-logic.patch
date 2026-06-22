@@ -14,7 +14,8 @@ index f3f067c62dc024a747d059608ae7a2e8740dbff2..1b8a963726ee2b2244d429f1e7e3a080
          ItemStack item1 = itemEntity.getItem();
          if (Objects.equals(this.target, itemEntity.target) && areMergable(item, item1)) {
 -            if (item1.getCount() < item.getCount()) {
-+            if (fun.bm.mili.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || item1.getCount() < item.getCount()) { // Mili - add follow Tick Sequence Merge, see Paper#13073
++            if (fun.bm.Mili.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || item1.getCount() < item.getCount()) { // Mili - add follow Tick Sequence Merge, see Paper#13073
                  merge(this, item, itemEntity, item1);
              } else {
                  merge(itemEntity, item1, this, item);
+

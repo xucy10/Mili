@@ -59,3 +59,4 @@ public class AlwaysSendDataConfig extends AbstractBotConfig<Boolean, AlwaysSendD
         this.setValue(nbt.getBooleanOr(getName(), FakeplayerConfig.canSendDataAlways));
     }
 }
+

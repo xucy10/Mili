@@ -19,7 +19,7 @@ public class CoreConfig implements IConfigModule {
             (some function is not managed by this option)
             
             ONLY GENERAL DIRECTORY WAS CONTROLLED BY THIS OPTION.
-            WARNING: IF YOU ENABLED IT, ORIGINAL CONFIG IN LOPHINE CONFIG WILL BE OVERWRITTEN.""")
+            WARNING: IF YOU ENABLED IT, ORIGINAL CONFIG IN MILI CONFIG WILL BE OVERWRITTEN.""")
     public static boolean enabled = false;
 
     @Override

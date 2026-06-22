@@ -59,7 +59,7 @@ index 040c0f8d26554ba583ecf370e2df3690d8f48dd6..22e68cabb4554c3e21e6f4ef316186f6
 +
 +    @Override
 +    public boolean isCulled() {
-+        if (!fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled)
++        if (!fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled)
 +            return false;
 +        return this.culled;
 +    }
@@ -71,7 +71,7 @@ index 040c0f8d26554ba583ecf370e2df3690d8f48dd6..22e68cabb4554c3e21e6f4ef316186f6
 +
 +    @Override
 +    public boolean isOutOfCamera() {
-+        if (!fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled)
++        if (!fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled)
 +            return false;
 +        return this.outOfCamera;
 +    }
@@ -102,18 +102,18 @@ index 67c0f4027a1e8b364694b5ed8b71965f2fe9b359..0f6e1428cc71c370af45db3e2a4f47c6
 +    // Luminol start - Raytracing entity tracker
 +    public dev.tr7zw.entityculling.CullTask cullTask;
 +    {
-+        if (!fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
++        if (!fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
 +            this.cullTask = null;
 +        }else {
 +            final com.logisticscraft.occlusionculling.OcclusionCullingInstance culling = new com.logisticscraft.occlusionculling.OcclusionCullingInstance(
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
 +                    new dev.tr7zw.entityculling.DefaultChunkDataProvider(this.level())
 +            );
 +
 +            this.cullTask = new dev.tr7zw.entityculling.CullTask(
 +                    culling, this,
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit,
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.checkIntervalMs
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit,
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.checkIntervalMs
 +            );
 +        }
 +    }
@@ -121,31 +121,26 @@ index 67c0f4027a1e8b364694b5ed8b71965f2fe9b359..0f6e1428cc71c370af45db3e2a4f47c6
  
      public Player(Level level, GameProfile gameProfile) {
          super(EntityType.PLAYER, level);
-@@ -245,6 +264,31 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -245,6 +264,26 @@ public abstract class Player extends Avatar implements ContainerUser {
  
      @Override
      public void tick() {
 +        // Luminol start - Ray tracing entity tracker
-+        // Lophine start - only create CullTask once, not every tick
-+        if (!fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
-+            if (this.cullTask != null) {
-+                this.cullTask.signalStop();
-+                this.cullTask = null;
-+            }
-+        } else if (this.cullTask == null) {
-+            // Create the cull task lazily and only once
++        if (!fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
++            if (this.cullTask != null) this.cullTask.signalStop();
++            this.cullTask = null;
++        }else {
 +            final com.logisticscraft.occlusionculling.OcclusionCullingInstance culling = new com.logisticscraft.occlusionculling.OcclusionCullingInstance(
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
 +                    new dev.tr7zw.entityculling.DefaultChunkDataProvider(this.level())
 +            );
 +
 +            this.cullTask = new dev.tr7zw.entityculling.CullTask(
 +                    culling, this,
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit,
-+                    fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.checkIntervalMs
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit,
++                    fun.bm.Mili.config.modules.experiment.RayTrackingEntityTrackerConfig.checkIntervalMs
 +            );
 +        }
-+        // Lophine end - only create CullTask once
 +        if (this.cullTask != null) this.cullTask.setup();
 +        if (this.cullTask != null) this.cullTask.requestCullSignal(); // Luminol - Ray tracing entity tracker
 +        // Luminol end
@@ -161,3 +156,4 @@ index 67c0f4027a1e8b364694b5ed8b71965f2fe9b359..0f6e1428cc71c370af45db3e2a4f47c6
      }
  
      @Override
+

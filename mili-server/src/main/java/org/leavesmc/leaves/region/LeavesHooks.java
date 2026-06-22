@@ -15,21 +15,23 @@
  * along with Leaves. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.leavesmc.leaves.replay;
+package org.leavesmc.leaves.region;
 
-public class BukkitRecorderOption {
+import ca.spottedleaf.moonrise.paper.PaperHooks;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.chunk.LevelChunk;
 
-    // public int recordDistance = -1;
-    public String serverName = "Mili"; // Mili - rebrand to Mili to avoid confusion
-    public BukkitRecordWeather forceWeather = BukkitRecordWeather.NULL;
-    public int forceDayTime = -1;
-    public boolean ignoreChat = false;
-    // public boolean ignoreItem = false;
+public final class LeavesHooks extends PaperHooks {
 
-    public enum BukkitRecordWeather {
-        CLEAR,
-        RAIN,
-        THUNDER,
-        NULL
+    @Override
+    public String getBrand() {
+        return "Mili"; // Mili - rebrand
+    }
+
+    @Override
+    public void onChunkWatch(ServerLevel world, LevelChunk chunk, ServerPlayer player) {
+        super.onChunkWatch(world, chunk, player);
+        org.leavesmc.leaves.protocol.servux.ServuxStructuresProtocol.onStartedWatchingChunk(player, chunk); // servux
     }
 }

@@ -17,7 +17,7 @@ index 5bae274f5ee869e540e4330e03af671b6b18313d..3fe9afe55b4d61db8030479d3d74b865
 +    public boolean addEffect(MobEffectInstance effectInstance, EntityPotionEffectEvent.Cause cause, boolean fireEvent, boolean async) {
 +        if (!async || ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this)) {
 +            return addEffect(effectInstance, this, cause, fireEvent);
-+        } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
++        } else if (fun.bm.Mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +            postToAddEffect(effectInstance, this, cause, fireEvent);
 +            return true;
 +        }
@@ -48,7 +48,8 @@ index 2b7894a4104d4cb237746a3e66d4368b6f8f3c1e..03e3290367790add702a5856aaff3be4
  
                          if (serverLevel.getGameRules().get(net.minecraft.world.level.gamerules.GameRules.RAIDS)) {
 -                            entityhuman.addEffect(mobeffect1, org.bukkit.event.entity.EntityPotionEffectEvent.Cause.PATROL_CAPTAIN); // CraftBukkit
-+                            entityhuman.addEffect(mobeffect1, org.bukkit.event.entity.EntityPotionEffectEvent.Cause.PATROL_CAPTAIN, true, fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled); // Mili - raid revert adapt Cross Region Damage trace
++                            entityhuman.addEffect(mobeffect1, org.bukkit.event.entity.EntityPotionEffectEvent.Cause.PATROL_CAPTAIN, true, fun.bm.Mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled); // Mili - raid revert adapt Cross Region Damage trace
                          }
                          this.setPatrolLeader(false);
                      }
+

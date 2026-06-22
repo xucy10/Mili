@@ -32,11 +32,11 @@ PS: You need to enable long path support in your System and Git before start, so
 
 ## Understanding "Patches"
 
-Lophine uses as the same patching system as Paper,  
+Mili uses as the same patching system as Paper,  
 and has been divided into two directories for the purpose of modifying different parts of it:
 
-- `lophine-api` - Modifications to `Folia-API` / `Paper-API` / `Spigot-API` / `Bukkit-API`.
-- `lophine-server` - Modifications to Minecraft Vanilla Server's source logic.
+- `Mili-api` - Modifications to `Folia-API` / `Paper-API` / `Spigot-API` / `Bukkit-API`.
+- `Mili-server` - Modifications to Minecraft Vanilla Server's source logic.
 
 The patching system is based on git, and you can learn about it at here: <https://git-scm.com/docs/gittutorial>
 
@@ -44,21 +44,21 @@ If you have forked the main repository, then you should follow the steps below:
 
 1. Clone your repository to local
 2. Run Gradle's `applyAllPatches` task in your IDE or terminal (You can run `./gradlew applyAllPatches` directly in terminal.)
-3. After performing the operation, the following directory pairs should exist in the root directory of the warehouse: `lophine-api` and `lophine-server` , `luminol-api` and `luminol-server` , `folia-api` and `folia-server` , `paper-api` and `paper-server` (Referred to `*-api` and `*-server` as below)
+3. After performing the operation, the following directory pairs should exist in the root directory of the warehouse: `Mili-api` and `Mili-server` , `luminol-api` and `luminol-server` , `folia-api` and `folia-server` , `paper-api` and `paper-server` (Referred to `*-api` and `*-server` as below)
 4. Enter `*-api` and `*-server` directory to carry out modifications.
 
 The following is the simple description of the aforementioned folders, detailed description can be referred to [here](https://github.com/Toffikk/paperweight-examples/blob/18241979c88068d5b061d95ad69c98ecb201c246/README.md):
 
 1. API part
 
-- `lophine-api` : Modifications to the new API
+- `Mili-api` : Modifications to the new API
 - `luminol-api` : Modifications to Luminol API should be carried out in this folder
 - `folia-api` : Modifications to Folia API should be carried out in this folder
 - `paper-api` : Modifications to Paper API/Spigot API/Bukkit API should be carried out in this folder
 
 2. Server part
 
-- `lophine-server` : Changes and new files to the Minecraft vanilla server should be made in this folder
+- `Mili-server` : Changes and new files to the Minecraft vanilla server should be made in this folder
 - `luminol-server` : Changes to luminol-server should be made in this folder
 - `folia-server` : Changes to folia-server should be made in this folder
 - `paper-server` : Modifications to the server logic for paper should be made in this folder
@@ -67,7 +67,7 @@ BTW, `*-api` and `*-server` and are not normal git repositories.
 
 - Before applying patches, the base will point to unmodified source code.
 - Every commit after the base is a patch.
-- Only commits after the last commit of Luminol will be considered as Lophine patches.
+- Only commits after the last commit of Luminol will be considered as Mili patches.
 
 ## Adding new patches
 
@@ -87,9 +87,10 @@ After pushing, you can open a PR to submit your patches.
 You can modify an existing patch by following the steps below:
 
 1. Modify code at HEAD
-2. Run `git commit -a --fixup <hash>` in your terminal to make a fix-up commit (PS: do not commit changes of lophine-created files)
+2. Run `git commit -a --fixup <hash>` in your terminal to make a fix-up commit (PS: do not commit changes of Mili-created files)
     - If you want to edit the commit message, replace `--fixup` with `--squash`
 3. Run `git rebase -i --autosquash base` to rebase automatically, then just type `:q` to close the confirm page
-4. Run Gradle's task `fixupPaperApiFilePatches` to regenerate lophine-created files to patches (PS: do not commit again before you run this task)
+4. Run Gradle's task `fixupPaperApiFilePatches` to regenerate Mili-created files to patches (PS: do not commit again before you run this task)
 5. Run Gradle's task `rebuildAllServerPatches` to modify existing patches
 6. Push and PR again
+

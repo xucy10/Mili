@@ -16,9 +16,10 @@ index 46d6c6e3befc70a6878e12a4d75575e6d48d10ca..77840814806c7d07b58cd716cf7ec095
          // Leaves start - update suppression crash fix
          try {
 -            return AbstractContainerMenu.getRedstoneSignalFromBlockEntity(level.getBlockEntity(pos));
-+            return fun.bm.mili.config.modules.experiment.RedStoneConfig.cce ?
++            return fun.bm.Mili.config.modules.experiment.RedStoneConfig.cce ?
 +                    AbstractContainerMenu.getRedstoneSignalFromContainer((net.minecraft.world.Container) level.getBlockEntity(pos)) : // Leaves - make cce happy(?)
 +                    AbstractContainerMenu.getRedstoneSignalFromBlockEntity(level.getBlockEntity(pos));
          } catch (ClassCastException ex) {
-             if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
+             if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
                  throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, null, this, null, ex);
+

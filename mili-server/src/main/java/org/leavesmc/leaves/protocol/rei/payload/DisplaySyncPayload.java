@@ -88,3 +88,5 @@ public record DisplaySyncPayload(
         public static final StreamCodec<ByteBuf, SyncType> STREAM_CODEC = ByteBufCodecs.idMapper(BY_ID, Enum::ordinal);
     }
 }
+
+

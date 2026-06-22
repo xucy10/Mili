@@ -18,7 +18,7 @@ index 2f41a92465b9da28e026297cc3528898bb1c8412..168301a2f1c3081ae15d3695c2dcc72b
 -            case BARREL:
 -                this.delegate = new ChestMenu(net.minecraft.world.inventory.MenuType.GENERIC_9x3, windowId, bottom, top, top.getContainerSize() / 9);
 +                // Purpur start - Barrels and enderchests 6 rows
-+                this.delegate = new ChestMenu(switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows) {
++                this.delegate = new ChestMenu(switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows) {
 +                    case 6 -> net.minecraft.world.inventory.MenuType.GENERIC_9x6;
 +                    case 5 -> net.minecraft.world.inventory.MenuType.GENERIC_9x5;
 +                    case 4 -> net.minecraft.world.inventory.MenuType.GENERIC_9x4;
@@ -28,7 +28,7 @@ index 2f41a92465b9da28e026297cc3528898bb1c8412..168301a2f1c3081ae15d3695c2dcc72b
 +                }, windowId, bottom, top, top.getContainerSize() / 9);
                  break;
 +            case BARREL:
-+                this.delegate = new ChestMenu(switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
++                this.delegate = new ChestMenu(switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
 +                    case 6 -> net.minecraft.world.inventory.MenuType.GENERIC_9x6;
 +                    case 5 -> net.minecraft.world.inventory.MenuType.GENERIC_9x5;
 +                    case 4 -> net.minecraft.world.inventory.MenuType.GENERIC_9x4;
@@ -53,3 +53,4 @@ index 9d5fe6fc727948955d89f9ed5e181185393a9611..1343972a3a230dcef7349f014a80362f
  
          for (int i = 0; i < this.getSize(); i++) {
              if (i >= items.length) {
+

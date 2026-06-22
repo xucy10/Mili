@@ -12,36 +12,36 @@ import java.util.List;
         name = "general",
         directory = {"carpet"},
         comments = """
-                Carpet/AMS/TIS/Org compatibility rules backed by existing Lophine features.
+                Carpet/AMS/TIS/Org compatibility rules backed by existing Mili features.
                 Only rules that already have a working server-side implementation are exposed here."""
 )
 public class GeneralCompatConfig implements IConfigModule {
     @ConfigInfo(name = "language", comments = """
-            Carpet language value forwarded to lophine.function.language.lang.""")
+            Carpet language value forwarded to mili.function.language.lang.""")
     public static String language = "en_us";
 
     @ConfigInfo(name = "amsUpdateSuppressionCrashFix", comments = """
-            Map AMS update suppression crash protection to Lophine's existing crash fix.""")
+            Map AMS update suppression crash protection to Mili's existing crash fix.""")
     public static boolean amsUpdateSuppressionCrashFix = false;
 
     @ConfigInfo(name = "yeetUpdateSuppressionCrash", comments = """
-            Map TIS update suppression crash yeeting to the same Lophine crash fix.""")
+            Map TIS update suppression crash yeeting to the same Mili crash fix.""")
     public static boolean yeetUpdateSuppressionCrash = false;
 
     @ConfigInfo(name = "dustTrapdoorReintroduced", comments = """
-            Map dust-on-open-trapdoor behavior to Lophine's redstone-ignore-upwards-update option.""")
+            Map dust-on-open-trapdoor behavior to Mili's redstone-ignore-upwards-update option.""")
     public static boolean dustTrapdoorReintroduced = false;
 
     @ConfigInfo(name = "shulkerBoxCCEReintroduced", comments = """
-            Map shulker-box CCE update suppression to Lophine's cce-update-suppression option.""")
+            Map shulker-box CCE update suppression to Mili's cce-update-suppression option.""")
     public static boolean shulkerBoxCCEReintroduced = false;
 
     @ConfigInfo(name = "instantBlockUpdaterReintroduced", comments = """
-            Enable the existing instant block updater patch already carried by Lophine.""")
+            Enable the existing instant block updater patch already carried by Mili.""")
     public static boolean instantBlockUpdaterReintroduced = false;
 
     @ConfigInfo(name = "commandTick", comments = """
-            Enable the tick command support already patched into Lophine.""")
+            Enable the tick command support already patched into Mili.""")
     public static boolean commandTick = false;
 
     @ConfigInfo(name = "creativeNoClip", comments = """
@@ -86,7 +86,7 @@ public class GeneralCompatConfig implements IConfigModule {
     public static boolean ctrlQCraftingFix = false;
 
     @ConfigInfo(name = "carpetAlwaysSetDefault", comments = """
-            Compatibility flag for Lophine's config loader, which already writes default values into the compat config during preload.""")
+            Compatibility flag for Mili's config loader, which already writes default values into the compat config during preload.""")
     public static boolean carpetAlwaysSetDefault = false;
 
     @ConfigInfo(name = "placementRotationFix", comments = """

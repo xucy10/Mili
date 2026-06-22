@@ -12,7 +12,8 @@ index e4ae4354e81f34f0db410333fc9b8e17383a5f41..fc8833655102ca98bb331782a624af79
      public boolean addEffect(MobEffectInstance effectInstance, @Nullable Entity entity, EntityPotionEffectEvent.Cause cause, boolean fireEvent) {
          // Paper end - Don't fire sync event during generation
          // org.spigotmc.AsyncCatcher.catchOp("effect add"); // Spigot // Paper - move to API
-+        if (this.isRemoved()) return false; // Lophine - shouldn't be possible to add effects to removed entity
++        if (this.isRemoved()) return false; // Mili - shouldn't be possible to add effects to removed entity
          if (!this.hasNullCallback()) ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, "Cannot add effects to entities asynchronously"); // Folia - region threading
          if (this.isTickingEffects) {
              this.effectsToProcess.add(new ProcessableEffect(effectInstance, cause));
+

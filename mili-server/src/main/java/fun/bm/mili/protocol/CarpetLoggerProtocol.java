@@ -135,31 +135,11 @@ public class CarpetLoggerProtocol implements LeavesProtocol {
         player.connection.send(new ClientboundTabListPacket(net.minecraft.network.chat.Component.empty(), net.minecraft.network.chat.Component.empty()));
     }
 
-    /**
-     * 构建 TPS 显示行 / Build TPS display line.
-     * 安全处理非区域线程调用 (getCurrentRegion 可能返回 null) / Safely handles non-region thread calls.
-     */
     private static net.minecraft.network.chat.Component buildTpsLine(MinecraftServer server) {
         ServerTickRateManager tickManager = server.tickRateManager();
-        // 安全检查: 非区域线程时 getCurrentRegion() 返回 null / Safety: getCurrentRegion() returns null on non-region threads
-        var currentRegion = TickRegionScheduler.getCurrentRegion();
-        double tps;
-        double mspt;
-        if (currentRegion != null && currentRegion.getData() != null) {
-            ca.spottedleaf.moonrise.common.time.TickData.TickReportData tickData =
-                    currentRegion.getData().getRegionSchedulingHandle().getTickReport5s(System.nanoTime());
-            if (tickData != null) {
-                tps = tickData.tpsData().segmentAll().average();
-                mspt = tickData.timePerTickData().segmentAll().average() / 1.0E6;
-            } else {
-                tps = 20.0;
-                mspt = tickManager.millisecondsPerTick();
-            }
-        } else {
-            // 回退到全局默认值 / Fall back to global defaults
-            tps = 20.0;
-            mspt = tickManager.millisecondsPerTick();
-        }
+        ca.spottedleaf.moonrise.common.time.TickData.TickReportData tickData = TickRegionScheduler.getCurrentRegion().getData().getRegionSchedulingHandle().getTickReport5s(System.nanoTime());
+        final double tps = tickData.tpsData().segmentAll().average();
+        final double mspt = tickData.timePerTickData().segmentAll().average() / 1.0E6;
 
         ChatFormatting color = heatmapColor(mspt, tickManager.millisecondsPerTick());
         return net.minecraft.network.chat.Component.empty()

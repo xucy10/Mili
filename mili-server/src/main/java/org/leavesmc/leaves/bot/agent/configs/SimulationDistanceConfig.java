@@ -84,3 +84,5 @@ public class SimulationDistanceConfig extends AbstractBotConfig<Integer, Simulat
         }
     }
 }
+
+

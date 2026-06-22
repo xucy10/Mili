@@ -349,3 +349,4 @@ public class HopperCounter {
         return WoolHopperCounterConfig.enabled && enabled;
     }
 }
+

@@ -402,7 +402,7 @@ index 36cd1a0307ff1a734eb5f4f3cc013781692e7ad8..0c3e6c1f70289c63bfe424a49374602f
 +        // org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerJoin(player); // Leaves - protocol
 +
 +        // Leaves start - bot support
-+        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
++        if (fun.bm.Mili.config.modules.function.FakeplayerConfig.enable) {
 +            org.leavesmc.leaves.bot.ServerBot bot = this.server.getBotList().getBotByName(player.getScoreboardName());
 +            if (bot != null) {
 +                this.server.getBotList().removeBot(bot, org.leavesmc.leaves.event.bot.BotRemoveEvent.RemoveReason.INTERNAL, player.getBukkitEntity(), false, false);
@@ -565,3 +565,4 @@ index c0ebd700caa950948c58846eaf164afc14f87f09..e4ae4354e81f34f0db410333fc9b8e17
      private Optional<BlockPos> lastClimbablePos = Optional.empty();
      private @Nullable DamageSource lastDamageSource;
      private long lastDamageStamp = Long.MIN_VALUE; // Folia - region threading
+

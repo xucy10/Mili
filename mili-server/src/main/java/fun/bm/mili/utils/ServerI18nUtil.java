@@ -42,22 +42,19 @@ import java.util.function.BiConsumer;
 public class ServerI18nUtil {
     private static final Logger logger = LogUtils.getClassLogger();
     private static final String VERSION = ServerBuildInfo.buildInfo().minecraftVersionId();
-    private static final String BASE_PATH = "cache/lophine/" + VERSION + "/";
-    private static final String defaultLophineLangPath = "/assets/lophine/lang/en_us.json";
+    private static final String BASE_PATH = "cache/mili/" + VERSION + "/";
+    private static final String defaultmiliLangPath = "/assets/mili/lang/en_us.json";
     private static final String manifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     private static final String resourceBaseUrl = "https://resources.download.minecraft.net/";
-    // 复用 HttpClient 实例，避免每次请求创建新连接池 / Reuse HttpClient instance to avoid creating new connection pools per request
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
-    // 预加载任务 / Pre-load task
+    // pre-load
     private static CompletableFuture<Void> preloadTask;
+    // paths
     private static String langPath;
     private static String assetsPath;
     private static String versionPath;
     private static String manifestPath;
     private static String langJsonPath;
-    private static String lophineLangPath;
+    private static String miliLangPath;
 
     public static void init() {
         if (Objects.equals(LanguageConfig.lang, "en_us")) {
@@ -65,7 +62,7 @@ public class ServerI18nUtil {
         }
         langPath = BASE_PATH + "lang/" + LanguageConfig.lang + ".json";
         langJsonPath = "minecraft/lang/" + LanguageConfig.lang + ".json";
-        lophineLangPath = "/assets/lophine/lang/" + LanguageConfig.lang + ".json";
+        miliLangPath = "/assets/mili/lang/" + LanguageConfig.lang + ".json";
         logger.info("Starting load language: {}", LanguageConfig.lang);
         if (LanguageConfig.full_blocking_load) {
             loadI18n(LanguageConfig.lang, 2);
@@ -89,7 +86,7 @@ public class ServerI18nUtil {
         } catch (UnsupportedLanguageException e) {
             logger.warn("Unsupported language: {}", LanguageConfig.lang);
             // Fallback to English
-            final ConfigsInstance configsInstance = ConfigManager.getConfigs("lophine");
+            final ConfigsInstance configsInstance = ConfigManager.getConfigs("mili");
             configsInstance.setConfig(new String[]{"function", "language", "lang"}, "en_us");
             configsInstance.reloadAsync(true);
         } catch (Exception e) {
@@ -194,11 +191,14 @@ public class ServerI18nUtil {
 
     private static byte[] fetch(String urlString) throws IOException, InterruptedException {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlString))
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response;
+            try (HttpClient httpClient = HttpClient.newHttpClient()) {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(urlString))
+                        .timeout(Duration.ofSeconds(10))
+                        .build();
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            }
 
             int responseCode = response.statusCode();
             if (responseCode != 200) {
@@ -238,7 +238,7 @@ public class ServerI18nUtil {
         DeprecatedTranslationsInfo deprecatedTranslationsInfo = DeprecatedTranslationsInfo.loadFromDefaultResource();
         Map<String, String> map = new HashMap<>();
         parseTranslations(map::put);
-        loadLophineI18n(map::put);
+        loadMiliI18n(map::put);
         deprecatedTranslationsInfo.applyToMap(map);
         final Map<String, String> map1 = Map.copyOf(map);
         return new Language() {
@@ -268,17 +268,17 @@ public class ServerI18nUtil {
         };
     }
 
-    private static void loadLophineI18n(BiConsumer<String, String> bi) {
-        if (Language.class.getResource(lophineLangPath) != null) {
-            Language.parseTranslations(bi, lophineLangPath);
+    private static void loadMiliI18n(BiConsumer<String, String> bi) {
+        if (Language.class.getResource(miliLangPath) != null) {
+            Language.parseTranslations(bi, miliLangPath);
         } else {
-            loadLophineI18nDefault(bi);
+            loadMiliI18nDefault(bi);
         }
     }
 
-    public static void loadLophineI18nDefault(BiConsumer<String, String> bi) {
-        if (Language.class.getResource(defaultLophineLangPath) != null) {
-            Language.parseTranslations(bi, defaultLophineLangPath);
+    public static void loadMiliI18nDefault(BiConsumer<String, String> bi) {
+        if (Language.class.getResource(defaultmiliLangPath) != null) {
+            Language.parseTranslations(bi, defaultmiliLangPath);
         }
     }
 

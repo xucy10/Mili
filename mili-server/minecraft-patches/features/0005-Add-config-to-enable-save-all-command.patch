@@ -12,7 +12,7 @@ index 17108636a5728efe98a064001e00e3ca098b1f51..7748e9ac04fbd3f5259d92fc908d9088
          // tick player ping sample
          this.tickPlayerSample();
  
-+        fun.bm.mili.utils.SaveAllUtil.checkTimeout(); // Lophine - save-all fix
++        fun.bm.Mili.utils.SaveAllUtil.checkTimeout(); // Mili - save-all fix
 +
          // tick worlds
          for (final ServerLevel world : this.worlds) {
@@ -25,7 +25,7 @@ index 02c004bc7f9a0203523ce4b27cd766d6bdc478c0..3d86e21198f2888422330b6f7c27712f
          public final ThreadedRegionizer.ThreadedRegion<TickRegionData, TickRegionSectionData> region;
          public final ServerLevel world;
  
-+        public long lastSavedTime = 0; // Lophine - save-all fix
++        public long lastSavedTime = 0; // Mili - save-all fix
 +
          // generic regionised data
          private final Reference2ReferenceOpenHashMap<RegionizedData<?>, Object> regionizedData = new Reference2ReferenceOpenHashMap<>();
@@ -39,11 +39,11 @@ index 6cb0d4daf0f275b95d5ca09275e40ab32258eb39..48628174299f8f18170198df1834d617
              PardonIpCommand.register(this.dispatcher);
              //PerfCommand.register(this.dispatcher); // Folia - region threading - TODO later
 -            //SaveAllCommand.register(this.dispatcher); // Folia - region threading - TODO later
-+            // Lophine start - Add a config to enable save all command
-+            if (fun.bm.mili.config.modules.experiment.CommandConfig.saveAll) {
++            // Mili start - Add a config to enable save all command
++            if (fun.bm.Mili.config.modules.experiment.CommandConfig.saveAll) {
 +                SaveAllCommand.register(this.dispatcher); // Folia - region threading - TODO later
 +            }
-+            // Lophine end - Add a config to enable save all command
++            // Mili end - Add a config to enable save all command
              SaveOffCommand.register(this.dispatcher);
              SaveOnCommand.register(this.dispatcher);
              SetPlayerIdleTimeoutCommand.register(this.dispatcher);
@@ -55,11 +55,11 @@ index 8ce5cdda24d63b33b39e32f9712fafa3917f27c5..25324d81bbe876dbe47b33bd5749b72e
      // Folia start - region threading
      public void tickServer(long startTime, long scheduledEnd, long targetBuffer,
                             io.papermc.paper.threadedregions.TickRegions.TickRegionData region) {
-+        // Lophine start - save-all fix
-+        if (fun.bm.mili.utils.SaveAllUtil.isSaving()) {
-+            fun.bm.mili.utils.SaveAllUtil.postRegionSave(region);
++        // Mili start - save-all fix
++        if (fun.bm.Mili.utils.SaveAllUtil.isSaving()) {
++            fun.bm.Mili.utils.SaveAllUtil.postRegionSave(region);
 +        }
-+        // Lophine end - save-all fix
++        // Mili end - save-all fix
          final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle foliaProfiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
          // Folia end - region threading
          org.spigotmc.WatchdogThread.tick(); // Spigot
@@ -72,8 +72,8 @@ index e37b71402179c73146ff67babc228ccfb996f8f4..cfdb60bd89d83282f2202a5585bac22a
  
      private static int saveAll(CommandSourceStack source, boolean flush) throws CommandSyntaxException {
 -        source.sendSuccess(() -> Component.translatable("commands.save.saving"), false);
-+        // Lophine start - save all
-+        fun.bm.mili.utils.SaveAllUtil.preSaveAll(source, flush);
++        // Mili start - save all
++        fun.bm.Mili.utils.SaveAllUtil.preSaveAll(source, flush);
 +/*        source.sendSuccess(() -> Component.translatable("commands.save.saving"), false);
          MinecraftServer server = source.getServer();
          boolean flag = server.saveEverything(true, flush, true);
@@ -90,5 +90,6 @@ index e37b71402179c73146ff67babc228ccfb996f8f4..cfdb60bd89d83282f2202a5585bac22a
 +    public static SimpleCommandExceptionType getErrorFailed() {
 +        return ERROR_FAILED;
 +    }
-+    // Lophine end - save all
++    // Mili end - save all
  }
+

@@ -407,3 +407,4 @@ public class CommunicationManager implements LeavesProtocol {
         return SyncmaticaProtocolConfig.enabled;
     }
 }
+

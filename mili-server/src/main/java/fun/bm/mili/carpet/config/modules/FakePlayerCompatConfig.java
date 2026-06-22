@@ -10,12 +10,12 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         name = "fakeplayer",
         directory = {"carpet"},
         comments = """
-                Carpet fakeplayer compatibility mapped onto Lophine fakeplayers.
-                commandPlayer is currently backed by Lophine's /bot command surface."""
+                Carpet fakeplayer compatibility mapped onto Mili fakeplayers.
+                commandPlayer is currently backed by Mili's /bot command surface."""
 )
 public class FakePlayerCompatConfig implements IConfigModule {
     @ConfigInfo(name = "commandBot", comments = """
-            Enable Lophine's /bot command.""")
+            Enable Mili's /bot command.""")
     public static boolean commandBot = false;
 
     @ConfigInfo(name = "commandPlayer", comments = """

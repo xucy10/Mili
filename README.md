@@ -1,7 +1,7 @@
  
   # Mili
   
-  *Mili 是一个基于Lophine的分支，具有许多有用的优化和可配置的原版特性，目标是在Folia上实现更多生电的内容（请注意，完整生电请使用Fabric）*
+  *Mili 是一个基于 Lophine 的分支，具有许多有用的优化和可配置的原版特性，目标是在Folia上实现更多生电的内容（请注意，完整生电请使用Fabric）*
 
   在本分支出现问题请不要 前往Lophine提交issues
   
@@ -45,7 +45,7 @@ cd Mili
 ./gradlew applyAllPatches && ./gradlew createMojmapPaperclipJar
 ```
 
-构建完成后，您可以在 `lophine-server/build/libs` 目录中找到生成的 JAR 文件。
+构建完成后，您可以在 `mili-server/build/libs` 目录中找到生成的 JAR 文件。
 
 ## 🐛 问题反馈
 

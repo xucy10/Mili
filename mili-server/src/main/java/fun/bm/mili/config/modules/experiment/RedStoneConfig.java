@@ -31,36 +31,4 @@ public class RedStoneConfig implements IConfigModule {
 
     @ConfigInfo(name = "old-block-remove-behaviour")
     public static boolean oldBlockRemoveBehaviour = false;
-
-    @ConfigInfo(name = "max-redstone-update-depth", comments = """
-            Maximum depth for redstone neighbor updates before the server stops
-            processing further updates for that tick. Vanilla has no explicit
-            limit (relies on StackOverflowError). Setting a value > 0 prevents
-            StackOverflow crashes from update suppression while still allowing
-            deep redstone chains to function. Set to 0 for vanilla behavior
-            (unlimited, may crash on deep update chains). Recommended: 512-1024
-            for technical servers that need update suppression protection.""")
-    public static int maxRedstoneUpdateDepth = 0;
-
-    @ConfigInfo(name = "tps-aware-redstone-throttle", comments = """
-            If true, redstone updates are throttled when the server TPS drops
-            below 'tps-aware-redstone-threshold'. This prevents redstone
-            contraptions from consuming excessive tick time during lag spikes.
-            Critical for stability on busy technical servers with many large
-            redstone circuits.""")
-    public static boolean tpsAwareRedstoneThrottle = false;
-
-    @ConfigInfo(name = "tps-aware-redstone-threshold", comments = """
-            TPS threshold below which redstone updates start being throttled.
-            Only relevant when 'tps-aware-redstone-throttle' is true.
-            Default 17.0 means throttling begins at 85% TPS.""")
-    public static double tpsAwareRedstoneThreshold = 17.0;
-
-    @ConfigInfo(name = "preserve-update-order-on-chunk-load", comments = """
-            If true, redstone updates triggered by chunk loading are processed
-            in a deterministic order (by block position) rather than the
-            default hash-based order. This helps technical players build
-            reliable chunk-load-triggered circuits. May slightly increase
-            tick time for chunk loads.""")
-    public static boolean preserveUpdateOrderOnChunkLoad = false;
 }

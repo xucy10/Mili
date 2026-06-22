@@ -24,35 +24,30 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static net.minecraft.world.level.NaturalSpawner.getRoughBiome;
 
-public final class EntitiesCounterUtil {
-
+public class EntitiesCounterUtil {
     private static final Map<ServerLevel, Cache<Integer, ReferenceList<Entity>>> globalLoadedEntities = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, Object2IntOpenHashMap<MobCategory>> mobsMap = Collections.synchronizedMap(new WeakHashMap<>());
     private static final Map<ServerLevel, Cache<Integer, PositionCountingAreaMap<ServerPlayer>>> mobsAreaMap = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, Integer> spawnableChunkCount = new ConcurrentHashMap<>();
     private static final Map<ServerLevel, CompletableFuture<Void>> tasks = new ConcurrentHashMap<>();
     private static final Set<Integer> UniqueIds = ConcurrentHashMap.newKeySet();
-    private static final Map<ServerLevel, AtomicLong> lastTickTime = new ConcurrentHashMap<>();
-    private static final long MIN_TICK_INTERVAL_MS = 50L;
 
-    private static final java.util.concurrent.atomic.AtomicInteger lastUsedIdAtomic = new java.util.concurrent.atomic.AtomicInteger(1);
-    private static final int CLEANUP_INTERVAL = 200;
+    private static int lastUsedId = 0;
+
+    private static final int CLEANUP_INTERVAL = 200; // each 200 ids used
 
     public static int generateUniqueId() {
         synchronized (UniqueIds) {
-            int id;
-            do {
-                id = lastUsedIdAtomic.incrementAndGet();
-                if (id <= 0) {
-                    lastUsedIdAtomic.compareAndSet(id, 1);
-                }
-            } while (id <= 0 || UniqueIds.contains(id));
+            if (lastUsedId % CLEANUP_INTERVAL == 0) runCleanUp();
+            int id = lastUsedId;
+            while (UniqueIds.contains(id)) {
+                id++;
+            }
 
-            if (id % CLEANUP_INTERVAL == 0) runCleanUp();
+            lastUsedId = id;
             UniqueIds.add(id);
             return id;
         }
@@ -64,6 +59,7 @@ public final class EntitiesCounterUtil {
         if (entitiesCache != null) {
             entitiesCache.invalidate(uniqueId);
         }
+
         Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaCache = mobsAreaMap.get(level);
         if (areaCache != null) {
             areaCache.invalidate(uniqueId);
@@ -75,6 +71,7 @@ public final class EntitiesCounterUtil {
         for (Cache<Integer, ReferenceList<Entity>> collection : globalLoadedEntities.values()) {
             logged.addAll(collection.asMap().keySet());
         }
+
         for (int num : UniqueIds) {
             if (logged.contains(num)) continue;
             UniqueIds.remove(num);
@@ -82,15 +79,13 @@ public final class EntitiesCounterUtil {
     }
 
     public static void addDataToLoaded(ServerLevel level, ReferenceList<Entity> data, int uniqueId) {
-        Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.computeIfAbsent(level,
-            k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
+        Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
         if (data0.asMap().containsKey(uniqueId)) return;
         data0.put(uniqueId, data);
     }
 
     public static void reportAreaMap(ServerLevel level, PositionCountingAreaMap<ServerPlayer> areaMap, int uniqueId) {
-        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaMap0 = mobsAreaMap.computeIfAbsent(level,
-            k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
+        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaMap0 = mobsAreaMap.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
         if (areaMap0.asMap().containsKey(uniqueId)) return;
         areaMap0.put(uniqueId, areaMap);
     }
@@ -105,11 +100,7 @@ public final class EntitiesCounterUtil {
 
     public static boolean canRunNewTask(ServerLevel level) {
         CompletableFuture<Void> task = tasks.get(level);
-        if (task != null && !task.isDone()) return false;
-
-        AtomicLong last = lastTickTime.get(level);
-        if (last != null && System.currentTimeMillis() - last.get() < MIN_TICK_INTERVAL_MS) return false;
-        return true;
+        return task == null || task.isDone();
     }
 
     public static void tick(ServerLevel level) {
@@ -123,18 +114,22 @@ public final class EntitiesCounterUtil {
 
                 for (ReferenceList<Entity> data : snapshot) {
                     if (data == null) continue;
-                    for (Entity entity : data) {
+                    for (Entity entity : GlobalEntitiesCounter.async ? data.copy() : data) {
                         if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
+                        // Mili start - Copy from net/minecraft/world/level/NaturalSpawner
                         MobCategory category = entity.getType().getCategory();
                         if (category != MobCategory.MISC) {
+                            // Paper start - Only count natural spawns
                             if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
                                     !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
                                             entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
                                 continue;
                             }
+                            // Paper end - Only count natural spawns
                             map.addTo(category, 1);
                         }
                     }
+                    // Mili end - Copy from net/minecraft/world/level/NaturalSpawner
                 }
                 mobsMap.put(level, map);
 
@@ -152,41 +147,51 @@ public final class EntitiesCounterUtil {
                 LogUtils.getClassLogger().error("Failed to run task", e);
             }
         };
-        task.run();
-        lastTickTime.computeIfAbsent(level, k -> new AtomicLong(0L)).set(System.currentTimeMillis());
+        if (GlobalEntitiesCounter.async) {
+            tasks.put(level, CompletableFuture.runAsync(task).exceptionally(ex -> {
+                LogUtils.getClassLogger().error("Failed to run task", ex);
+                return null;
+            }));
+        } else {
+            task.run();
+        }
     }
 
     public static NaturalSpawner.SpawnState runRemainingTasks(
-            ServerLevel level, Iterable<Entity> entities, NaturalSpawner.ChunkGetter chunkGetter,
-            LocalMobCapCalculator calculator, final boolean countMobs
+            ServerLevel level, Iterable<Entity> entities, NaturalSpawner.ChunkGetter chunkGetter, LocalMobCapCalculator calculator, final boolean countMobs
     ) {
         Object2IntOpenHashMap<MobCategory> map = getMobsMap(level);
-        if (map == null) return null;
-
+        if (map == null) return null; // skip if no data
+        // Mili start - Copy from net/minecraft/world/level/NaturalSpawner
         PotentialCalculator potentialCalculator = new PotentialCalculator();
         for (Entity entity : entities) {
             if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
+            // Paper start - Only count natural spawns
             if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
                     !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
                             entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
                 continue;
             }
+            // Paper end - Only count natural spawns
             BlockPos blockPos = entity.blockPosition();
             chunkGetter.query(ChunkPos.asLong(blockPos), chunk -> {
                 MobSpawnSettings.MobSpawnCost mobSpawnCost = getRoughBiome(blockPos, chunk).getMobSettings().getMobSpawnCost(entity.getType());
                 if (mobSpawnCost != null) {
                     potentialCalculator.addCharge(entity.blockPosition(), mobSpawnCost.charge());
                 }
-                if (calculator != null && entity instanceof Mob) {
+
+                if (calculator != null && entity instanceof Mob) { // Paper - Optional per player mob spawns
                     calculator.addMob(chunk.getPos(), entity.getType().getCategory());
                 }
+
+                // Paper start - Optional per player mob spawns
                 if (countMobs) {
                     chunk.level.getChunkSource().chunkMap.updatePlayerMobTypeMap(entity);
                 }
+                // Paper end - Optional per player mob spawns
             });
         }
         return new NaturalSpawner.SpawnState(getTotalChunkCount(level), map, potentialCalculator, calculator);
+        // Mili end - Copy from net/minecraft/world/level/NaturalSpawner
     }
-
-    private EntitiesCounterUtil() {}
 }

@@ -12,8 +12,8 @@ index 14ffbcb66006878eacf310547dad53718f8308eb..6c108bc7d93196803daeef4751d06caf
      private long tickCount = 0L;
      private final Object stateLock = new Object();
      private final Long2ObjectOpenHashMap<List<GlobalScheduledTask>> tasksByDeadline = new Long2ObjectOpenHashMap<>();
-+    private final java.util.concurrent.atomic.AtomicInteger lastTaskId = new java.util.concurrent.atomic.AtomicInteger(1); // Mili - task uid
-+    private final java.util.concurrent.ConcurrentHashMap<Integer, GlobalScheduledTask> taskIndex = new java.util.concurrent.ConcurrentHashMap<>(); // Mili - task uid index
++    private int lastTaskId = 1; // Mili - add task id
++    private final Object stateLockForTaskId = new Object(); // Mili - add task id
  
      public void tick() {
          final List<GlobalScheduledTask> run;
@@ -22,7 +22,7 @@ index 14ffbcb66006878eacf310547dad53718f8308eb..6c108bc7d93196803daeef4751d06caf
          }
  
 -        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, -1, task);
-+        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, -1, task, this.getNextTaskId()); // Mili - task uid
++        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, -1, task, this.getNextTaskId()); // Mili - add task id
  
          this.scheduleInternal(ret, delayTicks);
  
@@ -31,115 +31,72 @@ index 14ffbcb66006878eacf310547dad53718f8308eb..6c108bc7d93196803daeef4751d06caf
          }
  
 -        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, periodTicks, task);
-+        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, periodTicks, task, this.getNextTaskId()); // Mili - task uid
++        final GlobalScheduledTask ret = new GlobalScheduledTask(plugin, periodTicks, task, this.getNextTaskId()); // Mili - add task id
  
          this.scheduleInternal(ret, initialDelayTicks);
  
-@@ -133,7 +135,77 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
+@@ -133,7 +135,33 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
          }
      }
  
 -    private final class GlobalScheduledTask implements ScheduledTask, Runnable {
-+    // Mili start - enhanced task uid system
-+    /**
-+     * Cancel a single task by its unique ID. O(1) via index lookup.
-+     * @return true if the task was found and cancelled
-+     */
-+    public boolean cancelTask(final int taskId) {
-+        GlobalScheduledTask task = this.taskIndex.get(taskId);
-+        if (task != null) {
-+            task.cancel();
-+            this.taskIndex.remove(taskId);
-+            return true;
-+        }
-+        return false;
-+    }
-+
-+    /**
-+     * Cancel all tasks belonging to a specific plugin. O(n) but scoped.
-+     * @return number of tasks cancelled
-+     */
-+    public int cancelTasksByPlugin(final Plugin plugin) {
-+        int count = 0;
++    // Mili start - add cancel task by task id
++    public void cancelTask(final int taskId) {
 +        synchronized (this.stateLock) {
 +            for (final List<GlobalScheduledTask> tasks : this.tasksByDeadline.values()) {
 +                for (final GlobalScheduledTask task : tasks) {
-+                    if (task.plugin == plugin) {
++                    if (task.getTaskId() == taskId) {
 +                        task.cancel();
-+                        this.taskIndex.remove(task.taskId);
-+                        count++;
++                        return;
 +                    }
 +                }
 +            }
 +        }
-+        return count;
-+    }
-+
-+    /** Retrieve a scheduled task by its unique ID. O(1). */
-+    public GlobalScheduledTask getTask(final int taskId) {
-+        return this.taskIndex.get(taskId);
-+    }
-+
-+    /** Get the number of currently indexed tasks. */
-+    public int getTaskCount() {
-+        return this.taskIndex.size();
 +    }
 +
 +    private int getNextTaskId() {
-+        int id;
-+        do {
-+            id = this.lastTaskId.incrementAndGet();
-+            if (id <= 0) {
-+                this.lastTaskId.compareAndSet(id, 1);
++        synchronized (this.stateLockForTaskId) {
++            if (this.lastTaskId == Integer.MAX_VALUE) {
++                this.lastTaskId = 1;
++            } else {
++                ++this.lastTaskId;
 +            }
-+        } while (id <= 0);
-+        // Periodic purge of finished/cancelled tasks to prevent taskIndex memory leak
-+        // Size-based trigger avoids per-tick overhead; only runs when index grows large
-+        if (this.taskIndex.size() > 128) {
-+            this.purgeStaleTaskIndex();
 +        }
-+        return id;
++        return this.lastTaskId;
 +    }
-+
-+    private void purgeStaleTaskIndex() {
-+        this.taskIndex.entrySet().removeIf(e -> {
-+            int s = e.getValue().getStateVolatile();
-+            return s == GlobalScheduledTask.STATE_CANCELLED
-+                || s == GlobalScheduledTask.STATE_FINISHED;
-+        });
-+    }
-+    // Mili end - enhanced task uid system
++    // Mili end - add cancel task by task id
 +
 +    public final class GlobalScheduledTask implements ScheduledTask, Runnable { // Mili - private -> public
  
          private static final int STATE_IDLE                = 0;
          private static final int STATE_EXECUTING           = 1;
-@@ -145,13 +191,15 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
+@@ -145,13 +173,15 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
          private final long repeatDelay; // in ticks
          private Consumer<ScheduledTask> run;
          private volatile int state;
-+        private final int taskId; // Mili - task uid
++        private int taskId; // Mili - add task id
  
          private static final VarHandle STATE_HANDLE = ConcurrentUtil.getVarHandle(GlobalScheduledTask.class, "state", int.class);
  
 -        private GlobalScheduledTask(final Plugin plugin, final long repeatDelay, final Consumer<ScheduledTask> run) {
-+        private GlobalScheduledTask(final Plugin plugin, final long repeatDelay, final Consumer<ScheduledTask> run, int taskId) { // Mili - task uid
++        private GlobalScheduledTask(final Plugin plugin, final long repeatDelay, final Consumer<ScheduledTask> run, int taskId) { // Mili - add task id
              this.plugin = plugin;
              this.repeatDelay = repeatDelay;
              this.run = run;
-+            this.taskId = taskId; // Mili - task uid
++            this.taskId = taskId; // Mili - add task id
          }
  
          private final int getStateVolatile() {
-@@ -262,5 +310,11 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
+@@ -262,5 +292,11 @@ public class FoliaGlobalRegionScheduler implements GlobalRegionScheduler {
                  }
              }
          }
 +
-+        // Mili start - task uid accessor
++        // Mili start - add task id
 +        public int getTaskId() {
-+            return this.taskId;
++            return taskId;
 +        }
-+        // Mili end - task uid accessor
++        // Mili end - add task id
      }
  }
+

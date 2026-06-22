@@ -15,7 +15,7 @@ index 578e7c8dc601f53cf2a068685c6901bfaf47e763..0686aa5425c00e10beb381f3c3ff3c55
          BlockState neighborState,
          RandomSource random
      ) {
-+        if (fun.bm.mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && direction == Direction.DOWN) return state; // Leaves - behavior to 1.20.1
++        if (fun.bm.Mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && direction == Direction.DOWN) return state; // Leaves - behavior to 1.20.1
          return direction == Direction.DOWN && !this.canSurviveOn(level, neighborPos, neighborState)
              ? Blocks.AIR.defaultBlockState()
              : super.updateShape(state, level, scheduledTickAccess, pos, direction, neighborPos, neighborState, random);
@@ -28,7 +28,7 @@ index ba253a9af6141d8ea99c064e3cc0c6486c221098..48f9e234e4025633cbc41d334d88ada3
      ) {
          if (direction == Direction.DOWN) {
 -            return !this.canSurviveOn(level, neighborPos, neighborState) ? Blocks.AIR.defaultBlockState() : state;
-+            return fun.bm.mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate ? state : !this.canSurviveOn(level, neighborPos, neighborState) ? Blocks.AIR.defaultBlockState() : state; // Leaves - behavior to 1.19
++            return fun.bm.Mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate ? state : !this.canSurviveOn(level, neighborPos, neighborState) ? Blocks.AIR.defaultBlockState() : state; // Leaves - behavior to 1.19
          } else if (direction == Direction.UP) {
              return this.getConnectionState(level, state, pos);
          } else {
@@ -37,7 +37,7 @@ index ba253a9af6141d8ea99c064e3cc0c6486c221098..48f9e234e4025633cbc41d334d88ada3
          BlockState blockState = level.getBlockState(blockPos);
          if (nonNormalCubeAbove) {
 -            boolean flag = blockState.getBlock() instanceof TrapDoorBlock || this.canSurviveOn(level, blockPos, blockState);
-+            boolean flag = (!fun.bm.mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && blockState.getBlock() instanceof TrapDoorBlock) || this.canSurviveOn(level, blockPos, blockState); // Leaves - behavior to 1.19
++            boolean flag = (!fun.bm.Mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && blockState.getBlock() instanceof TrapDoorBlock) || this.canSurviveOn(level, blockPos, blockState); // Leaves - behavior to 1.19
              if (flag && shouldConnectTo(level.getBlockState(blockPos.above()))) {
                  if (blockState.isFaceSturdy(level, blockPos, direction.getOpposite())) {
                      return RedstoneSide.UP;
@@ -49,7 +49,8 @@ index 87e1a32376adc5a15f035b62bc1f672c507cd230..26c10c1fecb976f3ef0338aa78603d45
          BlockState neighborState,
          RandomSource random
      ) {
-+        if (fun.bm.mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && direction == Direction.DOWN) return state; // Leaves - behavior to 1.20.1
++        if (fun.bm.Mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && direction == Direction.DOWN) return state; // Leaves - behavior to 1.20.1
          if (direction == Direction.DOWN && !this.canSurviveOn(level, neighborPos, neighborState)) {
              return Blocks.AIR.defaultBlockState();
          } else {
+

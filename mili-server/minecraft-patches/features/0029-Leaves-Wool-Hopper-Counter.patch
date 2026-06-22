@@ -18,7 +18,7 @@ index 3d2bf6371d39946576745aa7977cdc0f2ff07036..ed906ec726fa0eb12c0108dc751af2dc
                  }
  
 +                // Leaves start - Wool hopper counter
-+                if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
++                if (fun.bm.Mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
 +                    net.minecraft.world.item.DyeColor woolColor = org.leavesmc.leaves.util.WoolUtils.getWoolColorAtPosition(level, blockEntity.getBlockPos().relative(state.getValue(HopperBlock.FACING)));
 +                    if (woolColor != null) {
 +                        for (int i = 0; i < Short.MAX_VALUE; i++) {
@@ -36,7 +36,7 @@ index 3d2bf6371d39946576745aa7977cdc0f2ff07036..ed906ec726fa0eb12c0108dc751af2dc
                  if (flag) {
                      blockEntity.setCooldown(level.spigotConfig.hopperTransfer); // Spigot
 +                    // Leaves start - Wool hopper counter
-+                    if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
++                    if (fun.bm.Mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
 +                        blockEntity.setCooldown(0);
 +                        return true;
 +                    }
@@ -89,7 +89,8 @@ index 3d2bf6371d39946576745aa7977cdc0f2ff07036..ed906ec726fa0eb12c0108dc751af2dc
      }
  
      public static boolean addItem(Container container, ItemEntity item) {
-+        if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && item.isRemoved()) return false; // Leaves - Wool hopper counter
++        if (fun.bm.Mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && item.isRemoved()) return false; // Leaves - Wool hopper counter
          boolean flag = false;
          // CraftBukkit start
          if (org.bukkit.event.inventory.InventoryPickupItemEvent.getHandlerList().getRegisteredListeners().length > 0) { // Paper - optimize hoppers
+

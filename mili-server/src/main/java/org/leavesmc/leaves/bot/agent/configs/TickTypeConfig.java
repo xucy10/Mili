@@ -67,3 +67,4 @@ public class TickTypeConfig extends AbstractBotConfig<ServerBot.TickType, TickTy
         });
     }
 }
+

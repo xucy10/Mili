@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="./public/image/lophine/lophine3.png" alt="Lophine Logo" width="300">
+  <img src="./public/image/lophine/lophine3.png" alt="Mili Logo" width="300">
   
-  # Lophine
+  # Mili
   
-  *Lophine is a Luminol fork with many useful optimizations and configurable vanilla features, aims to provide more function for survival-usable circuit on folia (Please note that Fabric should be used for complete survival-usable)*
+  *Mili is a Lophine fork with many useful optimizations and configurable vanilla features, aims to provide more function for survival-usable circuit on folia (Please note that Fabric should be used for complete survival-usable)*
   
   ![Created At](https://img.shields.io/github/created-at/LuminolMC/Lophine?style=for-the-badge&color=blue)
   [![License](https://img.shields.io/github/license/LuminolMC/Lophine?style=for-the-badge&color=green)](LICENSE.md)
@@ -41,14 +41,14 @@ If you want to experience the latest features, you can build it yourself followi
 
 ```bash
 # Clone the project
-git clone https://github.com/LuminolMC/Lophine.git
-cd Lophine
+git clone https://github.com/xucy10/Mili.git
+cd Mili
 
 # Apply patches and build Paperclip JAR
 ./gradlew applyAllPatches && ./gradlew createMojmapPaperclipJar
 ```
 
-After building, you can find the generated JAR file in the `lophine-server/build/libs` directory.
+After building, you can find the generated JAR file in the `mili-server/build/libs` directory.
 
 ## 🔌 API Usage
 
@@ -62,7 +62,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("fun.bm.lophine:lophine-api:$VERSION")
+    compileOnly("fun.bm.mili:mili-api:$VERSION")
 }
 ```
 
@@ -78,8 +78,8 @@ dependencies {
 
 <dependencies>
     <dependency>
-        <groupId>fun.bm.lophine</groupId>
-        <artifactId>luminol-api</artifactId>
+        <groupId>fun.bm.mili</groupId>
+        <artifactId>mili-api</artifactId>
         <version>$VERSION</version>
         <scope>provided</scope>
     </dependency>

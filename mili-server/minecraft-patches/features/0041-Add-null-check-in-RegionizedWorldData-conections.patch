@@ -13,17 +13,17 @@ index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34
                  regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift)).itemEntityMovementTrackerMap.put(key, tracker);
              }
              // Luminol end
-+            Set<Connection> cons = new java.util.HashSet<>(from.connections.size()); // Lophine - save all connections we have processed in connection process to detect missed connections
++            Set<Connection> cons = new java.util.HashSet<>(from.connections.size()); // Mili - save all connections we have processed in connection process
              // connections
              for (final Connection conn : from.connections) {
                  final ServerPlayer player = conn.getPlayer();
-+                if (player == null) continue; // Lophine - skip null player connections
++                if (player == null) continue; // Mili - skip null player connections
                  final ChunkPos pos = player.chunkPosition();
                  // Note: It is impossible for an entity in the world to _not_ be in an entity chunk, which means
                  // the chunk holder must _exist_, and so the region section exists.
                  regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift))
                      .connections.add(conn);
-+                cons.add(conn); // Lophine - save all connections we have processed in connection process
++                cons.add(conn); // Mili - save all connections we have processed in connection process
              }
              // entities
              for (final ServerPlayer player : from.localPlayers) {
@@ -31,13 +31,13 @@ index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34
                  into.localPlayers.add(player);
                  player.getBukkitEntity().updateRegion(into);
                  into.nearbyPlayers.addPlayer(player);
-+                // Lophine start - we need to process the connection if player's connection is not processed, if connection.player is null, next tick will clean up it
++                // Mili start - we need to process the connection if player's connection is not processed, if connection.player is null, next tick will clean up it
 +                final Connection conn = player.connection.connection;
 +                if (!cons.contains(conn)) {
 +                    regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift))
 +                            .connections.add(conn);
 +                }
-+                // Lophine end
++                // Mili end
              }
              for (final Entity entity : from.allEntities) {
                  final ChunkPos pos = entity.chunkPosition();
@@ -45,7 +45,8 @@ index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34
      private static void cleanUpConnection(final Connection conn) {
          // note: ALL connections HERE have a player
          final ServerPlayer player = conn.getPlayer();
-+        if (player == null) return; // Lophine - skip null player connections; the connection will be cleaned up in the next tick when the player object is attached
++        if (player == null) return; // Mili - skip null player connections
          // now that the connection is removed, we can allow this region to die
          player.level().moonrise$getChunkTaskScheduler().chunkHolderManager.removeTicketAtLevel(
              ServerGamePacketListenerImpl.DISCONNECT_TICKET, player.connection.disconnectPos,
+

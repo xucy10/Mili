@@ -149,3 +149,4 @@ public class SyncmaticaProtocol {
         return true;
     }
 }
+

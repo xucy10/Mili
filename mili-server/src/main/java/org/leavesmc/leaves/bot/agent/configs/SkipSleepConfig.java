@@ -71,3 +71,5 @@ public class SkipSleepConfig extends AbstractBotConfig<Boolean, SkipSleepConfig>
         this.setValue(nbt.getBooleanOr(getName(), FakeplayerConfig.canSkipSleep));
     }
 }
+
+

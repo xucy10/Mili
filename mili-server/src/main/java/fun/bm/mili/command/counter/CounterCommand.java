@@ -39,3 +39,4 @@ public class CounterCommand extends RootNode {
         return hasPermission(PERM_BASE, sender, subcommand);
     }
 }
+

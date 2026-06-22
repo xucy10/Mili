@@ -16,7 +16,7 @@ index 80f17f33f670018240c854df589cf90cdeab6e70..c9af615ff9120c07787f436dbb6024e5
              && level.getDifficulty() != Difficulty.PEACEFUL
              && level.isVillage(serverPlayer.blockPosition())) {
 +            // Leaves start - Revert raid changes
-+            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
++            if (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
 +                return level.getRaids().createOrExtendRaid(serverPlayer, serverPlayer.blockPosition()) == null;
 +            }
 +            // Leaves end - Revert raid changes
@@ -32,7 +32,7 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
  
      public boolean absorbRaidOmen(ServerPlayer player) {
 -        MobEffectInstance effect = player.getEffect(MobEffects.RAID_OMEN);
-+        MobEffectInstance effect = player.getEffect(fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? MobEffects.BAD_OMEN : MobEffects.RAID_OMEN); // Leaves - old Raid Behavior
++        MobEffectInstance effect = player.getEffect(fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? MobEffects.BAD_OMEN : MobEffects.RAID_OMEN); // Leaves - old Raid Behavior
          if (effect == null) {
              return false;
          } else {
@@ -42,7 +42,7 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
                          if (flag1) {
 -                            this.waveSpawnPos = this.getValidSpawnPos(level);
 +                            // Leaves Start - old FindSpawnPosition
-+                            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
++                            if (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
 +                                this.waveSpawnPos = this.preCalcRavagerSpawnLocation(level, this.raidCooldownTicks < 100 ? 1 : 0);
 +                            } else {
 +                                this.waveSpawnPos = this.getValidSpawnPos(level);
@@ -58,7 +58,7 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
 -                    BlockPos blockPos = this.waveSpawnPos.orElseGet(() -> this.findRandomSpawnPos(level, 20));
 +                    // Leaves Start - old FindSpawnPosition
 +                    BlockPos blockPos;
-+                    if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
++                    if (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
 +                        blockPos = this.getRavagerSpawnLocation(level, i, 20);
 +                    } else {
 +                        blockPos = this.waveSpawnPos.orElseGet(() -> this.findRandomSpawnPos(level, 20));
@@ -72,7 +72,7 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
                      }
  
 -                    if (i > 5) {
-+                    if (i > (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? 3 : 5)) { // Leaves - old FindSpawnPosition
++                    if (i > (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? 3 : 5)) { // Leaves - old FindSpawnPosition
                          org.bukkit.craftbukkit.event.CraftEventFactory.callRaidStopEvent(level, this, org.bukkit.event.raid.RaidStopEvent.Reason.UNSPAWNABLE); // CraftBukkit
                          this.stop();
                          break;
@@ -81,7 +81,7 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
              int i3 = this.center.getZ() + Mth.floor(Mth.sin(f2) * 32.0F * f) + level.random.nextInt(3) * Mth.floor(f);
              int height = level.getHeight(Heightmap.Types.WORLD_SURFACE, i2, i3);
 -            if (Mth.abs(height - this.center.getY()) <= 96) {
-+            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior || Mth.abs(height - this.center.getY()) <= 96) { // Leaves - skippable
++            if (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior || Mth.abs(height - this.center.getY()) <= 96) { // Leaves - skippable
                  mutableBlockPos.set(i2, height, i3);
                  if (!level.isVillage(mutableBlockPos) || i <= 7) {
                      int i4 = 10;
@@ -177,7 +177,7 @@ index 5e8245e6dd8a07ece83dd1bc20e351a92044e7a0..2b7894a4104d4cb237746a3e66d4368b
 +
 +            // Leaves start - Revert raid changes
 +            if (this.level() instanceof ServerLevel) {
-+                if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior && !this.hasRaid()) {
++                if (fun.bm.Mili.config.modules.function.OldFeatureConfig.oldRaidBehavior && !this.hasRaid()) {
 +                    ItemStack itemstack = this.getItemBySlot(EquipmentSlot.HEAD);
 +                    net.minecraft.world.entity.player.Player entityhuman = null;
 +                    if (entity instanceof net.minecraft.world.entity.player.Player player) {
@@ -214,3 +214,4 @@ index 5e8245e6dd8a07ece83dd1bc20e351a92044e7a0..2b7894a4104d4cb237746a3e66d4368b
          }
  
          super.die(damageSource);
+

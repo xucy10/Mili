@@ -18,6 +18,7 @@
 package org.leavesmc.leaves.bot;
 
 import ca.spottedleaf.moonrise.common.util.TickThread;
+import com.google.common.collect.Maps;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.logging.LogUtils;
@@ -56,7 +57,6 @@ import org.leavesmc.leaves.event.bot.*;
 import org.slf4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -72,10 +72,10 @@ public class BotList {
     private final BotDataStorage manualSaveDataStorage;
     private final BotDataStorage resumeDataStorage;
 
-    private final Map<UUID, ServerBot> botsByUUID = new ConcurrentHashMap<>();
-    private final Map<String, ServerBot> botsByName = new ConcurrentHashMap<>();
-    private final Map<String, Set<String>> botsNameByWorldUuid = new ConcurrentHashMap<>();
-    private final Map<String, Set<String>> legacyBotsNameByWorldUuid = new ConcurrentHashMap<>();
+    private final Map<UUID, ServerBot> botsByUUID = Maps.newHashMap();
+    private final Map<String, ServerBot> botsByName = Maps.newHashMap();
+    private final Map<String, Set<String>> botsNameByWorldUuid = Maps.newHashMap();
+    private final Map<String, Set<String>> legacyBotsNameByWorldUuid = Maps.newHashMap();
 
     public boolean forceShutdown = false;
 
@@ -86,19 +86,10 @@ public class BotList {
         INSTANCE = this;
     }
 
-    /**
-     * REFACTORED: 使用快照列表避免遍历期间的并发修改问题
-     */
     public void saveAllResumeBots(final int interval) {
         MCUtil.ensureMain("Save Bots", () -> {
             final long now = System.currentTimeMillis() / 50;
-            // REFACTORED: 创建快照列表避免并发修改问题
-            List<ServerBot> botSnapshot = new ArrayList<>(bots);
-            for (ServerBot bot : botSnapshot) {
-                // 检查bot是否仍然有效
-                if (bot == null || bot.isRemoved()) {
-                    continue;
-                }
+            for (ServerBot bot : bots) {
                 if (interval == -1 || now - bot.lastSave >= interval) {
                     this.resumeDataStorage.save(bot);
                     bot.lastSave = now;
@@ -108,20 +99,11 @@ public class BotList {
         });
     }
 
-    /**
-     * REFACTORED: 使用快照列表避免遍历期间的并发修改问题
-     */
     public void saveAllResumeBots() {
         if (!FakeplayerConfig.enable || !FakeplayerConfig.canResident) {
             return;
         }
-        // REFACTORED: 创建快照列表避免并发修改问题
-        List<ServerBot> botSnapshot = new ArrayList<>(this.bots);
-        for (ServerBot bot : botSnapshot) {
-            // 检查bot是否仍然有效
-            if (bot == null || bot.isRemoved()) {
-                continue;
-            }
+        for (ServerBot bot : this.bots) {
             this.resumeDataStorage.save(bot);
         }
     }
@@ -202,38 +184,8 @@ public class BotList {
         }
     }
 
-    /**
-     * REFACTORED: 添加假玩家到列表 - 使用同步块确保原子性操作
-     *
-     * <p>原始问题: bots、botsByName、botsByUUID 的更新不是原子操作，
-     * 可能导致并发读取时看到不一致的状态。
-     *
-     * <p>修复内容:
-     * <ul>
-     *   <li>添加UUID冲突检查</li>
-     *   <li>使用同步块确保三个集合的原子性更新</li>
-     *   <li>添加重复添加检查</li>
-     * </ul>
-     */
     public ServerBot placeNewBot(@NotNull ServerBot bot, ServerLevel world, Location location, ValueInput save) {
         Optional<ValueInput> optional = Optional.ofNullable(save);
-
-        // REFACTORED: 前置检查 - 确保没有重复添加
-        UUID botUUID = bot.getUUID();
-        String botName = bot.getScoreboardName().toLowerCase(Locale.ROOT);
-
-        synchronized (this) {
-            // 检查UUID冲突
-            if (this.botsByUUID.containsKey(botUUID)) {
-                LOGGER.warn("Attempted to add bot {} with duplicate UUID {}, ignoring", botName, botUUID);
-                return null;
-            }
-            // 检查名称冲突
-            if (this.botsByName.containsKey(botName)) {
-                LOGGER.warn("Attempted to add bot with duplicate name {}, ignoring", botName);
-                return null;
-            }
-        }
 
         bot.isRealPlayer = true;
         bot.loginTime = System.currentTimeMillis();
@@ -244,7 +196,6 @@ public class BotList {
         BotSpawnLocationEvent event = new BotSpawnLocationEvent(bot.getBukkitEntity(), location);
         this.server.server.getPluginManager().callEvent(event);
         location = event.getSpawnLocation();
-        final Location spawnLocation = location;
 
         bot.spawnIn(world);
         bot.gameMode.setLevel(bot.level());
@@ -254,39 +205,17 @@ public class BotList {
 
         bot.connection.teleport(bot.getX(), bot.getY(), bot.getZ(), bot.getYRot(), bot.getXRot());
 
-        // REFACTORED: 使用同步块确保原子性更新
-        synchronized (this) {
-            // 再次检查，防止并发添加冲突
-            if (this.botsByUUID.containsKey(botUUID) || this.botsByName.containsKey(botName)) {
-                LOGGER.warn("Bot {} was added concurrently, aborting", botName);
-                return null;
-            }
-
-            this.bots.add(bot);
-            this.botsByName.put(botName, bot);
-            this.botsByUUID.put(botUUID, bot);
-        }
+        this.bots.add(bot);
+        this.botsByName.put(bot.getScoreboardName().toLowerCase(Locale.ROOT), bot);
+        this.botsByUUID.put(bot.getUUID(), bot);
 
         bot.suppressTrackerForLogin = true;
 
         Runnable task = () -> {
-            // mili - Folia safety: double-check we're on the right region thread
-            if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(world, spawnLocation.blockX() >> 4, spawnLocation.blockZ() >> 4)) {
-                MiliBotUtil.warnThreadMismatch("placeNewBot", world, spawnLocation);
-            }
             optional.ifPresent(nbt -> {
                 bot.loadAndSpawnEnderPearls(nbt);
                 bot.loadAndSpawnParentVehicle(nbt);
             });
-            // mili - Folia safety: check world still loaded
-            if (world.getCurrentWorldData() == null) {
-                BotList.LOGGER.warn("Bot {} failed to spawn: world data is null, cleaning up maps", bot.getName().getString());
-                // REFACTORED: 使用同步块确保原子性清理
-                synchronized (BotList.this) {
-                    removeBotFromMaps(bot, botUUID, botName);
-                }
-                return;
-            }
             world.getCurrentWorldData().connections.add(bot.connection.connection);
             world.addNewPlayer(bot);
             BotJoinEvent event1 = new BotJoinEvent(bot.getBukkitEntity(), PaperAdventure.asAdventure(Component.translatable("multiplayer.player.joined", bot.getDisplayName())).style(Style.style(NamedTextColor.YELLOW)));
@@ -304,7 +233,7 @@ public class BotList {
             bot.renderData();
             bot.initInventoryMenu();
             botsNameByWorldUuid
-                    .computeIfAbsent(bot.level().uuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(bot.level().uuid.toString(), (k) -> new HashSet<>())
                     .add(bot.getBukkitEntity().getName());
             BotList.LOGGER.info("{}[{}] logged in with entity id {} at ([{}]{}, {}, {})", bot.getName().getString(), "Local", bot.getId(), bot.level().serverLevelData.getLevelName(), bot.getX(), bot.getY(), bot.getZ());
         };
@@ -323,10 +252,6 @@ public class BotList {
      * return true if async
      */
     public boolean removeBot(@NotNull ServerBot bot, @NotNull BotRemoveEvent.RemoveReason reason, @Nullable CommandSender remover, boolean save, boolean resume, boolean async) {
-        // mili - Folia safety: check world/level availability BEFORE any TickThread call to avoid NPE
-        if (bot.level() == null || bot.level().getCurrentWorldData() == null) {
-            return this.forceRemoveBot(bot);
-        }
         if (async && !TickThread.isTickThreadFor(bot.level(), bot.getX(), bot.getZ())) {
             bot.getBukkitEntity().taskScheduler.schedule((Entity unused) -> this.removeBot(bot, reason, remover, save, resume), null, 1L);
             return true; // async always return true
@@ -334,64 +259,11 @@ public class BotList {
         return this.removeBot(bot, remover, reason, save, resume);
     }
 
-    /**
-     * mili - Folia safety: best-effort cleanup when the bot's region is
-     * no longer available (server shutdown, world unload, etc.).
-     * Removes the bot from the internal maps and cancels any pending tasks,
-     * but does not touch region-owned state.
-     */
-    /**
-     * REFACTORED: 强制移除假玩家 - 使用同步块确保原子性操作
-     */
-    private boolean forceRemoveBot(@NotNull ServerBot bot) {
-        try {
-            if (bot.removeTaskId != -1) {
-                ((FoliaGlobalRegionScheduler) Bukkit.getGlobalRegionScheduler()).cancelTask(bot.removeTaskId);
-                bot.removeTaskId = -1;
-            }
-            // REFACTORED: 使用同步块确保原子性清理
-            synchronized (this) {
-                removeBotFromMaps(bot);
-            }
-            return true;
-        } catch (Exception e) {
-            LOGGER.error("forceRemoveBot failed for {}", bot.getName().getString(), e);
-            return false;
-        }
-    }
-
-    /**
-     * REFACTORED: 从所有映射中移除假玩家 - 原子性操作
-     */
-    private void removeBotFromMaps(@NotNull ServerBot bot) {
-        removeBotFromMaps(bot, bot.getUUID(), bot.getScoreboardName().toLowerCase(Locale.ROOT));
-    }
-
-    /**
-     * REFACTORED: 从所有映射中移除假玩家 - 原子性操作（接受预计算的参数）
-     */
-    private void removeBotFromMaps(@NotNull ServerBot bot, @NotNull UUID uuid, @NotNull String name) {
-        this.bots.remove(bot);
-        this.botsByName.remove(name);
-
-        // 检查UUID映射是否指向当前bot，避免误删其他bot
-        ServerBot existing = this.botsByUUID.get(uuid);
-        if (existing == bot) {
-            this.botsByUUID.remove(uuid);
-        }
-    }
-
     public boolean removeBot(@NotNull ServerBot bot, @NotNull BotRemoveEvent.RemoveReason reason, @Nullable CommandSender remover, boolean save, boolean resume) {
         return this.removeBot(bot, reason, remover, save, resume, true);
     }
 
     public boolean removeBot(@NotNull ServerBot bot, @Nullable CommandSender remover, @NotNull BotRemoveEvent.RemoveReason reason, boolean save, boolean resume) {
-        // mili - Folia safety: do not attempt region-owned operations if the world
-        // has already been unloaded (e.g. server shutdown). Fall back to a safe
-        // cleanup that only touches the internal bot maps.
-        if (bot.level() == null || bot.level().getCurrentWorldData() == null) {
-            return forceRemoveBot(bot);
-        }
         BotRemoveEvent event = new BotRemoveEvent(bot.getBukkitEntity(), reason, remover, PaperAdventure.asAdventure(Component.translatable("multiplayer.player.left", bot.getDisplayName())).style(Style.style(NamedTextColor.YELLOW)), save);
         this.server.server.getPluginManager().callEvent(event);
 
@@ -415,7 +287,7 @@ public class BotList {
             }
         } else {
             bot.dropAll(true);
-            botsNameByWorldUuid.getOrDefault(bot.level().uuid.toString(), Set.of()).remove(bot.getBukkitEntity().getName());
+            botsNameByWorldUuid.getOrDefault(bot.level().uuid.toString(), new HashSet<>()).remove(bot.getBukkitEntity().getName());
         }
 
         if (bot.isPassenger() && event.shouldSave()) {
@@ -447,9 +319,13 @@ public class BotList {
         bot.level().removePlayerImmediately(bot, Entity.RemovalReason.UNLOADED_WITH_PLAYER);
         bot.retireScheduler();
 
-        // REFACTORED: 使用同步块确保原子性清理
-        synchronized (this) {
-            removeBotFromMaps(bot);
+        this.bots.remove(bot);
+        this.botsByName.remove(bot.getScoreboardName().toLowerCase(Locale.ROOT));
+
+        UUID uuid = bot.getUUID();
+        ServerBot bot1 = this.botsByUUID.get(uuid);
+        if (bot1 == bot) {
+            this.botsByUUID.remove(uuid);
         }
 
         bot.removeTab();
@@ -468,7 +344,7 @@ public class BotList {
     }
 
     public void removeAllIn(String worldUuid) {
-        for (String fullName : new ArrayList<>(this.botsNameByWorldUuid.getOrDefault(worldUuid, Set.of()))) {
+        for (String fullName : this.botsNameByWorldUuid.getOrDefault(worldUuid, new HashSet<>())) {
             ServerBot bot = this.getBotByName(fullName);
             if (bot != null) {
                 this.removeBot(bot, BotRemoveEvent.RemoveReason.INTERNAL, null, FakeplayerConfig.canResident, FakeplayerConfig.canResident);
@@ -476,26 +352,12 @@ public class BotList {
         }
     }
 
-    /**
-     * REFACTORED: 使用快照列表避免遍历期间的并发修改问题
-     */
     public boolean removeAll() {
         boolean finished = true;
         AtomicInteger check = new AtomicInteger();
         AtomicInteger received = new AtomicInteger();
-        // REFACTORED: 创建快照列表避免并发修改问题
-        List<ServerBot> botSnapshot = new ArrayList<>(this.bots);
-        for (ServerBot bot : botSnapshot) {
-            // 检查bot是否仍然有效
-            if (bot == null || bot.isRemoved()) {
-                continue;
-            }
+        for (ServerBot bot : this.bots) {
             bot.resume = FakeplayerConfig.canResident;
-            // mili - Folia safety: if the bot's region is gone, fall back to safe cleanup
-            if (bot.level() == null || bot.level().getCurrentWorldData() == null) {
-                forceRemoveBot(bot);
-                continue;
-            }
             if (TickThread.isTickThreadFor(bot.level(), bot.getX(), bot.getZ())) {
                 this.removeBot(bot, BotRemoveEvent.RemoveReason.INTERNAL, null, FakeplayerConfig.canResident, FakeplayerConfig.canResident);
             } else {
@@ -509,28 +371,14 @@ public class BotList {
 
     private void removeBot(ServerBot bot, AtomicInteger check, AtomicInteger received, AtomicInteger counter) {
         bot.getBukkitEntity().taskScheduler.schedule((Entity unused) -> {
-            // mili - Folia safety: cap retry count to prevent infinite loops
             if (counter.get() >= 20) {
-                BotList.LOGGER.warn("Giving up removing bot {} after 20 retries (likely world unloaded or region scheduler exhausted). Falling back to force remove.", bot.getName().getString());
-                forceRemoveBot(bot);
-                received.getAndIncrement();
-                if (received.get() >= check.get()) {
-                    this.forceShutdown = true;
-                    MinecraftServer.getServer().stopServer();
-                }
-                return;
+                BotList.LOGGER.info("Try to remove bot {} located in [{}]{},{},{} too many times!", bot.getName().getString(), bot.level().serverLevelData.getLevelName(), bot.getX(), bot.getY(), bot.getZ());
             }
             counter.getAndIncrement();
             try {
-                // mili - Folia safety: check region availability before touching
-                if (bot.level() == null || bot.level().getCurrentWorldData() == null) {
-                    forceRemoveBot(bot);
-                } else {
-                    this.removeBot(bot, BotRemoveEvent.RemoveReason.INTERNAL, null, FakeplayerConfig.canResident, FakeplayerConfig.canResident);
-                }
+                this.removeBot(bot, BotRemoveEvent.RemoveReason.INTERNAL, null, FakeplayerConfig.canResident, FakeplayerConfig.canResident);
                 received.getAndIncrement();
             } catch (Exception e) {
-                LOGGER.warn("Failed to remove bot {} on retry {}: {}", bot.getName().getString(), counter.get(), e.getMessage());
                 this.removeBot(bot, check, received, counter);
             }
             if (received.get() >= check.get()) {
@@ -552,7 +400,7 @@ public class BotList {
                 continue;
             }
             this.botsNameByWorldUuid
-                    .computeIfAbsent(levelUuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(levelUuid.toString(), (k) -> new HashSet<>())
                     .add(fullName);
         }
         loadLegacyResumeBotInfo();
@@ -571,7 +419,7 @@ public class BotList {
                 continue;
             }
             this.legacyBotsNameByWorldUuid
-                    .computeIfAbsent(levelUuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(levelUuid.toString(), (k) -> new HashSet<>())
                     .add(fullName);
         }
     }
@@ -580,37 +428,23 @@ public class BotList {
         if (!FakeplayerConfig.enable || !FakeplayerConfig.canResident) {
             return;
         }
-        new ArrayList<>(this.botsNameByWorldUuid.getOrDefault(worldUuid, Set.of())).forEach(this::loadNewResumeBot);
-        new ArrayList<>(this.legacyBotsNameByWorldUuid.getOrDefault(worldUuid, Set.of())).forEach(this::loadNewManualSavedBot);
+        new HashSet<>(this.botsNameByWorldUuid.getOrDefault(worldUuid, new HashSet<>())).forEach(this::loadNewResumeBot);
+        new HashSet<>(this.legacyBotsNameByWorldUuid.getOrDefault(worldUuid, new HashSet<>())).forEach(this::loadNewManualSavedBot);
     }
 
     public void updateBotLevel(@NotNull ServerBot bot, @NotNull ServerLevel level) {
         String prevUuid = bot.level().uuid.toString();
         String newUuid = level.uuid.toString();
         this.botsNameByWorldUuid
-                .computeIfAbsent(newUuid, (k) -> ConcurrentHashMap.newKeySet())
+                .computeIfAbsent(newUuid, (k) -> new HashSet<>())
                 .add(bot.getBukkitEntity().getName());
         this.botsNameByWorldUuid
-                .computeIfAbsent(prevUuid, (k) -> ConcurrentHashMap.newKeySet())
+                .computeIfAbsent(prevUuid, (k) -> new HashSet<>())
                 .remove(bot.getBukkitEntity().getName());
     }
 
-    /**
-     * REFACTORED: 网络tick处理 - 添加异常处理避免单个bot失败影响其他bot
-     */
     public void networkTick() {
-        // REFACTORED: 使用快照列表避免并发修改问题，并添加异常处理
-        List<ServerBot> botSnapshot = new ArrayList<>(this.bots);
-        for (ServerBot bot : botSnapshot) {
-            try {
-                if (bot != null && !bot.isRemoved()) {
-                    bot.networkTick();
-                }
-            } catch (Exception e) {
-                LOGGER.debug("networkTick failed for bot {}: {}", 
-                    bot != null ? bot.getName().getString() : "null", e.getMessage());
-            }
-        }
+        this.bots.forEach(ServerBot::networkTick);
     }
 
     @Nullable
@@ -645,3 +479,4 @@ public class BotList {
         return profile;
     }
 }
+

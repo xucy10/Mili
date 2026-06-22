@@ -132,25 +132,6 @@ public class ServerBot extends ServerPlayer {
 
     @Override
     public void tick() {
-        // mili - Folia safety: bail out early if the bot has been removed
-        // or the world has been unloaded (e.g. during server shutdown). This
-        // prevents NPEs that would otherwise kill the entire tick thread.
-        if (this.isRemoved() || this.level() == null || this.level().getCurrentWorldData() == null) {
-            return;
-        }
-        // mili - Folia safety: ensure we tick on the correct region thread
-        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level(), this.getX(), this.getZ())) {
-            // Re-schedule on the correct thread to avoid cross-region corruption
-            try {
-                this.getBukkitEntity().taskScheduler.schedule(
-                        (Entity unused) -> this.tick(),
-                        null, 1L
-                );
-            } catch (Throwable t) {
-                // Entity scheduler may refuse if the entity is being removed; ignore
-            }
-            return;
-        }
         if (!this.isAlive()) {
             return;
         }
@@ -203,10 +184,6 @@ public class ServerBot extends ServerPlayer {
 
     @Override
     public void doTick() {
-        // mili - Folia safety: bail out if the bot has been removed or the world unloaded
-        if (this.isRemoved() || this.level() == null || this.level().getCurrentWorldData() == null) {
-            return;
-        }
         if (!this.isAlive()) {
             this.die(this.damageSources().generic());
             return;
@@ -271,14 +248,6 @@ public class ServerBot extends ServerPlayer {
     }
 
     public void networkTick() {
-        // mili - Folia safety: bail out if the bot has been removed or the world unloaded
-        if (this.isRemoved() || this.level() == null || this.level().getCurrentWorldData() == null) {
-            return;
-        }
-        // mili - Folia safety: only network tick on the owning region
-        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level(), this.getX(), this.getZ())) {
-            return;
-        }
         if (this.getConfigValue(Configs.TICK_TYPE) == TickType.NETWORK) {
             this.doTick();
         }
@@ -333,7 +302,7 @@ public class ServerBot extends ServerPlayer {
             teleportTransition.postTeleportTransition().onTransition(this);
             this.isChangingDimension = false;
 
-            // mili - We don't have this
+            // Mili - We don't have this
 /*            if (LeavesConfig.modify.netherPortalFix) {
                 final ResourceKey<Level> fromDim = fromLevel.dimension();
                 final ResourceKey<Level> toDim = level().dimension();
@@ -783,3 +752,6 @@ public class ServerBot extends ServerPlayer {
         ENTITY_LIST
     }
 }
+
+
+

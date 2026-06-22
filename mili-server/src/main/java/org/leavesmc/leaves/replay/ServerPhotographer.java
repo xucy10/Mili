@@ -71,7 +71,7 @@ public class ServerPhotographer extends ServerPlayer {
         MinecraftServer server = MinecraftServer.getServer();
 
         ServerLevel world = ((CraftWorld) state.loc.getWorld()).getHandle();
-        GameProfile profile = RandomProfilePool.getRandomProfile(state.id); // mili - add cache
+        GameProfile profile = RandomProfilePool.getRandomProfile(state.id); // Mili - add cache
 
         ServerPhotographer photographer = new ServerPhotographer(server, world, profile);
         photographer.absSnapTo(state.loc.x(), state.loc.y(), state.loc.z(), state.loc.getYaw(), state.loc.getPitch());
@@ -166,7 +166,7 @@ public class ServerPhotographer extends ServerPlayer {
         photographers.remove(this);
 
         MinecraftServer.getServer().getPlayerList().removePhotographer(this);
-        RandomProfilePool.putProfile(this.gameProfile); // mili - add cache
+        RandomProfilePool.putProfile(this.gameProfile); // Mili - add cache
         if (!recorder.isSaved()) {
             CompletableFuture<Void> future = recorder.saveRecording(saveFile, save);
             if (!async) {
@@ -258,3 +258,5 @@ public class ServerPhotographer extends ServerPlayer {
         }
     }
 }
+
+

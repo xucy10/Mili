@@ -10,7 +10,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         name = "hopper_counter",
         directory = {"carpet"},
         comments = """
-                Hopper counter compatibility mapped onto Lophine's wool hopper counter implementation."""
+                Hopper counter compatibility mapped onto Mili's wool hopper counter implementation."""
 )
 public class CounterCompatConfig implements IConfigModule {
     @ConfigInfo(name = "hopperCounters", comments = """

@@ -174,3 +174,4 @@ public class BotUtil {
         return BotList.INSTANCE.bots.size() < FakeplayerConfig.limit;
     }
 }
+

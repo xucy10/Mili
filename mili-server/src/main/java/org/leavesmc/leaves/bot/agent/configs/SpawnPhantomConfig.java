@@ -65,3 +65,4 @@ public class SpawnPhantomConfig extends AbstractBotConfig<Boolean, SpawnPhantomC
         this.setValue(nbt.getBooleanOr(getName(), FakeplayerConfig.canSpawnPhantom));
     }
 }
+

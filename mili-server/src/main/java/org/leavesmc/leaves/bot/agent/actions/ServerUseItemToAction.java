@@ -77,3 +77,4 @@ public class ServerUseItemToAction extends AbstractUseBotAction<ServerUseItemToA
         return new CraftUseItemToAction(this);
     }
 }
+

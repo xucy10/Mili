@@ -140,3 +140,4 @@ public class ServerBotGameMode extends ServerPlayerGameMode {
         return FakePlayerCompatConfig.fakePlayerDefaultSurvivalMode ? GameType.SURVIVAL : MinecraftServer.getServer().getDefaultGameType();
     }
 }
+
