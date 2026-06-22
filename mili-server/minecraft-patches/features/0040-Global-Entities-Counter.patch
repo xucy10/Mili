@@ -18,7 +18,7 @@ index 166089c786210d645c22f96569f266cc50fe7d6c..c7de740dd9babfc1373a5663cd552214
      public final TickRegions.TickRegionData regionData;
  
      public RegionizedWorldData(final ServerLevel world, final TickRegions.TickRegionData regionData) {
-@@ -578,6 +581,15 @@ public final class RegionizedWorldData {
+@@ -578,6 +581,13 @@ public final class RegionizedWorldData {
          this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);
          this.regionData = regionData;
  
@@ -36,7 +36,7 @@ diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/se
 index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244b58f3942 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
-@@ -506,6 +506,25 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -506,6 +506,23 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
          this.chunkMap.tick(hasTimeLeft);
          profilerFiller.pop();
          this.clearCache();
@@ -60,7 +60,7 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244
      }
  
      private void tickChunks() {
-@@ -570,7 +589,13 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -570,7 +587,13 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
              }
              spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, regionizedWorldData.getLoadedEntities(), this::getFullChunk, null, true); // Folia - region threading - note: function only cares about loaded entities, doesn't need all
          } else {
@@ -74,7 +74,7 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244
          }
          } finally { foliaProfiler.stopTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.MOB_SPAWN_ENTITY_COUNT); } // Folia - profiler
          // Paper end - Optional per player mob spawns
-@@ -578,7 +603,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -578,7 +601,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
          boolean flag = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
          int i = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
          List<MobCategory> filteredSpawningCategories;
@@ -83,7 +83,7 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244
              // Paper start - PlayerNaturallySpawnCreaturesEvent
              for (ServerPlayer entityPlayer : this.level.getLocalPlayers()) { // Folia - region threading
                  int chunkRange = Math.min(level.spigotConfig.mobSpawnRange, entityPlayer.getBukkitEntity().getViewDistance());
-@@ -636,7 +661,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -636,7 +659,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
              this.level.tickThunder(chunk);
          }
  
@@ -96,7 +96,7 @@ diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/
 index d8a2f8a1fbf0189e86ccbce70a84641a143cdb91..76930a603a5bf07e62e8ef3a41bbb5213dcc8aea 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -765,6 +765,11 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -765,6 +765,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
      }
  
      public void tick(BooleanSupplier hasTimeLeft, io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
