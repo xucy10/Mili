@@ -2,8 +2,6 @@ package fun.bm.mili.utils;
 
 import ca.spottedleaf.moonrise.common.list.ReferenceList;
 import ca.spottedleaf.moonrise.common.misc.PositionCountingAreaMap;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.experiment.GlobalEntitiesCounter;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -21,22 +19,19 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static net.minecraft.world.level.NaturalSpawner.getRoughBiome;
 
 public class EntitiesCounterUtil {
-    private static final Map<ServerLevel, Cache<Integer, ReferenceList<Entity>>> globalLoadedEntities = new ConcurrentHashMap<>();
-    private static final Map<ServerLevel, Object2IntOpenHashMap<MobCategory>> mobsMap = Collections.synchronizedMap(new WeakHashMap<>());
-    private static final Map<ServerLevel, Cache<Integer, PositionCountingAreaMap<ServerPlayer>>> mobsAreaMap = new ConcurrentHashMap<>();
-    private static final Map<ServerLevel, Integer> spawnableChunkCount = new ConcurrentHashMap<>();
-    private static final Map<ServerLevel, CompletableFuture<Void>> tasks = new ConcurrentHashMap<>();
+    // 每个区域独立维护自己的实体计数，避免全局遍历导致跨区阻塞
+    private static final ConcurrentHashMap<ServerLevel, ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>>> regionMobCounts = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<ServerLevel, ConcurrentHashMap<Integer, Integer>> regionChunkCounts = new ConcurrentHashMap<>();
     private static final Set<Integer> UniqueIds = ConcurrentHashMap.newKeySet();
 
     private static int lastUsedId = 0;
-
     private static final int CLEANUP_INTERVAL = 200; // each 200 ids used
 
     public static int generateUniqueId() {
@@ -55,21 +50,20 @@ public class EntitiesCounterUtil {
 
     public static void onWorldDataUnload(ServerLevel level, int uniqueId) {
         UniqueIds.remove(uniqueId);
-        Cache<Integer, ReferenceList<Entity>> entitiesCache = globalLoadedEntities.get(level);
-        if (entitiesCache != null) {
-            entitiesCache.invalidate(uniqueId);
+        ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>> mobCounts = regionMobCounts.get(level);
+        if (mobCounts != null) {
+            mobCounts.remove(uniqueId);
         }
-
-        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaCache = mobsAreaMap.get(level);
-        if (areaCache != null) {
-            areaCache.invalidate(uniqueId);
+        ConcurrentHashMap<Integer, Integer> chunkCounts = regionChunkCounts.get(level);
+        if (chunkCounts != null) {
+            chunkCounts.remove(uniqueId);
         }
     }
 
     private static void runCleanUp() {
         Set<Integer> logged = new HashSet<>();
-        for (Cache<Integer, ReferenceList<Entity>> collection : globalLoadedEntities.values()) {
-            logged.addAll(collection.asMap().keySet());
+        for (ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>> counts : regionMobCounts.values()) {
+            logged.addAll(counts.keySet());
         }
 
         for (int num : UniqueIds) {
@@ -78,90 +72,50 @@ public class EntitiesCounterUtil {
         }
     }
 
-    public static void addDataToLoaded(ServerLevel level, ReferenceList<Entity> data, int uniqueId) {
-        Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
-        if (data0.asMap().containsKey(uniqueId)) return;
-        data0.put(uniqueId, data);
-    }
-
-    public static void reportAreaMap(ServerLevel level, PositionCountingAreaMap<ServerPlayer> areaMap, int uniqueId) {
-        Cache<Integer, PositionCountingAreaMap<ServerPlayer>> areaMap0 = mobsAreaMap.computeIfAbsent(level, k -> CacheBuilder.newBuilder().concurrencyLevel(16).weakValues().build());
-        if (areaMap0.asMap().containsKey(uniqueId)) return;
-        areaMap0.put(uniqueId, areaMap);
-    }
-
-    public static int getTotalChunkCount(ServerLevel level) {
-        return spawnableChunkCount.getOrDefault(level, 0);
-    }
-
-    public static @Nullable Object2IntOpenHashMap<MobCategory> getMobsMap(ServerLevel level) {
-        return mobsMap.get(level);
-    }
-
-    public static boolean canRunNewTask(ServerLevel level) {
-        CompletableFuture<Void> task = tasks.get(level);
-        return task == null || task.isDone();
-    }
-
-    public static void tick(ServerLevel level) {
-        Runnable task = () -> {
-            try {
-                Cache<Integer, ReferenceList<Entity>> data0 = globalLoadedEntities.get(level);
-                if (data0 == null) return;
-
-                Object2IntOpenHashMap<MobCategory> map = new Object2IntOpenHashMap<>();
-                Collection<ReferenceList<Entity>> snapshot = data0.asMap().values();
-
-                for (ReferenceList<Entity> data : snapshot) {
-                    if (data == null) continue;
-                    for (Entity entity : GlobalEntitiesCounter.async ? data.copy() : data) {
-                        if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
-                        // Mili start - Copy from net/minecraft/world/level/NaturalSpawner
-                        MobCategory category = entity.getType().getCategory();
-                        if (category != MobCategory.MISC) {
-                            // Paper start - Only count natural spawns
-                            if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
-                                    !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
-                                            entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
-                                continue;
-                            }
-                            // Paper end - Only count natural spawns
-                            map.addTo(category, 1);
-                        }
-                    }
-                    // Mili end - Copy from net/minecraft/world/level/NaturalSpawner
+    // 每个区域只统计自己的实体，写入自己唯一的 key；不会访问其他区域的数据
+    public static void tick(ServerLevel level, int uniqueId, ReferenceList<Entity> entities, PositionCountingAreaMap<ServerPlayer> areaMap) {
+        Object2IntOpenHashMap<MobCategory> map = new Object2IntOpenHashMap<>();
+        for (Entity entity : entities) {
+            if (entity == null || entity.isRemoved() || !entity.isAlive()) continue;
+            MobCategory category = entity.getType().getCategory();
+            if (category != MobCategory.MISC) {
+                if (!entity.level().paperConfig().entities.spawning.countAllMobsForSpawning &&
+                        !(entity.spawnReason == CreatureSpawnEvent.SpawnReason.NATURAL ||
+                                entity.spawnReason == CreatureSpawnEvent.SpawnReason.CHUNK_GEN)) {
+                    continue;
                 }
-                mobsMap.put(level, map);
-
-                Cache<Integer, PositionCountingAreaMap<ServerPlayer>> collection = mobsAreaMap.get(level);
-                if (collection != null) {
-                    int count = 0;
-                    for (PositionCountingAreaMap<ServerPlayer> areaMap : collection.asMap().values()) {
-                        if (areaMap != null) {
-                            count += areaMap.getTotalPositions();
-                        }
-                    }
-                    spawnableChunkCount.put(level, count);
-                }
-            } catch (Exception e) {
-                LogUtils.getClassLogger().error("Failed to run task", e);
+                map.addTo(category, 1);
             }
-        };
-        if (GlobalEntitiesCounter.async) {
-            tasks.put(level, CompletableFuture.runAsync(task).exceptionally(ex -> {
-                LogUtils.getClassLogger().error("Failed to run task", ex);
-                return null;
-            }));
-        } else {
-            task.run();
         }
+        regionMobCounts.computeIfAbsent(level, k -> new ConcurrentHashMap<>()).put(uniqueId, map);
+
+        int chunkCount = areaMap != null ? areaMap.getTotalPositions() : 0;
+        regionChunkCounts.computeIfAbsent(level, k -> new ConcurrentHashMap<>()).put(uniqueId, chunkCount);
     }
 
+    // 读取时汇总所有区域的计数，O(区域数) 而非 O(实体数)
     public static NaturalSpawner.SpawnState runRemainingTasks(
             ServerLevel level, Iterable<Entity> entities, NaturalSpawner.ChunkGetter chunkGetter, LocalMobCapCalculator calculator, final boolean countMobs
     ) {
-        Object2IntOpenHashMap<MobCategory> map = getMobsMap(level);
-        if (map == null) return null; // skip if no data
+        ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>> counts = regionMobCounts.get(level);
+        if (counts == null) return null; // skip if no data
+
+        Object2IntOpenHashMap<MobCategory> globalMap = new Object2IntOpenHashMap<>();
+        for (Object2IntOpenHashMap<MobCategory> map : counts.values()) {
+            if (map == null) continue;
+            for (Object2IntOpenHashMap.Entry<MobCategory> entry : map.object2IntEntrySet()) {
+                globalMap.addTo(entry.getKey(), entry.getIntValue());
+            }
+        }
+
+        int totalChunks = 0;
+        ConcurrentHashMap<Integer, Integer> chunkCounts = regionChunkCounts.get(level);
+        if (chunkCounts != null) {
+            for (Integer c : chunkCounts.values()) {
+                if (c != null) totalChunks += c;
+            }
+        }
+
         // Mili start - Copy from net/minecraft/world/level/NaturalSpawner
         PotentialCalculator potentialCalculator = new PotentialCalculator();
         for (Entity entity : entities) {
@@ -191,7 +145,7 @@ public class EntitiesCounterUtil {
                 // Paper end - Optional per player mob spawns
             });
         }
-        return new NaturalSpawner.SpawnState(getTotalChunkCount(level), map, potentialCalculator, calculator);
+        return new NaturalSpawner.SpawnState(totalChunks, globalMap, potentialCalculator, calculator);
         // Mili end - Copy from net/minecraft/world/level/NaturalSpawner
     }
 }

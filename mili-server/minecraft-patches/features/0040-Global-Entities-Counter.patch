@@ -25,8 +25,6 @@ index 166089c786210d645c22f96569f266cc50fe7d6c..c7de740dd9babfc1373a5663cd552214
 +        // Mili start - Global Entities Counter
 +        if (fun.bm.Mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
 +            uniqueId = fun.bm.Mili.utils.EntitiesCounterUtil.generateUniqueId();
-+            fun.bm.Mili.utils.EntitiesCounterUtil.reportAreaMap(world, spawnChunkTracker, uniqueId);
-+            fun.bm.Mili.utils.EntitiesCounterUtil.addDataToLoaded(world, loadedEntities, uniqueId);
 +            underGlobalEntitiesCounter = true;
 +        }
 +        // Mili end - Global Entities Counter
@@ -53,8 +51,6 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244
 +                    }
 +                } else {
 +                    if (!regionizedWorldData.getLocalPlayers().isEmpty()) {
-+                        fun.bm.Mili.utils.EntitiesCounterUtil.reportAreaMap(level, regionizedWorldData.spawnChunkTracker, regionizedWorldData.uniqueId);
-+                        fun.bm.Mili.utils.EntitiesCounterUtil.addDataToLoaded(level, (ca.spottedleaf.moonrise.common.list.ReferenceList<Entity>) regionizedWorldData.getLoadedEntities(), regionizedWorldData.uniqueId);
 +                        regionizedWorldData.underGlobalEntitiesCounter = true;
 +                    }
 +                }
@@ -106,7 +102,10 @@ index d8a2f8a1fbf0189e86ccbce70a84641a143cdb91..76930a603a5bf07e62e8ef3a41bbb521
      public void tick(BooleanSupplier hasTimeLeft, io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
 +        // Mili start - Global Entities Counter
 +        if (fun.bm.Mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
-+            if (fun.bm.Mili.utils.EntitiesCounterUtil.canRunNewTask(this)) fun.bm.Mili.utils.EntitiesCounterUtil.tick(this);
++            io.papermc.paper.threadedregions.RegionizedWorldData data = this.getCurrentWorldData();
++            if (data != null && data.underGlobalEntitiesCounter) {
++                fun.bm.Mili.utils.EntitiesCounterUtil.tick(this, data.uniqueId, (ca.spottedleaf.moonrise.common.list.ReferenceList<Entity>) data.getLoadedEntities(), data.spawnChunkTracker);
++            }
 +        }
 +        // Mili end - Global Entities Counter
          final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = this.getCurrentWorldData(); // Folia - regionised ticking
