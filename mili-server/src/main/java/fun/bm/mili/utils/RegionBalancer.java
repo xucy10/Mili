@@ -1,7 +1,6 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
-import io.papermc.paper.threadedregions.TickRegionScheduler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -148,8 +147,7 @@ public final class RegionBalancer {
         AtomicLong lastTick = LAST_TICK_TIME.computeIfAbsent(key, k -> new AtomicLong(0));
         long last = lastTick.get();
 
-        double priority = RegionLoadMonitor.computePriority(
-                (TickRegionScheduler.RegionSchedule) scheduleRef, last);
+        double priority = RegionLoadMonitor.computePriority(scheduleRef, last);
 
         RegionTask task = new RegionTask(scheduleRef, work, tickCount, SEQUENCE.incrementAndGet());
         task.priority = priority;

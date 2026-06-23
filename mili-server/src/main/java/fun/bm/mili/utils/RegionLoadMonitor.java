@@ -1,8 +1,6 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
-import io.papermc.paper.threadedregions.TickRegionScheduler;
-import io.papermc.paper.threadedregions.TickRegions;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -80,14 +78,14 @@ public class RegionLoadMonitor {
     private static final java.util.concurrent.ConcurrentHashMap<Integer, RegionStats> STATS =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static int keyOf(TickRegionScheduler.RegionSchedule schedule) {
+    private static int keyOf(Object schedule) {
         return System.identityHashCode(schedule);
     }
 
     /**
      * Called before a region tick starts.
      */
-    public static void beforeTick(TickRegionScheduler.RegionSchedule schedule) {
+    public static void beforeTick(Object schedule) {
         if (!RegionBalancerConfig.enabled) return;
         // Nothing to record here; timestamp is captured in afterTick
     }
@@ -98,7 +96,7 @@ public class RegionLoadMonitor {
      * @param schedule the region schedule
      * @param elapsedNanos total time spent in this tick
      */
-    public static void afterTick(TickRegionScheduler.RegionSchedule schedule, long elapsedNanos) {
+    public static void afterTick(Object schedule, long elapsedNanos) {
         if (!RegionBalancerConfig.enabled) return;
         if (schedule == null) return;
 
@@ -111,7 +109,7 @@ public class RegionLoadMonitor {
      * Get the current load snapshot for a region.
      */
     @NotNull
-    public static RegionLoadSnapshot getSnapshot(TickRegionScheduler.RegionSchedule schedule) {
+    public static RegionLoadSnapshot getSnapshot(Object schedule) {
         if (schedule == null) {
             return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
         }
@@ -123,7 +121,7 @@ public class RegionLoadMonitor {
      * Compute priority score for scheduling.  Higher = more urgent.
      * Based on load factor + starvation prevention.
      */
-    public static double computePriority(TickRegionScheduler.RegionSchedule schedule, long lastTickTime) {
+    public static double computePriority(Object schedule, long lastTickTime) {
         RegionLoadSnapshot snap = getSnapshot(schedule);
         double loadFactor = snap.loadFactor();
         long overdue = System.nanoTime() - lastTickTime;
@@ -135,7 +133,7 @@ public class RegionLoadMonitor {
     /**
      * Cleanup stats for a removed region schedule.
      */
-    public static void remove(TickRegionScheduler.RegionSchedule schedule) {
+    public static void remove(Object schedule) {
         if (schedule == null) return;
         STATS.remove(keyOf(schedule));
     }
