@@ -12,7 +12,7 @@ index 17108636a5728efe98a064001e00e3ca098b1f51..7748e9ac04fbd3f5259d92fc908d9088
          // tick player ping sample
          this.tickPlayerSample();
  
-+        fun.bm.Mili.utils.SaveAllUtil.checkTimeout(); // Mili - save-all fix
++        fun.bm.mili.utils.SaveAllUtil.checkTimeout(); // Mili - save-all fix
 +
          // tick worlds
          for (final ServerLevel world : this.worlds) {
@@ -40,7 +40,7 @@ index 6cb0d4daf0f275b95d5ca09275e40ab32258eb39..48628174299f8f18170198df1834d617
              //PerfCommand.register(this.dispatcher); // Folia - region threading - TODO later
 -            //SaveAllCommand.register(this.dispatcher); // Folia - region threading - TODO later
 +            // Mili start - Add a config to enable save all command
-+            if (fun.bm.Mili.config.modules.experiment.CommandConfig.saveAll) {
++            if (fun.bm.mili.config.modules.experiment.CommandConfig.saveAll) {
 +                SaveAllCommand.register(this.dispatcher); // Folia - region threading - TODO later
 +            }
 +            // Mili end - Add a config to enable save all command
@@ -56,8 +56,8 @@ index 8ce5cdda24d63b33b39e32f9712fafa3917f27c5..25324d81bbe876dbe47b33bd5749b72e
      public void tickServer(long startTime, long scheduledEnd, long targetBuffer,
                             io.papermc.paper.threadedregions.TickRegions.TickRegionData region) {
 +        // Mili start - save-all fix
-+        if (fun.bm.Mili.utils.SaveAllUtil.isSaving()) {
-+            fun.bm.Mili.utils.SaveAllUtil.postRegionSave(region);
++        if (fun.bm.mili.utils.SaveAllUtil.isSaving()) {
++            fun.bm.mili.utils.SaveAllUtil.postRegionSave(region);
 +        }
 +        // Mili end - save-all fix
          final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle foliaProfiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
@@ -73,7 +73,7 @@ index e37b71402179c73146ff67babc228ccfb996f8f4..cfdb60bd89d83282f2202a5585bac22a
      private static int saveAll(CommandSourceStack source, boolean flush) throws CommandSyntaxException {
 -        source.sendSuccess(() -> Component.translatable("commands.save.saving"), false);
 +        // Mili start - save all
-+        fun.bm.Mili.utils.SaveAllUtil.preSaveAll(source, flush);
++        fun.bm.mili.utils.SaveAllUtil.preSaveAll(source, flush);
 +/*        source.sendSuccess(() -> Component.translatable("commands.save.saving"), false);
          MinecraftServer server = source.getServer();
          boolean flag = server.saveEverything(true, flush, true);

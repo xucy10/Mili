@@ -14,7 +14,7 @@ index 48628174299f8f18170198df1834d6174bd1fafa..91e2f3e9e85622adbd3799473634e716
          //ScheduleCommand.register(this.dispatcher); // Folia - region threading
 -        //ScoreboardCommand.register(this.dispatcher, context); // Folia - region threading
 +        // Mili start - Add a config to enable scoreboard command
-+        if (fun.bm.Mili.config.modules.experiment.CommandConfig.scoreboard) {
++        if (fun.bm.mili.config.modules.experiment.CommandConfig.scoreboard) {
 +            ScoreboardCommand.register(this.dispatcher, context); // Folia - region threading
 +        }
 +        // Mili start - Add a config to enable scoreboard command

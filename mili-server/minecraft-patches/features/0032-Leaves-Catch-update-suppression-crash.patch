@@ -90,7 +90,7 @@ index 9345bdb2770e7c27488c547012020337fc651edc..447b3e6149716a3ca4b9721746ea471c
                                      profilerFiller.push("tick");
 -                                    this.guardEntityTick(this::tickNonPassenger, entity);
 +                                    // Mili start - update suppression crash fix
-+                                    if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
++                                    if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                                        try {
 +                                            this.guardEntityTick(this::tickNonPassenger, entity); // Mili changed
 +                                            // Leaves start - update suppression crash fix - for dragon dupe
@@ -161,7 +161,7 @@ index cb0471b06c33d1f79ba5b7a9b6036ba6b089d2be..46d6c6e3befc70a6878e12a4d75575e6
 +        try {
 +            return AbstractContainerMenu.getRedstoneSignalFromBlockEntity(level.getBlockEntity(pos));
 +        } catch (ClassCastException ex) {
-+            if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
++            if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, null, this, null, ex);
 +            } else {
 +                throw ex;
@@ -182,7 +182,7 @@ index c020d1944a25e2cd247e30a97c35bf93731d694a..74967f20099ea58cea1f9fc0f2387d8c
 -        throw new IllegalArgumentException("Cannot get property " + property + " as it does not exist in " + this.owner);
 +        // Leaves start - update suppression crash fix
 +        IllegalArgumentException iae = new IllegalArgumentException("Cannot get property " + property + " as it does not exist in " + this.owner);
-+        if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
++        if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +            org.leavesmc.leaves.util.UpdateSuppressionException exception = new org.leavesmc.leaves.util.UpdateSuppressionException(null, null, null, null, iae);
 +            if (exception.getStackTrace()[1].getClassName().startsWith("net.minecraft")) {
 +                throw exception;
@@ -223,13 +223,13 @@ index af21821513f11011e7bf3841d2f79cb99e4cd517..32488203ff074b675f5c8831d157b1d9
              // Spigot start
          } catch (StackOverflowError ex) {
 +            // Leaves start - update suppression crash fix
-+            if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
++            if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, level, neighborBlock, null, ex);
 +            }
              level.lastPhysicsProblem = pos.immutable();
              // Spigot end
          } catch (Throwable var9) {
-+            if (fun.bm.Mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
++            if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
 +                if (var9 instanceof org.leavesmc.leaves.util.UpdateSuppressionException ue) {
 +                    ue.provideBlock(level, pos, neighborBlock);
 +                    throw ue;

@@ -12,7 +12,7 @@ index 7b9e2a1a208b46a69c16e6afd8b502259893574f..c300ae4363298fecef8fa9bf739f01c0
          Map<String, String> map = new HashMap<>();
          BiConsumer<String, String> biConsumer = map::put;
          parseTranslations(biConsumer, "/assets/minecraft/lang/en_us.json");
-+        fun.bm.Mili.utils.ServerI18nUtil.loadMiliI18nDefault(biConsumer);
++        fun.bm.mili.utils.ServerI18nUtil.loadMiliI18nDefault(biConsumer);
          deprecatedTranslationsInfo.applyToMap(map);
          final Map<String, String> map1 = Map.copyOf(map);
          return new Language() {
@@ -33,7 +33,7 @@ index f41c70c6cb2e9fae43bad9dd66546417fe38f14a..0bb0877011cac3184b881bfa35f10ef8
                  return;
              }
  
-+            fun.bm.Mili.utils.ServerI18nUtil.preInit(); // Mili - I18n support
++            fun.bm.mili.utils.ServerI18nUtil.preInit(); // Mili - I18n support
 +
              // Paper start - Detect headless JRE
              String awtException = io.papermc.paper.util.ServerEnvironment.awtDependencyCheck();
@@ -46,7 +46,7 @@ index 4abfcaae4fe024296961987704e2a11a03ee518b..5fbcb5eac1d5449247da77b6120edbe2
          this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
-+        fun.bm.Mili.utils.ServerI18nUtil.init(); // Mili - I18n support
++        fun.bm.mili.utils.ServerI18nUtil.init(); // Mili - I18n support
          if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
          if (this.convertOldUsers()) {

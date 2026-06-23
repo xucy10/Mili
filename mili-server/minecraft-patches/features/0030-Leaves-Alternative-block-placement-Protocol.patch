@@ -21,7 +21,7 @@ index 8386757c5fd3d8df3ae77a4eeeb25a2f28840cda..fd74636d911596daae8cfe563c2dd5e3
                      Vec3 vec3 = location.subtract(Vec3.atCenterOf(blockPos));
                      double d = 1.0000001;
 -                    if (Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) {
-+                    if (fun.bm.Mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
++                    if (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
                          Direction direction = hitResult.getDirection();
                          this.player.resetLastActionTime();
                          int maxY = this.player.level().getMaxY();
@@ -70,20 +70,20 @@ index 492b1615d96133c5082e0f16015f114299f8082f..fb47a2acb0e4232359f5da061c1620a7
 +    // Leaves start - alternativeBlockPlacement
 +    public @Nullable BlockState getRealStateForPlacement(BlockPlaceContext context) {
 +        BlockState vanillaState = this.getStateForPlacement(context);
-+        switch (fun.bm.Mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
-+            case fun.bm.Mili.enums.EnumAlternativePlaceType.CARPET -> {
++        switch (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
++            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET -> {
 +                BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacement(this, context);
 +                if (tryState != null) {
 +                    return tryState;
 +                }
 +            }
-+            case fun.bm.Mili.enums.EnumAlternativePlaceType.CARPET_FIX -> {
++            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET_FIX -> {
 +                BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacementFix(this, context);
 +                if (tryState != null) {
 +                    return tryState;
 +                }
 +            }
-+            case fun.bm.Mili.enums.EnumAlternativePlaceType.LITEMATICA -> {
++            case fun.bm.mili.enums.EnumAlternativePlaceType.LITEMATICA -> {
 +                if (vanillaState != null) {
 +                    return org.leavesmc.leaves.protocol.LitematicaEasyPlaceProtocol.applyPlacementProtocol(vanillaState, context);
 +                }

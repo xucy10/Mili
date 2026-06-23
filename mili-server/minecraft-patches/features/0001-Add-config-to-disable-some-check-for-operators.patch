@@ -13,7 +13,7 @@ index 90e044ab3476d91819dddf14054d4626358da363..5c5dfcefd9ce6c9d7f69fb6d03216805
          this.knownMovePacketCount = this.receivedMovePacketCount;
          if (this.clientIsFloating && !this.player.isSleeping() && !this.player.isPassenger() && !this.player.isDeadOrDying()) {
 -            if (++this.aboveGroundTickCount > this.getMaximumFlyingTicks(this.player)) {
-+            if (++this.aboveGroundTickCount > this.getMaximumFlyingTicks(this.player) && !(fun.bm.Mili.config.modules.misc.DisableCheckConfig.disableOpFlyCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable fly check for operator
++            if (++this.aboveGroundTickCount > this.getMaximumFlyingTicks(this.player) && !(fun.bm.mili.config.modules.misc.DisableCheckConfig.disableOpFlyCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable fly check for operator
                  // LOGGER.warn("{} was kicked for floating too long!", this.player.getPlainTextName()); // Paper - Logging moved to net.minecraft.server.network.ServerCommonPacketListenerImpl.disconnect()
                  this.disconnect(io.papermc.paper.configuration.GlobalConfiguration.get().messages.kick.flyingPlayer, org.bukkit.event.player.PlayerKickEvent.Cause.FLYING_PLAYER); // Paper - use configurable kick message & kick event cause
                  return true;
@@ -22,7 +22,7 @@ index 90e044ab3476d91819dddf14054d4626358da363..5c5dfcefd9ce6c9d7f69fb6d03216805
              this.vehicleLastGoodZ = this.lastVehicle.getZ();
              if (this.clientVehicleIsFloating && this.lastVehicle.getControllingPassenger() == this.player) {
 -                if (++this.aboveGroundVehicleTickCount > this.getMaximumFlyingTicks(this.lastVehicle)) {
-+                if (++this.aboveGroundVehicleTickCount > this.getMaximumFlyingTicks(this.lastVehicle) && !(fun.bm.Mili.config.modules.misc.DisableCheckConfig.disableOpFlyCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable fly check for operator
++                if (++this.aboveGroundVehicleTickCount > this.getMaximumFlyingTicks(this.lastVehicle) && !(fun.bm.mili.config.modules.misc.DisableCheckConfig.disableOpFlyCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable fly check for operator
                      // LOGGER.warn("{} was kicked for floating a vehicle too long!", this.player.getPlainTextName()); // Paper - Logging moved to net.minecraft.server.network.ServerCommonPacketListenerImpl.disconnect()
                      this.disconnect(io.papermc.paper.configuration.GlobalConfiguration.get().messages.kick.flyingVehicle, org.bukkit.event.player.PlayerKickEvent.Cause.FLYING_VEHICLE); // Paper - use configurable kick message & kick event cause
                      return true;
@@ -31,7 +31,7 @@ index 90e044ab3476d91819dddf14054d4626358da363..5c5dfcefd9ce6c9d7f69fb6d03216805
                  d7 = d3 * d3 + d4 * d4 + d5 * d5;
                  boolean flag1 = false;
 -                if (!me.earthme.luminol.config.modules.misc.DisableWarningConfig.disableMovedWronglyThresholdWarning && d7 > org.spigotmc.SpigotConfig.movedWronglyThreshold) { // Spigot
-+                if (!me.earthme.luminol.config.modules.misc.DisableWarningConfig.disableMovedWronglyThresholdWarning && d7 > org.spigotmc.SpigotConfig.movedWronglyThreshold && !(fun.bm.Mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Spigot // Mili - disable move check for operator
++                if (!me.earthme.luminol.config.modules.misc.DisableWarningConfig.disableMovedWronglyThresholdWarning && d7 > org.spigotmc.SpigotConfig.movedWronglyThreshold && !(fun.bm.mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Spigot // Mili - disable move check for operator
                      flag1 = true; // Paper - diff on change, this should be moved wrongly
                      LOGGER.warn("{} (vehicle of {}) moved wrongly! {}", rootVehicle.getPlainTextName(), this.player.getPlainTextName(), Math.sqrt(d7));
                  }
@@ -40,7 +40,7 @@ index 90e044ab3476d91819dddf14054d4626358da363..5c5dfcefd9ce6c9d7f69fb6d03216805
                                              io.papermc.paper.event.player.PlayerFailMoveEvent event = fireFailMove(io.papermc.paper.event.player.PlayerFailMoveEvent.FailReason.MOVED_TOO_QUICKLY,
                                                      toX, toY, toZ, toYaw, toPitch, true);
 -                                            if (!event.isAllowed()) {
-+                                            if (!event.isAllowed() && !(fun.bm.Mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable move check for operator
++                                            if (!event.isAllowed() && !(fun.bm.mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable move check for operator
                                                  if (event.getLogWarning()) {
                                              LOGGER.warn("{} moved too quickly! {},{},{}", this.player.getPlainTextName(), d3, d4, d5);
                                                  }
@@ -49,7 +49,7 @@ index 90e044ab3476d91819dddf14054d4626358da363..5c5dfcefd9ce6c9d7f69fb6d03216805
                                      io.papermc.paper.event.player.PlayerFailMoveEvent event = fireFailMove(io.papermc.paper.event.player.PlayerFailMoveEvent.FailReason.MOVED_WRONGLY,
                                              toX, toY, toZ, toYaw, toPitch, true);
 -                                    if (!event.isAllowed()) {
-+                                    if (!event.isAllowed() && !(fun.bm.Mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable move check for operator
++                                    if (!event.isAllowed() && !(fun.bm.mili.config.modules.misc.DisableCheckConfig.disableOpMoveCheck && MinecraftServer.getServer().getPlayerList().isOp(this.player.nameAndId()))) { // Mili - disable move check for operator
                                          movedWrongly = true;
                                          if (event.getLogWarning())
                                       // Paper end

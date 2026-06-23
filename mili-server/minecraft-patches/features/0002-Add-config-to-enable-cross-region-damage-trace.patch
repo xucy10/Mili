@@ -13,7 +13,7 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
              killCredit.awardKillScore(this, damageSource);
              this.createWitherRose(killCredit);
 +        // Luminol Start - Cross Region Damage trace
-+        } else if (fun.bm.Mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
++        } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +            final LivingEntity entitylivingnew = this.getKillCreditOrigin();
 +            if (entitylivingnew != null) {
 +                this.damageTransferToAsync(entitylivingnew, cause);
@@ -56,7 +56,7 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
              if (killer != null) {
                  killer.awardKillScore(this, damageSource);
 +            // Luminol Start - Cross Region Damage trace
-+            } else if (fun.bm.Mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
++            } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +                final LivingEntity killernew = this.getKillCreditOrigin();
 +                if (killernew != null) {
 +                    this.damageTransferToAsync(killernew, damageSource);

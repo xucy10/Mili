@@ -22,7 +22,7 @@ index 111fd492351601a22cd29391bc4e3602709adb54..166089c786210d645c22f96569f266cc
          this.blockLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, true);
          this.fluidLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, false);
 -        this.neighborUpdater = new CollectingNeighborUpdater(world, world.neighbourUpdateMax);
-+        this.neighborUpdater = fun.bm.Mili.config.modules.experiment.RedStoneConfig.instantBlockUpdater ? new net.minecraft.world.level.redstone.InstantNeighborUpdater(world) : new CollectingNeighborUpdater(world, world.neighbourUpdateMax); // Mili - Instant Block Updater
++        this.neighborUpdater = fun.bm.mili.config.modules.experiment.RedStoneConfig.instantBlockUpdater ? new net.minecraft.world.level.redstone.InstantNeighborUpdater(world) : new CollectingNeighborUpdater(world, world.neighbourUpdateMax); // Mili - Instant Block Updater
          this.nearbyPlayers = new NearbyPlayers(world);
          this.wireHandler = new alternate.current.wire.WireHandler(world);
          this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);

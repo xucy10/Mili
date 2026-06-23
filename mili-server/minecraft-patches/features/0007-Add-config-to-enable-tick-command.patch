@@ -13,7 +13,7 @@ index 7748e9ac04fbd3f5259d92fc908d90889cba86c8..80b5d151e0dd6fa44794187875b4b805
           */
          ++this.tickCount;
 +        // Luminol start - Add a config to enable tick command
-+        if (fun.bm.Mili.config.modules.experiment.CommandConfig.tick) {
++        if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +            MinecraftServer.tickRateManager.tick();
 +        }
 +        // Luminol end - Add a config to enable tick command
@@ -25,7 +25,7 @@ index 7748e9ac04fbd3f5259d92fc908d90889cba86c8..80b5d151e0dd6fa44794187875b4b805
          }
  
 +        // Luminol start - Add a config to enable tick command
-+        if (fun.bm.Mili.config.modules.experiment.CommandConfig.tick) {
++        if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +            MinecraftServer.tickRateManager.reduceSprintTicks();
 +            MinecraftServer.tickRateManager.endTickWork();
 +        }
@@ -39,7 +39,7 @@ index 7748e9ac04fbd3f5259d92fc908d90889cba86c8..80b5d151e0dd6fa44794187875b4b805
  
      private void tickTime(final ServerLevel world, final long tickCount) {
 -        if (world.tickTime) {
-+        if ((!fun.bm.Mili.config.modules.experiment.CommandConfig.tick || world.tickRateManager().runsNormally()) && world.tickTime) { // Luminol - Add a config to enable tick command
++        if ((!fun.bm.mili.config.modules.experiment.CommandConfig.tick || world.tickRateManager().runsNormally()) && world.tickTime) { // Luminol - Add a config to enable tick command
              if (world.getGameRules().get(GameRules.ADVANCE_TIME)) {
                  world.setDayTime(world.levelData.getDayTime() + tickCount);
              }
@@ -66,7 +66,7 @@ index 0f4e8ee9438135e24e0f61a1390c59573b9e9c3f..65699d2ad66c686a8b7d1b951787ddd7
 -            final long tickCount = Math.max(1L, this.tickSchedule.getPeriodsAhead(TIME_BETWEEN_TICKS, tickStart));
 +            // Luminol start - Add a config to enable tick command
 +            final long tickCount;
-+            if (fun.bm.Mili.config.modules.experiment.CommandConfig.tick) {
++            if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +                if (MinecraftServer.tickRateManager.isSprinting() && MinecraftServer.tickRateManager.checkShouldSprintThisTick()) {
 +                    TICK_RATE = net.minecraft.server.commands.TickCommand.MAX_TICKRATE;
 +                    TIME_BETWEEN_TICKS = (long) (1_000_000_000L / TICK_RATE);
@@ -89,7 +89,7 @@ index 0f4e8ee9438135e24e0f61a1390c59573b9e9c3f..65699d2ad66c686a8b7d1b951787ddd7
                  // next start isn't updated until the end of this tick
                  this.tickRegion(tickCount, tickStart, scheduledEnd);
 +                // Luminol start - Add a config to enable tick command
-+                if (fun.bm.Mili.config.modules.experiment.CommandConfig.tick) {
++                if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +                    MinecraftServer.tickRateManager.endTickWork();
 +                }
 +                // Luminol end - Add a config to enable tick command
@@ -106,7 +106,7 @@ index 91e2f3e9e85622adbd3799473634e716383bbe94..21466c225db02a5be74bf60b5ea831c5
          //TestCommand.register(this.dispatcher, context); // Folia - region threading
 -        //TickCommand.register(this.dispatcher); // Folia - region threading - TODO later
 +        // Luminol start - Add a config to enable tick command
-+        if (fun.bm.Mili.config.modules.experiment.CommandConfig.tick) {
++        if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +            TickCommand.register(this.dispatcher); // Folia - region threading - TODO later
 +        }
 +        // Luminol end - Add a config to enable tick command

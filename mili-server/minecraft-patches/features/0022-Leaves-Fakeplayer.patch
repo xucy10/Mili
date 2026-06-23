@@ -231,7 +231,7 @@ index 5fbcb5eac1d5449247da77b6120edbe2f2dd1d58..69cc67b7618d38e65ccb1f4c58013ef1
 @@ -263,6 +264,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
-         fun.bm.Mili.utils.ServerI18nUtil.init(); // Mili - I18n support
+         fun.bm.mili.utils.ServerI18nUtil.init(); // Mili - I18n support
 +        this.getBotList().loadResumeBotInfo(); // Leaves - load resident bot info
          if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
@@ -347,7 +347,7 @@ index 6df8f98afa7810815b8d7c86b3dac57cd5915682..7c2d53ca863c2e50c6871938efc426dd
                  this.lastSentFood = -1;
                  this.teleportSpectators(teleportTransition, serverLevel);
 +                // Leaves start - bot support
-+                if (fun.bm.Mili.config.modules.function.FakeplayerConfig.enable) {
++                if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
 +                    this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(this, true)); // Leaves - render bot
 +                }
 +                // Leaves end - bot support
@@ -428,7 +428,7 @@ index 0d322ef4aa3e70c9edbb9fa8ba368bef916eb93d..3a5319739f0687fc6f09b2ac8ee31716
          org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerJoin(player);
  
 +        // Leaves start - bot support
-+        if (fun.bm.Mili.config.modules.function.FakeplayerConfig.enable) {
++        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
 +            org.leavesmc.leaves.bot.ServerBot bot = this.server.getBotList().getBotByName(player.getScoreboardName());
 +            if (bot != null) {
 +                this.server.getBotList().removeBot(bot, org.leavesmc.leaves.event.bot.BotRemoveEvent.RemoveReason.INTERNAL, player.getBukkitEntity(), false, false);
@@ -448,7 +448,7 @@ index 0d322ef4aa3e70c9edbb9fa8ba368bef916eb93d..3a5319739f0687fc6f09b2ac8ee31716
          // Paper end
  
 +        // Leaves start - bot support
-+        if (fun.bm.Mili.config.modules.function.FakeplayerConfig.enable) {
++        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
 +            this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(serverPlayer, true)); // Leaves - render bot
 +        }
 +        // Leaves end - bot support

@@ -16,7 +16,7 @@ index 9180f23529a31b6b0a5b38bb7cda3e32d487f691..e1f456b31ffda9370b63e51f343847d6
      // SimplePluginManager
      public void callEvent(@NotNull Event event) {
 +        // Leaves start - process bot load/save
-+        if (fun.bm.Mili.config.modules.function.FakeplayerConfig.enable && fun.bm.Mili.config.modules.function.FakeplayerConfig.canResident) {
++        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable && fun.bm.mili.config.modules.function.FakeplayerConfig.canResident) {
 +            if (event instanceof org.bukkit.event.world.WorldLoadEvent worldLoadEvent) {
 +                org.leavesmc.leaves.bot.BotList.INSTANCE.loadResume(worldLoadEvent.getWorld().getUID().toString());
 +            } else if (event instanceof org.bukkit.event.world.WorldUnloadEvent worldUnloadEvent) {

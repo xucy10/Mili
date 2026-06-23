@@ -17,7 +17,7 @@ index 2eb551390aa66d89988df9ca23cf0dd7ccfd6577..0d322ef4aa3e70c9edbb9fa8ba368bef
          } // Paper - Add sendOpLevel API
 +
 +        // Purpur start - Barrels and enderchests 6 rows
-+        player.enderChestSlotCount = fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows < 7 && fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows > 0 ? 9 * fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows : 27;
++        player.enderChestSlotCount = fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows < 7 && fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows > 0 ? 9 * fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows : 27;
 +        // Purpur end - Barrels and enderchests 6 rows
      }
  
@@ -78,7 +78,7 @@ index 9749909b8253b432bb2f7fba2cd8ff17a8579b30..42df617d7b62af45bd56e9594689974f
  
      public PlayerEnderChestContainer(Player owner) {
 -        super(27);
-+        super(fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows < 7 && fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows > 0 ? 9 * fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows : 27);
++        super(fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows < 7 && fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows > 0 ? 9 * fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows : 27);
          this.owner = owner;
          // CraftBukkit end
      }
@@ -103,7 +103,7 @@ index 383e8285d366c7f594b0b4ff55b367970c9b69e4..202a986762794da9440365953fcb950c
                      new SimpleMenuProvider(
 -                        (containerId, playerInventory, player1) -> ChestMenu.threeRows(containerId, playerInventory, enderChestInventory), CONTAINER_TITLE
 -                    )
-+                            (containerId, playerInventory, player1) -> switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.enderchestRows) {
++                            (containerId, playerInventory, player1) -> switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.enderchestRows) {
 +                    case 6 -> ChestMenu.sixRows(containerId, playerInventory, enderChestInventory);
 +                    case 5 -> ChestMenu.fiveRows(containerId, playerInventory, enderChestInventory);
 +                    case 4 -> ChestMenu.fourRows(containerId, playerInventory, enderChestInventory);
@@ -124,7 +124,7 @@ index dcec63c1c2634a3e83ee3cac26f6e51441c37f6d..e5cfbf41525b0d454bb83691354afb45
      private static final Component DEFAULT_NAME = Component.translatable("container.barrel");
 -    private NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
 +    // Purpur start - Barrels and enderchests 6 rows
-+    private NonNullList<ItemStack> items = NonNullList.withSize(switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
++    private NonNullList<ItemStack> items = NonNullList.withSize(switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
 +        case 6 -> 54;
 +        case 5 -> 45;
 +        case 4 -> 36;
@@ -143,7 +143,7 @@ index dcec63c1c2634a3e83ee3cac26f6e51441c37f6d..e5cfbf41525b0d454bb83691354afb45
      public int getContainerSize() {
 -        return 27;
 +        // Purpur start - Barrels and enderchests 6 rows
-+        return switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
++        return switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
 +            case 6 -> 54;
 +            case 5 -> 45;
 +            case 4 -> 36;
@@ -161,7 +161,7 @@ index dcec63c1c2634a3e83ee3cac26f6e51441c37f6d..e5cfbf41525b0d454bb83691354afb45
      protected AbstractContainerMenu createMenu(int id, Inventory player) {
 -        return ChestMenu.threeRows(id, player, this);
 +        // Purpur start - Barrels and enderchests 6 rows
-+        return switch (fun.bm.Mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
++        return switch (fun.bm.mili.config.modules.function.ContainerExpansionConfig.barrelRows) {
 +            case 6 -> ChestMenu.sixRows(id, player, this);
 +            case 5 -> ChestMenu.fiveRows(id, player, this);
 +            case 4 -> ChestMenu.fourRows(id, player, this);

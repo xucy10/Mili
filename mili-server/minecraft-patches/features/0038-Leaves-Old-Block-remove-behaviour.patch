@@ -680,7 +680,7 @@ index 6a9d23d25a79c73d5792011faf0e5a1c4c25bc64..84e0d3cd3c349f0d588a4b4c2d684448
  
      public boolean isValid(BlockState state) {
 -        return this.validBlocks.contains(state.getBlock());
-+        return fun.bm.Mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour || this.validBlocks.contains(state.getBlock()); // Leaves - behaviour 1.21.1-
++        return fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour || this.validBlocks.contains(state.getBlock()); // Leaves - behaviour 1.21.1-
      }
  
      @Deprecated
@@ -778,7 +778,7 @@ index 5551d80a81c2878136f96b3e695c4888c7105a49..73dd8e67938fbfff745b189c06a93174
 -                        if (blockEntity != null) {
 -                            blockEntity.preRemoveSideEffects(pos, blockState);
 +                // Leaves start - behaviour 1.21.1-
-+                if (!fun.bm.Mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
++                if (!fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
 +                    if (flag && blockState.hasBlockEntity() && !state.shouldChangedStateKeepBlockEntity(blockState)) {
 +                        if (!this.level.isClientSide() && flag2) {
 +                            BlockEntity blockEntity = this.level.getBlockEntity(pos);
