@@ -5,6 +5,7 @@ Subject: [PATCH] Add config to enable tick command
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
 @@ -332,6 +332,11 @@ public final class RegionizedServer {
@@ -43,6 +44,7 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
                  world.setDayTime(world.levelData.getDayTime() + tickCount);
              }
 diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/papermc/paper/threadedregions/TickRegionScheduler.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/io/papermc/paper/threadedregions/TickRegionScheduler.java
 +++ b/io/papermc/paper/threadedregions/TickRegionScheduler.java
 @@ -40,8 +40,8 @@ public final class TickRegionScheduler {
@@ -104,6 +106,7 @@ diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/pape
                  this.scheduler.regionFailed(this, false, thr);
                  // regionFailed will schedule a shutdown, so we should avoid letting this region tick further
 diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/commands/Commands.java
 +++ b/net/minecraft/commands/Commands.java
 @@ -262,7 +262,11 @@ public class Commands {
@@ -120,6 +123,7 @@ diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Comma
          TitleCommand.register(this.dispatcher, context);
          //TriggerCommand.register(this.dispatcher); // Folia - region threading - TODO later
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -270,7 +270,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -132,6 +136,7 @@ diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/Mi
      protected WorldData worldData;
      private LevelData.RespawnData effectiveRespawnData = LevelData.RespawnData.DEFAULT;
 diff --git a/net/minecraft/server/ServerTickRateManager.java b/net/minecraft/server/ServerTickRateManager.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/ServerTickRateManager.java
 +++ b/net/minecraft/server/ServerTickRateManager.java
 @@ -106,7 +106,7 @@ public class ServerTickRateManager extends TickRateManager {
@@ -157,6 +162,7 @@ diff --git a/net/minecraft/server/ServerTickRateManager.java b/net/minecraft/ser
          this.sprintTimeSpend = this.sprintTimeSpend + (System.nanoTime() - this.sprintTickStartTime);
      }
 diff --git a/net/minecraft/server/commands/TickCommand.java b/net/minecraft/server/commands/TickCommand.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/commands/TickCommand.java
 +++ b/net/minecraft/server/commands/TickCommand.java
 @@ -14,7 +14,7 @@ import net.minecraft.server.ServerTickRateManager;
