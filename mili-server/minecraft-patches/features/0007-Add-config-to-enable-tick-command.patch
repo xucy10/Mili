@@ -84,10 +84,19 @@ index 0f4e8ee9438135e24e0f61a1390c59573b9e9c3f..65699d2ad66c686a8b7d1b951787ddd7
  
              if (!this.tryMarkTicking()) {
                  if (!this.cancelled.get()) {
-@@ -498,6 +513,11 @@ public final class TickRegionScheduler {
+@@ -498,6 +513,20 @@ public final class TickRegionScheduler {
              try {
                  // next start isn't updated until the end of this tick
-                 this.tickRegion(tickCount, tickStart, scheduledEnd);
+                 // Mili start - Region Balancer
++                if (fun.bm.mili.config.modules.experiment.RegionBalancerConfig.enabled) {
++                    fun.bm.mili.utils.RegionBalancer.init();
++                    fun.bm.mili.utils.RegionBalancer.submitAndWait(this, tickCount, () -> {
++                        this.tickRegion(tickCount, tickStart, scheduledEnd);
++                    });
++                } else {
++                    this.tickRegion(tickCount, tickStart, scheduledEnd);
++                }
++                // Mili end - Region Balancer
 +                // Luminol start - Add a config to enable tick command
 +                if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
 +                    MinecraftServer.tickRateManager.endTickWork();

@@ -32,12 +32,13 @@ index ba253a9af6141d8ea99c064e3cc0c6486c221098..48f9e234e4025633cbc41d334d88ada3
          } else if (direction == Direction.UP) {
              return this.getConnectionState(level, state, pos);
          } else {
-@@ -238,7 +238,7 @@ public class RedStoneWireBlock extends Block {
+@@ -238,7 +238,8 @@ public class RedStoneWireBlock extends Block {
          BlockPos blockPos = pos.relative(direction);
          BlockState blockState = level.getBlockState(blockPos);
          if (nonNormalCubeAbove) {
 -            boolean flag = blockState.getBlock() instanceof TrapDoorBlock || this.canSurviveOn(level, blockPos, blockState);
 +            boolean flag = (!fun.bm.mili.config.modules.experiment.RedStoneConfig.redstoneIgnoreUpwardsUpdate && blockState.getBlock() instanceof TrapDoorBlock) || this.canSurviveOn(level, blockPos, blockState); // Leaves - behavior to 1.19
++            if (fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig.enabled && level instanceof net.minecraft.server.level.ServerLevel sl) fun.bm.mili.utils.CrossRegionHelperThread.submitRedstoneCrossRegion(sl, pos, blockPos, direction); // Mili - cross-region redstone
              if (flag && shouldConnectTo(level.getBlockState(blockPos.above()))) {
                  if (blockState.isFaceSturdy(level, blockPos, direction.getOpposite())) {
                      return RedstoneSide.UP;

@@ -3,10 +3,10 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -71,6 +71,7 @@ public final class RegionBalancer {
     private static final ConcurrentHashMap<Integer, AtomicLong> LAST_TICK_TIME =
             new ConcurrentHashMap<>();
     private static final AtomicLong SEQUENCE = new AtomicLong(0);
+    private static final AtomicLong TASK_UID = new AtomicLong(0);
     private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
 
     /**
@@ -94,6 +95,10 @@ public final class RegionBalancer {
         dispatcher.setDaemon(true);
         dispatcher.start();
 
+        // Mili start - Adaptive TPS
+        fun.bm.mili.utils.AdaptiveTPSManager.start();
+        // Mili end - Adaptive TPS
+
         com.mojang.logging.LogUtils.getClassLogger().info(
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }
@@ -108,6 +113,39 @@ public final class RegionBalancer {
                 long overdue = System.nanoTime() - task.enqueueNanos;
                 double starvationBoost = Math.min(0.3, overdue / 100_000_000.0); // 100ms cap
                 task.priority += starvationBoost;
+
+                // Mili start - Region dynamic merge: batch low-load regions
+                RegionLoadMonitor.RegionLoadSnapshot snap = RegionLoadMonitor.getSnapshot(task.scheduleRef);
+                if (snap.isLowLoad()) {
+                    List<RegionTask> mergeList = new ArrayList<>();
+                    mergeList.add(task);
+                    while (mergeList.size() < 4) { // max 4 regions per merge
+                        RegionTask next = TASK_QUEUE.poll();
+                        if (next == null) break;
+                        RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);
+                        if (nextSnap.isLowLoad()) {
+                            mergeList.add(next);
+                        } else {
+                            TASK_QUEUE.add(next); // high-load, put back
+                            break;
+                        }
+                    }
+                    if (mergeList.size() > 1) {
+                        final List<Runnable> works = new ArrayList<>();
+                        for (RegionTask t : mergeList) works.add(t.work);
+                        WORKER_POOL.execute(() -> {
+                            for (Runnable w : works) {
+                                try { w.run(); }
+                                catch (Throwable ex) {
+                                    com.mojang.logging.LogUtils.getClassLogger().error(
+                                            "Merged region task failed", ex);
+                                }
+                            }
+                        });
+                        continue;
+                    }
+                }
+                // Mili end - Region dynamic merge
 
                 WORKER_POOL.execute(() -> {
                     try {
@@ -152,6 +190,55 @@ public final class RegionBalancer {
         RegionTask task = new RegionTask(scheduleRef, work, tickCount, SEQUENCE.incrementAndGet());
         task.priority = priority;
         TASK_QUEUE.add(task);
+    }
+
+    /**
+     * Submit a region tick task and block until it completes.
+     * This is the "real thread pool scheduling" entry point:
+     * the per-region dedicated thread hands off the tick work to the
+     * shared thread pool and waits for it to finish.
+     */
+    public static void submitAndWait(Object scheduleRef, long tickCount, Runnable work) {
+        if (!RegionBalancerConfig.enabled || WORKER_POOL == null) {
+            work.run();
+            return;
+        }
+
+        long uid = TASK_UID.incrementAndGet();
+        RegionLoadMonitor.beforeTick(scheduleRef);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        submit(scheduleRef, tickCount, () -> {
+            try {
+                final long begin = System.nanoTime();
+                work.run();
+                RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        markTicked(scheduleRef);
+    }
+
+    /**
+     * Get the next unique task ID (for diagnostics / logging).
+     */
+    public static long getNextTaskUid() {
+        return TASK_UID.incrementAndGet();
+    }
+
+    /**
+     * Get the current highest assigned task ID.
+     */
+    public static long getCurrentTaskUid() {
+        return TASK_UID.get();
     }
 
     /**

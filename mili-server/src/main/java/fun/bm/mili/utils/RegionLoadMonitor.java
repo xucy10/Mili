@@ -137,4 +137,15 @@ public class RegionLoadMonitor {
         if (schedule == null) return;
         STATS.remove(keyOf(schedule));
     }
+
+    /**
+     * Get snapshots of all tracked regions.
+     */
+    public static java.util.Collection<RegionLoadSnapshot> getAllSnapshots() {
+        java.util.List<RegionLoadSnapshot> result = new java.util.ArrayList<>();
+        for (RegionStats stats : STATS.values()) {
+            result.add(stats.snapshot());
+        }
+        return result;
+    }
 }

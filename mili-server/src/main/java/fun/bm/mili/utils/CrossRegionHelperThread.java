@@ -2,7 +2,11 @@ package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Queue;
@@ -180,6 +184,22 @@ public class CrossRegionHelperThread {
     public static void onRegionUnload(RegionizedWorldData data) {
         if (data == null) return;
         PENDING_BY_REGION.remove(data);
+    }
+
+    public static void submitRedstoneCrossRegion(ServerLevel sl, BlockPos pos, BlockPos neighbor, Direction dir) {
+        if (!CrossRegionHelperConfig.enabled || sl == null) return;
+        RegionizedWorldData s = sl.getCurrentWorldData();
+        if (s == null) return;
+        submit(REDSTONE_SIGNAL, s, s, new Object[]{pos, neighbor, dir}, sl.getServer().getTickCount());
+    }
+
+    public static void submitDamageCrossRegion(LivingEntity src, LivingEntity tgt, DamageSource ds, long tick) {
+        if (!CrossRegionHelperConfig.enabled || src == null || tgt == null) return;
+        io.papermc.paper.threadedregions.RegionizedWorldData s = src.level().getCurrentWorldData();
+        io.papermc.paper.threadedregions.RegionizedWorldData t = tgt.level().getCurrentWorldData();
+        if (s != null && t != null && s != t) {
+            submit(ENTITY_DAMAGE_SYNC, s, t, new Object[]{src.getUUID(), tgt.getUUID(), ds}, tick);
+        }
     }
 
     public static void shutdown() {
