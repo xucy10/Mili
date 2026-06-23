@@ -5,13 +5,18 @@ Subject: [PATCH] Carpet features
 
 
 diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/main/java/me/earthme/luminol/config/ConfigManager.java
-index afa7df571dc2adaf76020ef20ea794ebf2194692..842ee552b179e7cabefcfccf4775b4a2d393cd3d 100644
 --- a/src/main/java/me/earthme/luminol/config/ConfigManager.java
 +++ b/src/main/java/me/earthme/luminol/config/ConfigManager.java
-@@ -25,6 +25,13 @@ public class ConfigManager {
+@@ -25,12 +25,19 @@ public class ConfigManager {
      public static void initConfigs() {
          configfiles.put("luminol", ConfigsInstance.of("luminol", "me.earthme.luminol.config.modules"));
-         configfiles.put("Mili", ConfigsInstance.of("Mili", "fun.bm.mili.config.modules")); // add Mili global config
+         configfiles.put("Mili", ConfigsInstance.of(
+                 new java.io.File("mili_config"),
+                 "Mili",
+                 "Mili_config.toml",
+                 "miliconfig",
+                 "fun.bm.mili.config.modules"
+         )); // add Mili global config
 +        configfiles.put("mili_carpet", ConfigsInstance.of(
 +                new java.io.File("mili_config"),
 +                "mili_carpet",
@@ -21,5 +26,4 @@ index afa7df571dc2adaf76020ef20ea794ebf2194692..842ee552b179e7cabefcfccf4775b4a2
 +        )); // add mili carpet config
          preLoad();
      }
- 
-
+ }
