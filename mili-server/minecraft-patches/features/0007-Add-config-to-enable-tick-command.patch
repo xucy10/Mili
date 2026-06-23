@@ -20,7 +20,7 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
          // expire invalid click command callbacks
          io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
          io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
-@@ -357,6 +362,13 @@ public final class RegionizedServer {
+@@ -359,6 +364,13 @@ public final class RegionizedServer {
              this.globalTick(world, tickCount);
          }
  
@@ -34,7 +34,7 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
          // tick connections
          this.tickConnections();
  
-@@ -492,7 +504,7 @@ public final class RegionizedServer {
+@@ -494,7 +506,7 @@ public final class RegionizedServer {
      }
  
      private void tickTime(final ServerLevel world, final long tickCount) {
