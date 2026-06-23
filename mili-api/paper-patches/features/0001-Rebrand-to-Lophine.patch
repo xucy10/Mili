@@ -12,7 +12,7 @@ index db5e2f10278c20286779362cfdfadb2f42c724e0..c18c0cb45a193883aa12b5d1abe690e9
       */
      Key BRAND_LUMINOL_ID = Key.key("luminolmc", "luminol");
      // Luminol end
-+    Key BRAND_MILI_ID = Key.key("luminolmc", "Mili"); // Mili
++    Key BRAND_MILI_ID = Key.key("luminolmc", "mili"); // Mili
  
      /**
       * Gets the {@code ServerBuildInfo}.
