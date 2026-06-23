@@ -629,7 +629,7 @@ index 4e0b0d630e18bde916a07889bcaf0e7accf064ca..05ace66c11a206443f12537fa829b018
 +    }
 +
 +    private static ResourceKey<Recipe<?>> compatRecipeKey(String path) {
-+        return ResourceKey.create(Registries.RECIPE, Identifier.fromNamespaceAndPath("Mili", path));
++        return ResourceKey.create(Registries.RECIPE, Identifier.fromNamespaceAndPath("mili", path));
 +    }
 +
      // CraftBukkit start
