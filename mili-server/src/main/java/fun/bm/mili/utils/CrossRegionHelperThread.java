@@ -190,7 +190,7 @@ public class CrossRegionHelperThread {
         if (!CrossRegionHelperConfig.enabled || sl == null) return;
         RegionizedWorldData s = sl.getCurrentWorldData();
         if (s == null) return;
-        submit(EventType.REDSTONE_SIGNAL, s, s, new Object[]{pos, neighbor, dir}, sl.getServer().getTickCount());
+        submit(EventType.REDSTONE_SIGNAL, s, s, new Object[]{pos, neighbor, dir}, sl.getGameTime());
     }
 
     public static void submitDamageCrossRegion(LivingEntity src, LivingEntity tgt, DamageSource ds, long tick) {
