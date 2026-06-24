@@ -47,7 +47,7 @@ public class TeleportCommand extends BotSubcommand {
             }
 
             Location loc = bot.getBukkitEntity().getLocation();
-            player.teleport(loc);
+            player.teleportAsync(loc, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN);
 
             sender.sendMessage(join(spaces(),
                     text("You have been teleported to bot", GRAY),
