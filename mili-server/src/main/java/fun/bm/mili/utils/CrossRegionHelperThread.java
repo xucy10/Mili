@@ -190,7 +190,7 @@ public class CrossRegionHelperThread {
         if (!CrossRegionHelperConfig.enabled || sl == null) return;
         RegionizedWorldData s = sl.getCurrentWorldData();
         if (s == null) return;
-        submit(REDSTONE_SIGNAL, s, s, new Object[]{pos, neighbor, dir}, sl.getServer().getTickCount());
+        submit(EventType.REDSTONE_SIGNAL, s, s, new Object[]{pos, neighbor, dir}, sl.getServer().getTickCount());
     }
 
     public static void submitDamageCrossRegion(LivingEntity src, LivingEntity tgt, DamageSource ds, long tick) {
@@ -198,7 +198,7 @@ public class CrossRegionHelperThread {
         io.papermc.paper.threadedregions.RegionizedWorldData s = src.level().getCurrentWorldData();
         io.papermc.paper.threadedregions.RegionizedWorldData t = tgt.level().getCurrentWorldData();
         if (s != null && t != null && s != t) {
-            submit(ENTITY_DAMAGE_SYNC, s, t, new Object[]{src.getUUID(), tgt.getUUID(), ds}, tick);
+            submit(EventType.ENTITY_DAMAGE_SYNC, s, t, new Object[]{src.getUUID(), tgt.getUUID(), ds}, tick);
         }
     }
 
