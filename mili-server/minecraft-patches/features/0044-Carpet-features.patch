@@ -15,7 +15,7 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
          ++this.tickCount;
          // Luminol start - Add a config to enable tick command
          if (fun.bm.mili.config.modules.experiment.CommandConfig.tick) {
-@@ -369,6 +370,8 @@ public final class RegionizedServer {
+@@ -371,6 +372,8 @@ public final class RegionizedServer {
          }
          // Luminol end - Add a config to enable tick command
  
@@ -32,7 +32,6 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
 \ No newline at end of file
 +}
 diff --git a/net/minecraft/commands/arguments/blocks/BlockInput.java b/net/minecraft/commands/arguments/blocks/BlockInput.java
-index f9a5058e50c7fc6ebc2fc311bbc7064bfbd89035..9b737c3fcfae1f6afeee42cd4a4d83ba56f7c3e9 100644
 --- a/net/minecraft/commands/arguments/blocks/BlockInput.java
 +++ b/net/minecraft/commands/arguments/blocks/BlockInput.java
 @@ -65,7 +65,9 @@ public class BlockInput implements Predicate<BlockInWorld> {
@@ -47,7 +46,6 @@ index f9a5058e50c7fc6ebc2fc311bbc7064bfbd89035..9b737c3fcfae1f6afeee42cd4a4d83ba
              blockState = this.state;
          }
 diff --git a/net/minecraft/core/Direction.java b/net/minecraft/core/Direction.java
-index b21ce33550e2516562607b847e5f0f89c2ea3fc7..e6433818288b3b41742c524dc5bef9ad4e1817b7 100644
 --- a/net/minecraft/core/Direction.java
 +++ b/net/minecraft/core/Direction.java
 @@ -138,7 +138,7 @@ public enum Direction implements StringRepresentable, ca.spottedleaf.moonrise.pa
@@ -60,7 +58,6 @@ index b21ce33550e2516562607b847e5f0f89c2ea3fc7..e6433818288b3b41742c524dc5bef9ad
          float cos = Mth.cos(f);
          float sin1 = Mth.sin(f1);
 diff --git a/net/minecraft/network/chat/SignedMessageValidator.java b/net/minecraft/network/chat/SignedMessageValidator.java
-index bf1ea9ea011b3067e329abf77bd6cf4ef991a02a..d971d67b2911a5763f9b1f690bc4991c3a6186a2 100644
 --- a/net/minecraft/network/chat/SignedMessageValidator.java
 +++ b/net/minecraft/network/chat/SignedMessageValidator.java
 @@ -31,7 +31,9 @@ public interface SignedMessageValidator {
@@ -75,7 +72,6 @@ index bf1ea9ea011b3067e329abf77bd6cf4ef991a02a..d971d67b2911a5763f9b1f690bc4991c
                      "Received out-of-order chat message from {}: expected index > {} for session {}, but was {} for session {}",
                      message.sender(),
 diff --git a/net/minecraft/server/commands/TickCommand.java b/net/minecraft/server/commands/TickCommand.java
-index 99096896a4512eed579b234e7fa0c6e9c3e8c246..daddf1892ba250e08da295c7608e8f7c40841434 100644
 --- a/net/minecraft/server/commands/TickCommand.java
 +++ b/net/minecraft/server/commands/TickCommand.java
 @@ -20,7 +20,7 @@ public class TickCommand {
@@ -108,7 +104,6 @@ index 99096896a4512eed579b234e7fa0c6e9c3e8c246..daddf1892ba250e08da295c7608e8f7c
 +    }
  }
 diff --git a/net/minecraft/server/dedicated/DedicatedPlayerList.java b/net/minecraft/server/dedicated/DedicatedPlayerList.java
-index f7f4060370e896316acf5d50dba09c2aeece8bd8..aed0c60d4235776eb6495666693bba6b83defda4 100644
 --- a/net/minecraft/server/dedicated/DedicatedPlayerList.java
 +++ b/net/minecraft/server/dedicated/DedicatedPlayerList.java
 @@ -14,7 +14,7 @@ public class DedicatedPlayerList extends PlayerList {
@@ -121,7 +116,6 @@ index f7f4060370e896316acf5d50dba09c2aeece8bd8..aed0c60d4235776eb6495666693bba6b
          // Paper start - fix converting txt to json file; moved from constructor
      }
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index e6ec0788b88d3431c06134c879b4bae9c769dac1..bc94a9094e3cee5d5d4c5b919bf4c2a1d9a73ea4 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -255,6 +255,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
@@ -153,7 +147,6 @@ index e6ec0788b88d3431c06134c879b4bae9c769dac1..bc94a9094e3cee5d5d4c5b919bf4c2a1
  
      public ClientInformation clientInformation() {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da1637e89224 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -2050,7 +2050,13 @@ public class ServerGamePacketListenerImpl
@@ -240,7 +233,6 @@ index fd74636d911596daae8cfe563c2dd5e3d37a1549..555cdf2558dec481d6f11c0b1c33da16
                  } else {
                      LOGGER.warn("Player {} was dropping items too fast in creative mode, ignoring.", this.player.getPlainTextName());
 diff --git a/net/minecraft/world/entity/ExperienceOrb.java b/net/minecraft/world/entity/ExperienceOrb.java
-index 29d904b02a2c7b3d25261ca26c7c0479b00999ef..34dc71daf2182805465742b1455e13b904f076e9 100644
 --- a/net/minecraft/world/entity/ExperienceOrb.java
 +++ b/net/minecraft/world/entity/ExperienceOrb.java
 @@ -354,8 +354,22 @@ public class ExperienceOrb extends Entity {
@@ -356,7 +348,6 @@ index 29d904b02a2c7b3d25261ca26c7c0479b00999ef..34dc71daf2182805465742b1455e13b9
          return this.entityData.get(DATA_VALUE);
      }
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index fc8833655102ca98bb331782a624af79cbef414f..b49ff0baae5493925c0b13876fd0473dbeb649c9 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
 @@ -607,7 +607,8 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
@@ -370,7 +361,6 @@ index fc8833655102ca98bb331782a624af79cbef414f..b49ff0baae5493925c0b13876fd0473d
              if (!(this instanceof ServerPlayer)) this.remove(Entity.RemovalReason.KILLED, org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH); // CraftBukkit - add Bukkit remove cause // Folia - region threading - don't remove, we want the tick scheduler to be running
              if ((this instanceof ServerPlayer)) this.unRide(); // Folia - region threading - unmount player when dead
 diff --git a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java
-index fd1db18764be58bc5ed5983b98e669c76f7ff427..a0d7658435cb838415121882e4c3bb3d0fa10040 100644
 --- a/net/minecraft/world/entity/item/PrimedTnt.java
 +++ b/net/minecraft/world/entity/item/PrimedTnt.java
 @@ -68,8 +68,12 @@ public class PrimedTnt extends Entity implements TraceableEntity {
@@ -418,7 +408,6 @@ index fd1db18764be58bc5ed5983b98e669c76f7ff427..a0d7658435cb838415121882e4c3bb3d
          return this.entityData.get(DATA_FUSE_ID);
      }
 diff --git a/net/minecraft/world/entity/monster/EnderMan.java b/net/minecraft/world/entity/monster/EnderMan.java
-index f7c0c1c75ba02c2d70ff2b67e437c0813458ee3d..96b436fe4af6fe45b927e757a856e6fe3190cbe6 100644
 --- a/net/minecraft/world/entity/monster/EnderMan.java
 +++ b/net/minecraft/world/entity/monster/EnderMan.java
 @@ -651,7 +651,7 @@ public class EnderMan extends Monster implements NeutralMob {
@@ -445,7 +434,6 @@ index f7c0c1c75ba02c2d70ff2b67e437c0813458ee3d..96b436fe4af6fe45b927e757a856e6fe
      }
  }
 diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
-index 8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da..0a6f1478856f503408a10c131d20ec3b235753ce 100644
 --- a/net/minecraft/world/entity/player/Player.java
 +++ b/net/minecraft/world/entity/player/Player.java
 @@ -564,7 +564,13 @@ public abstract class Player extends Avatar implements ContainerUser {
@@ -504,7 +492,6 @@ index 8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da..0a6f1478856f503408a10c131d20ec3b
          sendSoundEffect(this, this.getX(), this.getY(), this.getZ(), sound, this.getSoundSource(), 1.0F, 1.0F); // Paper - send while respecting visibility
      }
 diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
-index 44786e4f77285f1fbd4643f560105e410035afeb..77b3c8b4bb9ae2c7dede35f74c38febdf43e2dfc 100644
 --- a/net/minecraft/world/item/BlockItem.java
 +++ b/net/minecraft/world/item/BlockItem.java
 @@ -172,7 +172,13 @@ public class BlockItem extends Item {
@@ -523,7 +510,6 @@ index 44786e4f77285f1fbd4643f560105e410035afeb..77b3c8b4bb9ae2c7dede35f74c38febd
  
          org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(
 diff --git a/net/minecraft/world/item/ServerItemCooldowns.java b/net/minecraft/world/item/ServerItemCooldowns.java
-index 8725fe35812ee5f7ace0ac3dce466738b6eefc53..9f5311bec541f5efa5e8c60a7ea98824f7eb5cad 100644
 --- a/net/minecraft/world/item/ServerItemCooldowns.java
 +++ b/net/minecraft/world/item/ServerItemCooldowns.java
 @@ -22,6 +22,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
@@ -547,7 +533,6 @@ index 8725fe35812ee5f7ace0ac3dce466738b6eefc53..9f5311bec541f5efa5e8c60a7ea98824
              final io.papermc.paper.event.player.PlayerItemGroupCooldownEvent event = new io.papermc.paper.event.player.PlayerItemGroupCooldownEvent(
                  this.player.getBukkitEntity(),
 diff --git a/net/minecraft/world/item/crafting/RecipeManager.java b/net/minecraft/world/item/crafting/RecipeManager.java
-index 4e0b0d630e18bde916a07889bcaf0e7accf064ca..05ace66c11a206443f12537fa829b0186725b526 100644
 --- a/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -55,6 +55,9 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
@@ -635,7 +620,6 @@ index 4e0b0d630e18bde916a07889bcaf0e7accf064ca..05ace66c11a206443f12537fa829b018
      public void addRecipe(RecipeHolder<?> holder) {
          org.spigotmc.AsyncCatcher.catchOp("Recipe Add"); // Spigot
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 7803ff8e2e37b44d6e1b094e3141e0c99137659a..81db88c8a25ade71b88fcf5b90880f18d8610783 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
 @@ -1169,6 +1169,10 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
@@ -659,7 +643,6 @@ index 7803ff8e2e37b44d6e1b094e3141e0c99137659a..81db88c8a25ade71b88fcf5b90880f18
  
                  // CraftBukkit start
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
-index e7223540a7cef20b661bdb857ffba962d0f5d348..4b6fbaa33b3db4d514fae7d0913b5530a4a44214 100644
 --- a/net/minecraft/world/level/NaturalSpawner.java
 +++ b/net/minecraft/world/level/NaturalSpawner.java
 @@ -267,6 +267,9 @@ public final class NaturalSpawner {
@@ -726,7 +709,6 @@ index e7223540a7cef20b661bdb857ffba962d0f5d348..4b6fbaa33b3db4d514fae7d0913b5530
                                  }
                              }
 diff --git a/net/minecraft/world/level/ServerExplosion.java b/net/minecraft/world/level/ServerExplosion.java
-index 33ee967d8a7d4ce2c455db9ffaac740cd589e6f3..4dc8dda135b2d43604058ae832ce63dec796c407 100644
 --- a/net/minecraft/world/level/ServerExplosion.java
 +++ b/net/minecraft/world/level/ServerExplosion.java
 @@ -379,6 +379,10 @@ public class ServerExplosion implements Explosion {
@@ -741,7 +723,6 @@ index 33ee967d8a7d4ce2c455db9ffaac740cd589e6f3..4dc8dda135b2d43604058ae832ce63de
          final ObjectArrayList<BlockPos> ret = new ObjectArrayList<>();
  
 diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
-index b45e5f571e72028996f641157473039ba9dd3520..8eeabbcf708644069e34503ad736c49b38c787d1 100644
 --- a/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 +++ b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 @@ -59,7 +59,8 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
@@ -807,7 +788,6 @@ index b45e5f571e72028996f641157473039ba9dd3520..8eeabbcf708644069e34503ad736c49b
          if (this.snowGolemBase == null) {
              this.snowGolemBase = BlockPatternBuilder.start()
 diff --git a/net/minecraft/world/level/block/ChestBlock.java b/net/minecraft/world/level/block/ChestBlock.java
-index 64c0616c294bd7c7b62ae376d50369500b948390..8797841c1c74fb6ff01bd93497d34500ebeca88a 100644
 --- a/net/minecraft/world/level/block/ChestBlock.java
 +++ b/net/minecraft/world/level/block/ChestBlock.java
 @@ -296,7 +296,8 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
@@ -821,7 +801,6 @@ index 64c0616c294bd7c7b62ae376d50369500b948390..8797841c1c74fb6ff01bd93497d34500
                  player.awardStat(this.getOpenChestStat());
                  PiglinAi.angerNearbyPiglins(serverLevel, player, true);
 diff --git a/net/minecraft/world/level/block/EnderChestBlock.java b/net/minecraft/world/level/block/EnderChestBlock.java
-index 202a986762794da9440365953fcb950c6eefa774..dc74a5ee0c6a45b9a0171226b480962a3f793ca2 100644
 --- a/net/minecraft/world/level/block/EnderChestBlock.java
 +++ b/net/minecraft/world/level/block/EnderChestBlock.java
 @@ -78,7 +78,8 @@ public class EnderChestBlock extends AbstractChestBlock<EnderChestBlockEntity> i
@@ -835,7 +814,6 @@ index 202a986762794da9440365953fcb950c6eefa774..dc74a5ee0c6a45b9a0171226b480962a
              } else {
                  // Paper start - Fix InventoryOpenEvent cancellation - moved up;
 diff --git a/net/minecraft/world/level/block/FarmBlock.java b/net/minecraft/world/level/block/FarmBlock.java
-index eb21b20a72062fc53b8f94aa98dcd380c8ad4db3..38bc450afb3cecc349290391f2c235866ad819b5 100644
 --- a/net/minecraft/world/level/block/FarmBlock.java
 +++ b/net/minecraft/world/level/block/FarmBlock.java
 @@ -133,7 +133,9 @@ public class FarmBlock extends Block {
@@ -850,7 +828,6 @@ index eb21b20a72062fc53b8f94aa98dcd380c8ad4db3..38bc450afb3cecc349290391f2c23586
  
          // super.fallOn(level, state, pos, entity, fallDistance); // CraftBukkit - moved up
 diff --git a/net/minecraft/world/level/block/ObserverBlock.java b/net/minecraft/world/level/block/ObserverBlock.java
-index 17c371f4c24e8a81705bdd322b1de5de4b8be8b7..ec049a5473b334032ce77cb44e144de687c14c21 100644
 --- a/net/minecraft/world/level/block/ObserverBlock.java
 +++ b/net/minecraft/world/level/block/ObserverBlock.java
 @@ -88,6 +88,9 @@ public class ObserverBlock extends DirectionalBlock {
@@ -864,7 +841,6 @@ index 17c371f4c24e8a81705bdd322b1de5de4b8be8b7..ec049a5473b334032ce77cb44e144de6
              scheduledTickAccess.scheduleTick(pos, this, 2);
          }
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 5c154d15e5aa45988436722595c7fca74e166c9a..070c9ad76193690e91bfbfe791ef4fa7cdbf36fe 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
 @@ -280,7 +280,8 @@ public class RedStoneWireBlock extends Block {
@@ -918,7 +894,6 @@ index 5c154d15e5aa45988436722595c7fca74e166c9a..070c9ad76193690e91bfbfe791ef4fa7
              } else
                  // Paper end - optimize redstone (Alternate Current)
 diff --git a/net/minecraft/world/level/block/ShulkerBoxBlock.java b/net/minecraft/world/level/block/ShulkerBoxBlock.java
-index e820cd03e695649a8f83e23ae822524a8f78e23b..6c58bc561116cff645d60f98294bc66fdb0e9919 100644
 --- a/net/minecraft/world/level/block/ShulkerBoxBlock.java
 +++ b/net/minecraft/world/level/block/ShulkerBoxBlock.java
 @@ -74,9 +74,10 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
@@ -934,7 +909,6 @@ index e820cd03e695649a8f83e23ae822524a8f78e23b..6c58bc561116cff645d60f98294bc66f
              player.awardStat(Stats.OPEN_SHULKER_BOX);
              PiglinAi.angerNearbyPiglins(serverLevel, player, true);
 diff --git a/net/minecraft/world/level/block/TntBlock.java b/net/minecraft/world/level/block/TntBlock.java
-index 00da328f21e5ce5de6f968323b14a7832a6cbd62..a68ffb1197a19173f00577f656b5894f3c8ab85e 100644
 --- a/net/minecraft/world/level/block/TntBlock.java
 +++ b/net/minecraft/world/level/block/TntBlock.java
 @@ -47,7 +47,8 @@ public class TntBlock extends Block {
@@ -979,7 +953,6 @@ index 00da328f21e5ce5de6f968323b14a7832a6cbd62..a68ffb1197a19173f00577f656b5894f
 +    }
  }
 diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index ed906ec726fa0eb12c0108dc751af2dcadf2bfb1..0942fd82d4ea32f5c75f255ecd6c7b160851706e 100644
 --- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 @@ -523,6 +523,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
@@ -1017,7 +990,6 @@ index ed906ec726fa0eb12c0108dc751af2dcadf2bfb1..0942fd82d4ea32f5c75f255ecd6c7b16
                              // Spigot end
                              blockEntity.setItem(i, item);
 diff --git a/net/minecraft/world/level/block/piston/PistonBaseBlock.java b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
-index 31907239431e83515b4e9c8b53dc1ee4d6f29e4d..6fed824d42e034f9a315c8ab74e05ba36c427787 100644
 --- a/net/minecraft/world/level/block/piston/PistonBaseBlock.java
 +++ b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
 @@ -369,7 +369,7 @@ public class PistonBaseBlock extends DirectionalBlock {
@@ -1030,7 +1002,6 @@ index 31907239431e83515b4e9c8b53dc1ee4d6f29e4d..6fed824d42e034f9a315c8ab74e05ba3
                  BlockPos oldPos = blockPos2 = toPush.get(i1);
                  BlockState blockState1 = allowDesync ? level.getBlockState(oldPos) : null;
 diff --git a/net/minecraft/world/level/block/state/BlockBehaviour.java b/net/minecraft/world/level/block/state/BlockBehaviour.java
-index 0de2f6627fb6295d7927ac3e37026f4daf68cfd3..727abe6be81fdaa0753035bbf89ffeadf9c839b8 100644
 --- a/net/minecraft/world/level/block/state/BlockBehaviour.java
 +++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
 @@ -828,6 +828,9 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
@@ -1044,7 +1015,6 @@ index 0de2f6627fb6295d7927ac3e37026f4daf68cfd3..727abe6be81fdaa0753035bbf89ffead
              return offsetFunction != null ? offsetFunction.evaluate(this.asState(), pos) : Vec3.ZERO;
          }
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index b1829ac08ba90e8e1522ee790b7f96515da2b9c4..8f5e19a15f42aadedfe7c998568f846657a5ec8c 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -406,10 +406,11 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
@@ -1081,7 +1051,6 @@ index b1829ac08ba90e8e1522ee790b7f96515da2b9c4..8f5e19a15f42aadedfe7c998568f8466
                      }
  
 diff --git a/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java b/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java
-index 48187686126139a4229f454a3d4427f6593fa71b..562a27a051e1a5059e5bb81b64dc4c6def9f8673 100644
 --- a/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java
 +++ b/net/minecraft/world/level/dimension/end/DragonRespawnAnimation.java
 @@ -53,18 +53,18 @@ public enum DragonRespawnAnimation {
@@ -1114,7 +1083,6 @@ index 48187686126139a4229f454a3d4427f6593fa71b..562a27a051e1a5059e5bb81b64dc4c6d
                          Feature.END_SPIKE
                              .place(
 diff --git a/net/minecraft/world/level/levelgen/feature/SpikeFeature.java b/net/minecraft/world/level/levelgen/feature/SpikeFeature.java
-index 70bb9a6742d236bb2f8f9b6bc43e973838ec5842..d111e19380372fd46059cddbaa1d3343deeb6918 100644
 --- a/net/minecraft/world/level/levelgen/feature/SpikeFeature.java
 +++ b/net/minecraft/world/level/levelgen/feature/SpikeFeature.java
 @@ -66,6 +66,10 @@ public class SpikeFeature extends Feature<SpikeConfiguration> {
@@ -1129,7 +1097,6 @@ index 70bb9a6742d236bb2f8f9b6bc43e973838ec5842..d111e19380372fd46059cddbaa1d3343
  
          for (BlockPos blockPos : BlockPos.betweenClosed(
 diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
-index 32488203ff074b675f5c8831d157b1d91bae48a9..2c5f4006cf56921bee30223bf76b18a8e2ef56c6 100644
 --- a/net/minecraft/world/level/redstone/NeighborUpdater.java
 +++ b/net/minecraft/world/level/redstone/NeighborUpdater.java
 @@ -34,6 +34,9 @@ public interface NeighborUpdater {

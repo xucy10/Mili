@@ -8,17 +8,24 @@ diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/ma
 index 490316c7d5cbb77e988039cfa7a7cc0aa3849730..afa7df571dc2adaf76020ef20ea794ebf2194692 100644
 --- a/src/main/java/me/earthme/luminol/config/ConfigManager.java
 +++ b/src/main/java/me/earthme/luminol/config/ConfigManager.java
-@@ -24,6 +24,13 @@ public class ConfigManager {
+@@ -24,6 +24,20 @@ public class ConfigManager {
  
      public static void initConfigs() {
          configfiles.put("luminol", ConfigsInstance.of("luminol", "me.earthme.luminol.config.modules"));
-+        configfiles.put("Mili", ConfigsInstance.of(
++        configfiles.put("mili", ConfigsInstance.of(
 +                new java.io.File("mili_config"),
 +                "mili",
 +                "mili_config.toml",
 +                "miliconfig",
 +                "fun.bm.mili.config.modules"
 +        )); // add Mili global config
++        configfiles.put("mili_carpet", ConfigsInstance.of(
++                new java.io.File("mili_config"),
++                "mili_carpet",
++                "mili_carpet_config.toml",
++                "milicarpetconfig",
++                "fun.bm.mili.carpet.config.modules"
++        )); // add mili carpet config
          preLoad();
      }
  
