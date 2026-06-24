@@ -206,24 +206,9 @@ public final class RegionBalancer {
 
         long uid = TASK_UID.incrementAndGet();
         RegionLoadMonitor.beforeTick(scheduleRef);
-
-        CountDownLatch latch = new CountDownLatch(1);
-        submit(scheduleRef, tickCount, () -> {
-            try {
-                final long begin = System.nanoTime();
-                work.run();
-                RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
-            } finally {
-                latch.countDown();
-            }
-        });
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
+        final long begin = System.nanoTime();
+        work.run(); // execute on the calling thread to preserve region context
+        RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
         markTicked(scheduleRef);
     }
 
