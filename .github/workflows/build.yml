@@ -58,7 +58,7 @@ jobs:
 
       # 核心改动：优化 Gradle 缓存配置
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
