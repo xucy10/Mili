@@ -2,6 +2,7 @@ package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
+import org.mili.rust.RustOptimizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,6 +104,22 @@ public final class RegionBalancer {
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }
 
+    private static int getRustMergeBatchSize() {
+        try {
+            String result = RustOptimizer.scheduler(Math.min(4, Runtime.getRuntime().availableProcessors()));
+            String[] parts = result.split(":");
+            if (parts.length > 1) {
+                int rustBatch = Integer.parseInt(parts[1]);
+                if (rustBatch > 0) {
+                    return Math.max(1, Math.min(4, rustBatch));
+                }
+            }
+        } catch (Throwable ignored) {
+            // Fallback to Java-only behavior if the Rust bridge is unavailable.
+        }
+        return 4;
+    }
+
     private static void dispatchLoop() {
         while (!SHUTDOWN.get()) {
             try {
@@ -119,7 +136,8 @@ public final class RegionBalancer {
                 if (snap.isLowLoad()) {
                     List<RegionTask> mergeList = new ArrayList<>();
                     mergeList.add(task);
-                    while (mergeList.size() < 4) { // max 4 regions per merge
+                    int mergeBatchSize = getRustMergeBatchSize();
+                    while (mergeList.size() < mergeBatchSize) {
                         RegionTask next = TASK_QUEUE.poll();
                         if (next == null) break;
                         RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);

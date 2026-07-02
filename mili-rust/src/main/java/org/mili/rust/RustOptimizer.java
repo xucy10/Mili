@@ -31,6 +31,18 @@ public final class RustOptimizer {
         throw new IllegalStateException("Unexpected result from Rust optimizer: " + result);
     }
 
+    public static long packetSize(String input) {
+        String result = executeRustCommand("packet-size", input, RustOptimizer::fallbackPacketSize);
+        if (result.startsWith("packet-size:")) {
+            return Long.parseLong(result.substring("packet-size:".length()));
+        }
+        throw new IllegalStateException("Unexpected result from Rust optimizer: " + result);
+    }
+
+    public static String scheduler(int jobCount) {
+        return executeRustCommand("scheduler", String.valueOf(jobCount), input -> "scheduler:1:1:0");
+    }
+
     private static String executeRustCommand(String command, String input, Fallback fallback) {
         if (input == null) {
             input = "";
@@ -124,6 +136,16 @@ public final class RustOptimizer {
             sizes.add(index, merged);
         }
         return "merge-cost:" + cost;
+    }
+
+    private static String fallbackPacketSize(String input) {
+        long total = 0L;
+        for (String token : input.split("[;,| ]+")) {
+            if (!token.isBlank()) {
+                total += Long.parseLong(token);
+            }
+        }
+        return "packet-size:" + total;
     }
 
     private interface Fallback {

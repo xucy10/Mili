@@ -24,4 +24,15 @@ public class RustOptimizerTest {
         long cost = RustOptimizer.mergePacketCost(List.of(1L, 2L, 3L, 4L));
         assertEquals(19L, cost);
     }
+
+    @Test
+    void testPacketSizeFallback() {
+        assertEquals(10L, RustOptimizer.packetSize("1 2 3 4"));
+    }
+
+    @Test
+    void testScheduler() {
+        String result = RustOptimizer.scheduler(4);
+        assertEquals(true, result.startsWith("scheduler:"));
+    }
 }

@@ -1,5 +1,6 @@
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+mod protocol;
+mod scheduler;
+
 use std::env;
 
 fn main() {
@@ -11,6 +12,8 @@ fn main() {
         "dedup" => dedup(payload),
         "hash" => fnv1a_hash(payload),
         "merge-cost" => packet_merge_cost(payload),
+        "packet-size" => packet_size(payload),
+        "scheduler" => scheduler::run_lightweight_tasks(parse_usize(payload), 512),
         _ => format!("error:unknown-command:{}", command),
     };
 
@@ -40,23 +43,13 @@ fn packet_merge_cost(input: &str) -> String {
         .filter_map(|chunk| chunk.trim().parse::<u64>().ok())
         .collect();
 
-    if sizes.len() < 2 {
-        return "merge-cost:0".to_string();
-    }
+    format!("merge-cost:{}", protocol::optimize_packet_batch(&sizes))
+}
 
-    let mut heap = BinaryHeap::new();
-    for size in sizes {
-        heap.push(Reverse(size));
-    }
+fn packet_size(input: &str) -> String {
+    format!("packet-size:{}", protocol::parse_packet_size(input))
+}
 
-    let mut total_cost = 0u64;
-    while heap.len() > 1 {
-        let smallest = heap.pop().unwrap().0;
-        let next = heap.pop().unwrap().0;
-        let merged = smallest + next;
-        total_cost = total_cost.saturating_add(merged);
-        heap.push(Reverse(merged));
-    }
-
-    format!("merge-cost:{}", total_cost)
+fn parse_usize(input: &str) -> usize {
+    input.split(|c: char| c.is_whitespace() || c == ',').filter_map(|s| s.parse::<usize>().ok()).next().unwrap_or(1)
 }
