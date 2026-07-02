@@ -193,6 +193,7 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 
 dependencies {
     implementation(project(":mili-api")) // Mili
+    implementation(project(":mili-rust"))
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
@@ -264,6 +265,13 @@ dependencies {
     // Spark
     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
     implementation("me.lucko:spark-paper:1.10.152")
+}
+
+tasks.named<Jar>("jar") {
+    dependsOn(":mili-rust:stageRustBinary")
+    from(project(":mili-rust").layout.buildDirectory.dir("rust")) {
+        into("rust")
+    }
 }
 
 // Pufferfish Start

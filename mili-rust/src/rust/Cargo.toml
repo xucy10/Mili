@@ -1,0 +1,8 @@
+[package]
+name = "mili-rust-optimizer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "optimizer"
+path = "src/main.rs"

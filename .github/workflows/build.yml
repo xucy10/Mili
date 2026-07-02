@@ -44,6 +44,18 @@ jobs:
           distribution: zulu
           java-version: 21
 
+      - name: Set Up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Verify Rust Toolchain
+        run: |
+          rustc --version
+          cargo --version
+
       # 核心改动：优化 Gradle 缓存配置
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -101,8 +113,21 @@ jobs:
           done
           echo "Total CIS source files: ${COUNT}"
 
+      - name: Build Rust Optimizer
+        run: ./gradlew :mili-rust:stageRustBinary
+
+      - name: Verify Rust Optimizer Binary
+        run: |
+          if [ -f "mili-rust/build/rust/optimizer" ] || [ -f "mili-rust/build/rust/optimizer.exe" ]; then
+            echo "Rust optimizer binary exists"
+            ls -la mili-rust/build/rust
+          else
+            echo "Rust optimizer binary missing"
+            exit 1
+          fi
+
       - name: Build Paperclip Jar
-        run: ./gradlew createMojmapPaperclipJar
+        run: ./gradlew :mili-server:createMojmapPaperclipJar
 
       - name: Post-Build CIS Smoke Test
         run: |
