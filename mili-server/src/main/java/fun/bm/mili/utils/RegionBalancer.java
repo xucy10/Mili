@@ -2,8 +2,8 @@ package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
-import org.mili.rust.RustOptimizer;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -74,6 +74,8 @@ public final class RegionBalancer {
     private static final AtomicLong SEQUENCE = new AtomicLong(0);
     private static final AtomicLong TASK_UID = new AtomicLong(0);
     private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
+    private static final String RUST_OPTIMIZER_CLASS_NAME = "org.mili.rust.RustOptimizer";
+    private static final Method RUST_SCHEDULER_METHOD = findRustSchedulerMethod();
 
     /**
      * Initialize the balancer.  Safe to call multiple times; idempotent.
@@ -104,17 +106,32 @@ public final class RegionBalancer {
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }
 
-    private static int getRustMergeBatchSize() {
+    private static Method findRustSchedulerMethod() {
         try {
-            String result = RustOptimizer.scheduler(Math.min(4, Runtime.getRuntime().availableProcessors()));
-            String[] parts = result.split(":");
-            if (parts.length > 1) {
-                int rustBatch = Integer.parseInt(parts[1]);
-                if (rustBatch > 0) {
-                    return Math.max(1, Math.min(4, rustBatch));
+            Class<?> optimizerClass = Class.forName(RUST_OPTIMIZER_CLASS_NAME);
+            return optimizerClass.getMethod("scheduler", int.class);
+        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
+            return null;
+        }
+    }
+
+    static int getRustMergeBatchSize() {
+        if (RUST_SCHEDULER_METHOD == null) {
+            return 4;
+        }
+
+        try {
+            Object result = RUST_SCHEDULER_METHOD.invoke(null, Math.min(4, Runtime.getRuntime().availableProcessors()));
+            if (result instanceof String resultString) {
+                String[] parts = resultString.split(":");
+                if (parts.length > 1) {
+                    int rustBatch = Integer.parseInt(parts[1]);
+                    if (rustBatch > 0) {
+                        return Math.max(1, Math.min(4, rustBatch));
+                    }
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (ReflectiveOperationException | NumberFormatException ignored) {
             // Fallback to Java-only behavior if the Rust bridge is unavailable.
         }
         return 4;
