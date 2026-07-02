@@ -30,3 +30,34 @@ pub fn optimize_packet_batch(input: &[u64]) -> u64 {
 
     total
 }
+
+pub fn optimize_network_batch(input: &[u64]) -> String {
+    let values = normalize_packet_batch(input);
+    if values.is_empty() {
+        return "network-opt:1:0:0".to_string();
+    }
+
+    let total = values.iter().sum::<u64>();
+    let packet_count = values.len() as u64;
+    let average = total.saturating_div(packet_count.max(1));
+    let batch_hint = average.saturating_div(8).saturating_add(packet_count.min(4)).clamp(1, 8);
+    format!("network-opt:{}:{}:{}", batch_hint, packet_count, total)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{optimize_network_batch, optimize_packet_batch};
+
+    #[test]
+    fn network_batch_hint_is_bounded() {
+        let hint = optimize_network_batch(&[1, 2, 4, 8, 16]);
+        assert!(hint.starts_with("network-opt:"));
+        assert!(hint.contains(":5:"));
+    }
+
+    #[test]
+    fn packet_batch_cost_is_stable() {
+        let cost = optimize_packet_batch(&[1, 2, 3, 4]);
+        assert_eq!(cost, 10);
+    }
+}

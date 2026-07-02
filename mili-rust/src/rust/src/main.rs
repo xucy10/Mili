@@ -13,7 +13,12 @@ fn main() {
         "hash" => fnv1a_hash(payload),
         "merge-cost" => packet_merge_cost(payload),
         "packet-size" => packet_size(payload),
-        "scheduler" => scheduler::run_lightweight_tasks(parse_usize(payload), 512),
+        "network-opt" => network_opt(payload),
+        "task-uid" => task_uid(payload),
+        "scheduler" => {
+            let (job_count, work_units) = parse_scheduler_input(payload);
+            scheduler::run_lightweight_tasks(job_count, work_units)
+        }
         _ => format!("error:unknown-command:{}", command),
     };
 
@@ -50,6 +55,28 @@ fn packet_size(input: &str) -> String {
     format!("packet-size:{}", protocol::parse_packet_size(input))
 }
 
-fn parse_usize(input: &str) -> usize {
-    input.split(|c: char| c.is_whitespace() || c == ',').filter_map(|s| s.parse::<usize>().ok()).next().unwrap_or(1)
+fn network_opt(input: &str) -> String {
+    let sizes: Vec<u64> = input
+        .split(|c| c == ',' || c == ';' || c == ' ' || c == '|')
+        .filter_map(|chunk| chunk.trim().parse::<u64>().ok())
+        .collect();
+    protocol::optimize_network_batch(&sizes)
+}
+
+fn task_uid(_: &str) -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    format!("task-uid:{}", nanos)
+}
+
+fn parse_scheduler_input(input: &str) -> (usize, usize) {
+    let mut values = input
+        .split(|c: char| c.is_whitespace() || c == ',' || c == ';' || c == '|')
+        .filter_map(|token| token.parse::<usize>().ok());
+
+    let job_count = values.next().unwrap_or(1);
+    let work_units = values.next().unwrap_or(512);
+    (job_count, work_units)
 }

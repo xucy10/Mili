@@ -38,6 +38,12 @@ public class RegionBalancerConfig implements IConfigModule {
     @ConfigInfo(name = "idle-skip-ticks", comments = "Low-load regions can skip this many ticks between execution")
     public static int idleSkipTicks = 1;
 
+    @ConfigInfo(name = "merge-batch-soft-limit", comments = "Soft upper bound for low-load region merge batch size")
+    public static int mergeBatchSoftLimit = 4;
+
+    @ConfigInfo(name = "merge-batch-hard-limit", comments = "Hard upper bound for low-load region merge batch size")
+    public static int mergeBatchHardLimit = 8;
+
     public static int getThreadPoolSize() {
         return threadPoolSize > 0 ? threadPoolSize : Runtime.getRuntime().availableProcessors() * 2;
     }

@@ -40,7 +40,19 @@ public final class RustOptimizer {
     }
 
     public static String scheduler(int jobCount) {
-        return executeRustCommand("scheduler", String.valueOf(jobCount), input -> "scheduler:1:1:0");
+        return scheduler(jobCount, 512);
+    }
+
+    public static String scheduler(int jobCount, int workUnits) {
+        return executeRustCommand("scheduler", jobCount + " " + workUnits, input -> "scheduler:1:1:0:0");
+    }
+
+    public static String taskUid() {
+        return executeRustCommand("task-uid", "", input -> "task-uid:" + System.nanoTime());
+    }
+
+    public static String networkOptimize(String input) {
+        return executeRustCommand("network-opt", input == null ? "" : input, input -> "network-opt:1:0:0");
     }
 
     private static String executeRustCommand(String command, String input, Fallback fallback) {
