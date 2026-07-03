@@ -1,77 +1,76 @@
-为Mili贡献代码
-===============
+为 Mili 贡献代码
+=================
 
 [English](./CONTRIBUTING_EN.md) | **中文**
 
-我们很开心您想为我们的项目做出贡献！一般来说，我们对PR的审核是十分宽松的；
-但是如果您可以遵守下列的规则，我们可以更快地完成审核。
-## 使用个人账户进行 Fork
+感谢您愿意为 Mili 做出贡献！本指南给出一个清晰的入门流程、补丁工作流与常见问题解答，以便您快速上手。
 
-我们会定期尝试合并已有的 PR，如果有一些小问题，会尝试帮您解决这些问题。
-但是如果您使用了组织账号进行 PR，我们就不能对您的 PR 进行修改了。因此我们只能关闭你的PR然后进行手动合并。
-所以，请不要使用组织账号进行 Fork。
-您可以看看[这个 Issue](https://github.com/isaacs/github/issues/1681) 来了解一下我们为什么无法修改组织账号的 PR。
-## 开发环境
-在开始开发之前，您首先需要拥有以下软件作为开发环境：
+快速入门
+1. 使用个人账号 Fork 仓库并克隆到本地：
 
+```bash
+git clone https://github.com/xucy10/Mili.git
+cd Mili
+```
+
+2. 应用补丁工作树（在仓库根目录运行）：
+
+```bash
+./gradlew applyAllPatches
+```
+
+3. 在生成的 `*-api` / `*-server` 目录中进行修改并按补丁流程提交。
+
+开发环境要求
 - `git`
-- `JDK 21 或更高版本`
+- `JDK 21` 或更高
 
-特别提醒：在操作前，您需要启用系统和Git的长路径支持，以下为部分平台的相关描述：
-[`Windows`](https://learn.microsoft.com/windows/win32/fileio/maximum-file-path-limitation)
-[`Git for Windows`](https://gitforwindows.org/faq.html#i-get-errors-trying-to-check-out-files-with-long-path-names)
+注意（Windows / Git 长路径）
+请确保启用了系统与 Git 的长路径支持：
+- Windows: https://learn.microsoft.com/windows/win32/fileio/maximum-file-path-limitation
+- Git for Windows: https://gitforwindows.org/faq.html#i-get-errors-trying-to-check-out-files-with-long-path-names
 
-## 了解补丁（Patches）
-Mili 使用和 Folia 一样的补丁系统，并为了针对不同部分的修改分成了两个目录：
-- `Mili-api` - 对 `Folia-API` / `Paper-API` / `Spigot-API` / `Bukkit-API` 进行的修改。
-- `Mili-server` - 对 Minecraft 标准服务器原有逻辑进行的修改。
+补丁模型概览
+----------------
+Mili 使用基于 Git 的补丁模型，仓库在应用补丁后会在根目录生成一系列 `*-api` / `*-server` 目录：
 
-补丁系统是基于 git 的，你可以在这里了解 git 的基本内容 <https://git-scm.com/docs/gittutorial>
+- `Mili-api`, `luminol-api`, `folia-api`, `paper-api` —— API 相关修改
+- `Mili-server`, `luminol-server`, `folia-server`, `paper-server` —— 服务器实现与补丁
 
-如果你已经 Fork 了主储存库，那么下面你应该这么做：
-1. 将你的仓库 clone 到本地；
-2. 在你的 IDE 或 终端 内执行 Gradle 的 `applyAllPatches` 任务，如果是在终端内，你可以执行 `./gradlew applyAllPatches`。
-3. 在执行操作后，仓库根目录下应该存在以下目录对应 `Mili-api` / `Mili-server` / `luminol-api` / `luminol-server` / `folia-api` / `folia-server` / 以及 `paper-api` / `paper-server`（下文称为 `*-api` 和 `*-server` ）；
-4. 进入 仓库根目录下的 `*-api` 和 `*-server` 文件夹进行修改。
+这些目录在本质上并非独立 git 仓库：
+- 在应用补丁前，基点指向未被修改的上游源码。
+- 每一次对 `*-api`/`*-server` 的提交都会在补丁集合中产生相应变更。
 
-以下为对上述各个文件夹的简单描述，详细描述可以参考[这里](https://github.com/Toffikk/paperweight-examples/blob/18241979c88068d5b061d95ad69c98ecb201c246/README.md)。
+如何添加新补丁
+----------------
+1. 在相应的 `*-api` 或 `*-server` 目录下进行修改。
+2. 暂存更改：`git add <files>`（注意：对 Mili 自动创建的新文件不要直接提交为普通提交）。
+3. 提交修改：`git commit -m "Describe change"`。
+4. 运行：`./gradlew fixupPaperApiFilePatches`（若有新增文件由该任务生成补丁）
+5. 运行：`./gradlew rebuildAllServerPatches` 将提交转为补丁。
+6. 推送并发起 PR（将补丁文件包含在 PR 中）。
 
-1. API部分
-- `Mili-api` ：对新增API的修改
-- `luminol-api` ：对luminol-API的修改应当在此文件夹下进行
-- `folia-api` ：对folia-API的修改应当在此文件夹下进行
-- `paper-api` ：对paper-API/spigot-API/bukkit-API的修改应该在此文件夹下进行
+修改已存在补丁
+----------------
+1. 在 `HEAD` 上修改相关代码。
+2. 使用修正提交：`git commit -a --fixup <hash>`（或使用 `--squash` 编辑提交信息）。
+3. 自动变基：`git rebase -i --autosquash base`，然后保存并退出。
+4. 运行 `./gradlew fixupPaperApiFilePatches`（若需要）
+5. 运行 `./gradlew rebuildAllServerPatches`。
+6. 推送并更新 PR。
 
-2. Server部分
-- `Mili-server` ：对Minecraft原版服务器的修改和新增文件应当在此文件夹下进行
-- `luminol-server` ：对luminol-server的修改应当在此文件夹下进行
-- `folia-server` ：对folia-Server的修改应当在此文件夹下进行
-- `paper-server` ：对于paper对服务器逻辑的修改应当在此文件夹下进行
+常见问题
+---------
+- 我应当使用组织账号 Fork 吗？
+    - 不建议。组织 Fork 的 PR 无法由本项目直接编辑，合并过程会更复杂。
 
-顺便一提，仓库根目录下的 `*-api` 和 `*-server` 并不是正常的 git 仓库。
-- 在应用补丁前，基点将会指向未被更改的源码
-- 在基点后的每一个提交都是一个补丁
-- 只有 Luminol 最后一个提交后的提交才会被视为 Mili 补丁
+- 构建失败怎么办？
+    - 先运行 `./gradlew assemble --stacktrace` 并检查错误输出与依赖问题。
 
-## 增加补丁
+- 我如何运行本地测试？
+    - 使用 `./gradlew test` 或项目提供的特定测试任务（参见 `build.gradle.kts`）。
 
-按照以下步骤增加一个补丁是非常简单的。
-1. 在 `*-api` 或 `*-server` 进行修改。
-2. 使用 git 添加你的修改，比如 `git add .`（不要提交新建的文件的修改）。
-3. 使用 `git commit -m <提交信息>` 进行提交。
-4. 运行 Gradle 任务 `fixupPaperApiFilePatches` 生成新建文件的补丁文件（注意不要提交）；
-5. 运行 Gradle 任务 `rebuildAllServerPatches` 将你的提交转化为一个补丁；
-6. 将你生成的补丁文件进行推送。
+更多帮助
+---------
+查阅仓库根目录的 `README.md` / `README_EN.md` 获取构建、依赖和社区链接。如需进一步协助，请在 Issue 中提供构建日志、JDK 版本和复现步骤。
 
-这样做以后，你就可以将你的补丁文件进行 PR 提交。
-
-## 修改补丁
-
-你可以使用以下方法来修改一个补丁的内容。
-1. 在 HEAD 上直接进行修改；
-2. 使用 `git commit -a --fixup <hash>` 来进行一个更正提交；（不要提交对在mili新建文件的修改）
-    - 如果你想要更改提交信息，你也可以用 `--squash` 来代替 `--fixup`。
-3. 使用 `git rebase -i --autosquash base` 来进行自动变基，你只需要输入 `:q` 来关闭确认页面即可；
-4. 运行 Gradle 任务 `fixupPaperApiFilePatches` 来修改已被修改的在mili新建文件的补丁（注意不要提交）；
-5. 运行 Gradle 任务 `rebuildAllServerPatches` 来修改已被修改的补丁；
-6. 将修改后的补丁 PR 发回储存库。

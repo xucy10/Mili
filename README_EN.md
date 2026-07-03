@@ -3,18 +3,8 @@
   
   # Mili
   
-  *Mili is a Lophine fork with many useful optimizations and configurable vanilla features, aims to provide more function for survival-usable circuit on folia (Please note that Fabric should be used for complete survival-usable)*
-  
-  ![Created At](https://img.shields.io/github/created-at/LuminolMC/Lophine?style=for-the-badge&color=blue)
-  [![License](https://img.shields.io/github/license/LuminolMC/Lophine?style=for-the-badge&color=green)](LICENSE.md)
-  [![Issues](https://img.shields.io/github/issues/LuminolMC/Lophine?style=for-the-badge&color=orange)](https://github.com/LuminolMC/Lophine/issues)
-  
-  ![Commit Activity](https://img.shields.io/github/commit-activity/w/LuminolMC/Lophine?style=for-the-badge&color=purple)
-  ![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/LuminolMC/Lophine?style=for-the-badge&color=yellow)
-  ![GitHub all releases](https://img.shields.io/github/downloads/LuminolMC/Lophine/total?style=for-the-badge&color=red)
-  
-  ![Repo contributors](https://img.shields.io/github/contributors/LuminolMC/Lophine?style=for-the-badge&color=brightgreen)
-  
+  Mili is a Lophine-derived runtime that focuses on Folia compatibility, stability and configurable vanilla behavior. It provides fixes and optimizations to make redstone and survival circuits more reliable under Folia's scheduling model. (For full Fabric-based survival circuits, consider using Fabric builds.)
+
   **English** | [中文](./README.md)
 </div>
 
@@ -22,137 +12,91 @@
 
 ## ✨ Core Features
 
-- 🔧 **Configurable Vanilla Features** - Flexibly adjust game mechanics to suit different server needs
-- 📊 **Tpsbar Support** - Real-time TPS status display
-- 🐛 **Folia Bug Fixes** - Targeted fixes for known Folia issues
-- 💾 **Multiple World Format Support** - Support for linear and b_linear (linear reimplementation) world formats
-- 🔬 **Redstone Enhancement** - More redstone functionality on Folia (use Fabric for complete redstone features)
-- 🛠️ **More Useful Functions** - Continuously adding useful server features
+- Configurable vanilla behavior to tune gameplay mechanics
+- Folia-specific bug fixes and compatibility layers
+- Support for multiple world formats (linear / b_linear)
+- Redstone and survival-circuit compatibility improvements for Folia
+- Ongoing utility features and performance-oriented patches
 
 ## 📥 Download
 
 ### Stable Releases
-All release versions can be found on the [Releases](https://github.com/LuminolMC/Lophine/releases) page.
+See the Releases page on the upstream repository for packaged releases.
 
 ### Development Builds
-If you want to experience the latest features, you can build it yourself following the steps below.
-
-### Build Steps
+To build the latest development artifacts locally:
 
 ```bash
 # Clone the project
 git clone https://github.com/xucy10/Mili.git
 cd Mili
 
-# Apply patches and build Paperclip JAR
-./gradlew applyAllPatches && ./gradlew createMojmapPaperclipJar
+# Apply patches and build (example tasks)
+./gradlew applyAllPatches
+./gradlew createMojmapPaperclipJar
 ```
 
-After building, you can find the generated JAR file in the `mili-server/build/libs` directory.
+After building, generated JARs are available under `mili-server/build/libs`.
 
 ## 🔌 API Usage
 
-### Gradle Configuration
+Add the Mili API as a compile-only dependency in Gradle:
 
 ```kotlin
 repositories {
-    maven {
-        url = "https://repo.menthamc.org/repository/maven-public/"
-    }
+  maven {
+    url = "https://repo.menthamc.org/repository/maven-public/"
+  }
 }
 
 dependencies {
-    compileOnly("fun.bm.mili:mili-api:$VERSION")
+  compileOnly("fun.bm.mili:mili-api:$VERSION")
 }
 ```
 
-### Maven Configuration
+Or in Maven:
 
 ```xml
 <repositories>
-    <repository>
-        <id>menthamc</id>
-        <url>https://repo.menthamc.org/repository/maven-public/</url>
-    </repository>
+  <repository>
+    <id>menthamc</id>
+    <url>https://repo.menthamc.org/repository/maven-public/</url>
+  </repository>
 </repositories>
 
 <dependencies>
-    <dependency>
-        <groupId>fun.bm.mili</groupId>
-        <artifactId>mili-api</artifactId>
-        <version>$VERSION</version>
-        <scope>provided</scope>
-    </dependency>
+  <dependency>
+    <groupId>fun.bm.mili</groupId>
+    <artifactId>mili-api</artifactId>
+    <version>$VERSION</version>
+    <scope>provided</scope>
+  </dependency>
 </dependencies>
 ```
 
 ## 💬 Community & Support
 
-> If you're interested in this project or have any questions, feel free to ask us.
-
-### Join Our Community
-
-- **QQ Group**: [1015048616](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=QML5kIVsniPi1PlZvnjHQT_02EHsZ5Jc&authKey=%2FTCJsZC7JFQ9sxAroPCKuYnlV57Z5fyqp36ewXZk3Sn4iJ9p4MB1JKdc%2FFcX3HOM&noverify=0&group_code=1015048616)
-- **QQ Channel**: [Join Here](https://pd.qq.com/s/eq9krf9j)
-- **Telegram**: [Join Here](https://t.me/LuminolMinecraft)
-- **Discord**: [Join Here](https://discord.gg/Qd7m3V6eDx)
+See the Chinese README for community links (QQ, Discord, Telegram) and official channels.
 
 ### Get Help
 
-- 📋 [Submit Issues](https://github.com/LuminolMC/Lophine/issues)
-- 💬 [GitHub Discussions](https://github.com/LuminolMC/Lophine/discussions)
-- 📖 [Project Documentation](./docs/)
+- Submit issues on the upstream issue tracker
+- Discuss on GitHub Discussions or community channels
+- Read the documentation under `docs/`
 
 ## 🐛 Bug Reports
 
-When you encounter any issues, please ask us and we'll do our best to resolve them. Please remember to:
+When reporting bugs, please include:
 
-- 📝 **Describe the problem clearly** - Provide detailed information about the specific issue
-- 📋 **Provide complete logs** - Include error logs and relevant configuration information
-- 🔍 **Environment details** - Specify server version, plugin list, and other environment details
-- 🔄 **Reproduction steps** - If possible, provide specific steps to reproduce the issue
+- Clear description and reproduction steps
+- Full server logs and relevant config files
+- Environment details (Minecraft version, plugins, JVM args)
 
 ## 🤝 Contributing
 
-We welcome community contributions! For detailed contribution guidelines, please see:
+See `docs/CONTRIBUTING_EN.md` and `docs/CONTRIBUTING.md` for contribution guidelines and patch workflow.
 
-- 📖 [Contributing Guide (English)](./docs/CONTRIBUTING_EN.md)
-- 📖 [贡献指南 (中文)](./docs/CONTRIBUTING.md)
+## 🎉 Thanks
 
-## 📊 Project Statistics
+Thanks to all contributors and sponsors. If this project helps you, please consider starring the repository.
 
-### BStats Data
-
-![bStats](https://bstats.org/signatures/server-implementation/Lophine.svg "bStats")
-
-## 🎉 Special Thanks
-
-### Project Sponsors
-
-<div align="center">
-  <b>Thanks to <a href="https://github.com/LegacyLands">LegacyLands</a> for sponsoring this project</b>
-  <br>
-  <i>If you want to develop cross-Folia/non-Folia platform plugins, <a href="https://github.com/LegacyLands/legacy-lands-library/">legacy-lands-library</a> would be a great choice</i>
-  <br><br>
-  <img src="public/image/legacy-lands-logo.png" alt="LegacyLands Logo" width="200">
-</div>
-
----
-
-## ⭐ Give Us a Star!
-
-> Every free ⭐Star you give is the motivation for our every step forward.
-
-### Star History
-
-<a href="https://star-history.com/#LuminolMC/Luminol&LuminolMC/LightingLuminol&LuminolMC/Lophine&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=LuminolMC/Luminol%2CLuminolMC/LightingLuminol%2CLuminolMC/Lophine&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=LuminolMC/Luminol%2CLuminolMC/LightingLuminol%2CLuminolMC/Lophine&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=LuminolMC/Luminol%2CLuminolMC/LightingLuminol%2CLuminolMC/Lophine&type=Date" />
-  </picture>
-</a>
-
-<div align="center">
-  <b>If this project helps you, please don't forget to give us a ⭐Star!</b>
-</div>

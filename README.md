@@ -1,67 +1,48 @@
- 
-  # Mili
-  
-  *Mili 是一个基于 Lophine 的分支，具有许多有用的优化和可配置的原版特性，目标是在Folia上实现更多生电的内容（请注意，完整生电请使用Fabric）*
+ # Mili
 
-  在本分支出现问题请不要 前往Lophine提交issues
-  
-  ![Created At](https://img.shields.io/github/created-at/LuminolMC/Lophine?style=for-the-badge&color=blue)
-  [![License](https://img.shields.io/github/license/LuminolMC/Lophine?style=for-the-badge&color=green)](LICENSE.md)
-  [![Issues](https://img.shields.io/github/issues/LuminolMC/Lophine?style=for-the-badge&color=orange)](https://github.com/LuminolMC/Lophine/issues)
-  
-  ![Commit Activity](https://img.shields.io/github/commit-activity/w/LuminolMC/Lophine?style=for-the-badge&color=purple)
-  ![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/LuminolMC/Lophine?style=for-the-badge&color=yellow)
-  ![GitHub all releases](https://img.shields.io/github/downloads/LuminolMC/Lophine/total?style=for-the-badge&color=red)
-  
-  ![Repo contributors](https://img.shields.io/github/contributors/LuminolMC/Lophine?style=for-the-badge&color=brightgreen)
-  
-  [English](./README_EN.md) | **中文**
-</div>
+Mili 是 Lophine 的一个衍生分支，目标是在 Folia 环境下提供更稳定、可配置的服务器运行时与一系列实用功能。
 
----
+主要目标：在保持与上游兼容的前提下，针对 Folia 的并发/调度模型提供修复与优化，并通过可配置选项增强原版行为与红石（Redstone）相关功能。
 
-## ✨ 核心特性
+主要模块
+- `mili-api` / `luminol-api` / `folia-api` / `paper-api`：对外暴露的 API 和兼容适配。
+- `mili-server` / `luminol-server` / `folia-server` / `paper-server`：服务端核心逻辑的兼容补丁与增强实现。
+- `mili-rust`：包含与 Rust 组件交互的绑定/工具（若启用）。
 
-- 🔧 **可配置的原版特性** - 灵活调整游戏机制以适应不同服务器需求
-- 📊 **Tpsbar 支持** - 实时显示服务器 TPS 状态
-- 🐛 **Folia Bug 修复** - 针对 Folia 已知问题的专项修复
-- 💾 **多存档格式支持** - 支持 linear 和 b_linear（linear 重新实现）存档格式
-- 🔬 **生电功能增强** - 在 Folia 上实现更多生电内容（完整生电请使用 Fabric）
-- 🛠️ **更多实用功能** - 持续添加有用的服务器功能
+核心特性
+- 可配置的原版行为（游戏机制调节）
+- 针对 Folia 的 Bug 修复与兼容层
+- 支持多种存档格式（包括 linear/b_linear）
+- 对红石与生存电路的兼容性增强（在 Folia 上更稳定）
+- 持续提供实用工具与性能优化补丁
 
-## 📥 下载
-
-### 开发版本
-如果您想体验最新功能，可以通过以下步骤自行构建。
-
-### 构建步骤
+快速开始（开发构建）
+1. 克隆仓库：
 
 ```bash
-# 克隆项目
 git clone https://github.com/xucy10/Mili.git
 cd Mili
-
-# 应用补丁并构建 Paperclip JAR
-./gradlew applyAllPatches && ./gradlew createMojmapPaperclipJar
 ```
 
-构建完成后，您可以在 `mili-server/build/libs` 目录中找到生成的 JAR 文件。
+2. 应用补丁并构建（示例）：
 
-## 🐛 问题反馈
+```bash
+./gradlew applyAllPatches
+./gradlew createMojmapPaperclipJar
+```
 
-当您遇到任何问题时，请向我们提问，我们将尽力解决。请记得：
+构建产物位于 `mili-server/build/libs` 下。
 
-- 📝 **清楚描述问题** - 详细说明问题的具体表现
-- 📋 **提供完整日志** - 包含错误日志和相关配置信息
-- 🔍 **环境信息** - 说明服务器版本、插件列表等环境详情
-- 🔄 **复现步骤** - 如果可能，请提供问题复现的具体步骤
+使用与集成
+- 若只需依赖 API，请在 Gradle/Maven 中添加 `fun.bm.mili:mili-api` 的 `compileOnly` 依赖并使用我们提供的仓库地址。
 
----
+贡献与反馈
+- 欢迎 Pull Requests 与 Issue，但请先阅读贡献指南：参见 [贡献指南（中文）](docs/CONTRIBUTING.md) 或 [Contributing (EN)](README_EN.md).
+- 报告问题时请提供完整日志、环境信息与复现步骤。
 
-## ⭐ 请给我们一个 Star！
+许可证
+- 本项目遵循仓库根目录的 LICENSE 文件。
 
-> 你的每一个免费的 ⭐Star 就是我们每一个前进的动力。
+感谢
+- 感谢所有贡献者与赞助方对项目的持续支持。若项目对您有帮助，请在 GitHub 上给我们一个 ⭐。
 
-<div align="center">
-  <b>如果这个项目对您有帮助，请不要忘记给我们一个 ⭐Star！</b>
-</div>
