@@ -3,6 +3,15 @@ name = "mili-rust-optimizer"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "mili_optimizer"
+path = "src/lib.rs"
+
 [[bin]]
 name = "optimizer"
 path = "src/main.rs"
+
+[dependencies]
+rayon = "1.8"
+
+[dev-dependencies]
