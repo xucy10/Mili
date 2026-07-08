@@ -9,7 +9,7 @@ plugins {
     idea
     id("moe.luminolmc.hyacinthusweight.core")
     id("io.papermc.fill.gradle") version "1.0.10"
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.3.21"
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"

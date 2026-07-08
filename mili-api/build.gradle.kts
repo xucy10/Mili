@@ -4,15 +4,16 @@ plugins {
     `java-library`
     `maven-publish`
     idea
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.3.21"
 }
 
 kotlin {
     jvmToolchain(21)
-}
-
-tasks.named("compileJava") {
-    dependsOn(tasks.named("compileKotlin"))
+    sourceSets {
+        main {
+            kotlin.srcDir("src/main/kotlin")
+        }
+    }
 }
 
 java {
