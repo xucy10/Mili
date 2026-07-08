@@ -291,3 +291,24 @@ tasks.withType<JavaCompile> {
     compilerArgs.add("-Xlint:-dep-ann")
 }
 // Luminol end
+
+
+// ===============================
+// Kotlin + Java mixed source fix
+// ===============================
+// Ensure Kotlin classes are compiled before Java compilation.
+// Required because mili-api Java sources reference Kotlin API classes
+// such as org.leavesmc.leaves.replay.BukkitRecorderOption.
+tasks.named<JavaCompile>("compileJava") {
+    dependsOn(tasks.named("compileKotlin"))
+}
+
+
+// Keep Kotlin bytecode compatible with Minecraft 1.21 runtime (Java 21)
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(
+            org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
+        )
+    }
+}
