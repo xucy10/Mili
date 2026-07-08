@@ -4,6 +4,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     java // TODO java launcher tasks
     id("moe.luminolmc.hyacinthusweight.patcher")
+    kotlin("jvm") version "2.3.21" apply false
 }
 
 paperweight {
