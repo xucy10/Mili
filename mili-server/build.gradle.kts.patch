@@ -1,5 +1,19 @@
 --- a/luminol-server/build.gradle.kts
 +++ b/luminol-server/build.gradle.kts
+@@ -6,8 +_,14 @@
+ plugins {
+     `java-library`
+     `maven-publish`
+     idea
++    kotlin("jvm")
+     id("moe.luminolmc.hyacinthusweight.core")
+     id("io.papermc.fill.gradle") version "1.0.10"
+ }
+ 
++kotlin {
++    jvmToolchain(21)
++}
++
 @@ -48,7 +_,23 @@
          }
      }
@@ -25,12 +39,13 @@
  
  
      spigot {
-@@ -139,12 +_,16 @@
+@@ -139,12 +_,18 @@
          resources { srcDir("../paper-server/src/main/resources") }
          java { srcDir("../folia-server/src/main/java") }
          resources { srcDir("../folia-server/src/main/resources") }
 +        java { srcDir("../luminol-server/src/main/java") }
 +        resources { srcDir("../luminol-server/src/main/resources") }
++        kotlin { srcDir("src/main/kotlin") }
      }
      test {
          java { srcDir("../paper-server/src/test/java") }
@@ -39,6 +54,7 @@
          resources { srcDir("../folia-server/src/test/resources") }
 +        java { srcDir("../luminol-server/src/main/java") }
 +        resources { srcDir("../luminol-server/src/main/resources") }
++        kotlin { srcDir("src/main/kotlin") }
      }
  }
  val log4jPlugins = sourceSets.create("log4jPlugins") {
@@ -78,4 +94,3 @@
 +    project("mili")
      versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
      version(paperweight.minecraftVersion)
- 
