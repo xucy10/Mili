@@ -4,7 +4,7 @@ plugins {
     `java-library`
     `maven-publish`
     idea
-    kotlin("jvm") version "2.3.21"
+    kotlin("jvm")
 }
 
 kotlin {
