@@ -100,6 +100,11 @@ jobs:
             fi
           done
 
+      - name: Debug kotlin
+        run: |
+          ls -R mili-api/src/main/kotlin/org/leavesmc/leaves/replay
+          ./gradlew :mili-api:tasks --all | grep Kotlin
+
       - name: Verify CIS Source Files
         run: |
           CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
@@ -151,11 +156,6 @@ jobs:
           else
             echo "WARN: No paperclip JAR found at $JAR_PATH"
           fi
-
-      - name: Debug kotlin
-        run: |
-          ls -R mili-api/src/main/kotlin/org/leavesmc/leaves/replay
-          ./gradlew :mili-api:tasks --all | grep Kotlin
 
       - name: Check for Pending Patch Rebuild
         run: |
