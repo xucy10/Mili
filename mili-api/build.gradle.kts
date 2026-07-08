@@ -1,9 +1,10 @@
-import paper.libs.com.google.gson.Gson
+﻿import paper.libs.com.google.gson.Gson
 
 plugins {
     `java-library`
     `maven-publish`
     idea
+    kotlin("jvm") version "2.0.21"
 }
 
 java {
@@ -105,6 +106,9 @@ sourceSets {
             srcDir(file("../paper-api/src/main/java"))
             srcDir(file("../folia-api/src/main/java"))
             srcDir(file("../luminol-api/src/main/java"))
+        }
+        kotlin {
+            srcDir("src/main/kotlin")
         }
         resources {
             srcDir(file("../paper-api/src/main/resources"))

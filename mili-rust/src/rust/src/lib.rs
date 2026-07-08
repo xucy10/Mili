@@ -1,5 +1,7 @@
 pub mod chunk;
+pub mod jni_bridge;
 pub mod nbt;
+pub mod occlusion;
 pub mod protocol;
 pub mod scheduler;
 pub mod util;

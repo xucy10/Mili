@@ -2,9 +2,10 @@ plugins {
     `java-library`
 }
 
+// --- Cargo build for Rust JNI library (.dll/.so) ---
 val cargoBuild = tasks.register<Exec>("buildRustBinary") {
     group = "build"
-    description = "Builds the Rust optimization helper"
+    description = "Builds the Rust optimization helper (CLI + JNI library)"
 
     workingDir(layout.projectDirectory.dir("src/rust"))
     commandLine("cargo", "build", "--release")
@@ -17,14 +18,21 @@ val cargoBuild = tasks.register<Exec>("buildRustBinary") {
 val stageRustBinary = tasks.register<Copy>("stageRustBinary") {
     dependsOn(cargoBuild)
 
-    val binaryName = if (System.getProperty("os.name").lowercase().contains("win")) "optimizer.exe" else "optimizer"
-    from(layout.buildDirectory.file("cargo-target/release/$binaryName"))
+    val osName = System.getProperty("os.name").lowercase()
+    val (cliBinary, libExt) = when {
+        osName.contains("win") -> "optimizer.exe" to "dll"
+        osName.contains("mac") -> "optimizer" to "dylib"
+        else -> "optimizer" to "so"
+    }
+
+    from(layout.buildDirectory.file("cargo-target/release/$cliBinary"))
+    from(layout.buildDirectory.file("cargo-target/release/mili_optimizer.$libExt"))
     into(layout.buildDirectory.dir("rust"))
 }
 
 tasks.named<Jar>("jar") {
     dependsOn(stageRustBinary)
-    from(stageRustBinary.map { it.outputs.files.singleFile }) {
+    from(stageRustBinary.map { it.outputs.files }) {
         into("rust")
     }
 }

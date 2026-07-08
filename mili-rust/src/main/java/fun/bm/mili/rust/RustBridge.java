@@ -1,0 +1,174 @@
+package fun.bm.mili.rust;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+/**
+ * JNI bridge to the Rust optimization library (mili_optimizer).
+ * <p>
+ * Design: <b>bulk processing only</b> for hot paths. Java collects per-frame data
+ * into flat arrays, passes them to Rust once, and receives results in one batch.
+ * This eliminates per-entity JNI overhead.
+ * <p>
+ * <b>Usage:</b> Call {@link #load()} once at startup.
+ */
+public final class RustBridge {
+
+    private static volatile boolean loaded = false;
+
+    private RustBridge() {}
+
+    public static synchronized void load() {
+        if (loaded) return;
+        String os = System.getProperty("os.name").toLowerCase();
+        String lib;
+        if (os.contains("win")) lib = "mili_optimizer.dll";
+        else if (os.contains("mac")) lib = "libmili_optimizer.dylib";
+        else lib = "libmili_optimizer.so";
+        try {
+            Path tmp = Files.createTempDirectory("mili-rust-");
+            tmp.toFile().deleteOnExit();
+            Path dst = tmp.resolve(lib);
+            try (InputStream is = RustBridge.class.getResourceAsStream("/rust/" + lib)) {
+                if (is == null) throw new UnsatisfiedLinkError("Native library not found: /rust/" + lib);
+                Files.copy(is, dst, StandardCopyOption.REPLACE_EXISTING);
+            }
+            System.load(dst.toAbsolutePath().toString());
+            loaded = true;
+        } catch (IOException e) {
+            throw new UnsatisfiedLinkError("Failed to extract native library: " + e.getMessage());
+        }
+    }
+
+    // ========================================================================
+    // Native
+    // ========================================================================
+
+    private static native void nativeInit();
+
+    // -- Chunk / Region (cheap calls, fine as-is) ----------------------------
+
+    public static native long chunkToRegion(int cx, int cz);
+    public static native long chunkToLocal(int cx, int cz);
+    public static native int chunkIndex(int cx, int cz);
+    public static native long regionKey(int rx, int rz);
+    public static native long decodeHeaderEntry(int entry);
+    public static native int encodeHeaderEntry(int offset, int count);
+
+    // -- VarInt --------------------------------------------------------------
+
+    public static native int varintSize(int v);
+    public static native int varlongSize(long v);
+
+    // -- Hashing -------------------------------------------------------------
+
+    public static native long fnv1aHash(String s);
+    public static native int murmur3_32(byte[] data, int seed);
+
+    // -- Protocol (infrequent) -----------------------------------------------
+
+    public static native long optimizePacketBatch(String input);
+
+    // -- Scheduler (infrequent) ----------------------------------------------
+
+    public static native long runLightweightTasks(int jobs, int work);
+
+    // -- Bitmap --------------------------------------------------------------
+
+    public static native long bitmapFromHex(String hex);
+    public static native void bitmapFree(long ptr);
+    public static native void bitmapSet(long ptr, int idx);
+    public static native boolean bitmapGet(long ptr, int idx);
+    public static native int bitmapCount(long ptr);
+    public static native String bitmapToHex(long ptr);
+
+    // ========================================================================
+    // BULK Occlusion Culling — one JNI call per frame
+    // ========================================================================
+
+    /**
+     * Bulk AABB visibility check for N entities.
+     *
+     * @param aabbData flat array: [minX, minY, minZ, maxX, maxY, maxZ, viewX, viewY, viewZ] × N
+     * @param reach    visibility reach distance (blocks)
+     * @param expansion AABB expansion in blocks
+     * @return byte array where result[i] == 1 means entity i is visible
+     */
+    public static native byte[] bulkOcclusionCull(double[] aabbData, int reach, double expansion);
+
+    /**
+     * Bulk DDA ray stepping for N rays through a shared voxel cache.
+     *
+     * @param rayData    flat array: [startX, startY, startZ, targetX, targetY, targetZ] × N
+     * @param cameraX    camera integer position (block)
+     * @param cameraY    camera integer position (block)
+     * @param cameraZ    camera integer position (block)
+     * @param reach      visibility reach distance (blocks)
+     * @param voxelCache flattened 3D byte array: 0=unchecked, 1=air, 2=opaque
+     * @param cacheSize  side length of the cubic cache
+     * @return byte array where result[i] == 1 means ray i reached its target
+     */
+    public static native byte[] bulkStepRay(
+            double[] rayData,
+            int cameraX, int cameraY, int cameraZ,
+            int reach, byte[] voxelCache, int cacheSize
+    );
+
+    // ========================================================================
+    // Helpers
+    // ========================================================================
+
+    public static int unpackHigh(long packed) { return (int) (packed >> 32); }
+    public static int unpackLow(long packed) { return (int) packed; }
+
+    /**
+     * Build interleaved AABB data array for bulkOcclusionCull.
+     * Each entity: 9 doubles (minX, minY, minZ, maxX, maxY, maxZ, viewX, viewY, viewZ).
+     */
+    public static double[] buildAABBData(
+            double[] aabbMinX, double[] aabbMinY, double[] aabbMinZ,
+            double[] aabbMaxX, double[] aabbMaxY, double[] aabbMaxZ,
+            double[] viewerX, double[] viewerY, double[] viewerZ
+    ) {
+        int n = aabbMinX.length;
+        double[] data = new double[n * 9];
+        for (int i = 0; i < n; i++) {
+            int b = i * 9;
+            data[b]     = aabbMinX[i];
+            data[b + 1] = aabbMinY[i];
+            data[b + 2] = aabbMinZ[i];
+            data[b + 3] = aabbMaxX[i];
+            data[b + 4] = aabbMaxY[i];
+            data[b + 5] = aabbMaxZ[i];
+            data[b + 6] = viewerX[i];
+            data[b + 7] = viewerY[i];
+            data[b + 8] = viewerZ[i];
+        }
+        return data;
+    }
+
+    /**
+     * Build interleaved ray data for bulkStepRay.
+     * Each ray: 6 doubles (startX, startY, startZ, targetX, targetY, targetZ).
+     */
+    public static double[] buildRayData(
+            double[] startX, double[] startY, double[] startZ,
+            double[] targetX, double[] targetY, double[] targetZ
+    ) {
+        int n = startX.length;
+        double[] data = new double[n * 6];
+        for (int i = 0; i < n; i++) {
+            int b = i * 6;
+            data[b]     = startX[i];
+            data[b + 1] = startY[i];
+            data[b + 2] = startZ[i];
+            data[b + 3] = targetX[i];
+            data[b + 4] = targetY[i];
+            data[b + 5] = targetZ[i];
+        }
+        return data;
+    }
+}
