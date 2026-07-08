@@ -16,7 +16,9 @@ class BotCreateEvent(
     val creator: CommandSender?,
 ) : BukkitEvent(), Cancellable {
 
-    override var cancelled: Boolean = false
+    private var _cancelled = false
+    override fun isCancelled() = _cancelled
+    override fun setCancelled(cancel: Boolean) { _cancelled = cancel }
 
     enum class CreateReason { COMMAND, PLUGIN, INTERNAL, UNKNOWN }
 
