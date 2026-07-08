@@ -152,6 +152,11 @@ jobs:
             echo "WARN: No paperclip JAR found at $JAR_PATH"
           fi
 
+      - name: Debug kotlin
+        run: |
+          ls -R mili-api/src/main/kotlin/org/leavesmc/leaves/replay
+          ./gradlew :mili-api:tasks --all | grep Kotlin
+
       - name: Check for Pending Patch Rebuild
         run: |
           if git diff --name-only | grep -q "^mili-server/src/minecraft/"; then
