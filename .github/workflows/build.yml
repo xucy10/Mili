@@ -88,6 +88,13 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew --refresh-dependencies applyAllPatches
 
+      - name: Verify Kotlin Config
+        run: |
+          echo "=== Kotlin files ==="
+          find mili-api -name "*.kt" | head -20
+          echo "=== Build config kotlin lines ==="
+          grep -n 'kotlin' mili-api/build.gradle.kts || echo "WARN: No kotlin in build.gradle.kts"
+
       - name: Kaiiju Entity Throttle Validation
         run: |
           echo "=== Kaiiju Port: verifying entity throttler ==="
@@ -99,11 +106,6 @@ jobs:
               echo "WARN: $f not found"
             fi
           done
-
-      - name: Debug kotlin
-        run: |
-          ls -R mili-api/src/main/kotlin/org/leavesmc/leaves/replay
-          ./gradlew :mili-api:tasks --all | grep Kotlin
 
       - name: Verify CIS Source Files
         run: |
