@@ -109,6 +109,7 @@ sourceSets {
         }
         kotlin {
             srcDir("src/main/kotlin")
+            srcDir("src/main/java")
         }
         resources {
             srcDir(file("../paper-api/src/main/resources"))
