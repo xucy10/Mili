@@ -47,11 +47,16 @@ val menthaMavenPublicUrl = "https://repo.menthamc.org/repository/maven-public/";
 subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
             languageVersion = JavaLanguageVersion.of(21)
         }
+    }
+
+    kotlin {
+        jvmToolchain(21)
     }
 
     repositories {

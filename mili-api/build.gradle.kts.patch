@@ -1,20 +1,6 @@
 --- a/luminol-api/build.gradle.kts
 +++ b/luminol-api/build.gradle.kts
-@@ -1,8 +_,14 @@
- import paper.libs.com.google.gson.Gson
- 
- plugins {
-     `java-library`
-     `maven-publish`
-     idea
-+    kotlin("jvm")
- }
- 
-+kotlin {
-+    jvmToolchain(21)
-+}
-+
-@@ -104,20 +_,30 @@
+@@ -104,20 +_,24 @@
              srcDir(generatedDir)
              srcDir(file("../paper-api/src/main/java"))
              srcDir(file("../folia-api/src/main/java"))
@@ -25,9 +11,6 @@
              srcDir(file("../folia-api/src/main/resources"))
 +            srcDir(file("../luminol-api/src/main/resources"))
          }
-+        kotlin {
-+            srcDir("src/main/kotlin")
-+        }
      }
      test {
          java {
@@ -40,8 +23,5 @@
              srcDir(file("../folia-api/src/test/resources"))
 +            srcDir(file("../luminol-api/src/test/resources"))
          }
-+        kotlin {
-+            srcDir("src/main/kotlin")
-+        }
      }
  }
