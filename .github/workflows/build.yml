@@ -69,14 +69,7 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      - name: Configure Git User Details
-        run: |
-          git config --global user.email "ci@luminolmc.com"
-          git config --global user.name "LuminolMC CI"
-          git config --global advice.mergeConflict false
-          git config --global init.defaultBranch main
-
+        
       - name: Clean paperweight caches (aggressive)
         run: |
           echo "=== Pre-clean state ==="
@@ -84,6 +77,7 @@ jobs:
           find . -type d -name "taskCache" -path "*/paperweight/*" -exec rm -rf {} + 2>/dev/null || true
           echo "=== Post-clean state ==="
           ls -la .gradle/caches/paperweight 2>/dev/null || echo "paperweight cache removed"
+          rm -rf .gradle/caches/paperweight/upstreams/server-work
 
       - name: Apply All Patches
         run: ./gradlew --refresh-dependencies applyAllPatches
