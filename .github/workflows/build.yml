@@ -119,9 +119,6 @@ jobs:
 
       - name: Build Rust Optimizer
         run: ./gradlew :mili-rust:stageRustBinary
-         ./gradlew --stop
-         ./gradlew clean
-         rm -rf .gradle/caches/paperweight
 
       - name: Verify Rust Optimizer Binary
         run: |
@@ -132,6 +129,8 @@ jobs:
             echo "Rust optimizer binary missing"
             exit 1
           fi
+          done
+          ./gradlew --stop && ./gradlew clean && rm -rf .gradle/caches/paperweight
 
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createMojmapPaperclipJar
