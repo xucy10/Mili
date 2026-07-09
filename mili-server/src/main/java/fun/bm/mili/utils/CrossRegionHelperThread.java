@@ -11,8 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CrossRegionHelperThread {
 
-    @SuppressWarnings("rawtypes")
-    public static ConcurrentLinkedQueue onRegionTick(ServerLevel level, RegionizedWorldData data) {
+    public static ConcurrentLinkedQueue<?> onRegionTick(ServerLevel level, RegionizedWorldData data) {
         return CrossRegionHelper.INSTANCE.onRegionTick(level, data);
     }
 
