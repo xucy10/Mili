@@ -1,6 +1,6 @@
 --- a/luminol-server/build.gradle.kts
 +++ b/luminol-server/build.gradle.kts
-@@ -9,4 +9,3 @@
+@@ -47,4 +47,3 @@
      id("io.papermc.fill.gradle") version "1.0.10"
 -    kotlin("jvm") version "2.0.21"
  }
@@ -30,7 +30,7 @@
 
 
      spigot {
-@@ -139,12 +139,16 @@
+@@ -154,12 +154,16 @@
          resources { srcDir("../paper-server/src/main/resources") }
          java { srcDir("../folia-server/src/main/java") }
          resources { srcDir("../folia-server/src/main/resources") }
@@ -46,7 +46,7 @@
 +        resources { srcDir("../luminol-server/src/main/resources") }
      }
  }
-@@ -172,7 +172,8 @@
+@@ -191,7 +191,8 @@
  dependencies {
 -    implementation(project(":luminol-api")) // Luminol
 +    implementation(project(":mili-api")) // Mili
@@ -54,7 +54,7 @@
      // Luminol start - Dependenices insert
      implementation("net.objecthunter:exp4j:0.4.8")
      implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
-@@ -274,14 +274,14 @@
+@@ -294,14 +294,14 @@
          val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
@@ -73,7 +73,7 @@
              "Build-Number" to (build ?: ""),
              "Build-Time" to buildTime.toString(),
              "Git-Branch" to gitBranch,
-@@ -433,7 +433,7 @@
+@@ -453,7 +453,7 @@
  }
 
  fill {
