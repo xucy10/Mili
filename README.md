@@ -4,6 +4,8 @@ Mili 是 Lophine 的一个衍生分支，目标是在 Folia 环境下提供更�
 
 主要目标：在保持与上游兼容的前提下，针对 Folia 的并发/调度模型提供修复与优化，并通过可配置选项增强原版行为与红石（Redstone）相关功能。
 
+当然，你也可以通过查看[wiki（中文）](docs/WIKI.md)
+
 主要模块
 - `mili-api` / `luminol-api` / `folia-api` / `paper-api`：对外暴露的 API 和兼容适配。
 - `mili-server` / `luminol-server` / `folia-server` / `paper-server`：服务端核心逻辑的兼容补丁与增强实现。
