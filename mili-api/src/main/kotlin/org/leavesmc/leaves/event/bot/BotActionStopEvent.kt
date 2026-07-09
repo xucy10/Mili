@@ -18,10 +18,6 @@ class BotActionStopEvent(
 
     enum class Reason { DONE, PLUGIN, COMMAND }
 
-    fun callEvent(): Boolean {
-        return !_cancelled
-    }
-
     private var _cancelled = false
     override fun isCancelled() = _cancelled
     override fun setCancelled(cancel: Boolean) { _cancelled = cancel }
