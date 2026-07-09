@@ -1,10 +1,5 @@
 --- a/luminol-server/build.gradle.kts
 +++ b/luminol-server/build.gradle.kts
-@@ -9,4 +9,3 @@
-     id("io.papermc.fill.gradle") version "1.0.10"
--    kotlin("jvm") version "2.0.21"
- }
-
 @@ -48,7 +48,23 @@
          }
      }
