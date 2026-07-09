@@ -1,4 +1,3 @@
-@file:JvmName("FakeplayerConfigKt")
 package fun.bm.mili.config.modules.function
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig

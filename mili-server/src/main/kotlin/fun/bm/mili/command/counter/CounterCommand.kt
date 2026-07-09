@@ -1,5 +1,3 @@
-@file:JvmName("CounterCommandKt")
-
 package fun.bm.mili.command.counter
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException

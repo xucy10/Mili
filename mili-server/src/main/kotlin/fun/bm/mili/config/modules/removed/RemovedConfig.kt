@@ -1,4 +1,3 @@
-@file:JvmName("RemovedConfigKt")
 package fun.bm.mili.config.modules.removed
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
 import fun.bm.mili.config.modules.ConfigModule

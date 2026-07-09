@@ -1,5 +1,3 @@
-@file:JvmName("CrossRegionHelperKt")
-
 package fun.bm.mili.utils
 
 import fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig

@@ -1,4 +1,3 @@
-@file:JvmName("ToggleCommandKt")
 package fun.bm.mili.command.counter.sub
 import org.leavesmc.leaves.command.CommandContext
 import org.leavesmc.leaves.command.RootNode

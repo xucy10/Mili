@@ -1,5 +1,3 @@
-@file:JvmName("AlternativePlaceType")
-
 package fun.bm.mili.enums
 
 /**

@@ -1,4 +1,3 @@
-@file:JvmName("SyncmaticaProtocolConfigKt")
 package fun.bm.mili.config.modules.function.protocol
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
 import fun.bm.mili.config.modules.ConfigModule

@@ -1,4 +1,3 @@
-@file:JvmName("CrossRegionHelperConfigKt")
 package fun.bm.mili.config.modules.experiment
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
 import fun.bm.mili.config.modules.ConfigModule

@@ -1,4 +1,3 @@
-@file:JvmName("ResetCommandKt")
 package fun.bm.mili.command.counter.sub
 import com.mojang.brigadier.exceptions.CommandSyntaxException
 import org.leavesmc.leaves.command.CommandContext

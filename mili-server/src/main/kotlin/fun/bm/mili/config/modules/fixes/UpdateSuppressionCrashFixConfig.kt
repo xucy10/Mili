@@ -1,4 +1,3 @@
-@file:JvmName("UpdateSuppressionCrashFixConfigKt")
 package fun.bm.mili.config.modules.fixes
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
 import fun.bm.mili.config.modules.ConfigModule
