@@ -89,35 +89,7 @@ jobs:
         run: ./gradlew --refresh-dependencies applyAllPatches
 
       - name: Inject Kotlin Config
-        run: |
-          python3 << 'PYEOF'
-import re
-
-def apply(filepath):
-    with open(filepath) as f:
-        text = f.read()
-    orig = text
-    # 1. Remove explicit version (e.g. kotlin("jvm") version "2.0.21" -> kotlin("jvm"))
-    text = re.sub(r'kotlin\("jvm"\) version "[^"]+"', 'kotlin("jvm")', text)
-    # 2. Add kotlin plugin after 'idea' if not present
-    if 'kotlin("jvm")' not in text:
-        text = re.sub(r'^    idea\b', '    idea\n    kotlin("jvm")', text, count=1, flags=re.MULTILINE)
-    # 3. Add kotlin {} config after plugins block if not present
-    if 'jvmToolchain' not in text:
-        text = re.sub(r'^}\s*$', '}\n\nkotlin {\n    jvmToolchain(21)\n}', text, count=1, flags=re.MULTILINE)
-    if text != orig:
-        with open(filepath, 'w') as f:
-            f.write(text)
-        print(f"{filepath}: updated")
-    else:
-        print(f"{filepath}: OK")
-
-apply("mili-api/build.gradle.kts")
-apply("mili-server/build.gradle.kts")
-PYEOF
-          echo "=== Kotlin lines ==="
-          grep -n 'kotlin' mili-api/build.gradle.kts || echo "mili-api: no kotlin"
-          grep -n 'kotlin' mili-server/build.gradle.kts || echo "mili-server: no kotlin"
+        run: python3 scripts/inject_kotlin.py
 
       - name: Kaiiju Entity Throttle Validation
         run: |
