@@ -8,8 +8,6 @@ java {
     withSourcesJar()
 }
 
-val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
-
 dependencies {
     // Compile-time access to mili-server classes (RootNode, CommandContext, etc.)
     // compileOnly avoids runtime circular dependency
@@ -46,4 +44,10 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 
 tasks.withType<JavaCompile>().configureEach {
     options.release = 21
+}
+
+configure<org.gradle.api.publish.PublishingExtension> {
+    publications.create<MavenPublication>("maven") {
+        from(components["java"])
+    }
 }
