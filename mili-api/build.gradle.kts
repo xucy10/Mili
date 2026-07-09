@@ -4,16 +4,6 @@ plugins {
     `java-library`
     `maven-publish`
     idea
-    kotlin("jvm")
-}
-
-kotlin {
-    jvmToolchain(21)
-    sourceSets {
-        main {
-            kotlin.srcDir("src/main/kotlin")
-        }
-    }
 }
 
 java {
@@ -115,9 +105,6 @@ sourceSets {
             srcDir(file("../paper-api/src/main/java"))
             srcDir(file("../folia-api/src/main/java"))
             srcDir(file("../luminol-api/src/main/java"))
-        }
-        kotlin {
-            srcDir("src/main/kotlin")
         }
         resources {
             srcDir(file("../paper-api/src/main/resources"))
