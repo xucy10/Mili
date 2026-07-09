@@ -70,6 +70,13 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         
+      - name: Configure Git User Details
+        run: |
+          git config --global user.email "xucy@Mili.com"
+          git config --global user.name "Mili CI"
+          git config --global advice.mergeConflict false
+          git config --global init.defaultBranch main
+
       - name: Clean paperweight caches (aggressive)
         run: |
           echo "=== Pre-clean state ==="
