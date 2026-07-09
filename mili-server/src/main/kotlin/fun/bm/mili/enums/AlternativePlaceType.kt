@@ -1,4 +1,4 @@
-package fun.bm.mili.enums
+package `fun`.bm.mili.enums
 
 /**
  * Alternative block placement type — Kotlin rewrite of `EnumAlternativePlaceType`.

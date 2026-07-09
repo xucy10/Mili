@@ -1,4 +1,4 @@
-package fun.bm.mili.command.counter.sub
+package `fun`.bm.mili.command.counter.sub
 import org.leavesmc.leaves.command.CommandContext
 import org.leavesmc.leaves.command.RootNode
 import org.leavesmc.leaves.command.SubNode

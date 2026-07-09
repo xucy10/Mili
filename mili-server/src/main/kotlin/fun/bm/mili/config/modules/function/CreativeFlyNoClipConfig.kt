@@ -1,6 +1,6 @@
-package fun.bm.mili.config.modules.function
+package `fun`.bm.mili.config.modules.function
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
-import fun.bm.mili.config.modules.ConfigModule
+import `fun`.bm.mili.config.modules.ConfigModule
 import me.earthme.luminol.config.flags.ConfigClassInfo
 import me.earthme.luminol.config.flags.ConfigInfo
 import me.earthme.luminol.enums.EnumConfigCategory

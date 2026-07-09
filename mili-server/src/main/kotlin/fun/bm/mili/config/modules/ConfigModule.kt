@@ -1,4 +1,4 @@
-package fun.bm.mili.config.modules
+package `fun`.bm.mili.config.modules
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig
 

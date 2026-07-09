@@ -1,9 +1,9 @@
-package fun.bm.mili.command.counter
+package `fun`.bm.mili.command.counter
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException
-import fun.bm.mili.command.counter.sub.DisplayCommand
-import fun.bm.mili.command.counter.sub.ResetCommand
-import fun.bm.mili.command.counter.sub.ToggleCommand
+import `fun`.bm.mili.command.counter.sub.DisplayCommand
+import `fun`.bm.mili.command.counter.sub.ResetCommand
+import `fun`.bm.mili.command.counter.sub.ToggleCommand
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.format.NamedTextColor

@@ -1,6 +1,6 @@
-package fun.bm.mili.utils
+package `fun`.bm.mili.utils
 
-import fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig
+import `fun`.bm.mili.config.modules.experiment.CrossRegionHelperConfig
 import io.papermc.paper.threadedregions.RegionizedWorldData
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
