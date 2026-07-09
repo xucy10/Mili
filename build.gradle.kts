@@ -61,6 +61,7 @@ subprojects {
 
     dependencies {
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+        implementation(platform("net.kyori:adventure-bom:4.26.1"))
     }
 
     tasks.withType<AbstractArchiveTask>().configureEach {
