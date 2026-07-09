@@ -1,4 +1,4 @@
-package `fun`.bm.mili.utils;
+package fun.bm.mili.utils;
 
 import io.papermc.paper.threadedregions.RegionizedWorldData;
 import net.minecraft.core.BlockPos;
