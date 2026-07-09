@@ -1,12 +1,12 @@
 package `fun`.bm.mili.command.counter
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException
 import `fun`.bm.mili.command.counter.sub.DisplayCommand
 import `fun`.bm.mili.command.counter.sub.ResetCommand
 import `fun`.bm.mili.command.counter.sub.ToggleCommand
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.format.NamedTextColor
+import org.bukkit.command.CommandSender
 import org.leavesmc.leaves.command.CommandContext
 import org.leavesmc.leaves.command.RootNode
 import org.leavesmc.leaves.util.HopperCounter
@@ -17,9 +17,9 @@ class CounterCommand : RootNode("counter", "mili.commands.counter") {
 
     init {
         children(
-            ToggleCommand(this),
-            ResetCommand(this),
-            DisplayCommand(this),
+            ::ToggleCommand,
+            ::ResetCommand,
+            ::DisplayCommand,
         )
     }
 
@@ -37,6 +37,12 @@ class CounterCommand : RootNode("counter", "mili.commands.counter") {
         return true
     }
 
-    fun hasPermission(sender: org.bukkit.command.CommandSender, vararg subcommand: String): Boolean =
-        hasPermission(permBase, sender, *subcommand)
+    fun hasPermission(sender: CommandSender, vararg subcommand: String): Boolean {
+        val suffix = subcommand.joinToString(".")
+        return if (suffix.isEmpty()) {
+            sender.hasPermission(permBase)
+        } else {
+            sender.hasPermission(permBase) || sender.hasPermission("$permBase.$suffix")
+        }
+    }
 }

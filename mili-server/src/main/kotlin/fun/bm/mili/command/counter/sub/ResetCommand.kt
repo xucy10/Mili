@@ -1,15 +1,20 @@
 package `fun`.bm.mili.command.counter.sub
-import com.mojang.brigadier.exceptions.CommandSyntaxException
-import org.leavesmc.leaves.command.CommandContext
-import org.leavesmc.leaves.command.RootNode
-import org.leavesmc.leaves.command.SubNode
-import org.leavesmc.leaves.util.HopperCounter
+
+import io.papermc.paper.command.brigadier.CommandSourceStack
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.minecraft.server.MinecraftServer
+import org.leavesmc.leaves.command.CommandContext
+import org.leavesmc.leaves.command.LiteralNode
+import org.leavesmc.leaves.util.HopperCounter
 
-class ResetCommand(parent: RootNode) : SubNode("reset", "mili.commands.counter.reset", parent) {
+class ResetCommand : LiteralNode("reset") {
+
+    override fun requires(source: CommandSourceStack): Boolean =
+        source.sender.hasPermission("mili.commands.counter.reset")
+
     override fun execute(context: CommandContext): Boolean {
-        HopperCounter.reset()
+        HopperCounter.resetAll(MinecraftServer.getServer(), false)
         context.sender.sendMessage(Component.text("Counters reset.", NamedTextColor.GREEN))
         return true
     }

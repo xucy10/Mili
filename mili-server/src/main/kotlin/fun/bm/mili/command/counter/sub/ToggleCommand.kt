@@ -1,14 +1,19 @@
 package `fun`.bm.mili.command.counter.sub
-import org.leavesmc.leaves.command.CommandContext
-import org.leavesmc.leaves.command.RootNode
-import org.leavesmc.leaves.command.SubNode
-import org.leavesmc.leaves.util.HopperCounter
+
+import io.papermc.paper.command.brigadier.CommandSourceStack
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import org.leavesmc.leaves.command.CommandContext
+import org.leavesmc.leaves.command.LiteralNode
+import org.leavesmc.leaves.util.HopperCounter
 
-class ToggleCommand(parent: RootNode) : SubNode("toggle", "mili.commands.counter.toggle", parent) {
+class ToggleCommand : LiteralNode("toggle") {
+
+    override fun requires(source: CommandSourceStack): Boolean =
+        source.sender.hasPermission("mili.commands.counter.toggle")
+
     override fun execute(context: CommandContext): Boolean {
-        HopperCounter.toggle()
+        HopperCounter.setEnabled(!HopperCounter.isEnabled())
         val status = if (HopperCounter.isEnabled()) "enabled" else "disabled"
         context.sender.sendMessage(Component.text("Hopper Counter $status", NamedTextColor.GREEN))
         return true
