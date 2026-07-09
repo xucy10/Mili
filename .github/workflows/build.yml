@@ -119,6 +119,9 @@ jobs:
 
       - name: Build Rust Optimizer
         run: ./gradlew :mili-rust:stageRustBinary
+         ./gradlew --stop
+         ./gradlew clean
+         rm -rf .gradle/caches/paperweight
 
       - name: Verify Rust Optimizer Binary
         run: |
