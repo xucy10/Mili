@@ -3,7 +3,7 @@ package `fun`.bm.mili.command.counter.sub
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import org.bukkit.DyeColor
+import net.minecraft.world.item.DyeColor
 import org.leavesmc.leaves.command.CommandContext
 import org.leavesmc.leaves.command.LiteralNode
 import org.leavesmc.leaves.util.HopperCounter
