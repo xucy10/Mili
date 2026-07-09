@@ -47,7 +47,6 @@ class BotRemoveEvent(
         this.removeMessage = removeMessage
     }
 
-    fun getReason() = reason
     fun shouldSave() = save
     fun shouldResume() = resume
 

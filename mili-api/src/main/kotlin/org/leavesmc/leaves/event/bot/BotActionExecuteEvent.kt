@@ -18,8 +18,6 @@ class BotActionExecuteEvent(
     var result: Result = Result.ALLOW
         private set
 
-    fun getResult() = result
-
     private var _cancelled = false
     override fun isCancelled() = _cancelled
     override fun setCancelled(cancel: Boolean) { _cancelled = cancel }
