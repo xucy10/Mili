@@ -13,6 +13,9 @@ class CommandConfig : ConfigModule {
         @ConfigInfo(name = "scoreboard", comments = "Enable /scoreboard command") @JvmField var scoreboard = true
         @ConfigInfo(name = "tick", comments = "Enable /tick command") @JvmField var tick = true
         @ConfigInfo(name = "save-all", comments = "Enable /save-all command") @JvmField var saveAll = true
+        @ConfigInfo(name = "log-all-process", comments = "Log all save-all process") @JvmField var logAllProcess = false
+        @ConfigInfo(name = "save-all-timeout", comments = "Save-all timeout in ms") @JvmField var saveAllTimeout = 60000L
+        @ConfigInfo(name = "waypoint", comments = "Enable waypoint command") @JvmField var waypoint = true
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}

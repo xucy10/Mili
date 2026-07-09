@@ -6,7 +6,10 @@ import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.leavesmc.leaves.event.BukkitEvent
 
-class BotJoinEvent(val bot: Player, var joinMessage: Component?) : BukkitEvent() {
+class BotJoinEvent(
+    val bot: Player,
+    @get:JvmName("joinMessage") var joinMessage: Component?
+) : BukkitEvent() {
 
     companion object {
         @JvmStatic val HANDLERS = HandlerList()

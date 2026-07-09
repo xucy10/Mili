@@ -1,13 +1,26 @@
 @file:JvmName("BotActionStopEventKt")
 package org.leavesmc.leaves.event.bot
 
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
 import org.bukkit.event.Cancellable
 import org.bukkit.event.HandlerList
 import org.leavesmc.leaves.event.BukkitEvent
+import java.util.UUID
 
-class BotActionStopEvent(val botName: String, val actionName: String) : BukkitEvent(), Cancellable {
+class BotActionStopEvent(
+    val bot: Player,
+    val actionName: String,
+    val actionUuid: UUID?,
+    val reason: Reason,
+    val sender: CommandSender?
+) : BukkitEvent(), Cancellable {
 
-    enum class Reason { DONE, PLUGIN }
+    enum class Reason { DONE, PLUGIN, COMMAND }
+
+    fun callEvent(): Boolean {
+        return !_cancelled
+    }
 
     private var _cancelled = false
     override fun isCancelled() = _cancelled

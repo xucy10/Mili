@@ -10,7 +10,10 @@ class AlternativeBlockPlacementProtocolConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "enabled", comments = "Enable alternative block placement protocol")
         @JvmField var enabled = false
-        @ConfigInfo(name = "alternative-block-placement", comments = "Alternative block placement type") @JvmField var alternativeBlockPlacement: `fun`.bm.mili.enums.AlternativePlaceType = `fun`.bm.mili.enums.AlternativePlaceType.NONE
+        @ConfigInfo(name = "alternative-block-placement", comments = "Alternative block placement type") @JvmField var alternativeBlockPlacement: `fun`.bm.mili.enums.EnumAlternativePlaceType = `fun`.bm.mili.enums.EnumAlternativePlaceType.NONE
+
+        @JvmStatic
+        fun needIgnoreDistance(): Boolean = true
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}

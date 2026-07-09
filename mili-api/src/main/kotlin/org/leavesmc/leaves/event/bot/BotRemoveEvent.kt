@@ -13,7 +13,7 @@ class BotRemoveEvent(
     val save: Boolean
 ) : BukkitEvent(), Cancellable {
 
-    enum class RemoveReason { INTERNAL, DEATH, PLUGIN }
+    enum class RemoveReason { INTERNAL, DEATH, PLUGIN, COMMAND }
 
     var reason: RemoveReason = RemoveReason.PLUGIN
         private set
@@ -21,7 +21,7 @@ class BotRemoveEvent(
         private set
     var resume = false
         private set
-    var removeMessage: Component? = null
+    @get:JvmName("removeMessage") var removeMessage: Component? = null
     var async = false
         private set
 

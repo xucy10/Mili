@@ -10,6 +10,8 @@ import me.earthme.luminol.enums.EnumConfigCategory
 class RedStoneConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "enabled", comments = "Enable redstone function") @JvmField var enabled = false
+        @ConfigInfo(name = "cce", comments = "Shulker box CCE reintroduced") @JvmField var cce = false
+        @ConfigInfo(name = "shears", comments = "Enable shears wrench") @JvmField var shears = false
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}

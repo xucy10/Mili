@@ -10,6 +10,7 @@ class XaeroMapProtocolConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "enabled", comments = "Enable XaeroMap protocol support")
         @JvmField var enabled = false
+        @ConfigInfo(name = "xaero-map-server-id", comments = "XaeroMap server ID") @JvmField var xaeroMapServerID = 0
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}

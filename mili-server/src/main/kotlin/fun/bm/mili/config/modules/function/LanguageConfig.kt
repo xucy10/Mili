@@ -9,6 +9,8 @@ import me.earthme.luminol.enums.EnumConfigCategory
 class LanguageConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "locale", comments = "Server language locale") @JvmField var locale = "en_us"
+        @JvmField var lang = "en_us"
+        @ConfigInfo(name = "full-blocking-load", comments = "Enable full blocking language load") @JvmField var full_blocking_load = false
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}

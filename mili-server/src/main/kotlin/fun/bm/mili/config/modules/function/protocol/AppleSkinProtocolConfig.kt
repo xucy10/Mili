@@ -10,6 +10,7 @@ class AppleSkinProtocolConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "enabled", comments = "Enable AppleSkin protocol support")
         @JvmField var enabled = false
+        @ConfigInfo(name = "sync-tick-interval", comments = "Sync tick interval") @JvmField var syncTickInterval = 20
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}
