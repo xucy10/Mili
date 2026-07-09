@@ -288,4 +288,3 @@ PYEOF
           generateReleaseNotes: true
           prerelease: ${{ env.pre }}
           makeLatest: ${{ env.make_latest }}
-          token: ${{ secrets.GITHUB_TOKEN }}
