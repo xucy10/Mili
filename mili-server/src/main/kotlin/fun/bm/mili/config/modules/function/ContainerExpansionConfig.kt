@@ -9,6 +9,8 @@ import me.earthme.luminol.enums.EnumConfigCategory
 class ContainerExpansionConfig : ConfigModule {
     companion object {
         @ConfigInfo(name = "enabled", comments = "Enable container expansion") @JvmField var enabled = false
+        @ConfigInfo(name = "barrel-rows", comments = "Barrel rows count (3 to 6)") @JvmField var barrelRows = 3
+        @ConfigInfo(name = "enderchest-rows", comments = "Enderchest rows count (1 to 6)") @JvmField var enderchestRows = 3
     }
     override fun onLoaded(c: CommentedFileConfig) {}
     override fun onUnloaded(c: CommentedFileConfig) {}
