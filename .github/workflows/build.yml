@@ -134,7 +134,7 @@ jobs:
           ./gradlew clean && rm -rf .gradle/caches/paperweight
 
       - name: Build Paperclip Jar
-        run: ./gradlew :mili-server:createMojmapPaperclipJar
+        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache
 
       - name: Post-Build CIS Smoke Test
         run: |

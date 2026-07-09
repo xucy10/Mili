@@ -9,6 +9,7 @@ plugins {
     idea
     id("moe.luminolmc.hyacinthusweight.core")
     id("io.papermc.fill.gradle") version "1.0.10"
+    kotlin("jvm") version "2.0.21"
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
@@ -157,6 +158,7 @@ sourceSets {
         resources { srcDir("../folia-server/src/main/resources") }
         java { srcDir("../luminol-server/src/main/java") }
         resources { srcDir("../luminol-server/src/main/resources") }
+        kotlin { srcDir("src/main/kotlin") }
     }
     test {
         java { srcDir("../paper-server/src/test/java") }
@@ -165,6 +167,7 @@ sourceSets {
         resources { srcDir("../folia-server/src/test/resources") }
         java { srcDir("../luminol-server/src/main/java") }
         resources { srcDir("../luminol-server/src/main/resources") }
+        kotlin { srcDir("src/main/kotlin") }
     }
 }
 val log4jPlugins = sourceSets.create("log4jPlugins") {
@@ -193,7 +196,6 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 
 dependencies {
     implementation(project(":mili-api")) // Mili
-    implementation(project(":mili-server-kotlin")) // Mili Kotlin config classes
     implementation(project(":mili-rust"))
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
