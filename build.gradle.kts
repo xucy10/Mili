@@ -33,7 +33,7 @@ paperweight {
         }
         patchDir("luminolApi") {
             upstreamPath = "luminol-api"
-            excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches")
+            excludes = listOf("build.gradle.kts.patch", "paper-patches")
             patchesDir = file("mili-api/luminol-patches")
             outputDir = file("luminol-api")
         }
