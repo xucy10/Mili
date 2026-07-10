@@ -1,5 +1,5 @@
---- a/luminol-server/build.gradle.kts
-+++ b/luminol-server/build.gradle.kts
+--- a/lophine-server/build.gradle.kts
++++ b/lophine-server/build.gradle.kts
 @@ -1,3 +1,2 @@
 -import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 -import org.gradle.api.tasks.testing.logging.TestLogEvent
