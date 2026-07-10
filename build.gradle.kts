@@ -12,11 +12,6 @@ paperweight {
         ref = providers.gradleProperty("lophineRef")
 
         patchFile {
-            path = "lophine-server/build.gradle.kts"
-            outputFile = file("mili-server/build.gradle.kts")
-            patchFile = file("mili-server/build.gradle.kts.patch")
-        }
-        patchFile {
             path = "lophine-api/build.gradle.kts"
             outputFile = file("mili-api/build.gradle.kts")
             patchFile = file("mili-api/build.gradle.kts.patch")
