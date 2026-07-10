@@ -8,7 +8,6 @@ As a part of : Leaves (https://github.com/LeavesMC/Leaves/blob/79d9ef74c2684eb49
 Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/effect/BadOmenMobEffect.java b/net/minecraft/world/effect/BadOmenMobEffect.java
-index 80f17f33f670018240c854df589cf90cdeab6e70..c9af615ff9120c07787f436dbb6024e54e3a498b 100644
 --- a/net/minecraft/world/effect/BadOmenMobEffect.java
 +++ b/net/minecraft/world/effect/BadOmenMobEffect.java
 @@ -22,6 +22,11 @@ class BadOmenMobEffect extends MobEffect {
@@ -24,7 +23,6 @@ index 80f17f33f670018240c854df589cf90cdeab6e70..c9af615ff9120c07787f436dbb6024e5
              if (raidAt == null || raidAt.getRaidOmenLevel() < raidAt.getMaxRaidOmenLevel()) {
                  serverPlayer.addEffect(new MobEffectInstance(MobEffects.RAID_OMEN, 600, amplifier));
 diff --git a/net/minecraft/world/entity/raid/Raid.java b/net/minecraft/world/entity/raid/Raid.java
-index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b18685877637a25ec80 100644
 --- a/net/minecraft/world/entity/raid/Raid.java
 +++ b/net/minecraft/world/entity/raid/Raid.java
 @@ -264,7 +264,7 @@ public class Raid {
@@ -167,7 +165,6 @@ index dcdd6f230ff153a7b58d13b963d32376b1905b72..be9c78f2cf121e8ae55c1b1868587763
 +    // Leaves end - old FindSpawnPosition
  }
 diff --git a/net/minecraft/world/entity/raid/Raider.java b/net/minecraft/world/entity/raid/Raider.java
-index 5e8245e6dd8a07ece83dd1bc20e351a92044e7a0..2b7894a4104d4cb237746a3e66d4368b6f8f3c1e 100644
 --- a/net/minecraft/world/entity/raid/Raider.java
 +++ b/net/minecraft/world/entity/raid/Raider.java
 @@ -127,6 +127,43 @@ public abstract class Raider extends PatrollingMonster {

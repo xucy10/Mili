@@ -10,7 +10,6 @@ Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 This patch is Powered by ReplayMod (https://github.com/ReplayMod)
 
 diff --git a/net/minecraft/commands/CommandSourceStack.java b/net/minecraft/commands/CommandSourceStack.java
-index f046aca874eb3376696baaad3719a6987afbfe22..268b2c6b981c8164fb829eb8a33beb213fe60bcf 100644
 --- a/net/minecraft/commands/CommandSourceStack.java
 +++ b/net/minecraft/commands/CommandSourceStack.java
 @@ -562,7 +562,7 @@ public class CommandSourceStack implements ExecutionCommandSource<CommandSourceS
@@ -23,7 +22,6 @@ index f046aca874eb3376696baaad3719a6987afbfe22..268b2c6b981c8164fb829eb8a33beb21
  
      @Override
 diff --git a/net/minecraft/commands/arguments/selector/EntitySelector.java b/net/minecraft/commands/arguments/selector/EntitySelector.java
-index af71e0e1eb1c93745f3e4954ecc8fbd2ad4808a3..f3829564681faff3ae8971ed90b947b4a082a636 100644
 --- a/net/minecraft/commands/arguments/selector/EntitySelector.java
 +++ b/net/minecraft/commands/arguments/selector/EntitySelector.java
 @@ -126,11 +126,12 @@ public class EntitySelector {
@@ -84,7 +82,6 @@ index af71e0e1eb1c93745f3e4954ecc8fbd2ad4808a3..f3829564681faff3ae8971ed90b947b4
                              players.add(serverPlayer1);
                              if (players.size() >= resultLimit) {
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 385c71d70ed9e5a3ae25fbecaefd6773c467d31d..24f83a6875219aaf4b29e2461afcd0478a391014 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -1896,7 +1896,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -133,7 +130,6 @@ index 385c71d70ed9e5a3ae25fbecaefd6773c467d31d..24f83a6875219aaf4b29e2461afcd047
                      serverPlayer.connection.disconnect(net.kyori.adventure.text.Component.text(org.spigotmc.SpigotConfig.whitelistMessage), org.bukkit.event.player.PlayerKickEvent.Cause.WHITELIST); // Paper - use configurable message & kick event cause
                  }
 diff --git a/net/minecraft/server/PlayerAdvancements.java b/net/minecraft/server/PlayerAdvancements.java
-index 5bf7eb5b906cefa57a1dfcf828ff7872dbceac4f..85923708c32a0597e98e028eeec501f2ea07b63b 100644
 --- a/net/minecraft/server/PlayerAdvancements.java
 +++ b/net/minecraft/server/PlayerAdvancements.java
 @@ -167,7 +167,7 @@ public class PlayerAdvancements {
@@ -146,7 +142,6 @@ index 5bf7eb5b906cefa57a1dfcf828ff7872dbceac4f..85923708c32a0597e98e028eeec501f2
          }
          // Leaves end - bot can't get advancement
 diff --git a/net/minecraft/server/ServerScoreboard.java b/net/minecraft/server/ServerScoreboard.java
-index 04a62e5ab9c0d0b9b7959280b0e0ea3ff388c017..e4260ec1938a43d41e007ad67a2b5be96a00227c 100644
 --- a/net/minecraft/server/ServerScoreboard.java
 +++ b/net/minecraft/server/ServerScoreboard.java
 @@ -249,7 +249,7 @@ public class ServerScoreboard extends Scoreboard {
@@ -168,7 +163,6 @@ index 04a62e5ab9c0d0b9b7959280b0e0ea3ff388c017..e4260ec1938a43d41e007ad67a2b5be9
              for (Packet<?> packet : stopTrackingPackets) {
                  serverPlayer.connection.send(packet);
 diff --git a/net/minecraft/server/commands/ListPlayersCommand.java b/net/minecraft/server/commands/ListPlayersCommand.java
-index e7c778a7f292fd0749cbd5e6586ad1b93ac7f29e..024b56405bb58801b17a6adad7fec7a461d12a5c 100644
 --- a/net/minecraft/server/commands/ListPlayersCommand.java
 +++ b/net/minecraft/server/commands/ListPlayersCommand.java
 @@ -33,7 +33,7 @@ public class ListPlayersCommand {
@@ -181,7 +175,6 @@ index e7c778a7f292fd0749cbd5e6586ad1b93ac7f29e..024b56405bb58801b17a6adad7fec7a4
              org.bukkit.entity.Player sender = (org.bukkit.entity.Player) source.getBukkitSender();
              playersTemp = playersTemp.stream().filter((ep) -> sender.canSee(ep.getBukkitEntity())).collect(java.util.stream.Collectors.toList());
 diff --git a/net/minecraft/server/commands/OpCommand.java b/net/minecraft/server/commands/OpCommand.java
-index 590891d70a71ab30ceae3a3cf1923745e7c20b26..0ede1e5c73a0071e854de70f81ae1fc6a1d6dc59 100644
 --- a/net/minecraft/server/commands/OpCommand.java
 +++ b/net/minecraft/server/commands/OpCommand.java
 @@ -25,7 +25,7 @@ public class OpCommand {
@@ -194,7 +187,6 @@ index 590891d70a71ab30ceae3a3cf1923745e7c20b26..0ede1e5c73a0071e854de70f81ae1fc6
                                          .filter(serverPlayer -> !playerList.isOp(serverPlayer.nameAndId()))
                                          .map(serverPlayer -> serverPlayer.getGameProfile().name()),
 diff --git a/net/minecraft/server/commands/ParticleCommand.java b/net/minecraft/server/commands/ParticleCommand.java
-index b5cb0fd45c1e33f40ff38e86772c9e6cc06c10a0..e9ac6ee47fd9c3d73e55a3467bb1c53f931609d0 100644
 --- a/net/minecraft/server/commands/ParticleCommand.java
 +++ b/net/minecraft/server/commands/ParticleCommand.java
 @@ -36,7 +36,7 @@ public class ParticleCommand {
@@ -243,7 +235,6 @@ index b5cb0fd45c1e33f40ff38e86772c9e6cc06c10a0..e9ac6ee47fd9c3d73e55a3467bb1c53f
                                                                  )
                                                                  .then(
 diff --git a/net/minecraft/server/commands/TeamMsgCommand.java b/net/minecraft/server/commands/TeamMsgCommand.java
-index 0ae4d68dfe42004839a0c5ad457de592f6b4af8b..1d1e396e4b29f33669872fb39e3a7f1d474a49f7 100644
 --- a/net/minecraft/server/commands/TeamMsgCommand.java
 +++ b/net/minecraft/server/commands/TeamMsgCommand.java
 @@ -40,7 +40,7 @@ public class TeamMsgCommand {
@@ -256,7 +247,6 @@ index 0ae4d68dfe42004839a0c5ad457de592f6b4af8b..1d1e396e4b29f33669872fb39e3a7f1d
                                          .filter(player -> player == entityOrException || player.getTeam() == team)
                                          .toList();
 diff --git a/net/minecraft/server/commands/WhitelistCommand.java b/net/minecraft/server/commands/WhitelistCommand.java
-index 305273583b3d2ad233c6cd67883baad15fe572eb..ce2939eac9c66e0c6eaac1570c4da19d908662ad 100644
 --- a/net/minecraft/server/commands/WhitelistCommand.java
 +++ b/net/minecraft/server/commands/WhitelistCommand.java
 @@ -44,7 +44,7 @@ public class WhitelistCommand {
@@ -269,7 +259,6 @@ index 305273583b3d2ad233c6cd67883baad15fe572eb..ce2939eac9c66e0c6eaac1570c4da19d
                                                  .map(Player::nameAndId)
                                                  .filter(nameAndId -> !playerList.getWhiteList().isWhiteListed(nameAndId))
 diff --git a/net/minecraft/server/gui/PlayerListComponent.java b/net/minecraft/server/gui/PlayerListComponent.java
-index 5a8cd3e6b448a4472092690cf589bca10b142126..158593b1a6384db635a1f224919b24c174944b10 100644
 --- a/net/minecraft/server/gui/PlayerListComponent.java
 +++ b/net/minecraft/server/gui/PlayerListComponent.java
 @@ -17,8 +17,8 @@ public class PlayerListComponent extends JList<String> {
@@ -284,7 +273,6 @@ index 5a8cd3e6b448a4472092690cf589bca10b142126..158593b1a6384db635a1f224919b24c1
  
              this.setListData(list);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 88efbe2bcb5621432b67366116150a3dab52e510..9345bdb2770e7c27488c547012020337fc651edc 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -3000,7 +3000,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -306,7 +294,6 @@ index 88efbe2bcb5621432b67366116150a3dab52e510..9345bdb2770e7c27488c547012020337
                  }
                  // Leaves end - skip
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 8c1e6837b0328c66fdda322c3c7ceba31c4f017f..ca751564d9189e873d4a53be9a2c68b2a04a8624 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
 @@ -202,7 +202,7 @@ import org.jspecify.annotations.Nullable;
@@ -328,7 +315,6 @@ index 8c1e6837b0328c66fdda322c3c7ceba31c4f017f..ca751564d9189e873d4a53be9a2c68b2
              if (new org.bukkit.event.player.PlayerGameModeChangeEvent(this.getBukkitEntity(), org.bukkit.GameMode.getByValue(this.server.getDefaultGameType().getId()), org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.DEFAULT_GAMEMODE, null).callEvent()) {
                  this.gameMode.setGameModeForPlayer(this.server.getForcedGameType(), GameType.DEFAULT_MODE);
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 36cd1a0307ff1a734eb5f4f3cc013781692e7ad8..0c3e6c1f70289c63bfe424a49374602f25ff5c0b 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -130,6 +130,7 @@ public abstract class PlayerList {
@@ -553,7 +539,6 @@ index 36cd1a0307ff1a734eb5f4f3cc013781692e7ad8..0c3e6c1f70289c63bfe424a49374602f
          // Leaves end - fakeplayer support
  
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index c0ebd700caa950948c58846eaf164afc14f87f09..e4ae4354e81f34f0db410333fc9b8e17383a5f41 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
 @@ -262,7 +262,7 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin

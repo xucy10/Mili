@@ -5,7 +5,6 @@ Subject: [PATCH] Global Entities Counter
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index 166089c786210d645c22f96569f266cc50fe7d6c..c7de740dd9babfc1373a5663cd552214b75a0674 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
 @@ -566,6 +566,9 @@ public final class RegionizedWorldData {
@@ -33,7 +32,6 @@ index 166089c786210d645c22f96569f266cc50fe7d6c..c7de740dd9babfc1373a5663cd552214
          this.updateTickData();
      }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244b58f3942 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
 @@ -506,6 +506,23 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
@@ -93,7 +91,6 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..db13211b24208d8addd3c210155bc244
                  NaturalSpawner.spawnForChunk(this.level, chunk, spawnState, spawnCategories);
              }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d8a2f8a1fbf0189e86ccbce70a84641a143cdb91..76930a603a5bf07e62e8ef3a41bbb5213dcc8aea 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -765,6 +765,22 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -120,7 +117,6 @@ index d8a2f8a1fbf0189e86ccbce70a84641a143cdb91..76930a603a5bf07e62e8ef3a41bbb521
          final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle profiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
          ProfilerFiller profilerFiller = Profiler.get();
 diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
-index c6985d2a9d1093943d754d77089bd4c3d5baf3ee..a8807f80f1b11d7f5dae3b96a0e215e3e105fdd0 100644
 --- a/net/minecraft/world/entity/Mob.java
 +++ b/net/minecraft/world/entity/Mob.java
 @@ -806,6 +806,44 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
@@ -169,7 +165,6 @@ index c6985d2a9d1093943d754d77089bd4c3d5baf3ee..a8807f80f1b11d7f5dae3b96a0e215e3
          }
      }
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
-index 91f0fbd75bc93355dc872390d91af83c76dc1dce..e7223540a7cef20b661bdb857ffba962d0f5d348 100644
 --- a/net/minecraft/world/level/NaturalSpawner.java
 +++ b/net/minecraft/world/level/NaturalSpawner.java
 @@ -116,7 +116,7 @@ public final class NaturalSpawner {

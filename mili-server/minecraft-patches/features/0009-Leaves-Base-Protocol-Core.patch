@@ -20,7 +20,6 @@ diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc
          this.tickConnections();
  
 diff --git a/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
-index 1da034752064312962a4144f91be5265a9a08997..081ca42b6a6644eb8c2b5ac9105fecf8ad39d501 100644
 --- a/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
 +++ b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java
 @@ -40,13 +40,22 @@ public interface CustomPacketPayload {
@@ -48,7 +47,6 @@ index 1da034752064312962a4144f91be5265a9a08997..081ca42b6a6644eb8c2b5ac9105fecf8
          };
      }
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index 0bf2173c5445de021090c2d0264afc440b005bdc..076bfe7a7b57f8d3b29ef0aaad117707678da7a3 100644
 --- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 @@ -58,6 +58,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
@@ -128,7 +126,6 @@ index 0bf2173c5445de021090c2d0264afc440b005bdc..076bfe7a7b57f8d3b29ef0aaad117707
          this.connection.setReadOnly();
          // CraftBukkit - Don't wait
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index d2b2bf35b3f5704f3bca94d0fe3b70206c2fbf96..c8be04b8a50bac52150a1fdd238634e630e1765e 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -315,6 +315,8 @@ public abstract class PlayerList {

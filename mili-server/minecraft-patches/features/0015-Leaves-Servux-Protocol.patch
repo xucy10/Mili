@@ -8,7 +8,6 @@ As a part of : Leaves (https://github.com/LeavesMC/Leaves/blob/ea91106ae57fc4cc1
 Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/server/ServerTickRateManager.java b/net/minecraft/server/ServerTickRateManager.java
-index 95f6b1cbd5e33151c326689bc72292ff38a48803..e1974bbebbd10b75ea02955d9ced198d54c8a6f1 100644
 --- a/net/minecraft/server/ServerTickRateManager.java
 +++ b/net/minecraft/server/ServerTickRateManager.java
 @@ -135,4 +135,10 @@ public class ServerTickRateManager extends TickRateManager {
@@ -23,7 +22,6 @@ index 95f6b1cbd5e33151c326689bc72292ff38a48803..e1974bbebbd10b75ea02955d9ced198d
 +    // Leaves end - servux
  }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index bf340425dc2a1545b9069badcf054d4c2f6a405f..eb5722848d1c77044807510cd6a46a46c5763509 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -2491,6 +2491,8 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
