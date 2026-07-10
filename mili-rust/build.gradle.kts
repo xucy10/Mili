@@ -2,6 +2,11 @@ plugins {
     `java-library`
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
 // --- Cargo build for Rust JNI library (.dll/.so) ---
 val cargoBuild = tasks.register<Exec>("buildRustBinary") {
     group = "build"
