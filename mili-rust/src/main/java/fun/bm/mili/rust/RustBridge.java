@@ -86,6 +86,61 @@ public final class RustBridge {
     public static native String bitmapToHex(long ptr);
 
     // ========================================================================
+    // BULK Entity Culling — fast path for entity visibility
+    // ========================================================================
+
+    /**
+     * Batch cull entities for visibility.
+     *
+     * @param entityData flat array: [minX, minY, minZ, maxX, maxY, maxZ, posX, posZ] × N (double, converted to f32 in Rust)
+     * @param numEntities number of entities
+     * @param viewerX viewer X position
+     * @param viewerY viewer Y position
+     * @param viewerZ viewer Z position
+     * @param reach visibility reach distance (blocks)
+     * @param hitboxLimit max AABB dimension before skipping
+     * @param cameraFwdX camera forward vector X
+     * @param cameraFwdY camera forward vector Y
+     * @param cameraFwdZ camera forward vector Z
+     * @param fovCos cosine of half FOV for frustum culling
+     * @return byte array where result[i] is: 0=visible, 1=culled, 2=too_far, 3=too_big, 4=behind
+     */
+    public static native byte[] bulkCullEntities(
+            double[] entityData,
+            int numEntities,
+            double viewerX, double viewerY, double viewerZ,
+            double reach,
+            double hitboxLimit,
+            double cameraFwdX, double cameraFwdY, double cameraFwdZ,
+            double fovCos
+    );
+
+    /**
+     * Build interleaved entity data array for bulkCullEntities.
+     * Each entity: 8 doubles (minX, minY, minZ, maxX, maxY, maxZ, posX, posZ).
+     */
+    public static double[] buildEntityData(
+            double[] minX, double[] minY, double[] minZ,
+            double[] maxX, double[] maxY, double[] maxZ,
+            double[] posX, double[] posZ
+    ) {
+        int n = minX.length;
+        double[] data = new double[n * 8];
+        for (int i = 0; i < n; i++) {
+            int b = i * 8;
+            data[b]     = minX[i];
+            data[b + 1] = minY[i];
+            data[b + 2] = minZ[i];
+            data[b + 3] = maxX[i];
+            data[b + 4] = maxY[i];
+            data[b + 5] = maxZ[i];
+            data[b + 6] = posX[i];
+            data[b + 7] = posZ[i];
+        }
+        return data;
+    }
+
+    // ========================================================================
     // BULK Occlusion Culling — one JNI call per frame
     // ========================================================================
 

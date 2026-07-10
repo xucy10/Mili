@@ -6,7 +6,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString, JByteArray, JDoubleArray};
 use jni::sys::{jboolean, jdouble, jint, jlong, jbyteArray, jdoubleArray, jsize};
 
-use crate::{chunk, protocol, scheduler, util, varint, occlusion, parse_number_list};
+use crate::{chunk, entity_cull, protocol, scheduler, util, varint, occlusion, parse_number_list};
 
 // ============================================================================
 // Native init
@@ -101,6 +101,64 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_runLightweightTasks(_: J
 #[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapToHex(env: JNIEnv, _: JClass, ptr: jlong) -> jni::sys::jstring {
     if ptr == 0 { return env.new_string("").unwrap().into_raw(); }
     env.new_string(unsafe { &*(ptr as *const util::Bitmap) }.to_hex()).unwrap().into_raw()
+}
+
+// ============================================================================
+// BULK Entity Culling — fast path for entity visibility
+// ============================================================================
+
+/// Batch cull entities using flat f32 arrays.
+///
+/// `entity_data`: flat array of [minX, minY, minZ, maxX, maxY, maxZ, posX, posZ] × N (f32)
+/// Returns: byte array where each byte is a result flag (0=visible, 1=culled, 2=too_far, 3=too_big, 4=behind)
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullEntities(
+    mut env: JNIEnv,
+    _class: JClass,
+    entity_data: jdoubleArray,
+    num_entities: jint,
+    viewer_x: jdouble,
+    viewer_y: jdouble,
+    viewer_z: jdouble,
+    reach: jdouble,
+    hitbox_limit: jdouble,
+    camera_fwd_x: jdouble,
+    camera_fwd_y: jdouble,
+    camera_fwd_z: jdouble,
+    fov_cos: jdouble,
+) -> jbyteArray {
+    let jda = unsafe { JDoubleArray::from_raw(entity_data) };
+    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(d) => d,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let expected_len = (num_entities as usize) * entity_cull::ENTITY_STRIDE;
+    if data.len() < expected_len {
+        return std::ptr::null_mut();
+    }
+
+    // Convert f64 array to f32 slice for processing
+    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
+    let results = entity_cull::batch_cull_entities(
+        &f32_data,
+        num_entities as usize,
+        viewer_x, viewer_y, viewer_z,
+        reach * reach,
+        hitbox_limit as f32,
+        camera_fwd_x as f32,
+        camera_fwd_y as f32,
+        camera_fwd_z as f32,
+        fov_cos as f32,
+    );
+
+    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
 }
 
 // ============================================================================
