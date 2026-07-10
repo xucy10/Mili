@@ -9,6 +9,8 @@ java {
 }
 
 dependencies {
+    // Config annotations from luminol-api
+    compileOnly(project(":luminol-api"))
     // Nightconfig for CommentedFileConfig
     implementation("com.electronwill.night-config:toml:3.8.3")
 }
@@ -16,9 +18,7 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDir("../luminol-api/src/main/java")
             srcDir("../paper-api/src/main/java")
-            srcDir("../folia-api/src/main/java")
         }
         kotlin {
             srcDir("src/main/kotlin")
