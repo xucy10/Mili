@@ -33,7 +33,7 @@ paperweight {
         }
         patchDir("luminolApi") {
             upstreamPath = "luminol-api"
-            excludes = listOf("build.gradle.kts.patch", "paper-patches")
+            excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches")
             patchesDir = file("mili-api/luminol-patches")
             outputDir = file("luminol-api")
         }
@@ -62,6 +62,12 @@ subprojects {
     dependencies {
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
         implementation(platform("net.kyori:adventure-bom:4.26.1"))
+    }
+
+    if (name == "mili-server") {
+        dependencies {
+            implementation(project(":mili-server-kotlin"))
+        }
     }
 
     tasks.withType<AbstractArchiveTask>().configureEach {
