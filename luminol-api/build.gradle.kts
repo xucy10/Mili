@@ -3,9 +3,8 @@ plugins {
 }
 
 dependencies {
-    // Bukkit API classes come from mili-api (which includes paper-api/folia-api/luminol-api sources)
-    compileOnly(project(":mili-api"))
-    // Additional dependencies not covered by mili-api
+    // bukkit api classes from mili-api
+    implementation(project(":mili-api"))
     implementation("org.apache.commons:commons-lang3:3.17.0")
     implementation("com.google.code.findbugs:jsr305:3.0.2")
 }
