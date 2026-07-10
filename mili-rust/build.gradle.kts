@@ -39,12 +39,8 @@ val stageRustBinary = tasks.register<Copy>("stageRustBinary") {
         cargoTargetDir.resolve("mili_optimizer.$libExt").exists()
     }
 
-    from(cargoTargetDir.resolve(cliBinary)) {
-        into("rust")
-    }
-    from(cargoTargetDir.resolve("mili_optimizer.$libExt")) {
-        into("rust")
-    }
+    from(cargoTargetDir.resolve(cliBinary))
+    from(cargoTargetDir.resolve("mili_optimizer.$libExt"))
     into(rustBuildDir)
 }
 
