@@ -139,13 +139,19 @@ tasks.register("fixMiliFork") {
     dependsOn(":applyLuminolSingleFilePatches")
     doLast {
         val file = file("mili-server/build.gradle.kts")
-        val content = file.readText()
-        val modified = content.replace("activeFork = luminol", activeForkReplacement)
-        if (modified != content) {
-            file.writeText(modified)
-            logger.lifecycle("Applied activeFork = mili fix to mili-server/build.gradle.kts")
-        } else {
-            logger.warn("activeFork = luminol not found in mili-server/build.gradle.kts")
+        var content = file.readText()
+        // Replace activeFork = luminol with mili fork registration
+        if (content.contains("activeFork = luminol")) {
+            content = content.replace("activeFork = luminol", activeForkReplacement)
+        }
+        // Replace project(":luminol-api") with project(":mili-api")
+        content = content.replace(
+            """implementation(project(":luminol-api")) // Luminol""",
+            """implementation(project(":mili-api")) // Mili"""
+        )
+        if (content != file.readText()) {
+            file.writeText(content)
+            logger.lifecycle("Applied fixes to mili-server/build.gradle.kts")
         }
     }
     outputs.upToDateWhen { false }
