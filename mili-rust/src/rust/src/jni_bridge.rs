@@ -6,7 +6,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString, JByteArray, JDoubleArray};
 use jni::sys::{jboolean, jdouble, jint, jlong, jbyteArray, jdoubleArray, jsize};
 
-use crate::{chunk, entity_cull, protocol, scheduler, util, varint, occlusion, parse_number_list};
+use crate::{chunk, entity_cull, frustum, lighting, mesh, protocol, scheduler, util, varint, occlusion, parse_number_list};
 
 // ============================================================================
 // Native init
@@ -232,6 +232,232 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkStepRay(
         Err(_) => return std::ptr::null_mut(),
     };
     let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
+}
+
+// ============================================================================
+// BULK Mesh / Frustum Culling — chunk section visibility
+// ============================================================================
+
+/// Batch cull chunk sections using frustum planes.
+///
+/// `section_data`: flat array of [minX, minY, minZ, maxX, maxY, maxZ] × N (f32 as double)
+/// `frustum_planes`: 24 doubles (6 planes × 4 components)
+/// Returns: byte array where 1 = visible, 0 = culled
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullChunkSections(
+    mut env: JNIEnv,
+    _class: JClass,
+    section_data: jdoubleArray,
+    frustum_planes: jdoubleArray,
+) -> jbyteArray {
+    let jda = unsafe { JDoubleArray::from_raw(section_data) };
+    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(d) => d,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
+    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(p) => p,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    if planes_arr.len() < 24 {
+        return std::ptr::null_mut();
+    }
+
+    let mut planes = [[0.0f32; 4]; 6];
+    for i in 0..6 {
+        for j in 0..4 {
+            planes[i][j] = planes_arr[i * 4 + j] as f32;
+        }
+    }
+
+    let len = data.len();
+    if len % 6 != 0 { return std::ptr::null_mut(); }
+    let num_sections = len / 6;
+
+    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
+    let results = mesh::batch_cull_chunk_sections(&f32_data, num_sections, &planes);
+
+    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
+}
+
+/// Batch cull spheres using frustum.
+///
+/// `centers`: flat array of [x, y, z] × N (double)
+/// `radii`: array of radii (double)
+/// `frustum_planes`: 24 doubles (6 planes × 4 components)
+/// Returns: byte array where 1 = visible, 0 = culled
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullSpheres(
+    mut env: JNIEnv,
+    _class: JClass,
+    centers: jdoubleArray,
+    radii: jdoubleArray,
+    frustum_planes: jdoubleArray,
+) -> jbyteArray {
+    let jda = unsafe { JDoubleArray::from_raw(centers) };
+    let center_data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(d) => d,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let jr = unsafe { JDoubleArray::from_raw(radii) };
+    let radii_data = match unsafe { env.get_array_elements(&jr, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(r) => r,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
+    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(p) => p,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    if planes_arr.len() < 24 || center_data.len() % 3 != 0 {
+        return std::ptr::null_mut();
+    }
+
+    let num_spheres = center_data.len() / 3;
+    if radii_data.len() < num_spheres {
+        return std::ptr::null_mut();
+    }
+
+    let mut planes = [[0.0f32; 4]; 6];
+    for i in 0..6 {
+        for j in 0..4 {
+            planes[i][j] = planes_arr[i * 4 + j] as f32;
+        }
+    }
+
+    let f32_centers: Vec<f32> = center_data.iter().map(|&v| v as f32).collect();
+    let f32_radii: Vec<f32> = radii_data.iter().map(|&v| v as f32).collect();
+    let frustum = frustum::Frustum { planes };
+
+    let results = frustum::batch_cull_spheres(&f32_centers, &f32_radii, num_spheres, &frustum);
+
+    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
+}
+
+/// Batch cull AABBs using frustum.
+///
+/// `aabbs`: flat array of [minX, minY, minZ, maxX, maxY, maxZ] × N (double)
+/// `frustum_planes`: 24 doubles (6 planes × 4 components)
+/// Returns: byte array where 1 = visible, 0 = culled
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullAABBs(
+    mut env: JNIEnv,
+    _class: JClass,
+    aabbs: jdoubleArray,
+    frustum_planes: jdoubleArray,
+) -> jbyteArray {
+    let jda = unsafe { JDoubleArray::from_raw(aabbs) };
+    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(d) => d,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
+    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(p) => p,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    if planes_arr.len() < 24 || data.len() % 6 != 0 {
+        return std::ptr::null_mut();
+    }
+
+    let num_aabbs = data.len() / 6;
+
+    let mut planes = [[0.0f32; 4]; 6];
+    for i in 0..6 {
+        for j in 0..4 {
+            planes[i][j] = planes_arr[i * 4 + j] as f32;
+        }
+    }
+
+    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
+    let frustum = frustum::Frustum { planes };
+
+    let results = frustum::batch_cull_aabbs(&f32_data, num_aabbs, &frustum);
+
+    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
+}
+
+// ============================================================================
+// BULK Lighting — light level computation
+// ============================================================================
+
+/// Compute light levels from packed light data.
+///
+/// `packedLights`: byte array where each byte is (sky << 4) | block
+/// Returns: byte array with max(sky, block) per block
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkComputeLightLevels(
+    mut env: JNIEnv,
+    _class: JClass,
+    packed_lights: jbyteArray,
+) -> jbyteArray {
+    let jba = unsafe { JByteArray::from_raw(packed_lights) };
+    let data = match unsafe { env.get_array_elements(&jba, jni::objects::ReleaseMode::NoCopyBack) } {
+        Ok(d) => d,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let slice = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len()) };
+    let results = lighting::compute_light_levels_par(slice);
+
+    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
+    result_array.into_raw()
+}
+
+/// Generate a lightmap texture.
+///
+/// `gamma`: gamma correction value (double)
+/// `skyBrightness`: sky brightness factor 0.0-1.0 (double)
+/// Returns: int array of 256 RGBA values
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_generateLightmap(
+    mut env: JNIEnv,
+    _class: JClass,
+    gamma: jdouble,
+    sky_brightness: jdouble,
+) -> jni::sys::jintArray {
+    let lightmap = lighting::generate_lightmap(gamma as f32, sky_brightness as f32);
+    let mut result: Vec<i32> = lightmap.iter().map(|&[r, g, b, a]| {
+        ((a as i32) << 24) | ((r as i32) << 16) | ((g as i32) << 8) | (b as i32)
+    }).collect();
+
+    let result_array = match env.new_int_array(result.len() as jsize) {
+        Ok(a) => a,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let _ = env.set_int_array_region(&result_array, 0, &result);
     result_array.into_raw()
 }
 

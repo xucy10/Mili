@@ -173,6 +173,59 @@ public final class RustBridge {
     );
 
     // ========================================================================
+    // BULK Mesh / Frustum Culling — chunk section visibility
+    // ========================================================================
+
+    /**
+     * Batch cull chunk sections using frustum planes.
+     *
+     * @param sectionData flat array: [minX, minY, minZ, maxX, maxY, maxZ] × N
+     * @param frustumPlanes 24 doubles: 6 planes × [nx, ny, nz, d]
+     * @return byte array where 1 = visible, 0 = culled
+     */
+    public static native byte[] bulkCullChunkSections(double[] sectionData, double[] frustumPlanes);
+
+    /**
+     * Batch cull spheres using frustum planes.
+     *
+     * @param centers flat array: [x, y, z] × N
+     * @param radii radius per sphere
+     * @param frustumPlanes 24 doubles: 6 planes × [nx, ny, nz, d]
+     * @return byte array where 1 = visible, 0 = culled
+     */
+    public static native byte[] bulkCullSpheres(double[] centers, double[] radii, double[] frustumPlanes);
+
+    /**
+     * Batch cull AABBs using frustum planes.
+     *
+     * @param aabbs flat array: [minX, minY, minZ, maxX, maxY, maxZ] × N
+     * @param frustumPlanes 24 doubles: 6 planes × [nx, ny, nz, d]
+     * @return byte array where 1 = visible, 0 = culled
+     */
+    public static native byte[] bulkCullAABBs(double[] aabbs, double[] frustumPlanes);
+
+    // ========================================================================
+    // BULK Lighting — light level computation
+    // ========================================================================
+
+    /**
+     * Compute light levels from packed light data.
+     *
+     * @param packedLights byte array where each byte is (sky << 4) | block
+     * @return byte array with max(sky, block) per block
+     */
+    public static native byte[] bulkComputeLightLevels(byte[] packedLights);
+
+    /**
+     * Generate a lightmap texture.
+     *
+     * @param gamma gamma correction value
+     * @param skyBrightness sky brightness factor 0.0-1.0
+     * @return int array of 256 RGBA values
+     */
+    public static native int[] generateLightmap(double gamma, double skyBrightness);
+
+    // ========================================================================
     // Helpers
     // ========================================================================
 
@@ -225,5 +278,67 @@ public final class RustBridge {
             data[b + 5] = targetZ[i];
         }
         return data;
+    }
+
+    /**
+     * Build interleaved section data for bulkCullChunkSections.
+     * Each section: 6 doubles (minX, minY, minZ, maxX, maxY, maxZ).
+     */
+    public static double[] buildSectionData(
+            double[] minX, double[] minY, double[] minZ,
+            double[] maxX, double[] maxY, double[] maxZ
+    ) {
+        int n = minX.length;
+        double[] data = new double[n * 6];
+        for (int i = 0; i < n; i++) {
+            int b = i * 6;
+            data[b]     = minX[i];
+            data[b + 1] = minY[i];
+            data[b + 2] = minZ[i];
+            data[b + 3] = maxX[i];
+            data[b + 4] = maxY[i];
+            data[b + 5] = maxZ[i];
+        }
+        return data;
+    }
+
+    /**
+     * Build frustum planes array from 6 planes.
+     * Each plane: [nx, ny, nz, d].
+     */
+    public static double[] buildFrustumPlanes(
+            double[] left, double[] right,
+            double[] bottom, double[] top,
+            double[] near, double[] far
+    ) {
+        double[] planes = new double[24];
+        System.arraycopy(left, 0, planes, 0, 4);
+        System.arraycopy(right, 0, planes, 4, 4);
+        System.arraycopy(bottom, 0, planes, 8, 4);
+        System.arraycopy(top, 0, planes, 12, 4);
+        System.arraycopy(near, 0, planes, 16, 4);
+        System.arraycopy(far, 0, planes, 20, 4);
+        return planes;
+    }
+
+    /**
+     * Pack light value into a single byte: (sky << 4) | block.
+     */
+    public static byte packLight(int sky, int block) {
+        return (byte) (((sky & 0x0F) << 4) | (block & 0x0F));
+    }
+
+    /**
+     * Unpack sky light from packed value.
+     */
+    public static int unpackSky(byte packed) {
+        return (packed & 0xFF) >> 4;
+    }
+
+    /**
+     * Unpack block light from packed value.
+     */
+    public static int unpackBlock(byte packed) {
+        return packed & 0x0F;
     }
 }

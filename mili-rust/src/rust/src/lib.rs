@@ -1,6 +1,9 @@
 pub mod chunk;
 pub mod entity_cull;
+pub mod frustum;
 pub mod jni_bridge;
+pub mod lighting;
+pub mod mesh;
 pub mod nbt;
 pub mod occlusion;
 pub mod protocol;
