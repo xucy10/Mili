@@ -151,10 +151,9 @@ tasks.register("fixMiliFork") {
     outputs.upToDateWhen { false }
 }
 
-tasks.matching { it.name.startsWith("compile") && it.project.path == ":mili-server" }.configureEach {
+tasks.matching { it.name.startsWith("compile") && it.project.name == "mili-server" }.configureEach {
     dependsOn(":fixMiliFork")
 }
-// Also depend generateReobfMappings on the fix
-tasks.matching { it.name == "generateReobfMappings" && it.project.path == ":mili-server" }.configureEach {
+tasks.matching { it.name == "generateReobfMappings" && it.project.name == "mili-server" }.configureEach {
     dependsOn(":fixMiliFork")
 }
