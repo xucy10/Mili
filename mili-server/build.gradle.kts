@@ -1,4 +1,4 @@
-﻿import io.papermc.fill.model.BuildChannel
+import io.papermc.fill.model.BuildChannel
 import io.papermc.paperweight.attribute.DevBundleOutput
 import io.papermc.paperweight.util.*
 import java.time.Instant
@@ -9,7 +9,6 @@ plugins {
     idea
     id("moe.luminolmc.hyacinthusweight.core")
     id("io.papermc.fill.gradle") version "1.0.10"
-    kotlin("jvm") version "2.0.21"
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
@@ -49,23 +48,7 @@ paperweight {
         }
     }
 
-    val mili = forks.register("mili") {
-        forks = luminol
-        upstream.patchRepo("paperServer") {
-            upstreamRepo = luminol.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("mili-server/paper-patches")
-            outputDir = rootDirectory.dir("paper-server")
-        }
-
-        upstream.patchDir("luminolServer") {
-            upstreamPath = "luminol-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
-            outputDir = rootDirectory.dir("luminol-server")
-        }
-    }
-
-    activeFork = mili
+    activeFork = luminol
 
 
     spigot {
@@ -156,18 +139,12 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
-        java { srcDir("../luminol-server/src/main/java") }
-        resources { srcDir("../luminol-server/src/main/resources") }
-        kotlin { srcDir("src/main/kotlin") }
     }
     test {
         java { srcDir("../paper-server/src/test/java") }
         resources { srcDir("../paper-server/src/test/resources") }
         java { srcDir("../folia-server/src/test/java") }
         resources { srcDir("../folia-server/src/test/resources") }
-        java { srcDir("../luminol-server/src/main/java") }
-        resources { srcDir("../luminol-server/src/main/resources") }
-        kotlin { srcDir("src/main/kotlin") }
     }
 }
 val log4jPlugins = sourceSets.create("log4jPlugins") {
@@ -195,8 +172,7 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 }
 
 dependencies {
-    implementation(project(":mili-api")) // Mili
-    implementation(project(":mili-rust"))
+    implementation(project(":luminol-api")) // Luminol
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
@@ -270,13 +246,6 @@ dependencies {
     implementation("me.lucko:spark-paper:1.10.152")
 }
 
-tasks.named<Jar>("jar") {
-    dependsOn(":mili-rust:stageRustBinary")
-    from(project(":mili-rust").layout.buildDirectory.dir("rust")) {
-        into("rust")
-    }
-}
-
 // Pufferfish Start
 tasks.withType<JavaCompile> {
     val compilerArgs = options.compilerArgs
@@ -305,14 +274,14 @@ tasks.jar {
         val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
         attributes(
             "Main-Class" to "org.bukkit.craftbukkit.Main",
-            "Implementation-Title" to "Mili",
+            "Implementation-Title" to "Luminol",
             "Implementation-Version" to implementationVersion,
             "Implementation-Vendor" to date,
-            "Specification-Title" to "Mili",
+            "Specification-Title" to "Luminol",
             "Specification-Version" to project.version,
             "Specification-Vendor" to "LuminolMC org",
-            "Brand-Id" to "luminolmc:mili",
-            "Brand-Name" to "Mili",
+            "Brand-Id" to "luminolmc:luminol",
+            "Brand-Name" to "Luminol",
             "Build-Number" to (build ?: ""),
             "Build-Time" to buildTime.toString(),
             "Git-Branch" to gitBranch,
@@ -464,7 +433,7 @@ tasks.registerRunTask("runReobfPaperclip") {
 }
 
 fill {
-    project("mili")
+    project("luminol")
     versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
     version(paperweight.minecraftVersion)
 

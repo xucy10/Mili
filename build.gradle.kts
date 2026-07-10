@@ -64,12 +64,6 @@ subprojects {
         implementation(platform("net.kyori:adventure-bom:4.26.1"))
     }
 
-    if (name == "mili-server") {
-        dependencies {
-            implementation(project(":mili-server-kotlin"))
-        }
-    }
-
     tasks.withType<AbstractArchiveTask>().configureEach {
         isPreserveFileTimestamps = false
         isReproducibleFileOrder = true

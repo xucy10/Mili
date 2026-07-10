@@ -23,5 +23,3 @@ rootProject.name = "mili"
 include("mili-api")
 include("mili-server")
 include("mili-rust")
-include("mili-server-kotlin")
-include("luminol-api")

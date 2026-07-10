@@ -1,4 +1,4 @@
-﻿import paper.libs.com.google.gson.Gson
+import paper.libs.com.google.gson.Gson
 
 plugins {
     `java-library`
@@ -287,4 +287,3 @@ tasks.withType<JavaCompile> {
     compilerArgs.add("-Xlint:-dep-ann")
 }
 // Luminol end
-
