@@ -11,6 +11,7 @@ build
 /paper-server
 /paper-api
 /paper-api-generator
+/lophine-src
 
 .idea/
 LaggRemoverRemastered-folia

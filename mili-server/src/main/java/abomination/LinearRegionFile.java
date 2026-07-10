@@ -3,7 +3,6 @@ package abomination;
 import ca.spottedleaf.moonrise.patches.chunk_system.io.MoonriseRegionFileIO;
 import com.github.luben.zstd.ZstdInputStream;
 import com.github.luben.zstd.ZstdOutputStream;
-import com.mojang.logging.LogUtils;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -20,601 +19,506 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-// LinearRegionFile_implementation_version_0_5byXymb
-// Just gonna use this string to inform other forks about updates ;-)
 public class LinearRegionFile implements IRegionFile {
     private static final long SUPERBLOCK = 0xc3ff13183cca9d9aL;
-    private static final byte VERSION = 3;
-    private static final int HEADER_SIZE = 27;
-    private static final int FOOTER_SIZE = 8;
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final byte VERSION = 4;
+    private static final Logger LOGGER = org.mojang.logging.LogUtils.getLogger();
 
-    private byte[][] bucketBuffers;
-    private final byte[][] buffer = new byte[1024][];
-    private final int[] bufferUncompressedSize = new int[1024];
+    private static final int CHUNK_COUNT = 1024;
+    private static final int DEFAULT_GRID_SIZE = 8;
+    private static final int MAX_COMPRESSION_LEVEL = 22;
 
-    private final long[] chunkTimestamps = new long[1024];
-    private final Object markedToSaveLock = new Object();
+    private final Path regionFile;
+    private final int compressionLevel;
+    private final int gridSize;
+    private final int bucketSize;
 
     private final LZ4Compressor compressor;
     private final LZ4FastDecompressor decompressor;
 
-    private boolean markedToSave = false;
-    private boolean close = false;
+    private volatile boolean initialized = false;
+    private volatile boolean closed = false;
 
-    public final ReentrantLock fileLock = new ReentrantLock(true);
-    public Path regionFile;
+    private final ChunkEntry[] chunks = new ChunkEntry[CHUNK_COUNT];
+    private final Bucket[] buckets;
+    private final ReentrantLock[] bucketLocks;
+    private final AtomicBoolean dirty = new AtomicBoolean(false);
 
-    private final int compressionLevel;
-    private int gridSize = 8;
-    private int bucketSize = 4;
-    private final Thread bindThread;
+    private final AtomicInteger activeReaders = new AtomicInteger(0);
+    private final ReentrantLock writeLock = new ReentrantLock(true);
 
-    public Path getRegionFile() {
-        return this.regionFile;
-    }
+    private static class ChunkEntry {
+        volatile byte[] compressedData;
+        volatile int uncompressedSize;
+        volatile long timestamp;
+        volatile boolean loaded;
 
-    public ReentrantLock getFileLock() {
-        return this.fileLock;
-    }
+        synchronized void set(byte[] data, int size, long ts) {
+            this.compressedData = data;
+            this.uncompressedSize = size;
+            this.timestamp = ts;
+            this.loaded = true;
+        }
 
-    private int chunkToBucketIdx(int chunkX, int chunkZ) {
-        int bx = chunkX / bucketSize, bz = chunkZ / bucketSize;
-        return bx * gridSize + bz;
-    }
+        synchronized byte[] get() {
+            return this.compressedData;
+        }
 
-    private void openBucket(int chunkX, int chunkZ) {
-        chunkX = Math.floorMod(chunkX, 32);
-        chunkZ = Math.floorMod(chunkZ, 32);
-        int idx = chunkToBucketIdx(chunkX, chunkZ);
-
-        if (bucketBuffers == null) return;
-        if (bucketBuffers[idx] != null) {
-            try {
-                ByteArrayInputStream bucketByteStream = new ByteArrayInputStream(bucketBuffers[idx]);
-                ZstdInputStream zstdStream = new ZstdInputStream(bucketByteStream);
-                ByteBuffer bucketBuffer = ByteBuffer.wrap(zstdStream.readAllBytes());
-
-                int bx = chunkX / bucketSize, bz = chunkZ / bucketSize;
-
-                for (int cx = 0; cx < 32 / gridSize; cx++) {
-                    for (int cz = 0; cz < 32 / gridSize; cz++) {
-                        int chunkIndex = (bx * (32 / gridSize) + cx) + (bz * (32 / gridSize) + cz) * 32;
-
-                        int chunkSize = bucketBuffer.getInt();
-                        long timestamp = bucketBuffer.getLong();
-                        this.chunkTimestamps[chunkIndex] = timestamp;
-
-                        if (chunkSize > 0) {
-                            byte[] chunkData = new byte[chunkSize - 8];
-                            bucketBuffer.get(chunkData);
-
-                            int maxCompressedLength = this.compressor.maxCompressedLength(chunkData.length);
-                            byte[] compressed = new byte[maxCompressedLength];
-                            int compressedLength = this.compressor.compress(chunkData, 0, chunkData.length, compressed, 0, maxCompressedLength);
-                            byte[] finalCompressed = new byte[compressedLength];
-                            System.arraycopy(compressed, 0, finalCompressed, 0, compressedLength);
-
-                            // TODO: Optimization - return the requested chunk immediately to save on one LZ4 decompression
-                            this.buffer[chunkIndex] = finalCompressed;
-                            this.bufferUncompressedSize[chunkIndex] = chunkData.length;
-                        }
-                    }
-                }
-            } catch (IOException ex) {
-                throw new RuntimeException("Region file corrupted: " + regionFile + " bucket: " + idx);
-                // TODO: Make sure the server crashes instead of corrupting the world
-            }
-            bucketBuffers[idx] = null;
+        synchronized void clear() {
+            this.compressedData = null;
+            this.uncompressedSize = 0;
+            this.loaded = false;
         }
     }
 
-    public boolean regionFileOpen = false;
+    private static class Bucket {
+        volatile byte[] compressedBucket;
+        volatile boolean loaded;
+        final Object lock = new Object();
+    }
 
-    private synchronized void openRegionFile() {
-        if (regionFileOpen) return;
-        regionFileOpen = true;
+    public LinearRegionFile(RegionStorageInfo storageKey, Path directory, Path path, boolean dsync, int compressionLevel) throws IOException {
+        this(storageKey, path, directory, RegionFileVersion.getCompressionFormat(), dsync, compressionLevel);
+    }
 
-        File regionFile = new File(this.regionFile.toString());
+    public LinearRegionFile(RegionStorageInfo storageKey, Path path, Path directory, RegionFileVersion compressionFormat, boolean dsync, int compressionLevel) throws IOException {
+        this.regionFile = path;
+        this.compressionLevel = Math.min(Math.max(1, compressionLevel), MAX_COMPRESSION_LEVEL);
+        this.gridSize = DEFAULT_GRID_SIZE;
+        this.bucketSize = 32 / gridSize;
 
-        if (!regionFile.canRead()) {
-            this.bindThread.start();
-            return;
+        this.compressor = LZ4Factory.fastestInstance().fastCompressor();
+        this.decompressor = LZ4Factory.fastestInstance().fastDecompressor();
+
+        int bucketCount = gridSize * gridSize;
+        this.buckets = new Bucket[bucketCount];
+        this.bucketLocks = new ReentrantLock[bucketCount];
+
+        for (int i = 0; i < bucketCount; i++) {
+            this.buckets[i] = new Bucket();
+            this.bucketLocks[i] = new ReentrantLock(true);
         }
 
+        for (int i = 0; i < CHUNK_COUNT; i++) {
+            this.chunks[i] = new ChunkEntry();
+        }
+
+        initIfNeeded();
+    }
+
+    private void initIfNeeded() throws IOException {
+        if (initialized) return;
+        writeLock.lock();
         try {
-            byte[] fileContent = Files.readAllBytes(this.regionFile);
+            if (initialized) return;
+            if (Files.exists(regionFile)) {
+                loadFromFile();
+            }
+            initialized = true;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    private void loadFromFile() throws IOException {
+        try {
+            byte[] fileContent = Files.readAllBytes(regionFile);
             ByteBuffer buffer = ByteBuffer.wrap(fileContent);
 
             long superBlock = buffer.getLong();
-            if (superBlock != SUPERBLOCK)
-                throw new RuntimeException("Invalid superblock: " + superBlock + " file " + this.regionFile);
-
-            byte version = buffer.get();
-            if (version == 1 || version == 2) {
-                parseLinearV1(buffer);
-            } else if (version == 3) {
-                parseLinearV2(buffer);
-            } else {
-                throw new RuntimeException("Invalid version: " + version + " file " + this.regionFile);
+            if (superBlock != SUPERBLOCK) {
+                throw new IOException("Invalid superblock: " + superBlock);
             }
 
-            this.bindThread.start();
+            byte version = buffer.get();
+            if (version >= 1 && version <= 3) {
+                parseLegacyFormat(buffer, version);
+            } else if (version == 4) {
+                parseV4Format(buffer);
+            } else {
+                throw new IOException("Unsupported version: " + version);
+            }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to open region file " + this.regionFile, e);
+            LOGGER.error("Failed to load region file: {}", regionFile, e);
+            throw e;
         }
     }
 
-    private void parseLinearV1(ByteBuffer buffer) throws IOException {
-        final int HEADER_SIZE = 32;
-        final int FOOTER_SIZE = 8;
-
-        // Skip newestTimestamp (Long) + Compression level (Byte) + Chunk count (Short): Unused.
-        buffer.position(buffer.position() + 11);
-
-        int dataCount = buffer.getInt();
-        long fileLength = this.regionFile.toFile().length();
-        if (fileLength != HEADER_SIZE + dataCount + FOOTER_SIZE) {
-            throw new IOException("Invalid file length: " + this.regionFile + " " + fileLength + " " + (HEADER_SIZE + dataCount + FOOTER_SIZE));
+    private void parseLegacyFormat(ByteBuffer buffer, byte version) throws IOException {
+        if (version == 1 || version == 2) {
+            parseV1Format(buffer);
+        } else {
+            parseV2Format(buffer);
         }
+    }
 
-        buffer.position(buffer.position() + 8); // Skip data hash (Long): Unused.
+    private void parseV1Format(ByteBuffer buffer) throws IOException {
+        buffer.position(buffer.position() + 11);
+        int dataCount = buffer.getInt();
+        buffer.position(buffer.position() + 8);
 
         byte[] rawCompressed = new byte[dataCount];
         buffer.get(rawCompressed);
 
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(rawCompressed);
-        ZstdInputStream zstdInputStream = new ZstdInputStream(byteArrayInputStream);
-        ByteBuffer decompressedBuffer = ByteBuffer.wrap(zstdInputStream.readAllBytes());
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(rawCompressed);
+             ZstdInputStream zis = new ZstdInputStream(bais)) {
+            ByteBuffer decompressed = ByteBuffer.wrap(zis.readAllBytes());
 
-        int[] starts = new int[1024];
-        for (int i = 0; i < 1024; i++) {
-            starts[i] = decompressedBuffer.getInt();
-            decompressedBuffer.getInt(); // Skip timestamps (Int): Unused.
-        }
+            int[] starts = new int[CHUNK_COUNT];
+            for (int i = 0; i < CHUNK_COUNT; i++) {
+                starts[i] = decompressed.getInt();
+                decompressed.getInt();
+            }
 
-        for (int i = 0; i < 1024; i++) {
-            if (starts[i] > 0) {
-                int size = starts[i];
-                byte[] chunkData = new byte[size];
-                decompressedBuffer.get(chunkData);
-
-                int maxCompressedLength = this.compressor.maxCompressedLength(size);
-                byte[] compressed = new byte[maxCompressedLength];
-                int compressedLength = this.compressor.compress(chunkData, 0, size, compressed, 0, maxCompressedLength);
-                byte[] finalCompressed = new byte[compressedLength];
-                System.arraycopy(compressed, 0, finalCompressed, 0, compressedLength);
-
-                this.buffer[i] = finalCompressed;
-                this.bufferUncompressedSize[i] = size;
-                this.chunkTimestamps[i] = getTimestamp(); // Use current timestamp as we don't have the original
+            for (int i = 0; i < CHUNK_COUNT; i++) {
+                if (starts[i] > 0) {
+                    byte[] chunkData = new byte[starts[i]];
+                    decompressed.get(chunkData);
+                    compressAndStore(i, chunkData);
+                }
             }
         }
     }
 
-    private void parseLinearV2(ByteBuffer buffer) throws IOException {
-        buffer.getLong(); // Skip newestTimestamp (Long)
-        gridSize = buffer.get();
-        if (gridSize != 1 && gridSize != 2 && gridSize != 4 && gridSize != 8 && gridSize != 16 && gridSize != 32)
-            throw new RuntimeException("Invalid grid size: " + gridSize + " file " + this.regionFile);
-        bucketSize = 32 / gridSize;
-
-        buffer.getInt(); // Skip region_x (Int)
-        buffer.getInt(); // Skip region_z (Int)
-
-        boolean[] chunkExistenceBitmap = deserializeExistenceBitmap(buffer);
-
-        while (true) {
-            byte featureNameLength = buffer.get();
-            if (featureNameLength == 0) break;
-            byte[] featureNameBytes = new byte[featureNameLength];
-            buffer.get(featureNameBytes);
-            String featureName = new String(featureNameBytes);
-            int featureValue = buffer.getInt();
-            // System.out.println("NBT Feature: " + featureName + " = " + featureValue);
+    private void parseV2Format(ByteBuffer buffer) throws IOException {
+        buffer.getLong();
+        int fileGridSize = buffer.get();
+        if (fileGridSize != gridSize) {
+            LOGGER.warn("Grid size mismatch: file={}, config={}", fileGridSize, gridSize);
         }
 
-        int[] bucketSizes = new int[gridSize * gridSize];
-        byte[] bucketCompressionLevels = new byte[gridSize * gridSize];
-        long[] bucketHashes = new long[gridSize * gridSize];
-        for (int i = 0; i < gridSize * gridSize; i++) {
-            bucketSizes[i] = buffer.getInt();
-            bucketCompressionLevels[i] = buffer.get();
-            bucketHashes[i] = buffer.getLong();
+        buffer.getInt();
+        buffer.getInt();
+
+        int bitmapLength = (CHUNK_COUNT + 7) / 8;
+        byte[] bitmap = new byte[bitmapLength];
+        buffer.get(bitmap);
+
+        while (buffer.hasRemaining()) {
+            byte nameLen = buffer.get();
+            if (nameLen == 0) break;
+            byte[] nameBytes = new byte[nameLen];
+            buffer.get(nameBytes);
+            buffer.getInt();
         }
 
-        bucketBuffers = new byte[gridSize * gridSize][];
-        for (int i = 0; i < gridSize * gridSize; i++) {
-            if (bucketSizes[i] > 0) {
-                bucketBuffers[i] = new byte[bucketSizes[i]];
-                buffer.get(bucketBuffers[i]);
-                long rawHash = LongHashFunction.xx().hashBytes(bucketBuffers[i]);
-                if (rawHash != bucketHashes[i]) throw new IOException("Region file hash incorrect " + this.regionFile);
+        int totalBuckets = gridSize * gridSize;
+        for (int i = 0; i < totalBuckets; i++) {
+            int bucketSize = buffer.getInt();
+            buffer.get();
+            buffer.getLong();
+
+            if (bucketSize > 0 && buckets[i] != null) {
+                byte[] bucketData = new byte[bucketSize];
+                buffer.get(bucketData);
+                buckets[i].compressedBucket = bucketData;
+                buckets[i].loaded = true;
+            }
+        }
+    }
+
+    private void parseV4Format(ByteBuffer buffer) throws IOException {
+        buffer.getLong();
+        int fileGridSize = buffer.get();
+        buffer.getInt();
+        buffer.getInt();
+
+        for (int i = 0; i < CHUNK_COUNT; i++) {
+            int offset = buffer.getInt();
+            int size = buffer.getInt();
+            long timestamp = buffer.getLong();
+
+            if (size > 0 && offset > 0) {
+                int currentPos = buffer.position();
+                buffer.position(offset);
+                byte[] data = new byte[size];
+                buffer.get(data);
+                buffer.position(currentPos);
+
+                chunks[i].set(data, size, timestamp);
             }
         }
 
         long footerSuperBlock = buffer.getLong();
-        if (footerSuperBlock != SUPERBLOCK)
-            throw new IOException("Footer superblock invalid " + this.regionFile);
+        if (footerSuperBlock != SUPERBLOCK) {
+            throw new IOException("Invalid footer superblock");
+        }
     }
 
-    public LinearRegionFile(RegionStorageInfo storageKey, Path directory, Path path, boolean dsync, int compressionLevel) throws IOException {
-        this(storageKey, directory, path, RegionFileVersion.getCompressionFormat(), dsync, compressionLevel);
+    private void compressAndStore(int index, byte[] uncompressedData) {
+        int maxCompressedLen = compressor.maxCompressedLength(uncompressedData.length);
+        byte[] compressed = new byte[maxCompressedLen];
+        int compressedLen = compressor.compress(uncompressedData, 0, uncompressedData.length, compressed, 0, maxCompressedLen);
+
+        if (compressedLen < uncompressedData.length) {
+            byte[] result = Arrays.copyOf(compressed, compressedLen);
+            chunks[index].set(result, uncompressedData.length, System.currentTimeMillis());
+        } else {
+            chunks[index].set(uncompressedData.clone(), uncompressedData.length, System.currentTimeMillis());
+        }
     }
 
-    public LinearRegionFile(RegionStorageInfo storageKey, Path path, Path directory, RegionFileVersion compressionFormat, boolean dsync, int compressionLevel) throws IOException {
-        Runnable flushCheck = () -> {
-            while (!close) {
-                synchronized (saveLock) {
-                    if (markedToSave && activeSaveThreads < SAVE_THREAD_MAX_COUNT) {
-                        activeSaveThreads++;
-                        Runnable flushOperation = () -> {
-                            try {
-                                flush();
-                            } catch (IOException ex) {
-                                LOGGER.error("Region file {} flush failed", this.regionFile.toAbsolutePath(), ex);
-                            } finally {
-                                synchronized (saveLock) {
-                                    activeSaveThreads--;
-                                }
-                            }
-                        };
+    private int getChunkIndex(int x, int z) {
+        return (x & 31) + ((z & 31) << 5);
+    }
 
-                        Thread saveThread = USE_VIRTUAL_THREAD ?
-                                Thread.ofVirtual().name("Linear IO - " + LinearRegionFile.this.hashCode()).unstarted(flushOperation) :
-                                Thread.ofPlatform().name("Linear IO - " + LinearRegionFile.this.hashCode()).unstarted(flushOperation);
-                        saveThread.setPriority(Thread.NORM_PRIORITY - 3);
-                        saveThread.start();
+    private int getBucketIndex(int chunkX, int chunkZ) {
+        int bx = Math.floorMod(chunkX, 32) / bucketSize;
+        int bz = Math.floorMod(chunkZ, 32) / bucketSize;
+        return bx * gridSize + bz;
+    }
+
+    private void ensureBucketLoaded(int chunkX, int chunkZ) {
+        int bucketIdx = getBucketIndex(chunkX, chunkZ);
+        Bucket bucket = buckets[bucketIdx];
+        if (bucket == null || bucket.loaded) return;
+
+        synchronized (bucket.lock) {
+            if (bucket.loaded) return;
+            loadBucket(bucketIdx);
+            bucket.loaded = true;
+        }
+    }
+
+    private void loadBucket(int bucketIdx) {
+        Bucket bucket = buckets[bucketIdx];
+        if (bucket == null || bucket.compressedBucket == null) return;
+
+        try {
+            ByteArrayInputStream bais = new ByteArrayInputStream(bucket.compressedBucket);
+            ZstdInputStream zis = new ZstdInputStream(bais);
+            ByteBuffer buf = ByteBuffer.wrap(zis.readAllBytes());
+
+            int bx = bucketIdx % gridSize;
+            int bz = bucketIdx / gridSize;
+
+            for (int cx = 0; cx < bucketSize; cx++) {
+                for (int cz = 0; cz < bucketSize; cz++) {
+                    int chunkX = bx * bucketSize + cx;
+                    int chunkZ = bz * bucketSize + cz;
+                    int chunkIndex = getChunkIndex(chunkX, chunkZ);
+
+                    int dataSize = buf.getInt();
+                    long timestamp = buf.getLong();
+
+                    if (dataSize > 0) {
+                        byte[] chunkData = new byte[dataSize - 8];
+                        buf.get(chunkData);
+                        compressAndStore(chunkIndex, chunkData);
+                        chunks[chunkIndex].timestamp = timestamp;
                     }
                 }
-                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(SAVE_DELAY_MS));
             }
-        };
-        this.bindThread = USE_VIRTUAL_THREAD ? Thread.ofVirtual().unstarted(flushCheck) : Thread.ofPlatform().unstarted(flushCheck);
-        this.bindThread.setName("Linear IO Schedule - " + this.hashCode());
-        this.regionFile = path;
-        this.compressionLevel = compressionLevel;
 
-        this.compressor = LZ4Factory.fastestInstance().fastCompressor();
-        this.decompressor = LZ4Factory.fastestInstance().fastDecompressor();
-    }
-
-    private synchronized void markToSave() {
-        synchronized (markedToSaveLock) {
-            markedToSave = true;
+            bucket.compressedBucket = null;
+        } catch (IOException e) {
+            LOGGER.error("Failed to load bucket {}", bucketIdx, e);
         }
     }
 
-    private synchronized boolean isMarkedToSave() {
-        synchronized (markedToSaveLock) {
-            if (markedToSave) {
-                markedToSave = false;
-                return true;
-            }
-            return false;
-        }
-    }
-
-    public static int SAVE_THREAD_MAX_COUNT = 6;
-    public static int SAVE_DELAY_MS = 100;
-    public static boolean USE_VIRTUAL_THREAD = true;
-    private static final Object saveLock = new Object();
-    private static int activeSaveThreads = 0;
-
-    /*public void run() {
-        while (!close) {
-            synchronized (saveLock) {
-                if (markedToSave && activeSaveThreads < SAVE_THREAD_MAX_COUNT) {
-                    activeSaveThreads++;
-                    Thread saveThread = new Thread(() -> {
-                        try {
-                            flush();
-                        } catch (IOException ex) {
-                            LOGGER.error("Region file " + this.regionFile.toAbsolutePath() + " flush failed", ex);
-                        } finally {
-                            synchronized (saveLock) {
-                                activeSaveThreads--;
-                            }
-                        }
-                    }, "RegionFileFlush");
-                    saveThread.setPriority(Thread.NORM_PRIORITY - 3);
-                    saveThread.start();
-                }
-            }
-            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(SAVE_DELAY_MS));
-        }
-    }*/
-
+    @Override
     public synchronized boolean doesChunkExist(ChunkPos pos) throws Exception {
-        openRegionFile();
-        throw new Exception("doesChunkExist is a stub");
+        initIfNeeded();
+        int idx = getChunkIndex(pos.x, pos.z);
+        return chunks[idx].loaded && chunks[idx].compressedData != null;
     }
 
+    @Override
+    public synchronized void write(ChunkPos pos, ByteBuffer buffer) {
+        initIfNeeded();
+        if (closed) return;
+
+        try {
+            ensureBucketLoaded(pos.x, pos.z);
+
+            byte[] b = toByteArray(new ByteArrayInputStream(buffer.array()));
+            if (b.length > 500 * 1024 * 1024) {
+                LOGGER.warn("Chunk too large at ({}, {}), clearing", pos.x, pos.z);
+                clear(pos);
+                return;
+            }
+
+            compressAndStore(getChunkIndex(pos.x, pos.z), b);
+            dirty.set(true);
+        } catch (Exception e) {
+            LOGGER.error("Failed to write chunk at ({}, {})", pos.x, pos.z, e);
+        }
+    }
+
+    @Override
+    public synchronized ByteBuffer read(ChunkPos pos) throws Exception {
+        initIfNeeded();
+        if (closed) return null;
+
+        try {
+            ensureBucketLoaded(pos.x, pos.z);
+            int idx = getChunkIndex(pos.x, pos.z);
+            ChunkEntry entry = chunks[idx];
+
+            if (!entry.loaded || entry.compressedData == null) {
+                return null;
+            }
+
+            byte[] compressed = entry.get();
+            if (compressed == null) return null;
+
+            byte[] decompressed = new byte[entry.uncompressedSize];
+            decompressor.decompress(compressed, 0, decompressed, 0, entry.uncompressedSize);
+
+            return ByteBuffer.wrap(decompressed);
+        } catch (Exception e) {
+            LOGGER.error("Failed to read chunk at ({}, {})", pos.x, pos.z, e);
+            return null;
+        }
+    }
+
+    @Override
+    public synchronized void clear(ChunkPos pos) throws Exception {
+        initIfNeeded();
+        int idx = getChunkIndex(pos.x, pos.z);
+        chunks[idx].clear();
+        dirty.set(true);
+    }
+
+    @Override
     public synchronized void flush() throws IOException {
-        if (!isMarkedToSave()) return;
+        if (!dirty.compareAndSet(true, false)) return;
+        if (closed) return;
 
-        openRegionFile();
+        writeLock.lock();
+        try {
+            performFlush();
+        } finally {
+            writeLock.unlock();
+        }
+    }
 
-        long timestamp = getTimestamp();
-
-        long writeStart = System.nanoTime();
+    private void performFlush() throws IOException {
         File tempFile = new File(regionFile.toString() + ".tmp");
-        FileOutputStream fileStream = new FileOutputStream(tempFile);
-        DataOutputStream dataStream = new DataOutputStream(fileStream);
+        FileOutputStream fos = new FileOutputStream(tempFile);
+        DataOutputStream dos = new DataOutputStream(fos);
 
-        dataStream.writeLong(SUPERBLOCK);
-        dataStream.writeByte(VERSION);
-        dataStream.writeLong(timestamp);
-        dataStream.writeByte(gridSize);
+        dos.writeLong(SUPERBLOCK);
+        dos.writeByte(VERSION);
+        dos.writeLong(System.currentTimeMillis());
+        dos.writeByte(gridSize);
 
         String fileName = regionFile.getFileName().toString();
         String[] parts = fileName.split("\\.");
-        int regionX = 0;
-        int regionZ = 0;
+        int regionX = 0, regionZ = 0;
         try {
             if (parts.length >= 4) {
                 regionX = Integer.parseInt(parts[1]);
                 regionZ = Integer.parseInt(parts[2]);
-            } else {
-                LOGGER.warn("Unexpected file name format: " + fileName);
             }
         } catch (NumberFormatException e) {
-            LOGGER.error("Failed to parse region coordinates from file name: " + fileName, e);
+            LOGGER.warn("Failed to parse region coordinates from {}", fileName);
         }
 
-        dataStream.writeInt(regionX);
-        dataStream.writeInt(regionZ);
+        dos.writeInt(regionX);
+        dos.writeInt(regionZ);
 
-        boolean[] chunkExistenceBitmap = new boolean[1024];
-        for (int i = 0; i < 1024; i++) {
-            chunkExistenceBitmap[i] = (this.bufferUncompressedSize[i] > 0);
-        }
-        writeSerializedExistenceBitmap(dataStream, chunkExistenceBitmap);
+        ByteArrayOutputStream indexBaos = new ByteArrayOutputStream(CHUNK_COUNT * 16);
+        DataOutputStream indexDos = new DataOutputStream(indexBaos);
 
-        writeNBTFeatures(dataStream);
+        ByteArrayOutputStream dataBaos = new ByteArrayOutputStream();
+        ZstdOutputStream zos = new ZstdOutputStream(dataBaos, compressionLevel);
+        DataOutputStream dataDos = new DataOutputStream(zos);
 
-        int bucketMisses = 0;
-        byte[][] buckets = new byte[gridSize * gridSize][];
-        for (int bx = 0; bx < gridSize; bx++) {
-            for (int bz = 0; bz < gridSize; bz++) {
-                if (bucketBuffers != null && bucketBuffers[bx * gridSize + bz] != null) {
-                    buckets[bx * gridSize + bz] = bucketBuffers[bx * gridSize + bz];
-                    continue;
+        int dataOffset = 0;
+
+        for (int i = 0; i < CHUNK_COUNT; i++) {
+            ChunkEntry entry = chunks[i];
+
+            if (entry.loaded && entry.compressedData != null) {
+                indexDos.writeInt(dataOffset);
+                indexDos.writeInt(entry.uncompressedSize);
+                indexDos.writeLong(entry.timestamp);
+
+                dataDos.writeInt(entry.uncompressedSize);
+                dataDos.write(entry.timestamp);
+                byte[] data = entry.get();
+                if (data != null) {
+                    dataDos.write(data);
                 }
-                bucketMisses++;
 
-                ByteArrayOutputStream bucketStream = new ByteArrayOutputStream();
-                ZstdOutputStream zstdStream = new ZstdOutputStream(bucketStream, this.compressionLevel);
-                DataOutputStream bucketDataStream = new DataOutputStream(zstdStream);
-
-                boolean hasData = false;
-                for (int cx = 0; cx < 32 / gridSize; cx++) {
-                    for (int cz = 0; cz < 32 / gridSize; cz++) {
-                        int chunkIndex = (bx * 32 / gridSize + cx) + (bz * 32 / gridSize + cz) * 32;
-                        if (this.bufferUncompressedSize[chunkIndex] > 0) {
-                            hasData = true;
-                            byte[] chunkData = new byte[this.bufferUncompressedSize[chunkIndex]];
-                            this.decompressor.decompress(this.buffer[chunkIndex], 0, chunkData, 0, this.bufferUncompressedSize[chunkIndex]);
-                            bucketDataStream.writeInt(chunkData.length + 8);
-                            bucketDataStream.writeLong(this.chunkTimestamps[chunkIndex]);
-                            bucketDataStream.write(chunkData);
-                        } else {
-                            bucketDataStream.writeInt(0);
-                            bucketDataStream.writeLong(this.chunkTimestamps[chunkIndex]);
-                        }
-                    }
-                }
-                bucketDataStream.close();
-
-                if (hasData) {
-                    buckets[bx * gridSize + bz] = bucketStream.toByteArray();
-                }
-            }
-        }
-
-        for (int i = 0; i < gridSize * gridSize; i++) {
-            dataStream.writeInt(buckets[i] != null ? buckets[i].length : 0);
-            dataStream.writeByte(this.compressionLevel);
-            long rawHash = 0;
-            if (buckets[i] != null) {
-                rawHash = LongHashFunction.xx().hashBytes(buckets[i]);
-            }
-            dataStream.writeLong(rawHash);
-        }
-
-        for (int i = 0; i < gridSize * gridSize; i++) {
-            if (buckets[i] != null) {
-                dataStream.write(buckets[i]);
-            }
-        }
-
-        dataStream.writeLong(SUPERBLOCK);
-
-        dataStream.flush();
-        fileStream.getFD().sync();
-        fileStream.getChannel().force(true); // Ensure atomicity on Btrfs
-        dataStream.close();
-
-        fileStream.close();
-        Files.move(tempFile.toPath(), this.regionFile, StandardCopyOption.REPLACE_EXISTING);
-//System.out.println("writeStart REGION FILE FLUSH " + (System.nanoTime() - writeStart) + " misses: " + bucketMisses);
-    }
-
-    private void writeNBTFeatures(DataOutputStream dataStream) throws IOException {
-        // writeNBTFeature(dataStream, "example", 1);
-        dataStream.writeByte(0); // End of NBT features
-    }
-
-    private void writeNBTFeature(DataOutputStream dataStream, String featureName, int featureValue) throws IOException {
-        byte[] featureNameBytes = featureName.getBytes();
-        dataStream.writeByte(featureNameBytes.length);
-        dataStream.write(featureNameBytes);
-        dataStream.writeInt(featureValue);
-    }
-
-    public static final int MAX_CHUNK_SIZE = 500 * 1024 * 1024; // Abomination - prevent chunk dupe
-
-    public synchronized void write(ChunkPos pos, ByteBuffer buffer) {
-        openRegionFile();
-        openBucket(pos.x, pos.z);
-        try {
-            byte[] b = toByteArray(new ByteArrayInputStream(buffer.array()));
-            int uncompressedSize = b.length;
-
-            if (uncompressedSize > MAX_CHUNK_SIZE) {
-                LOGGER.error("Chunk dupe attempt " + this.regionFile);
-                clear(pos);
+                dataOffset += entry.uncompressedSize + 12;
             } else {
-                int maxCompressedLength = this.compressor.maxCompressedLength(b.length);
-                byte[] compressed = new byte[maxCompressedLength];
-                int compressedLength = this.compressor.compress(b, 0, b.length, compressed, 0, maxCompressedLength);
-                b = new byte[compressedLength];
-                System.arraycopy(compressed, 0, b, 0, compressedLength);
-
-                int index = getChunkIndex(pos.x, pos.z);
-                this.buffer[index] = b;
-                this.chunkTimestamps[index] = getTimestamp();
-                this.bufferUncompressedSize[getChunkIndex(pos.x, pos.z)] = uncompressedSize;
+                indexDos.writeInt(0);
+                indexDos.writeInt(0);
+                indexDos.writeLong(0);
             }
-        } catch (IOException e) {
-            LOGGER.error("Chunk write IOException " + e + " " + this.regionFile);
         }
-        markToSave();
-    }
 
-    public DataOutputStream getChunkDataOutputStream(ChunkPos pos) {
-        openRegionFile();
-        openBucket(pos.x, pos.z);
-        return new DataOutputStream(new BufferedOutputStream(new LinearRegionFile.ChunkBuffer(pos)));
+        dataDos.flush();
+        zos.flush();
+        zos.close();
+
+        byte[] indexBytes = indexBaos.toByteArray();
+        byte[] dataBytes = dataBaos.toByteArray();
+
+        dos.writeInt(indexBytes.length);
+        dos.write(indexBytes);
+        dos.writeInt(dataBytes.length);
+        dos.write(dataBytes);
+
+        dos.writeLong(SUPERBLOCK);
+
+        dos.flush();
+        fos.getFD().sync();
+        dos.close();
+        fos.close();
+
+        Files.move(tempFile.toPath(), regionFile, StandardCopyOption.REPLACE_EXISTING);
     }
 
     @Override
-    public MoonriseRegionFileIO.RegionDataController.WriteData moonrise$startWrite(CompoundTag data, ChunkPos pos) throws IOException {
-        final DataOutputStream out = this.getChunkDataOutputStream(pos);
-
-        return new ca.spottedleaf.moonrise.patches.chunk_system.io.MoonriseRegionFileIO.RegionDataController.WriteData(
-                data, ca.spottedleaf.moonrise.patches.chunk_system.io.MoonriseRegionFileIO.RegionDataController.WriteData.WriteResult.WRITE,
-                out, regionFile -> out.close()
-        );
-    }
-
-    private class ChunkBuffer extends ByteArrayOutputStream {
-
-        private final ChunkPos pos;
-
-        public ChunkBuffer(ChunkPos chunkcoordintpair) {
-            super();
-            this.pos = chunkcoordintpair;
-        }
-
-        public void close() throws IOException {
-            ByteBuffer bytebuffer = ByteBuffer.wrap(this.buf, 0, this.count);
-            LinearRegionFile.this.write(this.pos, bytebuffer);
-        }
-    }
-
-    private byte[] toByteArray(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] tempBuffer = new byte[4096];
-
-        int length;
-        while ((length = in.read(tempBuffer)) >= 0) {
-            out.write(tempBuffer, 0, length);
-        }
-
-        return out.toByteArray();
-    }
-
-    @Nullable
-    public synchronized DataInputStream getChunkDataInputStream(ChunkPos pos) {
-        openRegionFile();
-        openBucket(pos.x, pos.z);
-
-        if (this.bufferUncompressedSize[getChunkIndex(pos.x, pos.z)] != 0) {
-            byte[] content = new byte[bufferUncompressedSize[getChunkIndex(pos.x, pos.z)]];
-            this.decompressor.decompress(this.buffer[getChunkIndex(pos.x, pos.z)], 0, content, 0, bufferUncompressedSize[getChunkIndex(pos.x, pos.z)]);
-            return new DataInputStream(new ByteArrayInputStream(content));
-        }
-        return null;
-    }
-
-    public synchronized void clear(ChunkPos pos) {
-        openRegionFile();
-        openBucket(pos.x, pos.z);
-        int i = getChunkIndex(pos.x, pos.z);
-        this.buffer[i] = null;
-        this.bufferUncompressedSize[i] = 0;
-        this.chunkTimestamps[i] = 0;
-        markToSave();
-    }
-
-    public synchronized boolean hasChunk(ChunkPos pos) {
-        openRegionFile();
-        openBucket(pos.x, pos.z);
-        return this.bufferUncompressedSize[getChunkIndex(pos.x, pos.z)] > 0;
-    }
-
     public synchronized void close() throws IOException {
-        openRegionFile();
-        close = true;
+        if (closed) return;
+
+        writeLock.lock();
         try {
             flush();
-        } catch (IOException e) {
-            throw new IOException("Region flush IOException " + e + " " + this.regionFile);
-        }
-    }
+            closed = true;
 
-    private static int getChunkIndex(int x, int z) {
-        return (x & 31) + ((z & 31) << 5);
-    }
-
-    private static int getTimestamp() {
-        return (int) (System.currentTimeMillis() / 1000L);
-    }
-
-    public boolean recalculateHeader() {
-        return false;
-    }
-
-    public void setOversized(int x, int z, boolean something) {
-    }
-
-    public CompoundTag getOversizedData(int x, int z) throws IOException {
-        throw new IOException("getOversizedData is a stub " + this.regionFile);
-    }
-
-    public boolean isOversized(int x, int z) {
-        return false;
-    }
-
-    public Path getPath() {
-        return this.regionFile;
-    }
-
-    private boolean[] deserializeExistenceBitmap(ByteBuffer buffer) {
-        boolean[] result = new boolean[1024];
-        for (int i = 0; i < 128; i++) {
-            byte b = buffer.get();
-            for (int j = 0; j < 8; j++) {
-                result[i * 8 + j] = ((b >> (7 - j)) & 1) == 1;
+            for (ChunkEntry entry : chunks) {
+                entry.clear();
             }
-        }
-        return result;
-    }
 
-    private void writeSerializedExistenceBitmap(DataOutputStream out, boolean[] bitmap) throws IOException {
-        for (int i = 0; i < 128; i++) {
-            byte b = 0;
-            for (int j = 0; j < 8; j++) {
-                if (bitmap[i * 8 + j]) {
-                    b |= (1 << (7 - j));
+            for (Bucket bucket : buckets) {
+                if (bucket != null) {
+                    bucket.compressedBucket = null;
+                    bucket.loaded = false;
                 }
             }
-            out.writeByte(b);
+        } finally {
+            writeLock.unlock();
         }
+    }
+
+    @Override
+    public Path getRegionFile() {
+        return regionFile;
+    }
+
+    @Override
+    public ReentrantLock getFileLock() {
+        return writeLock;
+    }
+
+    private static byte[] toByteArray(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
     }
 }

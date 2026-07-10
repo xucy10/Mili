@@ -1,19 +1,18 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Sun, 8 Jun 2025 01:23:55 +0800
+From: xucy10 <xucy10@example.com>
+Date: Thu, 10 Jul 2026 00:00:00 +0800
 Subject: [PATCH] Rebrand to Mili
 
 
 diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
-index db5e2f10278c20286779362cfdfadb2f42c724e0..c18c0cb45a193883aa12b5d1abe690e95d289f82 100644
+index c18c0cb45a193883aa12b5d1abe690e95d289f82..e3a5f1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8 100644
 --- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
 +++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
-@@ -29,6 +29,7 @@ public interface ServerBuildInfo {
-      */
+@@ -30,6 +30,7 @@ public interface ServerBuildInfo {
      Key BRAND_LUMINOL_ID = Key.key("luminolmc", "luminol");
      // Luminol end
-+    Key BRAND_MILI_ID = Key.key("luminolmc", "mili"); // Mili
+     Key BRAND_LOPHINE_ID = Key.key("luminolmc", "lophine"); // Lophine
++    Key BRAND_MILI_ID = Key.key("xucy10", "mili"); // Mili
  
      /**
       * Gets the {@code ServerBuildInfo}.
-

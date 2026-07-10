@@ -1,5 +1,5 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
+﻿From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <xucy10@example.com>
 Date: Sun, 8 Jun 2025 00:58:13 +0800
 Subject: [PATCH] Rebrand to Mili
 
@@ -16,7 +16,7 @@ index fcdfd4f6de5e1c2d5e80c7f3d8cb0b33a62d257d..6eaa4e9bd1ecbfa531313ce1f470d55e
              // Only start Metrics, if it's enabled in the config
              if (config.getBoolean("enabled", true)) {
 -                Metrics metrics = new Metrics("Luminol", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page // Luminol
-+                Metrics metrics = new Metrics("Mili", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page // Luminol // Mili
++                Metrics metrics = new Metrics("Mili", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page // Luminol // Lophine // Mili
  
                  metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
                      String minecraftVersion = Bukkit.getVersion();
@@ -25,17 +25,17 @@ index fcdfd4f6de5e1c2d5e80c7f3d8cb0b33a62d257d..6eaa4e9bd1ecbfa531313ce1f470d55e
                  if (implVersion != null) {
                      final String buildOrHash = implVersion.substring(implVersion.lastIndexOf('-') + 1);
 -                    paperVersion = "git-Luminol-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash); // Folia - we have our own bstats page // Luminol - Rebrand to Luminol
-+                    paperVersion = "git-Mili-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash); // Folia - we have our own bstats page // Luminol - Rebrand to Luminol // Mili - Rebrand to Mili
++                    paperVersion = "git-Lophine-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash); // Folia - we have our own bstats page // Luminol - Rebrand to Luminol // Lophine // Mili - Rebrand to Mili
                  } else {
                      paperVersion = "unknown";
                  }
 -                metrics.addCustomChart(new Metrics.SimplePie("luminol_version", () -> paperVersion)); // Folia - we have our own bstats page // Luminol
-+                metrics.addCustomChart(new Metrics.SimplePie("Mili_version", () -> paperVersion)); // Folia - we have our own bstats page // Luminol // Mili
++                metrics.addCustomChart(new Metrics.SimplePie("lophine_version", () -> paperVersion)); // Folia - we have our own bstats page // Luminol // Lophine // Mili
  
                  metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
                      Map<String, Map<String, Integer>> map = new HashMap<>();
 diff --git a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
-index a5f2e4454258886536251288c3694f58386c7420..0000000000000000000000000000000000000000 100644
+index a5f2e4454258886536251288c3694f58386c7420..28371ecf31d5fc280aaa03ed9a86f5b565cf32f6 100644
 --- a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
 +++ b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
 @@ -40,8 +40,8 @@ public class PaperVersionFetcher implements VersionFetcher {
@@ -44,29 +44,11 @@ index a5f2e4454258886536251288c3694f58386c7420..00000000000000000000000000000000
      private static final int DISTANCE_UNKNOWN = -2;
 -    private static final String DOWNLOAD_PAGE = "https://github.com/LuminolMC/Luminol"; // Luminol
 -    private static final String REPOSITORY = "LuminolMC/Luminol"; // Luminol
-+    private static final String DOWNLOAD_PAGE = "https://github.com/xucy10/Mili"; // Luminol // Mili
-+    private static final String REPOSITORY = "xucy10/Mili"; // Luminol // Mili
++    private static final String DOWNLOAD_PAGE = "https://github.com/xucy10/Mili"; // Luminol // Lophine // Mili
++    private static final String REPOSITORY = "xucy10/Mili"; // Luminol // Lophine // Mili
      private static final ServerBuildInfo BUILD_INFO = ServerBuildInfo.buildInfo();
      private static final String USER_AGENT = BUILD_INFO.brandName() + "/" + BUILD_INFO.asString(VERSION_SIMPLE) + " (https://papermc.io)";
      private static final Gson GSON = new Gson();
-@@ -220,7 +220,7 @@ public class PaperVersionFetcher implements VersionFetcher {
-     }
- 
-     private static int fetchDistanceFromGitHub(final String repo, final String branch, final String hash) {
--        try {
-+        try { // Mili - catch SSL exceptions gracefully
-             final HttpURLConnection connection = (HttpURLConnection) URI.create("https://api.github.com/repos/" + repo + "/compare/" + branch + "..." + hash).toURL().openConnection();
-             connection.setRequestMethod("GET");
-             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
-@@ -243,6 +243,8 @@ public class PaperVersionFetcher implements VersionFetcher {
-             }
-         } catch (final NumberFormatException e) {
-             COMPONENT_LOGGER.warn("Error while parsing version", e);
-+        } catch (final javax.net.ssl.SSLException e) { // Mili - handle SSL certificate errors gracefully
-+            COMPONENT_LOGGER.warn("SSL error while fetching version from GitHub (this is normal if your Java runtime lacks proper CA certificates)", e);
-         } catch (final Exception e) {
-             COMPONENT_LOGGER.warn("Error while parsing version", e);
-         }
 diff --git a/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java b/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java
 index 4ada790812957657d580cb748077c4961987d0cb..3a539df860305e777e85ed6dc72b5effe76734b4 100644
 --- a/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java
@@ -85,10 +67,10 @@ index 4ada790812957657d580cb748077c4961987d0cb..3a539df860305e777e85ed6dc72b5eff
              getManifestAttribute(manifest, ATTRIBUTE_BRAND_ID)
                  .map(Key::key)
 -                .orElse(BRAND_LUMINOL_ID), // Folia // Luminol
-+                .orElse(BRAND_MILI_ID), // Folia // Luminol // Mili
++                .orElse(BRAND_MILI_ID), // Folia // Luminol // Lophine // Mili
              getManifestAttribute(manifest, ATTRIBUTE_BRAND_NAME)
 -                .orElse(BRAND_LUMINOL_NAME), // Folia // Luminol
-+                .orElse(BRAND_MILI_NAME), // Folia // Luminol // Mili
++                .orElse(BRAND_MILI_NAME), // Folia // Luminol // Lophine // Mili
              SharedConstants.getCurrentVersion().id(),
              SharedConstants.getCurrentVersion().name(),
              getManifestAttribute(manifest, ATTRIBUTE_BUILD_NUMBER)
@@ -97,7 +79,7 @@ index 4ada790812957657d580cb748077c4961987d0cb..3a539df860305e777e85ed6dc72b5eff
      @Override
      public boolean isBrandCompatible(final @NotNull Key brandId) {
 -        return brandId.equals(this.brandId) || brandId.equals(BRAND_PAPER_ID) || brandId.equals(BRAND_FOLIA_ID); // Luminol
-+        return brandId.equals(this.brandId) || brandId.equals(BRAND_PAPER_ID) || brandId.equals(BRAND_FOLIA_ID) || brandId.equals(BRAND_LUMINOL_ID); // Luminol // Mili
++        return brandId.equals(this.brandId) || brandId.equals(BRAND_PAPER_ID) || brandId.equals(BRAND_FOLIA_ID) || brandId.equals(BRAND_LUMINOL_ID); // Luminol // Lophine // Mili
      }
  
      @Override
@@ -4137,3 +4119,5 @@ z_9WwZ_pQ@<+gad^p@tO?oir>q$<F7`4570+FV&XlOR)4tf$)QCL5`x)nTj`J$;-2V
 z#r1$-!3SQd4A;^3F{5Gxh136UrW$(H2LML+)I-z+KL5S-|6tLgjQKB{{{NAtWmjWy
 zbS=t?OuH^35}LO-rwh?J3}{{PRsP<MetC8c6bd9AtwsO7wn6_M99~&Am(V4N{Pz}M
 i!hbo2io*Z90wdBVaayS*vv5U}j~_jCB<(Qe=KlipT2bBr
+
+

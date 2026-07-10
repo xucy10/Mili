@@ -33,23 +33,23 @@ paperweight {
         }
     }
 
-    val luminol = forks.register("luminol") {
+    val lophine = forks.register("lophine") {
         forks = fork
         upstream.patchRepo("paperServer") {
             upstreamRepo = fork.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("luminol-server/paper-patches")
+            patchesDir = rootDirectory.dir("lophine-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
 
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("luminol-server/folia-patches")
+            patchesDir = rootDirectory.dir("lophine-server/folia-patches")
             outputDir = rootDirectory.dir("folia-server")
         }
     }
 
-    activeFork = luminol
+    activeFork = lophine
 
 
     spigot {
@@ -173,7 +173,7 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 }
 
 dependencies {
-    implementation(project(":luminol-api")) // Luminol
+    implementation(project(":lophine-api")) // Lophine
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
@@ -434,7 +434,7 @@ tasks.registerRunTask("runReobfPaperclip") {
 }
 
 fill {
-    project("luminol")
+    project("lophine")
     versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
     version(paperweight.minecraftVersion)
 

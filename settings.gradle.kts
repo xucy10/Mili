@@ -24,35 +24,35 @@ include("mili-api")
 include("mili-server")
 include("mili-rust")
 
-// Replace luminol-api references and activeFork before project configuration
+// Replace lophine-api references and activeFork before project configuration
 gradle.settingsEvaluated {
     val file = rootDir.resolve("mili-server/build.gradle.kts")
     if (file.exists()) {
         var content = file.readText()
-        if (content.contains("activeFork = luminol")) {
+        if (content.contains("activeFork = lophine")) {
             val forkBlock = """
     val mili = forks.register("mili") {
-        forks = luminol
+        forks = lophine
         upstream.patchRepo("paperServer") {
-            upstreamRepo = luminol.patchedRepo("paperServer")
+            upstreamRepo = lophine.patchedRepo("paperServer")
             patchesDir = rootDirectory.dir("mili-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
 
-        upstream.patchDir("luminolServer") {
-            upstreamPath = "luminol-server"
+        upstream.patchDir("lophineServer") {
+            upstreamPath = "lophine-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
-            outputDir = rootDirectory.dir("luminol-server")
+            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
+            outputDir = rootDirectory.dir("lophine-server")
         }
     }
 
     activeFork = mili
 """.trimIndent()
-            content = content.replace("activeFork = luminol", forkBlock)
+            content = content.replace("activeFork = lophine", forkBlock)
         }
         content = content.replace(
-            """implementation(project(":luminol-api")) // Luminol""",
+            """implementation(project(":lophine-api")) // Lophine""",
             """implementation(project(":mili-api")) // Mili"""
         )
         if (content != file.readText()) {

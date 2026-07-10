@@ -7,17 +7,17 @@ plugins {
 }
 
 paperweight {
-    upstreams.register("luminol") {
-        repo = github("LuminolMC", "Luminol")
-        ref = providers.gradleProperty("luminolRef")
+    upstreams.register("lophine") {
+        repo = github("LuminolMC", "Lophine")
+        ref = providers.gradleProperty("lophineRef")
 
         patchFile {
-            path = "luminol-server/build.gradle.kts"
+            path = "lophine-server/build.gradle.kts"
             outputFile = file("mili-server/build.gradle.kts")
             patchFile = file("mili-server/build.gradle.kts.empty.patch")
         }
         patchFile {
-            path = "luminol-api/build.gradle.kts"
+            path = "lophine-api/build.gradle.kts"
             outputFile = file("mili-api/build.gradle.kts")
             patchFile = file("mili-api/build.gradle.kts.patch")
         }
@@ -31,11 +31,11 @@ paperweight {
             patchesDir = file("mili-api/folia-patches")
             outputDir = file("folia-api")
         }
-        patchDir("luminolApi") {
-            upstreamPath = "luminol-api"
+        patchDir("lophineApi") {
+            upstreamPath = "lophine-api"
             excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches")
-            patchesDir = file("mili-api/luminol-patches")
-            outputDir = file("luminol-api")
+            patchesDir = file("mili-api/lophine-patches")
+            outputDir = file("lophine-api")
         }
     }
 }
@@ -111,18 +111,18 @@ subprojects {
 
 val activeForkReplacement = """
     val mili = forks.register("mili") {
-        forks = luminol
+        forks = lophine
         upstream.patchRepo("paperServer") {
-            upstreamRepo = luminol.patchedRepo("paperServer")
+            upstreamRepo = lophine.patchedRepo("paperServer")
             patchesDir = rootDirectory.dir("mili-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
 
-        upstream.patchDir("luminolServer") {
-            upstreamPath = "luminol-server"
+        upstream.patchDir("lophineServer") {
+            upstreamPath = "lophine-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
-            outputDir = rootDirectory.dir("luminol-server")
+            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
+            outputDir = rootDirectory.dir("lophine-server")
         }
     }
 
@@ -130,17 +130,17 @@ val activeForkReplacement = """
 """.trimIndent()
 
 tasks.register("fixMiliFork") {
-    dependsOn(":applyLuminolSingleFilePatches")
+    dependsOn(":applyLophineSingleFilePatches")
     doLast {
         val file = file("mili-server/build.gradle.kts")
         var content = file.readText()
-        // Replace activeFork = luminol with mili fork registration
-        if (content.contains("activeFork = luminol")) {
-            content = content.replace("activeFork = luminol", activeForkReplacement)
+        // Replace activeFork = lophine with mili fork registration
+        if (content.contains("activeFork = lophine")) {
+            content = content.replace("activeFork = lophine", activeForkReplacement)
         }
-        // Replace project(":luminol-api") with project(":mili-api")
+        // Replace project(":lophine-api") with project(":mili-api")
         content = content.replace(
-            """implementation(project(":luminol-api")) // Luminol""",
+            """implementation(project(":lophine-api")) // Lophine""",
             """implementation(project(":mili-api")) // Mili"""
         )
         if (content != file.readText()) {
