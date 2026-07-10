@@ -19,6 +19,9 @@ val cargoBuild = tasks.register<Exec>("buildRustBinary") {
 }
 
 val stageRustBinary = tasks.register<Copy>("stageRustBinary") {
+    group = "build"
+    description = "Stages Rust binaries into build directory"
+
     dependsOn(cargoBuild)
 
     val osName = System.getProperty("os.name").lowercase()
@@ -28,16 +31,21 @@ val stageRustBinary = tasks.register<Copy>("stageRustBinary") {
         else -> "optimizer" to "so"
     }
 
-    from(layout.buildDirectory.file("cargo-target/release/$cliBinary")) {
-        into("rust")
-    }
-    from(layout.buildDirectory.file("cargo-target/release/mili_optimizer.$libExt")) {
-        into("rust")
-    }
-    into(layout.buildDirectory.dir("resources/main"))
+    val cargoTargetDir = layout.buildDirectory.dir("cargo-target/release").get().asFile
+    val rustBuildDir = layout.buildDirectory.dir("rust").get().asFile
 
-    // Only stage if cargo build succeeded
-    onlyIf { cargoBuild.get().executionResult.get().exitValue == 0 }
+    // Check if cargo output files exist instead of using executionResult
+    onlyIf {
+        cargoTargetDir.resolve("mili_optimizer.$libExt").exists()
+    }
+
+    from(cargoTargetDir.resolve(cliBinary)) {
+        into("rust")
+    }
+    from(cargoTargetDir.resolve("mili_optimizer.$libExt")) {
+        into("rust")
+    }
+    into(rustBuildDir)
 }
 
 tasks.named<Jar>("jar") {
