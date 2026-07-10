@@ -53,7 +53,8 @@ val stageRustBinary = tasks.register("stageRustBinary") {
 
 tasks.named<Jar>("jar") {
     dependsOn(stageRustBinary)
-    from(stageRustBinary.map { it.outputs.files }) {
+    // Include Rust binaries in the jar alongside compiled Java classes
+    from(layout.buildDirectory.dir("rust")) {
         into("rust")
         includeEmptyDirs = false
     }
