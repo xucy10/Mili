@@ -11,11 +11,6 @@ paperweight {
         repo = github("LuminolMC", "Lophine")
         ref = providers.gradleProperty("lophineRef")
 
-        patchFile {
-            path = "lophine-api/build.gradle.kts"
-            outputFile = file("mili-api/build.gradle.kts")
-            patchFile = file("mili-api/build.gradle.kts.patch")
-        }
         patchRepo("paperApi") {
             upstreamPath = "paper-api"
             patchesDir = file("mili-api/paper-patches")
