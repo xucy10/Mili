@@ -25,7 +25,7 @@
 
 
      spigot {
-@@ -171,12 +171,16 @@
+@@ -187,12 +187,16 @@
          resources { srcDir("../paper-server/src/main/resources") }
          java { srcDir("../folia-server/src/main/java") }
          resources { srcDir("../folia-server/src/main/resources") }
@@ -41,7 +41,7 @@
 +        resources { srcDir("../luminol-server/src/main/resources") }
      }
  }
-@@ -208,7 +208,8 @@
+@@ -224,7 +224,8 @@
  dependencies {
 -    implementation(project(":luminol-api")) // Luminol
 +    implementation(project(":mili-api")) // Mili
@@ -49,7 +49,7 @@
      // Luminol start - Dependenices insert
      implementation("net.objecthunter:exp4j:0.4.8")
      implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
-@@ -311,14 +311,14 @@
+@@ -327,14 +327,14 @@
          val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
@@ -68,7 +68,7 @@
              "Build-Number" to (build ?: ""),
              "Build-Time" to buildTime.toString(),
              "Git-Branch" to gitBranch,
-@@ -470,7 +470,7 @@
+@@ -486,7 +486,7 @@
  }
 
  fill {
