@@ -37,12 +37,6 @@ paperweight {
             patchesDir = file("mili-api/luminol-patches")
             outputDir = file("luminol-api")
         }
-        patchDir("luminolServer") {
-            upstreamPath = "luminol-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = file("mili-server/luminol-patches")
-            outputDir = file("luminol-server")
-        }
     }
 }
 
