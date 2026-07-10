@@ -1,6 +1,7 @@
 package fun.bm.mili.rust;
 
 import org.bukkit.util.Vector;
+import fun.bm.mili.rust.RustBridge;
 
 /**
  * Java-side helper for Rust rendering optimizations.

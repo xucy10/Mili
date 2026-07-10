@@ -19,6 +19,11 @@ dependencies {
     api(project(":mili-rust"))
 }
 
+// Ensure mili-rust is compiled before mili-server
+tasks.named("compileJava") {
+    dependsOn(project(":mili-rust").tasks.named("jar"))
+}
+
 paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
     gitFilePatches = false
