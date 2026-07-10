@@ -2,6 +2,8 @@ From: Mili Bot <mili@example.com>
 Date: Thu, 10 Jul 2026 12:00:00 +0800
 Subject: [PATCH] Rebrand to Mili
 
+diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
 --- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
 +++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
 @@ -30,6 +30,7 @@ public interface ServerBuildInfo {
