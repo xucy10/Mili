@@ -114,3 +114,47 @@ subprojects {
         }
     }
 }
+
+val activeForkReplacement = """
+    val mili = forks.register("mili") {
+        forks = luminol
+        upstream.patchRepo("paperServer") {
+            upstreamRepo = luminol.patchedRepo("paperServer")
+            patchesDir = rootDirectory.dir("mili-server/paper-patches")
+            outputDir = rootDirectory.dir("paper-server")
+        }
+
+        upstream.patchDir("luminolServer") {
+            upstreamPath = "luminol-server"
+            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
+            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
+            outputDir = rootDirectory.dir("luminol-server")
+        }
+    }
+
+    activeFork = mili
+""".trimIndent()
+
+tasks.register("fixMiliFork") {
+    dependsOn(":applyLuminolSingleFilePatches")
+    doLast {
+        val file = file("mili-server/build.gradle.kts")
+        val content = file.readText()
+        val modified = content.replace("activeFork = luminol", activeForkReplacement)
+        if (modified != content) {
+            file.writeText(modified)
+            logger.lifecycle("Applied activeFork = mili fix to mili-server/build.gradle.kts")
+        } else {
+            logger.warn("activeFork = luminol not found in mili-server/build.gradle.kts")
+        }
+    }
+    outputs.upToDateWhen { false }
+}
+
+tasks.matching { it.name.startsWith("compile") && it.project.path == ":mili-server" }.configureEach {
+    dependsOn(":fixMiliFork")
+}
+// Also depend generateReobfMappings on the fix
+tasks.matching { it.name == "generateReobfMappings" && it.project.path == ":mili-server" }.configureEach {
+    dependsOn(":fixMiliFork")
+}

@@ -1,24 +1,8 @@
 --- a/luminol-server/build.gradle.kts
 +++ b/luminol-server/build.gradle.kts
-@@ -46,7 +46,23 @@
-         }
-     }
-
--    activeFork = luminol
-+    val mili = forks.register("mili") {
-+        forks = luminol
-+        upstream.patchRepo("paperServer") {
-+            upstreamRepo = luminol.patchedRepo("paperServer")
-+            patchesDir = rootDirectory.dir("mili-server/paper-patches")
-+            outputDir = rootDirectory.dir("paper-server")
-+        }
-+
-+        upstream.patchDir("luminolServer") {
-+            upstreamPath = "luminol-server"
-+            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-+            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
-+            outputDir = rootDirectory.dir("luminol-server")
-+        }
-+    }
-+
-+    activeFork = mili
+@@ -1,3 +1,2 @@
+-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+-import org.gradle.api.tasks.testing.logging.TestLogEvent
+-
++import org.gradle.api.tasks.testing.logging.TestExceptionFormat
++import org.gradle.api.tasks.testing.logging.TestLogEvent
