@@ -52,7 +52,7 @@ public final class RustOptimizer {
     }
 
     public static String networkOptimize(String input) {
-        return executeRustCommand("network-opt", input == null ? "" : input, input -> "network-opt:1:0:0");
+        return executeRustCommand("network-opt", input == null ? "" : input, s -> "network-opt:1:0:0");
     }
 
     private static String executeRustCommand(String command, String input, Fallback fallback) {
