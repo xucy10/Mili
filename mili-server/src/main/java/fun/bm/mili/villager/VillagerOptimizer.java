@@ -421,20 +421,22 @@ public final class VillagerOptimizer implements Listener {
     }
 
     private Sound getProfessionSound(Villager.Profession profession) {
-        return switch (profession) {
-            case ARMORER -> Sound.ENTITY_VILLAGER_WORK_ARMORER;
-            case BUTCHER -> Sound.ENTITY_VILLAGER_WORK_BUTCHER;
-            case CARTOGRAPHER -> Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER;
-            case CLERIC -> Sound.ENTITY_VILLAGER_WORK_CLERIC;
-            case FARMER -> Sound.ENTITY_VILLAGER_WORK_FARMER;
-            case FISHERMAN -> Sound.ENTITY_VILLAGER_WORK_FISHERMAN;
-            case FLETCHER -> Sound.ENTITY_VILLAGER_WORK_FLETCHER;
-            case LEATHERWORKER -> Sound.ENTITY_VILLAGER_WORK_LEATHERWORKER;
-            case LIBRARIAN -> Sound.ENTITY_VILLAGER_WORK_LIBRARIAN;
-            case MASON -> Sound.ENTITY_VILLAGER_WORK_MASON;
-            case SHEPHERD -> Sound.ENTITY_VILLAGER_WORK_SHEPHERD;
-            case TOOLSMITH -> Sound.ENTITY_VILLAGER_WORK_TOOLSMITH;
-            case WEAPONSMITH -> Sound.ENTITY_VILLAGER_WORK_WEAPONSMITH;
+        if (profession == null) return null;
+        String name = profession.name();
+        return switch (name) {
+            case "ARMORER" -> Sound.ENTITY_VILLAGER_WORK_ARMORER;
+            case "BUTCHER" -> Sound.ENTITY_VILLAGER_WORK_BUTCHER;
+            case "CARTOGRAPHER" -> Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER;
+            case "CLERIC" -> Sound.ENTITY_VILLAGER_WORK_CLERIC;
+            case "FARMER" -> Sound.ENTITY_VILLAGER_WORK_FARMER;
+            case "FISHERMAN" -> Sound.ENTITY_VILLAGER_WORK_FISHERMAN;
+            case "FLETCHER" -> Sound.ENTITY_VILLAGER_WORK_FLETCHER;
+            case "LEATHERWORKER" -> Sound.ENTITY_VILLAGER_WORK_LEATHERWORKER;
+            case "LIBRARIAN" -> Sound.ENTITY_VILLAGER_WORK_LIBRARIAN;
+            case "MASON" -> Sound.ENTITY_VILLAGER_WORK_MASON;
+            case "SHEPHERD" -> Sound.ENTITY_VILLAGER_WORK_SHEPHERD;
+            case "TOOLSMITH" -> Sound.ENTITY_VILLAGER_WORK_TOOLSMITH;
+            case "WEAPONSMITH" -> Sound.ENTITY_VILLAGER_WORK_WEAPONSMITH;
             default -> null;
         };
     }
