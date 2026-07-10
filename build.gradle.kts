@@ -14,7 +14,7 @@ paperweight {
         patchFile {
             path = "lophine-server/build.gradle.kts"
             outputFile = file("mili-server/build.gradle.kts")
-            patchFile = file("mili-server/build.gradle.kts.empty.patch")
+            patchFile = file("mili-server/build.gradle.kts.patch")
         }
         patchFile {
             path = "lophine-api/build.gradle.kts"
