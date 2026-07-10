@@ -2,9 +2,6 @@ From: Mili Bot <mili@example.com>
 Date: Thu, 10 Jul 2026 12:00:00 +0800
 Subject: [PATCH] Rebrand to Mili
 
-
-diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
-index c18c0cb45a193883aa12b5d1abe690e95d289f82..e3a5f1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8 100644
 --- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
 +++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
 @@ -30,6 +30,7 @@ public interface ServerBuildInfo {
@@ -13,5 +10,3 @@ index c18c0cb45a193883aa12b5d1abe690e95d289f82..e3a5f1b2c3d4e5f6a7b8c9d0e1f2a3b4
      Key BRAND_LOPHINE_ID = Key.key("luminolmc", "lophine"); // Lophine
 +    Key BRAND_MILI_ID = Key.key("xucy10", "mili"); // Mili
  
-     /**
-      * Gets the {@code ServerBuildInfo}.
