@@ -23,4 +23,17 @@ rootProject.name = "mili"
 include("mili-api")
 include("mili-server")
 include("mili-rust")
-include("luminol-api")
+
+// Replace luminol-api references with mili-api before project configuration
+gradle.settingsEvaluated {
+    val file = rootDir.resolve("mili-server/build.gradle.kts")
+    if (file.exists()) {
+        val content = file.readText()
+        if (content.contains(":luminol-api")) {
+            file.writeText(content.replace(
+                """implementation(project(":luminol-api")) // Luminol""",
+                """implementation(project(":mili-api")) // Mili"""
+            ))
+        }
+    }
+}
