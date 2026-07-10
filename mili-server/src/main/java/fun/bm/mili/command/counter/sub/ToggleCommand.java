@@ -22,7 +22,7 @@ public class ToggleCommand extends LiteralNode {
     public boolean execute(CommandContext context) {
         HopperCounter.setEnabled(!HopperCounter.isEnabled());
         String status = HopperCounter.isEnabled() ? "enabled" : "disabled";
-        context.sender.sendMessage(Component.text("Hopper Counter " + status, NamedTextColor.GREEN));
+        context.getSender().sendMessage(Component.text("Hopper Counter " + status, NamedTextColor.GREEN));
         return true;
     }
 }

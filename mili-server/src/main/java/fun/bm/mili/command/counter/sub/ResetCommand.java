@@ -22,7 +22,7 @@ public class ResetCommand extends LiteralNode {
     @Override
     public boolean execute(CommandContext context) {
         HopperCounter.resetAll(MinecraftServer.getServer(), false);
-        context.sender.sendMessage(Component.text("Counters reset.", NamedTextColor.GREEN));
+        context.getSender().sendMessage(Component.text("Counters reset.", NamedTextColor.GREEN));
         return true;
     }
 }

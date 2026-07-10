@@ -22,7 +22,7 @@ public class CounterCommand extends RootNode {
 
     @Override
     public boolean execute(CommandContext context) {
-        context.sender.sendMessage(
+        context.getSender().sendMessage(
             Component.join(
                 JoinConfiguration.noSeparators(),
                 Component.text("Hopper Counter: ", NamedTextColor.GRAY),

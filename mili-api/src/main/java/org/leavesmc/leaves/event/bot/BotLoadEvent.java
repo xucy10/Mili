@@ -9,12 +9,19 @@ import org.leavesmc.leaves.event.BukkitEvent;
 public class BotLoadEvent extends BukkitEvent implements Cancellable {
 
     private final String botName;
+    private final java.util.UUID botUUID;
 
     public BotLoadEvent(String botName) {
+        this(botName, null);
+    }
+
+    public BotLoadEvent(String botName, java.util.UUID botUUID) {
         this.botName = botName;
+        this.botUUID = botUUID;
     }
 
     public String getBotName() { return botName; }
+    public java.util.UUID getBotUUID() { return botUUID; }
 
     private boolean cancelled = false;
     @Override public boolean isCancelled() { return cancelled; }

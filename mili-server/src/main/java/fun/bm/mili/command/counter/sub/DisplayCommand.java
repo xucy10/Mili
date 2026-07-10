@@ -25,7 +25,7 @@ public class DisplayCommand extends LiteralNode {
         for (DyeColor color : DyeColor.values()) {
             total += HopperCounter.getCounter(color).getTotalItems();
         }
-        context.sender.sendMessage(Component.text("Hoppers: " + total, NamedTextColor.GRAY));
+        context.getSender().sendMessage(Component.text("Hoppers: " + total, NamedTextColor.GRAY));
         return true;
     }
 }

@@ -17,6 +17,7 @@ public class BotSpawnLocationEvent extends BukkitEvent implements Cancellable {
     }
 
     public Player getBot() { return bot; }
+    public org.bukkit.Location getSpawnLocation() { return spawnLocation; }
 
     private boolean cancelled = false;
     @Override public boolean isCancelled() { return cancelled; }
