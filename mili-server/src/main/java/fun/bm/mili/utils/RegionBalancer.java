@@ -142,6 +142,10 @@ public final class RegionBalancer {
         fun.bm.mili.utils.AdaptiveTPSManager.start();
         // Mili end - Adaptive TPS
 
+        // Mili start - Villager Optimizer & Lag Remover
+        fun.bm.mili.MiliOptimizations.init();
+        // Mili end - Villager Optimizer & Lag Remover
+
         com.mojang.logging.LogUtils.getClassLogger().info(
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }

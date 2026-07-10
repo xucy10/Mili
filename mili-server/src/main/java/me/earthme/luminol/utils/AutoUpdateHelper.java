@@ -35,11 +35,11 @@ public final class AutoUpdateHelper {
     private final Logger LOGGER = LogUtils.getClassLogger();
     private final Gson GSON = new Gson();
 
-    private final String GITHUB_API_BASE = "https://api.github.com/repos/LuminolMC/Luminol";
+    private final String GITHUB_API_BASE = "https://api.github.com/repos/xucy10/Mili";
     private final Path AUTO_UPDATE_DIR = Path.of("auto_update");
     private final Path CORE_PATH_FILE = AUTO_UPDATE_DIR.resolve("core.path");
-    private final Path LUMINOL_UPDATE_DIR = AUTO_UPDATE_DIR.resolve("luminol");
-    private final Path LATEST_PATH_FILE = LUMINOL_UPDATE_DIR.resolve("latest.path");
+    private final Path MILI_UPDATE_DIR = AUTO_UPDATE_DIR.resolve("mili");
+    private final Path LATEST_PATH_FILE = MILI_UPDATE_DIR.resolve("latest.path");
     private final long DAILY_TASK_PERIOD_MILLIS = TimeUnit.DAYS.toMillis(1);
 
     private final AtomicBoolean UPDATE_RUNNING = new AtomicBoolean(false);
@@ -51,13 +51,13 @@ public final class AutoUpdateHelper {
         ensureWorkingDirectories();
 
         scheduler = Executors.newSingleThreadScheduledExecutor(task -> {
-            final Thread thread = new Thread(task, "Luminol Auto Update Scheduler");
+            final Thread thread = new Thread(task, "Mili Auto Update Scheduler");
             thread.setDaemon(true);
             return thread;
         });
 
         if (AutoUpdateConfig.checkTimes.isEmpty()) {
-            LOGGER.warn("Luminol auto-update is enabled, but misc.auto_update.check_times is empty.");
+            LOGGER.warn("Mili auto-update is enabled, but misc.auto_update.check_times is empty.");
             return;
         }
 
@@ -95,14 +95,13 @@ public final class AutoUpdateHelper {
 
     private void checkForUpdatesSafely() {
         if (!UPDATE_RUNNING.compareAndSet(false, true)) {
-            LOGGER.info("A Luminol auto-update check is already running, skipping this schedule.");
+            LOGGER.info("A Mili auto-update check is already running, skipping this schedule.");
             return;
         }
-
         try {
             checkForUpdates();
         } catch (Exception e) {
-            LOGGER.warn("Luminol auto-update failed.", e);
+            LOGGER.warn("Mili auto-update failed.", e);
         } finally {
             UPDATE_RUNNING.set(false);
         }
@@ -123,7 +122,7 @@ public final class AutoUpdateHelper {
 
         final ReleaseAssetInfo latestRelease = getLatestCompatibleRelease(mcVersion, gitBranch);
         if (latestRelease == null) {
-            LOGGER.warn("No compatible Luminol release was found for Minecraft {}{}.",
+            LOGGER.warn("No compatible Mili release was found for Minecraft {}{}.",
                     mcVersion,
                     gitBranch == null ? "" : " on branch " + gitBranch
             );
@@ -132,7 +131,7 @@ public final class AutoUpdateHelper {
 
         final UpdateStatus updateStatus = compareReleaseWithCurrentBuild(latestRelease.releaseCommitHash(), currentGitHash);
         if (updateStatus == UpdateStatus.UP_TO_DATE) {
-            LOGGER.info("You are already running the latest compatible Luminol release: {}", latestRelease.tagName());
+            LOGGER.info("You are already running the latest compatible Mili release: {}", latestRelease.tagName());
             return;
         }
 
@@ -154,7 +153,7 @@ public final class AutoUpdateHelper {
             return;
         }
 
-        LOGGER.info("Found a newer Luminol release: {}", latestRelease.tagName());
+        LOGGER.info("Found a newer Mili release: {}", latestRelease.tagName());
 
         final Path stagedJar = downloadAndStageRelease(latestRelease);
         final Path finalJarPath = tryApplyTargetJar(stagedJar);
@@ -163,7 +162,7 @@ public final class AutoUpdateHelper {
 
         if (finalJarPath.equals(stagedJar)) {
             LOGGER.info(
-                    "Downloaded the latest Luminol jar to {} and refreshed auto_update/core.path for Hyacinthusclip. Please restart your server.",
+                    "Downloaded the latest Mili jar to {} and refreshed auto_update/core.path for Hyacinthusclip. Please restart your server.",
                     finalJarPath.toAbsolutePath()
             );
         } else {
@@ -177,9 +176,9 @@ public final class AutoUpdateHelper {
 
     private void ensureWorkingDirectories() {
         try {
-            Files.createDirectories(LUMINOL_UPDATE_DIR);
+            Files.createDirectories(MILI_UPDATE_DIR);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create Luminol auto update directory", e);
+            throw new RuntimeException("Failed to create Mili auto update directory", e);
         }
     }
 
@@ -304,9 +303,9 @@ public final class AutoUpdateHelper {
     }
 
     private @NotNull Path downloadAndStageRelease(ReleaseAssetInfo releaseInfo) {
-        final Path tempPath = LUMINOL_UPDATE_DIR.resolve(releaseInfo.assetName() + ".cache");
-        final Path stagedPath = LUMINOL_UPDATE_DIR.resolve(releaseInfo.assetName());
-        final Path backupPath = LUMINOL_UPDATE_DIR.resolve(releaseInfo.assetName() + ".old");
+        final Path tempPath = MILI_UPDATE_DIR.resolve(releaseInfo.assetName() + ".cache");
+        final Path stagedPath = MILI_UPDATE_DIR.resolve(releaseInfo.assetName());
+        final Path backupPath = MILI_UPDATE_DIR.resolve(releaseInfo.assetName() + ".old");
 
         try {
             Files.deleteIfExists(tempPath);
@@ -337,7 +336,7 @@ public final class AutoUpdateHelper {
 
         final Path targetJar = Path.of(AutoUpdateConfig.targetJarPath).toAbsolutePath().normalize();
         final Path targetParent = targetJar.getParent();
-        final Path tempTarget = LUMINOL_UPDATE_DIR.resolve(targetJar.getFileName().toString() + ".apply.cache");
+        final Path tempTarget = MILI_UPDATE_DIR.resolve(targetJar.getFileName().toString() + ".apply.cache");
         final Path backupTarget = targetJar.resolveSibling(targetJar.getFileName().toString() + ".old");
 
         try {
@@ -440,7 +439,7 @@ public final class AutoUpdateHelper {
     private @NotNull HttpURLConnection openConnection(String url) throws IOException, URISyntaxException {
         final HttpURLConnection connection = (HttpURLConnection) new URI(url).toURL().openConnection();
         connection.setRequestProperty("Accept", "application/vnd.github+json");
-        connection.setRequestProperty("User-Agent", "Luminol Auto Update");
+        connection.setRequestProperty("User-Agent", "Mili Auto Update");
         connection.setConnectTimeout(10000);
         connection.setReadTimeout(10000);
         return connection;
