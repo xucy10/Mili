@@ -14,7 +14,7 @@ paperweight {
         patchFile {
             path = "luminol-server/build.gradle.kts"
             outputFile = file("mili-server/build.gradle.kts")
-            // patchFile disabled - changes handled by fixMiliFork task
+            patchFile = file("mili-server/build.gradle.kts.empty.patch")
         }
         patchFile {
             path = "luminol-api/build.gradle.kts"
