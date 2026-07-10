@@ -38,7 +38,7 @@ import java.util.logging.Level;
 @SuppressWarnings("unused")
 public class KaiijuEntityLimits {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final File CONFIG_FOLDER = new File("luminol_config");
+    private static final File CONFIG_FOLDER = new File("mili_config");
 
     protected static final String HEADER =
             "Per region entity limits for Kaiiju.\n"

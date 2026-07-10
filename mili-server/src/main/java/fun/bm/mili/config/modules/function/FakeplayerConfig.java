@@ -9,7 +9,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "fakeplayer")
 public class FakeplayerConfig implements ConfigModule {
     @ConfigInfo(name = "enable", comments = "Enable fakeplayer functionality") public static boolean enable = true;
-    public static java.util.List<String> unableNames = java.util.Arrays.asList("player-name");
+    @ConfigInfo(name = "unable-names", comments = "List of names that cannot be used for fakeplayers") public static java.util.List<String> unableNames = java.util.Arrays.asList("player-name");
     @ConfigInfo(name = "limit", comments = "Maximum number of fakeplayers allowed") public static int limit = 10;
     @ConfigInfo(name = "prefix", comments = "Prefix for fakeplayer names") public static String prefix = "";
     @ConfigInfo(name = "suffix", comments = "Suffix for fakeplayer names") public static String suffix = "";
@@ -25,7 +25,7 @@ public class FakeplayerConfig implements ConfigModule {
     @ConfigInfo(name = "spawn-phantom", comments = "Allow phantoms to spawn for fakeplayers") public static boolean canSpawnPhantom = false;
     @ConfigInfo(name = "simulation-distance", comments = "Simulation distance for fakeplayers (-1 for default)") public static int simulationDistance = -1;
     @ConfigInfo(name = "enable-locator-bar", comments = "Enable locator bar for fakeplayers") public static boolean enableLocatorBar = false;
-    public static org.leavesmc.leaves.bot.ServerBot.TickType tickType = org.leavesmc.leaves.bot.ServerBot.TickType.ENTITY_LIST;
+    @ConfigInfo(name = "tick-type", comments = "Tick type for fakeplayers (ENTITY_LIST, REGION_TICK)") public static org.leavesmc.leaves.bot.ServerBot.TickType tickType = org.leavesmc.leaves.bot.ServerBot.TickType.ENTITY_LIST;
 
     public static int getSimulationDistance(org.leavesmc.leaves.bot.ServerBot bot) {
         return simulationDistance == -1 ? bot.getBukkitEntity().getSimulationDistance() : simulationDistance;

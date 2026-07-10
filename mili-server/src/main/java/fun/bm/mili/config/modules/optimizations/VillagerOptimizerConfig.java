@@ -1,6 +1,7 @@
 package fun.bm.mili.config.modules.optimizations;
 
-import me.earthme.luminol.config.IConfigModule;
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.config.modules.ConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.config.flags.HotReloadUnsupported;
@@ -11,7 +12,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         Disables AI for trapped villagers while preserving trading functionality.
         Includes smart restocking, activity detection, and TPS-aware scaling.
         """)
-public class VillagerOptimizerConfig implements IConfigModule {
+public class VillagerOptimizerConfig implements ConfigModule {
     @ConfigInfo(name = "enabled", comments = "Enable advanced villager AI optimization")
     public static boolean enabled = false;
 
@@ -66,4 +67,10 @@ public class VillagerOptimizerConfig implements IConfigModule {
     @HotReloadUnsupported
     @ConfigInfo(name = "always_active_names", comments = "List of names that will always keep villagers active")
     public static String[] alwaysActiveNames = new String[]{"alwaysbrain"};
+
+    @Override
+    public void onLoaded(CommentedFileConfig configInstance) {}
+
+    @Override
+    public void onUnloaded(CommentedFileConfig configInstance) {}
 }
