@@ -454,7 +454,7 @@ public final class VillagerOptimizer implements Listener {
             if (isAware) {
                 statusText = "<green>村民未优化，拥有AI，可用于繁殖/刷铁/农业。</green><red>用于交易建议将其困住，节省性能</red>";
             } else {
-                statusText = "<red>村民已优化，失去AI，但可以交易。</red><green>用于繁殖/刷铁/农业，建议命名为"命"/"1"。</green>";
+                statusText = "<red>村民已优化，失去AI，但可以交易。</red><green>用于繁殖/刷铁/农业，建议命名为命/1。</green>";
             }
         }
         player.sendActionBar(MINI_MESSAGE.deserialize(statusText));
