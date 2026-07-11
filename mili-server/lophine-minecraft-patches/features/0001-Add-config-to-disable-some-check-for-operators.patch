@@ -1,7 +1,0 @@
-From: Mili Bot <mili@example.com>
-Date: Thu, 10 Jul 2026 12:00:00 +0800
-Subject: [PATCH] Fix: disable operator check config (override broken Lophine patch)
-
---- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-+++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -0,0 +1,0 @@

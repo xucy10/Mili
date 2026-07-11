@@ -7,25 +7,25 @@ plugins {
 }
 
 paperweight {
-    upstreams.register("lophine") {
-        repo = github("LuminolMC", "Lophine")
-        ref = providers.gradleProperty("lophineRef")
+    upstreams.register("paper") {
+        repo = github("PaperMC", "Paper")
+        ref = providers.gradleProperty("paperRef")
 
         patchRepo("paperApi") {
             upstreamPath = "paper-api"
             patchesDir = file("mili-api/paper-patches")
             outputDir = file("paper-api")
         }
+    }
+
+    upstreams.register("folia") {
+        repo = github("PaperMC", "Folia")
+        ref = providers.gradleProperty("foliaRef")
+
         patchRepo("foliaApi") {
             upstreamPath = "folia-api"
             patchesDir = file("mili-api/folia-patches")
             outputDir = file("folia-api")
-        }
-        patchDir("lophineApi") {
-            upstreamPath = "lophine-api"
-            excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches")
-            patchesDir = file("mili-api/lophine-patches")
-            outputDir = file("lophine-api")
         }
     }
 }
@@ -99,51 +99,24 @@ subprojects {
     }
 }
 
-val activeForkReplacement = """
-    val mili = forks.register("mili") {
-        forks = lophine
-        upstream.patchRepo("paperServer") {
-            upstreamRepo = lophine.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("mili-server/paper-patches")
-            outputDir = rootDirectory.dir("paper-server")
-        }
+tasks.register("applyAllPatches") {
+    group = "paper"
+    description = "Applies all upstream project patches"
 
-        upstream.patchDir("lophineServer") {
-            upstreamPath = "lophine-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
-            outputDir = rootDirectory.dir("lophine-server")
-        }
-    }
-
-    activeFork = mili
-""".trimIndent()
-
-tasks.register("fixMiliFork") {
-    dependsOn(":applyLophineSingleFilePatches")
-    doLast {
-        val file = file("mili-server/build.gradle.kts")
-        var content = file.readText()
-        // Replace activeFork = lophine with mili fork registration
-        if (content.contains("activeFork = lophine")) {
-            content = content.replace("activeFork = lophine", activeForkReplacement)
-        }
-        // Replace project(":lophine-api") with project(":mili-api")
-        content = content.replace(
-            """implementation(project(":lophine-api")) // Lophine""",
-            """implementation(project(":mili-api")) // Mili"""
-        )
-        if (content != file.readText()) {
-            file.writeText(content)
-            logger.lifecycle("Applied fixes to mili-server/build.gradle.kts")
-        }
-    }
-    outputs.upToDateWhen { false }
-}
-
-tasks.matching { it.name.startsWith("compile") && it.project.name == "mili-server" }.configureEach {
-    dependsOn(":fixMiliFork")
-}
-tasks.matching { it.name == "generateReobfMappings" && it.project.name == "mili-server" }.configureEach {
-    dependsOn(":fixMiliFork")
+    dependsOn(
+        tasks.named("checkoutPaperRepo"),
+        tasks.named("checkoutFoliaRepo"),
+        tasks.named("applyUpstream"),
+        tasks.named("applyPaperApiFilePatches"),
+        tasks.named("applyPaperApiFeaturePatches"),
+        tasks.named("applyPaperApiPatches"),
+        tasks.named("applyFoliaApiFilePatches"),
+        tasks.named("applyFoliaApiFeaturePatches"),
+        tasks.named("applyFoliaApiPatches"),
+        tasks.named("applyPaperSingleFilePatches"),
+        tasks.named("applyPaperPatches"),
+        tasks.named("applyFoliaSingleFilePatches"),
+        tasks.named("applyFoliaPatches"),
+        tasks.named("applyForDownstream"),
+    )
 }
