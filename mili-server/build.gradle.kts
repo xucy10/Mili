@@ -47,6 +47,13 @@ paperweight {
             patchesDir = rootDirectory.dir("lophine-server/folia-patches")
             outputDir = rootDirectory.dir("folia-server")
         }
+
+        upstream.patchDir("lophineServer") {
+            upstreamPath = "lophine-server"
+            excludes = setOf("src/minecraft", "paper-patches", "folia-patches", "minecraft-patches/features/0001-Add-config-to-disable-some-check-for-operators.patch", "build.gradle.kts", "build.gradle.kts.patch")
+            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
+            outputDir = rootDirectory.dir("lophine-server")
+        }
     }
 
     activeFork = lophine
