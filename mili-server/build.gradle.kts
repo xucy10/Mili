@@ -23,13 +23,25 @@ paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
     gitFilePatches = false
     
-    val fork = forks.register("folia") {
-        rootDirectory = upstreamsDirectory().map { it.dir("folia") }
+    val fork = forks.register("lophine") {
+        rootDirectory = upstreamsDirectory().map { it.dir("lophine") }
         upstream.patchDir("paperServer") {
             upstreamPath = "paper-server"
             excludes = setOf("src/minecraft", "patches", "build.gradle.kts")
-            patchesDir = rootDirectory.dir("folia-server/paper-patches")
+            patchesDir = rootDirectory.dir("lophine-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
+        }
+        upstream.patchDir("lophineServer") {
+            upstreamPath = "lophine-server"
+            excludes = setOf(
+                "src/minecraft",
+                "paper-patches",
+                "minecraft-patches/features/0001-Add-config-to-disable-some-check-for-operators.patch",
+                "build.gradle.kts",
+                "build.gradle.kts.patch"
+            )
+            patchesDir = rootDirectory.dir("lophine-server/lophine-patches")
+            outputDir = rootDirectory.dir("lophine-server")
         }
     }
 
@@ -41,11 +53,17 @@ paperweight {
             outputDir = rootDirectory.dir("paper-server")
         }
 
-        upstream.patchDir("foliaServer") {
-            upstreamPath = "folia-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/folia-patches")
-            outputDir = rootDirectory.dir("folia-server")
+        upstream.patchDir("lophineServer") {
+            upstreamPath = "lophine-server"
+            excludes = setOf(
+                "src/minecraft", 
+                "paper-patches", 
+                "minecraft-patches/features/0001-Add-config-to-disable-some-check-for-operators.patch",
+                "build.gradle.kts", 
+                "build.gradle.kts.patch"
+            )
+            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
+            outputDir = rootDirectory.dir("lophine-server")
         }
     }
 

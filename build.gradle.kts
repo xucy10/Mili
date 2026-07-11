@@ -7,21 +7,15 @@ plugins {
 }
 
 paperweight {
-    upstreams.register("paper") {
-        repo = github("PaperMC", "Paper")
-        ref = providers.gradleProperty("paperRef")
+    upstreams.register("lophine") {
+        repo = github("LuminolMC", "Lophine")
+        ref = providers.gradleProperty("lophineRef")
 
         patchRepo("paperApi") {
             upstreamPath = "paper-api"
             patchesDir = file("mili-api/paper-patches")
             outputDir = file("paper-api")
         }
-    }
-
-    upstreams.register("folia") {
-        repo = github("PaperMC", "Folia")
-        ref = providers.gradleProperty("foliaRef")
-
         patchRepo("foliaApi") {
             upstreamPath = "folia-api"
             patchesDir = file("mili-api/folia-patches")
@@ -97,26 +91,4 @@ subprojects {
             }
         }
     }
-}
-
-tasks.register("applyAllPatches") {
-    group = "paper"
-    description = "Applies all upstream project patches"
-
-    dependsOn(
-        tasks.named("checkoutPaperRepo"),
-        tasks.named("checkoutFoliaRepo"),
-        tasks.named("applyUpstream"),
-        tasks.named("applyPaperApiFilePatches"),
-        tasks.named("applyPaperApiFeaturePatches"),
-        tasks.named("applyPaperApiPatches"),
-        tasks.named("applyFoliaApiFilePatches"),
-        tasks.named("applyFoliaApiFeaturePatches"),
-        tasks.named("applyFoliaApiPatches"),
-        tasks.named("applyPaperSingleFilePatches"),
-        tasks.named("applyPaperPatches"),
-        tasks.named("applyFoliaSingleFilePatches"),
-        tasks.named("applyFoliaPatches"),
-        tasks.named("applyForDownstream"),
-    )
 }
