@@ -120,7 +120,7 @@ public final class MemoryOptimizer {
 
         for (int i = 0; i < 3; i++) {
             System.gc();
-            try { Thread.sleep(50); } catch (InterruptedException ignored) }
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
 
         long after = getUsedMemory();
