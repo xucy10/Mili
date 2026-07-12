@@ -95,7 +95,7 @@ jobs:
           cd ..
 
       - name: Apply All Patches
-        run: ./gradlew applyAllPatches
+        run: ./gradlew --refresh-dependencies applyAllPatches
 
       - name: Inject Kotlin Config
         run: python3 scripts/inject_kotlin.py
