@@ -10,6 +10,12 @@ paperweight {
     upstreams.register("luminol") {
         repo = "file://" + rootProject.layout.projectDirectory.dir("Luminol-ver-1.21.11").asFile.absolutePath.replace("\\", "/")
         ref = "HEAD"
+
+        patchRepo("paperApi") {
+            upstreamPath = "paper-api"
+            patchesDir = file("mili-api/paper-patches")
+            outputDir = file("paper-api")
+        }
     }
 }
 
