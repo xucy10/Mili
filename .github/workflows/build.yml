@@ -90,6 +90,14 @@ jobs:
           ls -la .gradle/caches/paperweight 2>/dev/null || echo "paperweight cache removed"
           rm -rf .gradle/caches/paperweight/upstreams/server-work
 
+      - name: Initialize Luminol Local Repo
+        run: |
+          cd Luminol-ver-1.21.11
+          git init
+          git add -A
+          git commit -m "luminol"
+          cd ..
+
       - name: Apply Server Patches
         run: ./gradlew --refresh-dependencies applyAllServerPatches
 
