@@ -94,6 +94,14 @@ jobs:
           git commit -m "luminol"
           cd ..
 
+      - name: Download Hyacinthusclip
+        run: |
+          mkdir -p libs
+          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
+          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          ls -la libs/hyacinthusclip.jar
+
       - name: Apply All Patches
         run: ./gradlew applyAllPatches
 

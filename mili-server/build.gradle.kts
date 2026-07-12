@@ -15,7 +15,7 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:1.21.11+build.1")
-    hyacinthusclip("moe.luminolmc:hyacinthusclip:${providers.gradleProperty("clipVersion").get()}")
+    hyacinthusclip(files(rootProject.layout.projectDirectory.file("libs/hyacinthusclip.jar")))
 }
 
 paperweight {
