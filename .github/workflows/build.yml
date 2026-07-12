@@ -95,7 +95,33 @@ jobs:
           cd ..
 
       - name: Apply All Patches
-        run: ./gradlew --refresh-dependencies applyAllPatches
+        run: ./gradlew applyAllPatches
+
+      - name: Verify Generated Source
+        run: |
+          echo "=== Checking generated API source dirs ==="
+          for d in paper-api folia-api luminol-api paper-server folia-server luminol-server; do
+            if [ -d "$d" ] && [ "$(ls -A $d 2>/dev/null)" ]; then
+              echo "OK: $d/ exists ($(find $d -name '*.java' | wc -l) java files)"
+            else
+              echo "MISSING: $d/"
+            fi
+          done
+
+      - name: Copy API Source from Upstream Cache
+        run: |
+          UPSTREAM_DIR=".gradle/caches/paperweight/upstreams/luminol"
+          for api_dir in paper-api folia-api; do
+            if [ ! -d "$api_dir/src" ] && [ -d "$UPSTREAM_DIR/$api_dir/src" ]; then
+              echo "Copying $api_dir from upstream cache..."
+              cp -r "$UPSTREAM_DIR/$api_dir" "$api_dir"
+              echo "Copied $(find $api_dir -name '*.java' | wc -l) java files to $api_dir/"
+            elif [ -d "$api_dir/src" ]; then
+              echo "$api_dir already exists at root"
+            else
+              echo "WARNING: $api_dir not found in upstream cache either"
+            fi
+          done
 
       - name: Inject Kotlin Config
         run: python3 scripts/inject_kotlin.py
