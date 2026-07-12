@@ -16,63 +16,61 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 dependencies {
     mache("io.papermc:mache:1.21.11+build.1")
     hyacinthusclip("moe.luminolmc:hyacinthusclip:${providers.gradleProperty("clipVersion").get()}")
-    api(project(":mili-rust"))
 }
 
 paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
     gitFilePatches = false
     
-    val fork = forks.register("lophine") {
-        rootDirectory = upstreamsDirectory().map { it.dir("lophine") }
+    val fork = forks.register("folia") {
+        rootDirectory = upstreamsDirectory().map { it.dir("folia") }
         upstream.patchDir("paperServer") {
             upstreamPath = "paper-server"
             excludes = setOf("src/minecraft", "patches", "build.gradle.kts")
-            patchesDir = rootDirectory.dir("lophine-server/paper-patches")
+            patchesDir = rootDirectory.dir("folia-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
-        upstream.patchDir("lophineServer") {
-            upstreamPath = "lophine-server"
-            excludes = setOf(
-                "src/minecraft",
-                "paper-patches",
-                "minecraft-patches/features/0001-Add-config-to-disable-some-check-for-operators.patch",
-                "build.gradle.kts",
-                "build.gradle.kts.patch"
-            )
-            patchesDir = rootDirectory.dir("lophine-server/lophine-patches")
-            outputDir = rootDirectory.dir("lophine-server")
+    }
+
+    val luminol = forks.register("luminol") {
+        forks = fork
+        upstream.patchRepo("paperServer") {
+            upstreamRepo = fork.patchedRepo("paperServer")
+            patchesDir = rootDirectory.dir("luminol-server/paper-patches")
+            outputDir = rootDirectory.dir("paper-server")
+        }
+
+        upstream.patchDir("foliaServer") {
+            upstreamPath = "folia-server"
+            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
+            patchesDir = rootDirectory.dir("luminol-server/folia-patches")
+            outputDir = rootDirectory.dir("folia-server")
         }
     }
 
     val mili = forks.register("mili") {
-        forks = fork
+        forks = luminol
         upstream.patchRepo("paperServer") {
-            upstreamRepo = fork.patchedRepo("paperServer")
+            upstreamRepo = luminol.patchedRepo("paperServer")
             patchesDir = rootDirectory.dir("mili-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
 
-        upstream.patchDir("lophineServer") {
-            upstreamPath = "lophine-server"
-            excludes = setOf(
-                "src/minecraft", 
-                "paper-patches", 
-                "minecraft-patches/features/0001-Add-config-to-disable-some-check-for-operators.patch",
-                "build.gradle.kts", 
-                "build.gradle.kts.patch"
-            )
-            patchesDir = rootDirectory.dir("mili-server/lophine-patches")
-            outputDir = rootDirectory.dir("lophine-server")
+        upstream.patchDir("luminolServer") {
+            upstreamPath = "luminol-server"
+            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
+            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
+            outputDir = rootDirectory.dir("luminol-server")
         }
     }
 
     activeFork = mili
 
+
     spigot {
         enabled = true
         buildDataRef = "17f77cee7117ab9d6175f088ae8962bfd04e61a9"
-        packageVersion = "v1_21_R7"
+        packageVersion = "v1_21_R7" // also needs to be updated in MappingEnvironment
     }
 
     reobfPackagesToFix.addAll(
@@ -86,6 +84,10 @@ paperweight {
         "org.bukkit.craftbukkit",
         "org.spigotmc",
     )
+
+    updatingMinecraft {
+        // oldPaperCommit = "c82b438b5b4ea0b230439b8e690e34708cd11ab3"
+    }
 }
 
 tasks.generateDevelopmentBundle {
@@ -132,6 +134,7 @@ if (project.providers.gradleProperty("publishDevBundle").isPresent) {
     tasks.withType(GenerateMavenPom::class).configureEach {
         doLast {
             val text = destination.readText()
+            // Remove dependencies from pom, dev bundle is designed for gradle module metadata consumers
             destination.writeText(
                 text.substringBefore("<dependencies>") + text.substringAfter("</dependencies>")
             )
@@ -152,15 +155,18 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
+        java { srcDir("../luminol-server/src/main/java") }
+        resources { srcDir("../luminol-server/src/main/resources") }
     }
     test {
         java { srcDir("../paper-server/src/test/java") }
         resources { srcDir("../paper-server/src/test/resources") }
         java { srcDir("../folia-server/src/test/java") }
         resources { srcDir("../folia-server/src/test/resources") }
+        java { srcDir("../luminol-server/src/main/java") }
+        resources { srcDir("../luminol-server/src/main/resources") }
     }
 }
-
 val log4jPlugins = sourceSets.create("log4jPlugins") {
     java { srcDir("../paper-server/src/log4jPlugins/java") }
 }
@@ -174,6 +180,7 @@ val runtimeConfiguration by configurations.consumable("runtimeConfiguration") {
     extendsFrom(configurations.getByName(sourceSets.main.get().runtimeElementsConfigurationName))
 }
 
+// Configure mockito agent that is needed in newer java versions
 val mockitoAgent = configurations.register("mockitoAgent")
 abstract class MockitoAgentProvider : CommandLineArgumentProvider {
     @get:CompileClasspath
@@ -185,80 +192,110 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 }
 
 dependencies {
-    implementation(project(":mili-api"))
-    
+    implementation(project(":mili-api")) // Mili
+    implementation(project(":mili-rust"))
+    // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
-    implementation("io.netty:netty-all:4.2.9.Final")
-    implementation("com.electronwill.night-config:toml:3.8.3")
+    implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
+    implementation("com.electronwill.night-config:toml:3.8.3") // Night config
     implementation("com.github.luben:zstd-jni:1.5.4-1")
     implementation("net.openhft:zero-allocation-hashing:0.16")
     implementation("io.github.classgraph:classgraph:4.8.158")
     implementation("net.openhft:affinity:3.23.3")
+    // Leaves start - leaves plugin
     implementation("org.spongepowered:configurate-gson:4.2.0-SNAPSHOT") {
         exclude(group = "com.google.code.gson", module = "gson")
         exclude(group = "com.google.guava", module = "guava")
     }
+    // Leaves end - leaves plugin
+    // Luminol end
     implementation("ca.spottedleaf:concurrentutil:0.0.8")
-    implementation("org.jline:jline-terminal-ffm:3.27.1")
-    implementation("org.jline:jline-terminal-jni:3.27.1")
+    implementation("org.jline:jline-terminal-ffm:3.27.1") // use ffm on java 22+
+    implementation("org.jline:jline-terminal-jni:3.27.1") // fall back to jni on java 21
     implementation("net.minecrell:terminalconsoleappender:1.3.0")
     implementation("net.kyori:adventure-text-serializer-ansi")
+
+    /*
+      Required to add the missing Log4j2Plugins.dat file from log4j-core
+      which has been removed by Mojang. Without it, log4j has to classload
+      all its classes to check if they are plugins.
+      Scanning takes about 1-2 seconds so adding this speeds up the server start.
+     */
     implementation("org.apache.logging.log4j:log4j-core:2.24.1")
-    log4jPlugins.annotationProcessorConfigurationName("org.apache.logging.log4j:log4j-core:2.24.1")
+    log4jPlugins.annotationProcessorConfigurationName("org.apache.logging.log4j:log4j-core:2.24.1") // Needed to generate meta for our Log4j plugins
     runtimeOnly(log4jPlugins.output)
     alsoShade(log4jPlugins.output)
-    implementation("one.pkg.velocity_rc:velocity-native:3.4.0-SNAPSHOT") {
+
+    implementation("one.pkg.velocity_rc:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT ReastLib
         isTransitive = false
     }
-    implementation("io.netty:netty-codec-haproxy:4.2.7.Final")
+    implementation("io.netty:netty-codec-haproxy:4.2.7.Final") // Add support for proxy protocol
     implementation("org.apache.logging.log4j:log4j-iostreams:2.24.1")
     implementation("org.ow2.asm:asm-commons:9.8")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
 
+    // Deps that were previously in the API but have now been moved here for backwards compat, eventually to be removed
     runtimeOnly("commons-lang:commons-lang:2.6")
     runtimeOnly("org.xerial:sqlite-jdbc:3.49.1.0")
     runtimeOnly("com.mysql:mysql-connector-j:9.2.0")
     runtimeOnly("com.lmax:disruptor:3.4.4")
-    implementation("com.googlecode.json-simple:json-simple:1.1.1") {
-        isTransitive = false
+    implementation("com.googlecode.json-simple:json-simple:1.1.1") { // change to runtimeOnly once Timings is removed
+        isTransitive = false // includes junit
     }
 
-    testImplementation("io.github.classgraph:classgraph:4.8.179")
+    testImplementation("io.github.classgraph:classgraph:4.8.179") // For mob goal test
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.junit.platform:junit-platform-suite-engine:1.12.2")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.mockito:mockito-core:5.14.1")
-    mockitoAgent("org.mockito:mockito-core:5.14.1") { isTransitive = false }
+    mockitoAgent("org.mockito:mockito-core:5.14.1") { isTransitive = false } // Configure mockito agent that is needed in newer java versions
     testImplementation("org.ow2.asm:asm-tree:9.8")
-    testImplementation("org.junit-pioneer:junit-pioneer:2.2.0")
+    testImplementation("org.junit-pioneer:junit-pioneer:2.2.0") // CartesianTest
 
-    implementation("net.neoforged:srgutils:1.0.9")
-    implementation("net.neoforged:AutoRenamingTool:2.0.3")
+    implementation("net.neoforged:srgutils:1.0.9") // Mappings handling
+    implementation("net.neoforged:AutoRenamingTool:2.0.3") // Remap plugins
 
+    // Remap reflection
     val reflectionRewriterVersion = "0.0.3"
     implementation("io.papermc:reflection-rewriter:$reflectionRewriterVersion")
     implementation("io.papermc:reflection-rewriter-runtime:$reflectionRewriterVersion")
     implementation("io.papermc:reflection-rewriter-proxy-generator:$reflectionRewriterVersion")
 
+    // Spark
     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
     implementation("me.lucko:spark-paper:1.10.152")
 }
 
+tasks.named<Jar>("jar") {
+    dependsOn(":mili-rust:stageRustBinary")
+    from(project(":mili-rust").layout.buildDirectory.dir("rust")) {
+        into("rust")
+    }
+}
+
+// Pufferfish Start
 tasks.withType<JavaCompile> {
     val compilerArgs = options.compilerArgs
     compilerArgs.add("--add-modules=jdk.incubator.vector")
+}
+// Pufferfish End
+
+// Luminol start - Hide unnecessary warnings
+tasks.withType<JavaCompile> {
+    val compilerArgs = options.compilerArgs
     compilerArgs.add("-Xlint:-module")
     compilerArgs.add("-Xlint:-removal")
     compilerArgs.add("-Xlint:-dep-ann")
 }
+// Luminol end
 
 tasks.jar {
     manifest {
         val git = Git(rootProject.layout.projectDirectory.path)
         val mcVersion = rootProject.providers.gradleProperty("mcVersion").get()
         val build = System.getenv("BUILD_NUMBER") ?: null
-        val buildTime = Instant.now()
+        val buildTime = Instant.now() // Always use current as build time
         val gitHash = git.exec(providers, "rev-parse", "--short=7", "HEAD").get().trim()
         val implementationVersion = "$mcVersion-${build ?: "DEV"}-$gitHash"
         val date = git.exec(providers, "show", "-s", "--format=%ci", gitHash).get().trim()
@@ -270,8 +307,8 @@ tasks.jar {
             "Implementation-Vendor" to date,
             "Specification-Title" to "Mili",
             "Specification-Version" to project.version,
-            "Specification-Vendor" to "xucy10",
-            "Brand-Id" to "xucy10:mili",
+            "Specification-Vendor" to "LuminolMC org",
+            "Brand-Id" to "luminolmc:mili",
             "Brand-Name" to "Mili",
             "Build-Number" to (build ?: ""),
             "Build-Time" to buildTime.toString(),
@@ -284,10 +321,12 @@ tasks.jar {
     }
 }
 
+// Compile tests with -parameters for better junit parameterized test names
 tasks.compileTestJava {
     options.compilerArgs.add("-parameters")
 }
 
+// Bump compile tasks to 1GB memory to avoid OOMs
 tasks.withType<JavaCompile>().configureEach {
     options.forkOptions.memoryMaximumSize = "1G"
 }
@@ -301,6 +340,7 @@ tasks.check {
     dependsOn(scanJarForBadCalls)
 }
 
+// Use TCA for console improvements
 tasks.jar {
     val archiveOperations = services.archiveOperations
     from(alsoShade.elements.map {
@@ -322,6 +362,7 @@ tasks.test {
         excludeTags("Slow")
     }
 
+    // Configure mockito agent that is needed in newer java versions
     val provider = objects.newInstance<MockitoAgentProvider>()
     provider.fileCollection.from(mockitoAgent)
     jvmArgumentProviders.add(provider)

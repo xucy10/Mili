@@ -16,7 +16,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class FakePlayerCompatConfig implements IConfigModule {
     @ConfigInfo(name = "commandBot", comments = """
             Enable Mili's /bot command.""")
-    public static boolean commandBot = true;
+    public static boolean commandBot = false;
 
     @ConfigInfo(name = "commandPlayer", comments = """
             Map Carpet's commandPlayer rule to the same fakeplayer command surface used by /bot.""")

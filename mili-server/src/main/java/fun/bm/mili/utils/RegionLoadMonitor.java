@@ -3,161 +3,149 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLongArray;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Region load monitor.
+ * Tracks per-region tick duration using a sliding window to compute average load.
+ * Thread-safe: all operations are lock-free (atomic arrays).
+ */
 public class RegionLoadMonitor {
 
+    /**
+     * Immutable snapshot of a region's load statistics.
+     */
     public record RegionLoadSnapshot(
             long avgTickNanos,
             long maxTickNanos,
             long minTickNanos,
-            double loadFactor,
+            double loadFactor, // 0.0 ~ 1.0, higher = heavier
             boolean isHighLoad,
             boolean isLowLoad
-    ) {
-        public double avgTickMs() { return avgTickNanos / 1_000_000.0; }
-        public double maxTickMs() { return maxTickNanos / 1_000_000.0; }
-        public double minTickMs() { return minTickNanos / 1_000_000.0; }
-    }
+    ) {}
 
-    private static final class RingBufferStats {
-        final AtomicLongArray buffer;
-        final AtomicInteger writePos;
-        final AtomicInteger count;
-        final int capacity;
+    private static final class RegionStats {
+        final AtomicLongArray history;
+        final AtomicInteger writeIndex = new AtomicInteger(0);
+        final AtomicInteger filledCount = new AtomicInteger(0);
 
-        RingBufferStats(int windowSize) {
-            this.capacity = windowSize;
-            this.buffer = new AtomicLongArray(windowSize);
-            this.writePos = new AtomicInteger(0);
-            this.count = new AtomicInteger(0);
+        RegionStats(int windowSize) {
+            this.history = new AtomicLongArray(windowSize);
         }
 
-        void record(long nanos) {
-            int pos = writePos.getAndIncrement() % capacity;
-            buffer.set(pos, nanos);
-
-            int currentCount = count.get();
-            if (currentCount < capacity) {
-                count.compareAndSet(currentCount, currentCount + 1);
+        void record(long tickNanos) {
+            int idx = writeIndex.getAndIncrement() % history.length();
+            history.set(idx, tickNanos);
+            if (filledCount.get() < history.length()) {
+                filledCount.incrementAndGet();
             }
         }
 
         RegionLoadSnapshot snapshot() {
-            int samples = Math.min(count.get(), capacity);
-            if (samples == 0) {
+            int count = filledCount.get();
+            if (count == 0) {
                 return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
             }
 
             long sum = 0;
-            long max = Long.MIN_VALUE;
+            long max = 0;
             long min = Long.MAX_VALUE;
-
-            for (int i = 0; i < samples; i++) {
-                long v = buffer.get(i);
+            for (int i = 0; i < count; i++) {
+                long v = history.get(i);
                 if (v <= 0) continue;
-
                 sum += v;
                 if (v > max) max = v;
                 if (v < min) min = v;
             }
-
-            if (sum == 0 || max == Long.MIN_VALUE) {
+            if (sum == 0) {
                 return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
             }
 
-            long avg = sum / samples;
-
-            double highThreshold = RegionBalancerConfig.highLoadThresholdMs * 1_000_000.0;
-            double lowThreshold = RegionBalancerConfig.lowLoadThresholdMs * 1_000_000.0;
-
-            double loadFactor = Math.min(1.0, avg / highThreshold);
-
+            long avg = sum / count;
+            double thresholdHigh = RegionBalancerConfig.highLoadThresholdMs * 1_000_000.0;
+            double thresholdLow = RegionBalancerConfig.lowLoadThresholdMs * 1_000_000.0;
+            // loadFactor: ratio of avg to thresholdHigh, capped at 1.0
+            double loadFactor = Math.min(1.0, avg / thresholdHigh);
             return new RegionLoadSnapshot(
-                    avg, max == Long.MIN_VALUE ? 0 : max,
-                    min == Long.MAX_VALUE ? 0 : min,
-                    loadFactor,
-                    avg > highThreshold,
-                    avg < lowThreshold
+                    avg, max, min, loadFactor,
+                    avg > thresholdHigh, avg < thresholdLow
             );
-        }
-
-        void reset() {
-            writePos.set(0);
-            count.set(0);
-            for (int i = 0; i < capacity; i++) {
-                buffer.set(i, 0);
-            }
         }
     }
 
-    private static final ConcurrentHashMap<Integer, RingBufferStats> STATS =
-            new ConcurrentHashMap<>();
+    // Key: RegionSchedule hashCode (each region schedule is a unique instance)
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, RegionStats> STATS =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private static int keyOf(Object schedule) {
         return System.identityHashCode(schedule);
     }
 
+    /**
+     * Called before a region tick starts.
+     */
     public static void beforeTick(Object schedule) {
-        if (!RegionBalancerConfig.enabled || schedule == null) return;
+        if (!RegionBalancerConfig.enabled) return;
+        // Nothing to record here; timestamp is captured in afterTick
     }
 
+    /**
+     * Called after a region tick completes.
+     *
+     * @param schedule the region schedule
+     * @param elapsedNanos total time spent in this tick
+     */
     public static void afterTick(Object schedule, long elapsedNanos) {
-        if (!RegionBalancerConfig.enabled || schedule == null) return;
+        if (!RegionBalancerConfig.enabled) return;
+        if (schedule == null) return;
 
-        RingBufferStats stats = STATS.computeIfAbsent(keyOf(schedule),
-                k -> new RingBufferStats(RegionBalancerConfig.historyWindowSize));
+        RegionStats stats = STATS.computeIfAbsent(keyOf(schedule), k ->
+                new RegionStats(RegionBalancerConfig.historyWindowSize));
         stats.record(elapsedNanos);
     }
 
+    /**
+     * Get the current load snapshot for a region.
+     */
     @NotNull
     public static RegionLoadSnapshot getSnapshot(Object schedule) {
         if (schedule == null) {
             return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
         }
-
-        RingBufferStats stats = STATS.get(keyOf(schedule));
-        return stats != null ? stats.snapshot() :
-                new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
+        RegionStats stats = STATS.get(keyOf(schedule));
+        return stats != null ? stats.snapshot() : new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
     }
 
+    /**
+     * Compute priority score for scheduling.  Higher = more urgent.
+     * Based on load factor + starvation prevention.
+     */
     public static double computePriority(Object schedule, long lastTickTime) {
         RegionLoadSnapshot snap = getSnapshot(schedule);
         double loadFactor = snap.loadFactor();
-
-        long now = System.nanoTime();
-        long overdue = now - lastTickTime;
-        double overdueFactor = Math.min(1.0, overdue / 50_000_000.0);
-
+        long overdue = System.nanoTime() - lastTickTime;
+        // overdue bonus: if a region hasn't ticked for a while, boost priority
+        double overdueFactor = Math.min(1.0, overdue / 50_000_000.0); // 50ms cap
         return loadFactor + overdueFactor * 0.5;
     }
 
+    /**
+     * Cleanup stats for a removed region schedule.
+     */
     public static void remove(Object schedule) {
         if (schedule == null) return;
         STATS.remove(keyOf(schedule));
     }
 
+    /**
+     * Get snapshots of all tracked regions.
+     */
     public static java.util.Collection<RegionLoadSnapshot> getAllSnapshots() {
         java.util.List<RegionLoadSnapshot> result = new java.util.ArrayList<>();
-        for (RingBufferStats stats : STATS.values()) {
+        for (RegionStats stats : STATS.values()) {
             result.add(stats.snapshot());
         }
         return result;
-    }
-
-    public static int trackedRegionCount() {
-        return STATS.size();
-    }
-
-    public static void clearAll() {
-        STATS.clear();
-    }
-
-    public static void resetAll() {
-        for (RingBufferStats stats : STATS.values()) {
-            stats.reset();
-        }
     }
 }

@@ -1,29 +1,55 @@
+/*
+ * This file is part of Leaves (https://github.com/LeavesMC/Leaves)
+ *
+ * Leaves is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Leaves is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Leaves. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.leavesmc.leaves.event.bot;
 
-import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
+import org.bukkit.Location;
 import org.bukkit.event.HandlerList;
-import org.leavesmc.leaves.event.BukkitEvent;
-import java.util.UUID;
+import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.entity.bot.Bot;
 
-public class BotSpawnLocationEvent extends BukkitEvent implements Cancellable {
+public class BotSpawnLocationEvent extends BotEvent {
 
-    private final Player bot;
-    private final org.bukkit.Location spawnLocation;
+    private static final HandlerList handlers = new HandlerList();
 
-    public BotSpawnLocationEvent(Player bot, org.bukkit.Location spawnLocation) {
-        this.bot = bot;
+    private Location spawnLocation;
+
+    public BotSpawnLocationEvent(@NotNull final Bot who, @NotNull Location spawnLocation) {
+        super(who);
         this.spawnLocation = spawnLocation;
     }
 
-    public Player getBot() { return bot; }
-    public org.bukkit.Location getSpawnLocation() { return spawnLocation; }
+    @NotNull
+    public static HandlerList getHandlerList() {
+        return handlers;
+    }
 
-    private boolean cancelled = false;
-    @Override public boolean isCancelled() { return cancelled; }
-    @Override public void setCancelled(boolean cancel) { cancelled = cancel; }
+    @NotNull
+    public Location getSpawnLocation() {
+        return spawnLocation;
+    }
 
-    private static final HandlerList HANDLERS = new HandlerList();
-    public static HandlerList getHandlerList() { return HANDLERS; }
-    @Override public HandlerList getHandlers() { return HANDLERS; }
+    public void setSpawnLocation(@NotNull Location location) {
+        this.spawnLocation = location;
+    }
+
+    @NotNull
+    @Override
+    public HandlerList getHandlers() {
+        return handlers;
+    }
 }

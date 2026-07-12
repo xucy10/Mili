@@ -1,15 +1,27 @@
 package fun.bm.mili.config.modules.experiment;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import fun.bm.mili.config.modules.ConfigModule;
+import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
+import me.earthme.luminol.config.flags.HotReloadUnsupported;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
-@ConfigClassInfo(category = EnumConfigCategory.EXPERIMENT, name = "global-entities-counter")
-public class GlobalEntitiesCounter implements ConfigModule {
-    @ConfigInfo(name = "enabled", comments = "Enable global entities counter")
+@ConfigClassInfo(name = "global_entities_counter", category = EnumConfigCategory.EXPERIMENT)
+public class GlobalEntitiesCounter implements IConfigModule {
+    @HotReloadUnsupported
+    @ConfigInfo(name = "enabled", comments = """
+            Enable global entities counter.
+            You need to set per-player-mob-spawns to false on paper-world-defaults.yml or paper-world.yml""")
     public static boolean enabled = false;
-    @Override public void onLoaded(CommentedFileConfig c) {}
-    @Override public void onUnloaded(CommentedFileConfig c) {}
+
+    @HotReloadUnsupported
+    @ConfigInfo(name = "async", comments = "Enable Asynchronous(maybe cause bugs)")
+    public static boolean async = false;
+
+    @HotReloadUnsupported
+    @ConfigInfo(name = "always_count", comments = """
+            Always count entities.
+            If you want to count entities loaded by chunk loader,
+            you must to enabled it.""")
+    public static boolean alwaysCount = false;
 }

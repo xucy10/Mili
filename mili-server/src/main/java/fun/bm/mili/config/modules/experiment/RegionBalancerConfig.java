@@ -1,14 +1,13 @@
 package fun.bm.mili.config.modules.experiment;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import fun.bm.mili.config.modules.ConfigModule;
+import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.config.flags.HotReloadUnsupported;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
 @ConfigClassInfo(category = EnumConfigCategory.EXPERIMENT, name = "region_balancer")
-public class RegionBalancerConfig implements ConfigModule {
+public class RegionBalancerConfig implements IConfigModule {
     @HotReloadUnsupported
     @ConfigInfo(name = "enabled", comments = """
             Enable adaptive region tick balancer.
@@ -48,10 +47,4 @@ public class RegionBalancerConfig implements ConfigModule {
     public static int getThreadPoolSize() {
         return threadPoolSize > 0 ? threadPoolSize : Runtime.getRuntime().availableProcessors() * 2;
     }
-
-    @Override
-    public void onLoaded(CommentedFileConfig configInstance) {}
-
-    @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {}
 }

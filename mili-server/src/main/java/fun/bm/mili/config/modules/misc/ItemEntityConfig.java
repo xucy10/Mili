@@ -1,14 +1,16 @@
 package fun.bm.mili.config.modules.misc;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import fun.bm.mili.config.modules.ConfigModule;
+import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
 @ConfigClassInfo(category = EnumConfigCategory.MISC, name = "item-entity")
-public class ItemEntityConfig implements ConfigModule {
-    @ConfigInfo(name = "follow-tick-sequence-merge", comments = "Enable follow tick sequence merge") public static boolean followTickSequenceMerge = false;
-    @Override public void onLoaded(CommentedFileConfig c) {}
-    @Override public void onUnloaded(CommentedFileConfig c) {}
+public class ItemEntityConfig implements IConfigModule {
+    @ConfigInfo(name = "follow-tick-sequence-merge", comments = """
+            Due to Paper's modification of the merge radius,
+            when the merge radius is large and stacks containing many items get stuck in an unexpected position,
+            individual items may never reach their destination.
+            This configuration option is added to fix this behavior.""")
+    public static boolean followTickSequenceMerge = false;
 }

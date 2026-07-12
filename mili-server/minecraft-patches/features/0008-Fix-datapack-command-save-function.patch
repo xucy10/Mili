@@ -5,6 +5,7 @@ Subject: [PATCH] Fix datapack command save function
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 504f21c5f1e3101e7164b97059aecce630d18cee..d5b680fc6e13ec26d0db2448009e4cbe59933e22 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -2437,6 +2437,16 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -25,6 +26,7 @@ diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/Mi
          // Paper end - Add ServerResourcesReloadedEvent
          CompletableFuture<Void> completableFuture = CompletableFuture.<ImmutableList>supplyAsync(
 diff --git a/net/minecraft/server/commands/DataPackCommand.java b/net/minecraft/server/commands/DataPackCommand.java
+index bb36fa4559cdfe82079af1c39516239119ff06f4..8c530eef0e416d8b96f190ada358d77d34dbc8ac 100644
 --- a/net/minecraft/server/commands/DataPackCommand.java
 +++ b/net/minecraft/server/commands/DataPackCommand.java
 @@ -98,7 +98,7 @@ public class DataPackCommand {
@@ -69,6 +71,7 @@ diff --git a/net/minecraft/server/commands/DataPackCommand.java b/net/minecraft/
          if (selectedPacks.isEmpty()) {
              source.sendSuccess(() -> Component.translatable("commands.datapack.list.enabled.none"), false);
 diff --git a/net/minecraft/server/commands/ReloadCommand.java b/net/minecraft/server/commands/ReloadCommand.java
+index fcca0babb4e7929cc168fc8b9ad47619e6feb1a5..bac5f4e023f8b73eebea0f31fd253e04c8809918 100644
 --- a/net/minecraft/server/commands/ReloadCommand.java
 +++ b/net/minecraft/server/commands/ReloadCommand.java
 @@ -16,11 +16,17 @@ public class ReloadCommand {

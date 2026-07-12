@@ -7,21 +7,6 @@ plugins {
 }
 
 paperweight {
-    upstreams.register("lophine") {
-        repo = github("LuminolMC", "Lophine")
-        ref = providers.gradleProperty("lophineRef")
-
-        patchRepo("paperApi") {
-            upstreamPath = "paper-api"
-            patchesDir = file("mili-api/paper-patches")
-            outputDir = file("paper-api")
-        }
-        patchRepo("foliaApi") {
-            upstreamPath = "folia-api"
-            patchesDir = file("mili-api/folia-patches")
-            outputDir = file("folia-api")
-        }
-    }
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
@@ -45,7 +30,6 @@ subprojects {
 
     dependencies {
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
-        implementation(platform("net.kyori:adventure-bom:4.26.1"))
     }
 
     tasks.withType<AbstractArchiveTask>().configureEach {

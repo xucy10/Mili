@@ -1,16 +1,24 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import fun.bm.mili.config.modules.ConfigModule;
+import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
+import me.earthme.luminol.config.flags.TransformedConfig;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "language")
-public class LanguageConfig implements ConfigModule {
-    @ConfigInfo(name = "locale", comments = "Server language locale") public static String locale = "en_us";
+public class LanguageConfig implements IConfigModule {
+    @TransformedConfig(name = "lang", directory = {"optimizations", "language"})
+    @ConfigInfo(name = "lang", comments = """
+            Please use the key from https://minecraft.wiki/w/Language
+            Sample of format: en_us zh_cn zh_hk zh_tw""")
     public static String lang = "en_us";
-    @ConfigInfo(name = "full-blocking-load", comments = "Enable full blocking language load") public static boolean full_blocking_load = false;
-    @Override public void onLoaded(CommentedFileConfig c) {}
-    @Override public void onUnloaded(CommentedFileConfig c) {}
+
+    @ConfigInfo(name = "full_blocking_load", comments = """
+            Whether to allow blocking server loading when loading localized language.
+            If you want only use your localized language to shown in your terminal,
+            you need to enable it.
+            
+            WARNING: This may slow down the startup speed!""")
+    public static boolean full_blocking_load = false;
 }

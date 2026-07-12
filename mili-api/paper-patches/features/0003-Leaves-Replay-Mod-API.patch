@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Helvetica Volubi <suisuroru@blue-millennium.fun>
+Date: Sun, 16 Nov 2025 15:50:28 +0800
+Subject: [PATCH] Leaves: Replay Mod API
+
+Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
+As a part of : Leaves (https://github.com/LeavesMC/Leaves)
+Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
+
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index 850f65d764030b09d469e33a69409204503d9ca1..78b947352aa32ae0c59101459f420bf8e3497707 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -3050,4 +3050,10 @@ public final class Bukkit {
+         return server.getBotManager();
+     }
+     // Leaves end - Bot API
++
++    // Leaves start - Photographer API
++    public static @NotNull org.leavesmc.leaves.entity.photographer.PhotographerManager getPhotographerManager() {
++        return server.getPhotographerManager();
++    }
++    // Leaves end - Photographer API
+ }
+diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
+index cb8c4e09511f99558eb5af26c08c5cb1f936780d..b770b6f990d46f5325554f5d73c6a2a6ed361158 100644
+--- a/src/main/java/org/bukkit/Server.java
++++ b/src/main/java/org/bukkit/Server.java
+@@ -2800,4 +2800,8 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+      */
+     @NotNull org.leavesmc.leaves.entity.bot.BotManager getBotManager();
+     // Leaves end - Bot API
++
++    // Leaves start - Photographer API
++    @NotNull org.leavesmc.leaves.entity.photographer.PhotographerManager getPhotographerManager();
++    // Leaves end - Photographer API
+ }

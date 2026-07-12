@@ -8,6 +8,7 @@ As a part of : Leaves (https://github.com/LeavesMC/Leaves)
 Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index b0546cb4af7291013399e67d98bced98a5fffc0f..bf340425dc2a1545b9069badcf054d4c2f6a405f 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -3058,7 +3058,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
@@ -20,6 +21,7 @@ diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/
                  }
                  // Paper end - Fix merchant inventory not closing on entity removal
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index c8be04b8a50bac52150a1fdd238634e630e1765e..2eb551390aa66d89988df9ca23cf0dd7ccfd6577 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -555,7 +555,7 @@ public abstract class PlayerList {
@@ -32,6 +34,7 @@ diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server
                          if (human != null) {
                              villager.setTradingPlayer(null);
 diff --git a/net/minecraft/world/inventory/MerchantMenu.java b/net/minecraft/world/inventory/MerchantMenu.java
+index 6dfee62a46a5882df7f405e59d762647289d7866..1192a6ab33a9481397b84c9cf0a24fbbcb0ed065 100644
 --- a/net/minecraft/world/inventory/MerchantMenu.java
 +++ b/net/minecraft/world/inventory/MerchantMenu.java
 @@ -74,6 +74,7 @@ public class MerchantMenu extends AbstractContainerMenu {

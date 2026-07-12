@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bacteriawa <A3167717663@hotmail.com>
+Date: Sat, 30 Aug 2025 16:51:26 +0800
+Subject: [PATCH] Leaves: Add fakeplayer api
+
+Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
+As a part of : Leaves (https://github.com/LeavesMC/Leaves)
+Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
+
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index b9d34c0b80a5d0c26f43e4959c3a8256a854585a..850f65d764030b09d469e33a69409204503d9ca1 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -3039,4 +3039,15 @@ public final class Bukkit {
+     public static void restart() {
+         server.restart();
+     }
++
++    // Leaves start - Bot API
++    /**
++     * Returns a bot manager.
++     *
++     * @return Bot Manager
++     */
++    public static @NotNull org.leavesmc.leaves.entity.bot.BotManager getBotManager() {
++        return server.getBotManager();
++    }
++    // Leaves end - Bot API
+ }
+diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
+index 1dc5d8c96786950fc98cada5bad981c0c716b154..cb8c4e09511f99558eb5af26c08c5cb1f936780d 100644
+--- a/src/main/java/org/bukkit/Server.java
++++ b/src/main/java/org/bukkit/Server.java
+@@ -2791,4 +2791,13 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+      */
+     double @Nullable [] getRegionTPS(@NotNull World world, int chunkX, int chunkZ);
+     // Folia end - region TPS API
++
++    // Leaves start - Bot API
++    /**
++     * Returns a bot manager.
++     *
++     * @return Bot Manager
++     */
++    @NotNull org.leavesmc.leaves.entity.bot.BotManager getBotManager();
++    // Leaves end - Bot API
+ }
