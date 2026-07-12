@@ -34,7 +34,7 @@ public final class ChunkHotness {
             this.score *= DECAY_FACTOR;
         }
 
-        double distanceFactor = Math.max(0, 1.0 / (1.0 + Math.pow(distanceToNearestPlayerSq, DISTANCE_DECAY_POWER / 2.0)));
+        double distanceFactor = Math.max(0, 1.0 / (1.0 + Math.pow(distanceToNearestPlayer, DISTANCE_DECAY_POWER / 2.0)));
         this.score += distanceFactor * 0.5;
 
         this.lastAccessTime = System.nanoTime();
@@ -87,6 +87,10 @@ public final class ChunkHotness {
 
     public double getNearestPlayerDistance() {
         return Math.sqrt(Math.max(0, nearestPlayerDistanceSq));
+    }
+
+    public long getLastAccessTime() {
+        return lastAccessTime;
     }
 
     public long getAgeSeconds() {

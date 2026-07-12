@@ -5,7 +5,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -503,6 +505,31 @@ public final class RegionBalancer {
             return tpe.getActiveCount();
         }
         return -1;
+    }
+
+    /**
+     * Get performance statistics for the region balancer.
+     */
+    public static Map<String, Object> getStats() {
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("pending_tasks", pendingTasks());
+        stats.put("active_workers", activeWorkers());
+        stats.put("initialized", INITIALIZED.get());
+        stats.put("shutdown", SHUTDOWN.get());
+        return stats;
+    }
+
+    /**
+     * Get region balancer statistics.
+     */
+    public static java.util.Map<String, Integer> getStats() {
+        java.util.Map<String, Integer> stats = new java.util.LinkedHashMap<>();
+        stats.put("pending_tasks", pendingTasks());
+        stats.put("active_workers", activeWorkers());
+        stats.put("initialized", INITIALIZED.get() ? 1 : 0);
+        stats.put("task_records", TASK_RECORDS.size());
+        stats.put("pending_task_refs", PENDING_TASKS.size());
+        return stats;
     }
 
     /**

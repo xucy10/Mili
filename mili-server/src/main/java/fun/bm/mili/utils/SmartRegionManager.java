@@ -3,6 +3,7 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
 import org.jetbrains.annotations.Nullable;
+import org.mojang.logging.LogUtils;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -48,7 +49,7 @@ public final class SmartRegionManager {
         );
 
         initialized = true;
-        org.mojang.logging.LogUtils.getLogger().info("[Mili] SmartRegionManager v2.0 initialized");
+        LogUtils.getLogger().info("[Mili] SmartRegionManager v2.0 initialized");
     }
 
     public static void shutdown() {
@@ -69,7 +70,7 @@ public final class SmartRegionManager {
         REGION_PROFILES.clear();
         MIGRATION_QUEUE.clear();
 
-        org.mojang.logging.LogUtils.getLogger().info("[Mili] SmartRegionManager shutdown");
+        LogUtils.getLogger().info("[Mili] SmartRegionManager shutdown");
     }
 
     private static void analyzeRegions() {
@@ -89,7 +90,7 @@ public final class SmartRegionManager {
                 }
             }
         } catch (Exception e) {
-            org.mojang.logging.LogUtils.getLogger().error("[Mili] Region analysis error", e);
+            LogUtils.getLogger().error("[Mili] Region analysis error", e);
         }
     }
 
@@ -111,7 +112,7 @@ public final class SmartRegionManager {
                 }
                 processed++;
             } catch (Exception e) {
-                org.mojang.logging.LogUtils.getLogger().warn(
+                LogUtils.getLogger().warn(
                         "[Mili] Migration failed for region: {}", task.regionKey, e
                 );
                 FAILED_MIGRATIONS.incrementAndGet();
@@ -267,7 +268,7 @@ public final class SmartRegionManager {
                 RegionLoadMonitor.RegionLoadSnapshot snap = profile.getCurrentSnapshot();
                 if (snap == null) return false;
 
-                org.mojang.logging.LogUtils.getLogger().info(
+                LogUtils.getLogger().info(
                         "[Mili] Processing migration for region with load={}%, trend={}",
                         (int)(snap.loadFactor() * 100),
                         String.format("%.3f", profile.getTrendSlope())

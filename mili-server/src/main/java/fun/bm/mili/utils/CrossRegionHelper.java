@@ -8,12 +8,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.UUID;
 
 public class CrossRegionHelper {
 
@@ -200,7 +203,7 @@ public class CrossRegionHelper {
 
     public static void onRegionUnload(RegionizedWorldData data) {
         if (data != null) {
-            ConcurrentLinkedList<Event> removed = pendingByRegion.remove(data);
+            ConcurrentLinkedQueue<Event> removed = pendingByRegion.remove(data);
             if (removed != null && !removed.isEmpty()) {
                 com.mojang.logging.LogUtils.getClassLogger()
                         .debug("[Mili] Dropped {} events for unloaded region", removed.size());

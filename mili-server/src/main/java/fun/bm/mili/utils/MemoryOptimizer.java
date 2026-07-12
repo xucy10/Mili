@@ -3,8 +3,11 @@ package fun.bm.mili.utils;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import org.mojang.logging.LogUtils;
 
 public final class MemoryOptimizer {
 

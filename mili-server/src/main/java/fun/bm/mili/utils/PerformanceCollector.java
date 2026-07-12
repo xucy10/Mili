@@ -1,6 +1,7 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.chunk.MiliChunkSystem;
+import com.mojang.logging.LogUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,11 +17,11 @@ public final class PerformanceCollector {
     public static void init() {
         collectionStartTime.set(System.nanoTime());
         METRICS.clear();
-        org.mojang.logging.LogUtils.getLogger().info("[Mili] PerformanceCollector initialized");
+        LogUtils.getLogger().info("[Mili] PerformanceCollector initialized");
     }
 
     public static void recordMetric(String name, long value) {
-        METRICS.computeIfAbsent(name, k -> new Metric(k)).record(value);
+        ((ValueMetric) METRICS.computeIfAbsent(name, k -> new ValueMetric(k))).record(value);
     }
 
     public static void incrementCounter(String name) {
@@ -28,7 +29,7 @@ public final class PerformanceCollector {
     }
 
     public static void incrementCounter(String name, long delta) {
-        METRICS.computeIfAbsent(name, k -> new CounterMetric(k)).increment(delta);
+        ((CounterMetric) METRICS.computeIfAbsent(name, k -> new CounterMetric(k))).increment(delta);
     }
 
     public static void startTiming(String name) {

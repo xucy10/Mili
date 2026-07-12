@@ -35,6 +35,9 @@ public class RegionBalancerConfig implements IConfigModule {
     @ConfigInfo(name = "max-tick-catchup", comments = "Max ticks a region can catch up in one execution")
     public static int maxTickCatchup = 3;
 
+    @ConfigInfo(name = "analysis-interval-ms", comments = "How often (in ms) to run region analysis")
+    public static long analysisIntervalMs = 5000;
+
     @ConfigInfo(name = "idle-skip-ticks", comments = "Low-load regions can skip this many ticks between execution")
     public static int idleSkipTicks = 1;
 

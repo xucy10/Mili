@@ -80,7 +80,7 @@ final class WorldChunkData {
 
         hotnessMap.entrySet().removeIf(entry -> {
             ChunkHotness hotness = entry.getValue();
-            if (!hotness.isActive() && now - hotness.lastAccessTime > maxAgeNs) {
+            if (!hotness.isActive() && now - hotness.getLastAccessTime() > maxAgeNs) {
                 totalHotChunks.decrementAndGet();
                 return true;
             }
