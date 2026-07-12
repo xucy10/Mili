@@ -6,6 +6,7 @@ pluginManagement {
         mavenLocal()
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://repo.menthamc.org/repository/maven-public/")
+        maven("https://repo.menthamc.org/repository/maven-releases/")
     }
 
     plugins {

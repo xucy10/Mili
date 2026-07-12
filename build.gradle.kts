@@ -36,6 +36,7 @@ subprojects {
         mavenCentral()
         maven(paperMavenPublicUrl)
         maven(menthaMavenPublicUrl)
+        maven("https://repo.menthamc.org/repository/maven-releases/")
     }
 
     dependencies {
