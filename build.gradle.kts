@@ -8,7 +8,7 @@ plugins {
 
 paperweight {
     upstreams.register("luminol") {
-        repo = "file:///" + rootProject.layout.projectDirectory.dir("Luminol-ver-1.21.11").asFile.absolutePath.replace("\\", "/")
+        repo = "file://" + rootProject.layout.projectDirectory.dir("Luminol-ver-1.21.11").asFile.absolutePath.replace("\\", "/")
         ref = "HEAD"
     }
 }
