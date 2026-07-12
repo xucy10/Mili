@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import org.mojang.logging.LogUtils;
+import com.mojang.logging.LogUtils;
 
 public final class MemoryOptimizer {
 
@@ -46,7 +46,7 @@ public final class MemoryOptimizer {
         );
 
         running = true;
-        org.mojang.logging.LogUtils.getLogger().info("[Mili] MemoryOptimizer initialized");
+        LogUtils.getLogger().info("[Mili] MemoryOptimizer initialized");
     }
 
     public static void shutdown() {
@@ -87,7 +87,7 @@ public final class MemoryOptimizer {
             logMemoryStatus(used, committed, max, usageRatio);
 
         } catch (Exception e) {
-            org.mojang.logging.LogUtils.getLogger().error("[Mili] Memory monitor error", e);
+            LogUtils.getLogger().error("[Mili] Memory monitor error", e);
         }
     }
 
@@ -112,7 +112,7 @@ public final class MemoryOptimizer {
 
             gcCount.incrementAndGet();
 
-            org.mojang.logging.LogUtils.getLogger().debug(
+            LogUtils.getLogger().debug(
                     "[Mili] Normal GC: freed {} MB", freed / (1024 * 1024)
             );
         }
@@ -135,7 +135,7 @@ public final class MemoryOptimizer {
         gcCount.incrementAndGet();
         lastGCTime.set(System.currentTimeMillis());
 
-        org.mojang.logging.LogUtils.getLogger().warn(
+        LogUtils.getLogger().warn(
                 "[Mili] Aggressive GC triggered: freed {} MB", freed / (1024 * 1024)
         );
     }
@@ -150,7 +150,7 @@ public final class MemoryOptimizer {
         double ratio = (double) usedMemory / maxMemory;
 
         if (ratio > 0.8) {
-            org.mojang.logging.LogUtils.getLogger().warn(
+            LogUtils.getLogger().warn(
                     "[Mili] High memory usage: {}% ({}/{} MB)",
                     (int)(ratio * 100),
                     usedMemory / (1024 * 1024),
@@ -163,7 +163,7 @@ public final class MemoryOptimizer {
 
     private static void logMemoryStatus(long used, long committed, long max, double ratio) {
         if (gcCount.get() % 12 == 0) {
-            org.mojang.logging.LogUtils.getLogger().info(
+            LogUtils.getLogger().info(
                     "[Mili] Memory: {}% used ({}/{} MB), GC count: {}, Total freed: {} MB",
                     (int)(ratio * 100),
                     used / (1024 * 1024),

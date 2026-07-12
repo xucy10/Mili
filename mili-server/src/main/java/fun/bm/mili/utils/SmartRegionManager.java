@@ -3,7 +3,7 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
 import org.jetbrains.annotations.Nullable;
-import org.mojang.logging.LogUtils;
+import com.mojang.logging.LogUtils;
 
 import java.util.*;
 import java.util.concurrent.*;

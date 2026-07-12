@@ -1,7 +1,7 @@
 package fun.bm.mili.chunk;
 
 import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
-import org.mojang.logging.LogUtils;
+import com.mojang.logging.LogUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -62,7 +62,7 @@ public final class MiliChunkSystem {
         );
 
         initialized = true;
-        org.mojang.logging.LogUtils.getLogger().info(
+        LogUtils.getLogger().info(
                 "[Mili] MiliChunkSystem v3.0 initialized with {} async threads",
                 ChunkSystemConfig.asyncThreads
         );
@@ -90,7 +90,7 @@ public final class MiliChunkSystem {
         WORLD_DATA.clear();
         ASYNC_QUEUE.clear();
 
-        org.mojang.logging.LogUtils.getLogger().info("[Mili] MiliChunkSystem shutdown complete");
+        LogUtils.getLogger().info("[Mili] MiliChunkSystem shutdown complete");
     }
 
     private static void tick() {
@@ -106,12 +106,12 @@ public final class MiliChunkSystem {
                 optimizeViewDistance(world, data);
             }
         } catch (Exception e) {
-            org.mojang.logging.LogUtils.getLogger().error("[Mili] Chunk system tick error", e);
+            LogUtils.getLogger().error("[Mili] Chunk system tick error", e);
         }
 
         long elapsedNanos = System.nanoTime() - startNanos;
         if (elapsedNanos > 5_000_000L) {
-            org.mojang.logging.LogUtils.getLogger().warn(
+            LogUtils.getLogger().warn(
                     "[Mili] Chunk system tick took {}ms", elapsedNanos / 1_000_000L
             );
         }
@@ -243,7 +243,7 @@ public final class MiliChunkSystem {
                 chunk.unload(true);
             }
         } catch (Exception e) {
-            org.mojang.logging.LogUtils.getLogger().debug(
+            LogUtils.getLogger().debug(
                     "[Mili] Failed to unload chunk ({}, {})",
                     chunk.getX(), chunk.getZ()
             );
@@ -263,7 +263,7 @@ public final class MiliChunkSystem {
                 TOTAL_ASYNC_OPS.incrementAndGet();
                 processed++;
             } catch (Exception e) {
-                org.mojang.logging.LogUtils.getLogger().warn(
+                LogUtils.getLogger().warn(
                         "[Mili] Async chunk operation failed", e
                 );
             }
@@ -313,7 +313,7 @@ public final class MiliChunkSystem {
                     }
 
                     future.complete(null);
-                    org.mojang.logging.LogUtils.getLogger().debug(
+                    LogUtils.getLogger().debug(
                             "[Mili] Preloaded {} chunks around ({}, {})",
                             chunksLoaded, centerX, centerZ
                     );
