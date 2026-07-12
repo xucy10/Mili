@@ -1,4 +1,4 @@
-package fun.bm.mili.config.modules;
+package fun.bm.mili.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import me.earthme.luminol.config.IConfigModule;
