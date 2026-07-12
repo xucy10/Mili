@@ -15,17 +15,10 @@ if exist "Luminol-ver-1.21.11\.git" (
     cd ..
 )
 
-echo === Apply Upstream ===
-call gradlew.bat applyUpstream
+echo === Apply All Patches ===
+call gradlew.bat applyAllPatches
 if %ERRORLEVEL% neq 0 (
-    echo FAILED: applyUpstream
-    exit /b 1
-)
-
-echo === Apply Server Patches ===
-call gradlew.bat applyAllServerPatches
-if %ERRORLEVEL% neq 0 (
-    echo FAILED: applyAllServerPatches
+    echo FAILED: applyAllPatches
     exit /b 1
 )
 

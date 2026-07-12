@@ -94,11 +94,8 @@ jobs:
           git commit -m "luminol"
           cd ..
 
-      - name: Apply Upstream (creates upstreams)
-        run: ./gradlew applyUpstream
-
-      - name: Apply Server Patches
-        run: ./gradlew applyAllServerPatches
+      - name: Apply All Patches
+        run: ./gradlew applyAllPatches
 
       - name: Inject Kotlin Config
         run: python3 scripts/inject_kotlin.py
