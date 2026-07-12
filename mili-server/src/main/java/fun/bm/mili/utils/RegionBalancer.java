@@ -520,19 +520,6 @@ public final class RegionBalancer {
     }
 
     /**
-     * Get region balancer statistics.
-     */
-    public static java.util.Map<String, Integer> getStats() {
-        java.util.Map<String, Integer> stats = new java.util.LinkedHashMap<>();
-        stats.put("pending_tasks", pendingTasks());
-        stats.put("active_workers", activeWorkers());
-        stats.put("initialized", INITIALIZED.get() ? 1 : 0);
-        stats.put("task_records", TASK_RECORDS.size());
-        stats.put("pending_task_refs", PENDING_TASKS.size());
-        return stats;
-    }
-
-    /**
      * Shutdown the balancer.
      */
     public static void shutdown() {

@@ -38,8 +38,8 @@ public class MiliPerfCommand implements CommandExecutor {
     private void sendRegionStats(CommandSender sender) {
         sender.sendMessage(ChatColor.YELLOW + "-- Region System --");
 
-        Map<String, Integer> regionStats = RegionBalancer.getStats();
-        for (Map.Entry<String, Integer> entry : regionStats.entrySet()) {
+        Map<String, Object> regionStats = RegionBalancer.getStats();
+        for (Map.Entry<String, Object> entry : regionStats.entrySet()) {
             sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
                     ChatColor.WHITE + entry.getValue());
         }
