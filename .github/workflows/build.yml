@@ -90,8 +90,8 @@ jobs:
           ls -la .gradle/caches/paperweight 2>/dev/null || echo "paperweight cache removed"
           rm -rf .gradle/caches/paperweight/upstreams/server-work
 
-      - name: Apply All Patches
-        run: ./gradlew --refresh-dependencies applyAllPatches
+      - name: Apply Server Patches
+        run: ./gradlew --refresh-dependencies applyAllServerPatches
 
       - name: Inject Kotlin Config
         run: python3 scripts/inject_kotlin.py
