@@ -163,8 +163,8 @@ sourceSets {
         resources { srcDir("../paper-server/src/test/resources") }
         java { srcDir("../folia-server/src/test/java") }
         resources { srcDir("../folia-server/src/test/resources") }
-        java { srcDir("../luminol-server/src/main/java") }
-        resources { srcDir("../luminol-server/src/main/resources") }
+        java { srcDir("../luminol-server/src/test/java") }
+        resources { srcDir("../luminol-server/src/test/resources") }
     }
 }
 val log4jPlugins = sourceSets.create("log4jPlugins") {

@@ -116,8 +116,7 @@ public final class VillagerOptimizer implements Listener {
     }
 
     private Plugin getPlugin() {
-        if (plugin != null) return plugin;
-        return Bukkit.getPluginManager().getPlugins()[0];
+        return plugin;
     }
 
     public static VillagerOptimizer getInstance() {
@@ -314,7 +313,7 @@ public final class VillagerOptimizer implements Listener {
         }
 
         // Process active villagers
-        for (Villager villager : new ArrayList<>(activeVillagers)) {
+        for (Villager villager : activeVillagers) {
             if (!villager.isValid() || villager.isDead()) {
                 removeVillager(villager);
                 continue;
@@ -325,7 +324,7 @@ public final class VillagerOptimizer implements Listener {
         }
 
         // Process inactive villagers (restocking)
-        for (Villager villager : new ArrayList<>(inactiveVillagers)) {
+        for (Villager villager : inactiveVillagers) {
             if (!villager.isValid() || villager.isDead()) {
                 removeVillager(villager);
                 continue;

@@ -27,9 +27,10 @@ public class RandomProfilePool {
     public static GameProfile getRandomProfile(String id) {
         if (ReplayAPIConfig.enableCache) {
             synchronized (lockCache) {
-                for (Map.Entry<Integer, GameProfile> entry : cache.asMap().entrySet()) {
-                    int key = entry.getKey();
-                    cache.invalidate(key);
+                Map<Integer, GameProfile> snapshot = cache.asMap();
+                if (!snapshot.isEmpty()) {
+                    Map.Entry<Integer, GameProfile> entry = snapshot.entrySet().iterator().next();
+                    cache.invalidate(entry.getKey());
                     GameProfile gp = entry.getValue();
                     return new GameProfile(gp.id(), id, gp.properties());
                 }

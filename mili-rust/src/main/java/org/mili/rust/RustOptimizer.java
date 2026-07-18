@@ -124,11 +124,12 @@ public final class RustOptimizer {
     }
 
     private static String fallbackMergeCost(String input) {
-        List<Long> sizes = List.of(input.split("[;,| ]+"))
-            .stream()
-            .filter(s -> !s.isBlank())
-            .map(Long::parseLong)
-            .collect(Collectors.toList());
+        List<Long> sizes = new java.util.ArrayList<>(
+            java.util.Arrays.stream(input.split("[;,| ]+"))
+                .filter(s -> !s.isBlank())
+                .map(Long::parseLong)
+                .toList()
+        );
 
         if (sizes.size() < 2) {
             return "merge-cost:0";

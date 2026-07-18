@@ -6,6 +6,7 @@ import java.util.EnumSet;
 
 /**
  * Classifies blocks for villager movement checks.
+ * All string-based matching is done once at initialization for optimal runtime performance.
  */
 public final class BlockClassifier {
     private final EnumSet<Material> impassableRegular;
@@ -14,19 +15,25 @@ public final class BlockClassifier {
     private final EnumSet<Material> doorBlocks;
     private final EnumSet<Material> cropBlocks;
     private final EnumSet<Material> professionBlocks;
+    private final EnumSet<Material> carpetBlocks;
+    private final EnumSet<Material> bedBlocks;
 
     private BlockClassifier(EnumSet<Material> impassableRegular,
                             EnumSet<Material> impassableTall,
                             EnumSet<Material> impassableAll,
                             EnumSet<Material> doorBlocks,
                             EnumSet<Material> cropBlocks,
-                            EnumSet<Material> professionBlocks) {
+                            EnumSet<Material> professionBlocks,
+                            EnumSet<Material> carpetBlocks,
+                            EnumSet<Material> bedBlocks) {
         this.impassableRegular = impassableRegular;
         this.impassableTall = impassableTall;
         this.impassableAll = impassableAll;
         this.doorBlocks = doorBlocks;
         this.cropBlocks = cropBlocks;
         this.professionBlocks = professionBlocks;
+        this.carpetBlocks = carpetBlocks;
+        this.bedBlocks = bedBlocks;
     }
 
     public static BlockClassifier fromServerRegistry() {
@@ -36,6 +43,8 @@ public final class BlockClassifier {
         EnumSet<Material> doorBlocks = EnumSet.noneOf(Material.class);
         EnumSet<Material> cropBlocks = EnumSet.noneOf(Material.class);
         EnumSet<Material> professionBlocks = EnumSet.noneOf(Material.class);
+        EnumSet<Material> carpetBlocks = EnumSet.noneOf(Material.class);
+        EnumSet<Material> bedBlocks = EnumSet.noneOf(Material.class);
 
         for (Material mat : Material.values()) {
             String name = mat.name();
@@ -47,6 +56,10 @@ public final class BlockClassifier {
             }
             if (name.endsWith("_BED")) {
                 impassableRegular.add(mat);
+                bedBlocks.add(mat);
+            }
+            if (name.contains("_CARPET")) {
+                carpetBlocks.add(mat);
             }
         }
 
@@ -74,7 +87,7 @@ public final class BlockClassifier {
         impassableAll.addAll(impassableRegular);
         impassableAll.addAll(impassableTall);
 
-        return new BlockClassifier(impassableRegular, impassableTall, impassableAll, doorBlocks, cropBlocks, professionBlocks);
+        return new BlockClassifier(impassableRegular, impassableTall, impassableAll, doorBlocks, cropBlocks, professionBlocks, carpetBlocks, bedBlocks);
     }
 
     public EnumSet<Material> impassableRegular() { return impassableRegular; }
@@ -83,4 +96,6 @@ public final class BlockClassifier {
     public EnumSet<Material> doorBlocks() { return doorBlocks; }
     public EnumSet<Material> cropBlocks() { return cropBlocks; }
     public EnumSet<Material> professionBlocks() { return professionBlocks; }
+    public EnumSet<Material> carpetBlocks() { return carpetBlocks; }
+    public EnumSet<Material> bedBlocks() { return bedBlocks; }
 }

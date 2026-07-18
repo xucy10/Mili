@@ -15,8 +15,10 @@ public final class SmartRegionManager {
 
     private static volatile boolean initialized = false;
 
-    private static final ConcurrentHashMap<Object, RegionProfile> REGION_PROFILES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Integer, RegionProfile> REGION_PROFILES = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedQueue<RegionMigrationTask> MIGRATION_QUEUE = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<RegionMigrationTask> TASK_POOL = new ConcurrentLinkedQueue<>();
+    private static final int MAX_POOL_SIZE = 50;
 
     private static final AtomicLong TOTAL_MIGRATIONS = new AtomicLong(0);
     private static final AtomicLong SUCCESSFUL_MIGRATIONS = new AtomicLong(0);
@@ -69,18 +71,21 @@ public final class SmartRegionManager {
 
         REGION_PROFILES.clear();
         MIGRATION_QUEUE.clear();
+        TASK_POOL.clear();
 
         LogUtils.getLogger().info("[Mili] SmartRegionManager shutdown");
     }
 
     private static void analyzeRegions() {
         try {
-            for (Map.Entry<Object, RegionProfile> entry : REGION_PROFILES.entrySet()) {
-                Object regionKey = entry.getKey();
-                RegionProfile profile = entry.getValue();
+            for (java.util.Map.Entry<Integer, RegionLoadMonitor.RegionLoadSnapshot> entry
+                    : RegionLoadMonitor.getAllSnapshotMap().entrySet()) {
+                Integer regionKey = entry.getKey();
+                RegionLoadMonitor.RegionLoadSnapshot snapshot = entry.getValue();
 
-                RegionLoadMonitor.RegionLoadSnapshot snapshot =
-                        RegionLoadMonitor.getSnapshot(regionKey);
+                RegionProfile profile = REGION_PROFILES.computeIfAbsent(
+                        regionKey, k -> new RegionProfile(k)
+                );
 
                 profile.updateSnapshot(snapshot);
                 profile.analyzeTrends();
@@ -111,6 +116,11 @@ public final class SmartRegionManager {
                     FAILED_MIGRATIONS.incrementAndGet();
                 }
                 processed++;
+
+                if (TASK_POOL.size() < MAX_POOL_SIZE) {
+                    task.reset(null, null);
+                    TASK_POOL.offer(task);
+                }
             } catch (Exception e) {
                 LogUtils.getLogger().warn(
                         "[Mili] Migration failed for region: {}", task.regionKey, e
@@ -120,22 +130,28 @@ public final class SmartRegionManager {
         }
     }
 
-    private static void scheduleMigration(Object regionKey, RegionProfile profile) {
+    private static void scheduleMigration(Integer regionKey, RegionProfile profile) {
         if (MIGRATION_QUEUE.size() > 50) return;
 
-        MIGRATION_QUEUE.add(new RegionMigrationTask(regionKey, profile));
+        RegionMigrationTask task = TASK_POOL.poll();
+        if (task != null) {
+            task.reset(regionKey, profile);
+        } else {
+            task = new RegionMigrationTask(regionKey, profile);
+        }
+        MIGRATION_QUEUE.add(task);
     }
 
-    public static void registerRegion(Object regionKey) {
+    public static void registerRegion(Integer regionKey) {
         REGION_PROFILES.computeIfAbsent(regionKey, k -> new RegionProfile(k));
     }
 
-    public static void unregisterRegion(Object regionKey) {
+    public static void unregisterRegion(Integer regionKey) {
         REGION_PROFILES.remove(regionKey);
     }
 
     @Nullable
-    public static RegionProfile getProfile(Object regionKey) {
+    public static RegionProfile getProfile(Integer regionKey) {
         return REGION_PROFILES.get(regionKey);
     }
 
@@ -160,7 +176,7 @@ public final class SmartRegionManager {
     }
 
     public static final class RegionProfile {
-        final Object regionKey;
+        final Integer regionKey;
         final AtomicReference<RegionLoadMonitor.RegionLoadSnapshot> currentSnapshot =
                 new AtomicReference<>(new RegionLoadMonitor.RegionLoadSnapshot(0, 0, 0, 0.0, false, true));
 
@@ -172,7 +188,7 @@ public final class SmartRegionManager {
         volatile long lastMigrationAttempt = 0;
         volatile int consecutiveFailures = 0;
 
-        RegionProfile(Object regionKey) {
+        RegionProfile(Integer regionKey) {
             this.regionKey = regionKey;
         }
 
@@ -255,10 +271,15 @@ public final class SmartRegionManager {
     }
 
     private static class RegionMigrationTask {
-        final Object regionKey;
-        final RegionProfile profile;
+        Integer regionKey;
+        RegionProfile profile;
 
-        RegionMigrationTask(Object regionKey, RegionProfile profile) {
+        RegionMigrationTask(Integer regionKey, RegionProfile profile) {
+            this.regionKey = regionKey;
+            this.profile = profile;
+        }
+
+        void reset(Integer regionKey, RegionProfile profile) {
             this.regionKey = regionKey;
             this.profile = profile;
         }

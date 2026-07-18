@@ -91,7 +91,7 @@ impl Bitmap {
 ///
 /// Skips whitespace, accepts optional `0x`/`0X` prefix, and produces a `Vec<u8>`
 /// with zero intermediate `String` allocations.
-fn parse_hex_bytes(input: &str) -> Result<Vec<u8>, String> {
+pub fn parse_hex_bytes(input: &str) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::with_capacity(input.len() / 2);
     let raw = input.as_bytes();
     let mut i = 0;
@@ -124,7 +124,7 @@ fn parse_hex_bytes(input: &str) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-fn hex_val(b: u8) -> Option<u8> {
+pub fn hex_val(b: u8) -> Option<u8> {
     match b {
         b'0'..=b'9' => Some(b - b'0'),
         b'a'..=b'f' => Some(b - b'a' + 10),

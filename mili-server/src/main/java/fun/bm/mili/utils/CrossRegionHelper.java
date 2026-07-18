@@ -17,10 +17,16 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 public class CrossRegionHelper {
 
     private static final AtomicLong eventIdGen = new AtomicLong(0);
+    private static final LongAdder eventsProcessed = new LongAdder();
+    private static final LongAdder eventsDropped = new LongAdder();
+    private static final LongAdder batchesDispatched = new LongAdder();
+
+    private static final int BATCH_SIZE = 64;
 
     public abstract static class Event {
         public final long id;
@@ -95,8 +101,13 @@ public class CrossRegionHelper {
 
     private static volatile boolean running = false;
 
-    private static final Thread dispatcherThread = new Thread(() -> {
+    private static Thread dispatcherThread;
+
+    public static void init() {
+        if (running) return;
         running = true;
+
+        dispatcherThread = new Thread(() -> {
         com.mojang.logging.LogUtils.getClassLogger().info("[Mili] CrossRegionHelper started");
 
         while (running) {
@@ -107,6 +118,18 @@ public class CrossRegionHelper {
                 if (event == null) continue;
 
                 dispatchToTarget(event);
+
+                int batchCount = 1;
+                while (batchCount < BATCH_SIZE) {
+                    Event next = inboundQueue.poll();
+                    if (next == null) break;
+                    dispatchToTarget(next);
+                    batchCount++;
+                }
+                if (batchCount > 1) {
+                    batchesDispatched.increment();
+                }
+                eventsProcessed.add(batchCount);
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -120,7 +143,6 @@ public class CrossRegionHelper {
         com.mojang.logging.LogUtils.getClassLogger().info("[Mili] CrossRegionHelper stopped");
     }, "Mili-CrossRegion");
 
-    static {
         dispatcherThread.setDaemon(true);
         dispatcherThread.setPriority(Thread.NORM_PRIORITY - 1);
         dispatcherThread.start();
@@ -145,6 +167,7 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || event == null) return;
 
         if (!inboundQueue.offer(event)) {
+            eventsDropped.increment();
             com.mojang.logging.LogUtils.getClassLogger()
                     .warn("[Mili] CrossRegionHelper queue full, dropping event");
         }
@@ -217,6 +240,9 @@ public class CrossRegionHelper {
         stats.put("tracked_regions", pendingByRegion.size());
         stats.put("total_pending_events", totalPendingAcrossRegions());
         stats.put("running", running);
+        stats.put("events_processed", eventsProcessed.sum());
+        stats.put("events_dropped", eventsDropped.sum());
+        stats.put("batches_dispatched", batchesDispatched.sum());
 
         long totalEventsProcessed = 0;
         for (ConcurrentLinkedQueue<Event> q : pendingByRegion.values()) {
@@ -229,12 +255,13 @@ public class CrossRegionHelper {
 
     public static void shutdown() {
         running = false;
-        dispatcherThread.interrupt();
-
-        try {
-            dispatcherThread.join(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if (dispatcherThread != null) {
+            dispatcherThread.interrupt();
+            try {
+                dispatcherThread.join(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         inboundQueue.clear();

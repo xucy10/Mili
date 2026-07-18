@@ -83,11 +83,10 @@ public final class VillagerActivityPolicy {
     }
 
     public boolean canMoveCardinally(BlockGrid grid, int x, int y, int z, boolean roof) {
-        boolean xPlus = canMoveThrough(grid, x + 1, y, z, roof);
-        boolean xMinus = canMoveThrough(grid, x - 1, y, z, roof);
-        boolean zPlus = canMoveThrough(grid, x, y, z + 1, roof);
-        boolean zMinus = canMoveThrough(grid, x, y, z - 1, roof);
-        return xPlus || xMinus || zPlus || zMinus;
+        return canMoveThrough(grid, x + 1, y, z, roof)
+                || canMoveThrough(grid, x - 1, y, z, roof)
+                || canMoveThrough(grid, x, y, z + 1, roof)
+                || canMoveThrough(grid, x, y, z - 1, roof);
     }
 
     private boolean canMoveThrough(BlockGrid grid, int x, int y, int z, boolean roof) {
@@ -114,8 +113,8 @@ public final class VillagerActivityPolicy {
         if (onlyTallBlocks) {
             return false;
         }
-        boolean isCarpet = type.name().contains("_CARPET");
-        boolean isBed = type.name().contains("_BED");
+        boolean isCarpet = this.blocks.carpetBlocks().contains(type);
+        boolean isBed = this.blocks.bedBlocks().contains(type);
         boolean isWater = type == Material.WATER;
         boolean isCrop = this.blocks.cropBlocks().contains(type);
         boolean isABypassBlock = (isCrop || isBed || isCarpet

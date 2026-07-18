@@ -5,10 +5,7 @@ const STACK_CAP: usize = 16;
 
 /// Parse packet sizes from a comma/space/semicolon/pipe-separated string.
 pub fn parse_packet_size(input: &str) -> u64 {
-    input
-        .split(|c: char| c.is_whitespace() || c == ',' || c == ';' || c == '|')
-        .filter_map(|s| s.parse::<u64>().ok())
-        .sum()
+    crate::parse_number_list(input).iter().sum()
 }
 
 /// Normalize a batch of packet sizes: sort and deduplicate.

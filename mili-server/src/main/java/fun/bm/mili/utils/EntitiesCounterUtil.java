@@ -22,39 +22,39 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 import static net.minecraft.world.level.NaturalSpawner.getRoughBiome;
 
 public class EntitiesCounterUtil {
-    // 每个区域独立维护自己的实体计数，避免全局遍历导致跨区阻塞
     private static final ConcurrentHashMap<ServerLevel, ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>>> regionMobCounts = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<ServerLevel, ConcurrentHashMap<Integer, Integer>> regionChunkCounts = new ConcurrentHashMap<>();
-    private static final Set<Integer> UniqueIds = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentHashMap<ServerLevel, ConcurrentHashMap<Integer, AtomicInteger>> regionChunkCounts = new ConcurrentHashMap<>();
+    private static final Set<Integer> uniqueIds = ConcurrentHashMap.newKeySet();
 
-    private static int lastUsedId = 0;
-    private static final int CLEANUP_INTERVAL = 200; // each 200 ids used
+    private static final AtomicInteger lastUsedId = new AtomicInteger(0);
+    private static final Object idLock = new Object();
+    private static final int CLEANUP_INTERVAL = 200;
 
     public static int generateUniqueId() {
-        synchronized (UniqueIds) {
-            if (lastUsedId % CLEANUP_INTERVAL == 0) runCleanUp();
-            int id = lastUsedId;
-            while (UniqueIds.contains(id)) {
-                id++;
+        synchronized (idLock) {
+            if (lastUsedId.get() % CLEANUP_INTERVAL == 0) runCleanUp();
+            int id = lastUsedId.getAndIncrement();
+            while (uniqueIds.contains(id)) {
+                id = lastUsedId.getAndIncrement();
             }
-
-            lastUsedId = id;
-            UniqueIds.add(id);
+            uniqueIds.add(id);
             return id;
         }
     }
 
     public static void onWorldDataUnload(ServerLevel level, int uniqueId) {
-        UniqueIds.remove(uniqueId);
+        uniqueIds.remove(uniqueId);
         ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>> mobCounts = regionMobCounts.get(level);
         if (mobCounts != null) {
             mobCounts.remove(uniqueId);
         }
-        ConcurrentHashMap<Integer, Integer> chunkCounts = regionChunkCounts.get(level);
+        ConcurrentHashMap<Integer, AtomicInteger> chunkCounts = regionChunkCounts.get(level);
         if (chunkCounts != null) {
             chunkCounts.remove(uniqueId);
         }
@@ -65,11 +65,7 @@ public class EntitiesCounterUtil {
         for (ConcurrentHashMap<Integer, Object2IntOpenHashMap<MobCategory>> counts : regionMobCounts.values()) {
             logged.addAll(counts.keySet());
         }
-
-        for (int num : UniqueIds) {
-            if (logged.contains(num)) continue;
-            UniqueIds.remove(num);
-        }
+        uniqueIds.removeIf(num -> !logged.contains(num));
     }
 
     // 每个区域只统计自己的实体，写入自己唯一的 key；不会访问其他区域的数据
@@ -90,7 +86,8 @@ public class EntitiesCounterUtil {
         regionMobCounts.computeIfAbsent(level, k -> new ConcurrentHashMap<>()).put(uniqueId, map);
 
         int chunkCount = areaMap != null ? areaMap.getTotalPositions() : 0;
-        regionChunkCounts.computeIfAbsent(level, k -> new ConcurrentHashMap<>()).put(uniqueId, chunkCount);
+        regionChunkCounts.computeIfAbsent(level, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(uniqueId, k -> new AtomicInteger(chunkCount)).set(chunkCount);
     }
 
     // 读取时汇总所有区域的计数，O(区域数) 而非 O(实体数)
@@ -109,10 +106,10 @@ public class EntitiesCounterUtil {
         }
 
         int totalChunks = 0;
-        ConcurrentHashMap<Integer, Integer> chunkCounts = regionChunkCounts.get(level);
+        ConcurrentHashMap<Integer, AtomicInteger> chunkCounts = regionChunkCounts.get(level);
         if (chunkCounts != null) {
-            for (Integer c : chunkCounts.values()) {
-                if (c != null) totalChunks += c;
+            for (AtomicInteger c : chunkCounts.values()) {
+                if (c != null) totalChunks += c.get();
             }
         }
 

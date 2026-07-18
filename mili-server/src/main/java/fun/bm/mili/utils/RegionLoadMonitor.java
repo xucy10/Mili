@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Region load monitor.
@@ -27,6 +28,7 @@ public class RegionLoadMonitor {
 
     private static final class RegionStats {
         final AtomicLongArray history;
+        final AtomicLong runningSum = new AtomicLong(0);
         final AtomicInteger writeIndex = new AtomicInteger(0);
         final AtomicInteger filledCount = new AtomicInteger(0);
 
@@ -36,25 +38,31 @@ public class RegionLoadMonitor {
 
         void record(long tickNanos) {
             int idx = writeIndex.getAndIncrement() % history.length();
-            history.set(idx, tickNanos);
+            long old = history.getAndSet(idx, tickNanos);
+            if (old > 0) {
+                runningSum.addAndGet(-old);
+            }
+            runningSum.addAndGet(tickNanos);
             if (filledCount.get() < history.length()) {
                 filledCount.incrementAndGet();
             }
         }
 
         RegionLoadSnapshot snapshot() {
-            int count = filledCount.get();
+            int count = Math.min(filledCount.get(), history.length());
             if (count == 0) {
                 return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
             }
 
-            long sum = 0;
+            long sum = runningSum.get();
             long max = 0;
             long min = Long.MAX_VALUE;
+
+            int startIdx = (writeIndex.get() - count + history.length()) % history.length();
             for (int i = 0; i < count; i++) {
-                long v = history.get(i);
+                int idx = (startIdx + i) % history.length();
+                long v = history.get(idx);
                 if (v <= 0) continue;
-                sum += v;
                 if (v > max) max = v;
                 if (v < min) min = v;
             }
@@ -65,7 +73,6 @@ public class RegionLoadMonitor {
             long avg = sum / count;
             double thresholdHigh = RegionBalancerConfig.highLoadThresholdMs * 1_000_000.0;
             double thresholdLow = RegionBalancerConfig.lowLoadThresholdMs * 1_000_000.0;
-            // loadFactor: ratio of avg to thresholdHigh, capped at 1.0
             double loadFactor = Math.min(1.0, avg / thresholdHigh);
             return new RegionLoadSnapshot(
                     avg, max, min, loadFactor,
@@ -145,6 +152,14 @@ public class RegionLoadMonitor {
         java.util.List<RegionLoadSnapshot> result = new java.util.ArrayList<>();
         for (RegionStats stats : STATS.values()) {
             result.add(stats.snapshot());
+        }
+        return result;
+    }
+
+    public static java.util.Map<Integer, RegionLoadSnapshot> getAllSnapshotMap() {
+        java.util.Map<Integer, RegionLoadSnapshot> result = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<Integer, RegionStats> entry : STATS.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().snapshot());
         }
         return result;
     }

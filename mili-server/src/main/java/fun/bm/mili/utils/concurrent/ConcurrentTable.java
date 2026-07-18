@@ -1,7 +1,7 @@
 package fun.bm.mili.utils.concurrent;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -163,7 +163,7 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     private <K, V> Map<K, V> filterAndMap(Predicate<TableEntry<X, Y, Z>> filter,
                                           java.util.function.Function<TableEntry<X, Y, Z>, K> keyMapper,
                                           java.util.function.Function<TableEntry<X, Y, Z>, V> valueMapper) {
-        Map<K, V> map = new HashMap<>();
+        Map<K, V> map = new LinkedHashMap<>();
         for (TableEntry<X, Y, Z> entry : data) {
             if (filter.test(entry)) {
                 map.put(keyMapper.apply(entry), valueMapper.apply(entry));

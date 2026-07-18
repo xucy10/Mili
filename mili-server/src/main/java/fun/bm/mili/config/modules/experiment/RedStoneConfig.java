@@ -31,4 +31,13 @@ public class RedStoneConfig implements IConfigModule {
 
     @ConfigInfo(name = "old-block-remove-behaviour")
     public static boolean oldBlockRemoveBehaviour = false;
+
+    @ConfigInfo(name = "tps-throttle-enabled", comments = "Enable TPS-based redstone update throttling")
+    public static boolean tpsThrottleEnabled = false;
+
+    @ConfigInfo(name = "tps-throttle-threshold", comments = "TPS threshold below which to throttle redstone updates")
+    public static double tpsThrottleThreshold = 18.0;
+
+    @ConfigInfo(name = "tps-throttle-skip-chance", comments = "Chance (0.0-1.0) to skip a redstone update when TPS is below threshold")
+    public static double tpsThrottleSkipChance = 0.1;
 }

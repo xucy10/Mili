@@ -87,7 +87,7 @@ pub fn batch_cull_entities(
         .collect()
 }
 
-#[inline(always)]
+#[inline]
 fn cull_single_entity(
     data: &[f32],
     viewer_x: f64,

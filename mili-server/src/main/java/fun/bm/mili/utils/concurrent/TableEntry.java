@@ -1,16 +1,6 @@
 package fun.bm.mili.utils.concurrent;
 
-public class TableEntry<X, Y, Z> {
-    private final X x;
-    private final Y y;
-    private final Z z;
-
-    public TableEntry(X x, Y y, Z z) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
+public record TableEntry<X, Y, Z>(X x, Y y, Z z) {
     public X getX() {
         return x;
     }

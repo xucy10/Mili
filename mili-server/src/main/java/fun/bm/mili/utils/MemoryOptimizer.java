@@ -20,6 +20,7 @@ public final class MemoryOptimizer {
     private static final AtomicLong lastGCTime = new AtomicLong(0);
     private static final AtomicInteger gcCount = new AtomicInteger(0);
     private static final AtomicLong totalFreedBytes = new AtomicLong(0);
+    private static final AtomicInteger logCounter = new AtomicInteger(0);
 
     private static long maxMemoryBytes = 0;
     private static double gcThreshold = 0.85;
@@ -100,9 +101,11 @@ public final class MemoryOptimizer {
         if (lastGCTime.compareAndSet(lastGc, now)) {
             long before = getUsedMemory();
 
-            System.gc();
+            Runtime.getRuntime().gc();
 
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(100); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
             long after = getUsedMemory();
             long freed = before - after;
@@ -113,7 +116,7 @@ public final class MemoryOptimizer {
             gcCount.incrementAndGet();
 
             LogUtils.getLogger().debug(
-                    "[Mili] Normal GC: freed {} MB", freed / (1024 * 1024)
+                    "[Mili] Normal GC hint: freed {} MB", freed / (1024 * 1024)
             );
         }
     }
@@ -122,8 +125,10 @@ public final class MemoryOptimizer {
         long before = getUsedMemory();
 
         for (int i = 0; i < 3; i++) {
-            System.gc();
-            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            Runtime.getRuntime().gc();
+            try { Thread.sleep(50); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         long after = getUsedMemory();
@@ -136,7 +141,7 @@ public final class MemoryOptimizer {
         lastGCTime.set(System.currentTimeMillis());
 
         LogUtils.getLogger().warn(
-                "[Mili] Aggressive GC triggered: freed {} MB", freed / (1024 * 1024)
+                "[Mili] Aggressive GC hint triggered: freed {} MB", freed / (1024 * 1024)
         );
     }
 
@@ -156,13 +161,11 @@ public final class MemoryOptimizer {
                     usedMemory / (1024 * 1024),
                     maxMemory / (1024 * 1024)
             );
-
-            System.runFinalization();
         }
     }
 
     private static void logMemoryStatus(long used, long committed, long max, double ratio) {
-        if (gcCount.get() % 12 == 0) {
+        if (logCounter.incrementAndGet() % 12 == 0) {
             LogUtils.getLogger().info(
                     "[Mili] Memory: {}% used ({}/{} MB), GC count: {}, Total freed: {} MB",
                     (int)(ratio * 100),

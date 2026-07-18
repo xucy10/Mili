@@ -11,6 +11,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Lag removal system based on LaggRemover features.
@@ -44,7 +45,6 @@ public final class LagRemover {
     private LagRemover(org.bukkit.plugin.Plugin plugin) {
         this.plugin = plugin;
 
-        // Load config
         this.autoChunkUnload = true;
         this.thinMobs = true;
         this.thinAt = 300;
@@ -62,13 +62,15 @@ public final class LagRemover {
 
     public static synchronized void init(org.bukkit.plugin.Plugin plugin) {
         if (instance != null) return;
+        if (plugin == null) {
+            throw new IllegalArgumentException("Mili plugin instance is required for LagRemover");
+        }
         instance = new LagRemover(plugin);
         instance.start();
     }
 
     private org.bukkit.plugin.Plugin getPlugin() {
-        if (plugin != null) return plugin;
-        return org.bukkit.Bukkit.getPluginManager().getPlugins()[0];
+        return plugin;
     }
 
     public static LagRemover getInstance() {
@@ -185,32 +187,34 @@ public final class LagRemover {
     }
 
     private void clearGroundItems() {
-        int count = 0;
+        LongAdder count = new LongAdder();
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Item) {
                     entity.remove();
-                    count++;
+                    count.increment();
                 }
             }
         }
-        if (count > 0) {
-            Bukkit.broadcastMessage("§e[Mili] 内存不足，已清理 " + count + " 个地面物品。");
+        long c = count.sum();
+        if (c > 0) {
+            Bukkit.broadcastMessage("§e[Mili] 内存不足，已清理 " + c + " 个地面物品。");
         }
     }
 
     private void clearHostileEntities() {
-        int count = 0;
+        LongAdder count = new LongAdder();
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
                 if (isHostile(entity.getType())) {
                     entity.remove();
-                    count++;
+                    count.increment();
                 }
             }
         }
-        if (count > 0) {
-            Bukkit.broadcastMessage("§e[Mili] TPS过低，已清理 " + count + " 个敌对实体。");
+        long c = count.sum();
+        if (c > 0) {
+            Bukkit.broadcastMessage("§e[Mili] TPS过低，已清理 " + c + " 个敌对实体。");
         }
     }
 

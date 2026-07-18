@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 
+use crate::util;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum NbtTagType {
@@ -41,50 +43,15 @@ impl NbtTagType {
 
 /// Parse a hex string into raw bytes. Accepts optional `0x` prefix and whitespace.
 ///
-/// Zero intermediate `String` allocations — parses directly from byte slice.
+/// Delegates to `util::parse_hex_bytes` and wraps error messages with the `nbt-` prefix.
 pub fn parse_hex(input: &str) -> Result<Vec<u8>, String> {
-    let raw = input.as_bytes();
-    if raw.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut i = 0;
-    // Skip optional 0x/0X prefix
-    if raw.len() >= 2 && raw[0] == b'0' && (raw[1] == b'x' || raw[1] == b'X') {
-        i = 2;
-    }
-
-    let mut bytes = Vec::with_capacity(raw.len() / 2);
-    let mut hi = None;
-    while i < raw.len() {
-        let b = raw[i];
-        if b.is_ascii_whitespace() {
-            i += 1;
-            continue;
-        }
-        let nibble = hex_nibble(b).ok_or_else(|| format!("nbt-error:invalid-hex:0x{:02X}", b))?;
-        if let Some(h) = hi {
-            bytes.push((h << 4) | nibble);
-            hi = None;
+    util::parse_hex_bytes(input).map_err(|e| {
+        if e.starts_with("bitmap-error:") {
+            e.replace("bitmap-error:", "nbt-error:")
         } else {
-            hi = Some(nibble);
+            e
         }
-        i += 1;
-    }
-
-    if hi.is_some() {
-        return Err("nbt-error:odd-hex-length".to_string());
-    }
-    Ok(bytes)
-}
-
-fn hex_nibble(b: u8) -> Option<u8> {
-    match b {
-        b'0'..=b'9' => Some(b - b'0'),
-        b'a'..=b'f' => Some(b - b'a' + 10),
-        b'A'..=b'F' => Some(b - b'A' + 10),
-        _ => None,
-    }
+    })
 }
 
 /// Lightweight NBT stream scanner.

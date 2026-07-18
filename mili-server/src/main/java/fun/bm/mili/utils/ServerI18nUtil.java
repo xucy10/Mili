@@ -66,8 +66,10 @@ public class ServerI18nUtil {
         logger.info("Starting load language: {}", LanguageConfig.lang);
         if (LanguageConfig.full_blocking_load) {
             loadI18n(LanguageConfig.lang, 2);
-        } else {
+        } else if (preloadTask != null) {
             preloadTask.thenAcceptAsync(v -> loadI18n(LanguageConfig.lang, 2));
+        } else {
+            CompletableFuture.runAsync(() -> loadI18n(LanguageConfig.lang, 2));
         }
     }
 

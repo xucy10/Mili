@@ -85,10 +85,12 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
     }
 
     public boolean putIfAbsent(X x, Y y, Z z) {
-        if (data.stream().anyMatch(entry ->
-                Objects.equals(entry.getX(), x) &&
-                        Objects.equals(entry.getY(), y) &&
-                        Objects.equals(entry.getZ(), z))) {
+        Set<Z> existing = null;
+        ConcurrentHashMap<Y, Set<Z>> inner = xyIndex.get(x);
+        if (inner != null) {
+            existing = inner.get(y);
+        }
+        if (existing != null && existing.contains(z)) {
             return false;
         }
         put(x, y, z);
@@ -97,19 +99,26 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
 
     @Override
     public List<Z> getZ(X x, Y y) {
-        Set<Z> result = xyIndex.getOrDefault(x, new ConcurrentHashMap<>()).get(y);
-        return result != null ? new ArrayList<>(result) : new ArrayList<>();
+        ConcurrentHashMap<Y, Set<Z>> inner = xyIndex.get(x);
+        if (inner == null) return List.of();
+        Set<Z> result = inner.get(y);
+        return result != null ? List.copyOf(result) : List.of();
     }
 
     @Override
     public List<Y> getY(X x, Z z) {
-        Set<Y> result = zxIndex.getOrDefault(z, new ConcurrentHashMap<>()).get(x);
-        return result != null ? new ArrayList<>(result) : new ArrayList<>();
+        ConcurrentHashMap<X, Set<Y>> inner = zxIndex.get(z);
+        if (inner == null) return List.of();
+        Set<Y> result = inner.get(x);
+        return result != null ? List.copyOf(result) : List.of();
     }
 
+    @Override
     public List<X> getX(Y y, Z z) {
-        Set<X> result = yzIndex.getOrDefault(y, new ConcurrentHashMap<>()).get(z);
-        return result != null ? new ArrayList<>(result) : new ArrayList<>();
+        ConcurrentHashMap<Z, Set<X>> inner = yzIndex.get(y);
+        if (inner == null) return List.of();
+        Set<X> result = inner.get(z);
+        return result != null ? List.copyOf(result) : List.of();
     }
 
     @Override
@@ -129,22 +138,18 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
 
     @Override
     public List<X> getAllX() {
-        Set<X> resultSet = new HashSet<>(xyIndex.keySet());
-        return new ArrayList<>(resultSet);
+        return List.copyOf(xyIndex.keySet());
     }
 
     @Override
     public List<Y> getAllY() {
-        Set<Y> resultSet = new HashSet<>(yzIndex.keySet());
-        return new ArrayList<>(resultSet);
+        return List.copyOf(yzIndex.keySet());
     }
 
     @Override
     public List<Z> getAllZ() {
-        Set<Z> resultSet = new HashSet<>(zxIndex.keySet());
-        return new ArrayList<>(resultSet);
+        return List.copyOf(zxIndex.keySet());
     }
-
 
     @Override
     public void clearXY(Z z) {
@@ -172,9 +177,8 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
         zxIndex.clear();
     }
 
-
     private <K, V, R, S> Map<R, S> buildMapFromIndex(ConcurrentHashMap<K, Set<V>> indexMap, java.util.function.Function<K, R> keyMapper, java.util.function.Function<V, S> valueMapper) {
-        Map<R, S> result = new HashMap<>();
+        Map<R, S> result = new LinkedHashMap<>();
         if (indexMap != null) {
             for (Map.Entry<K, Set<V>> entry : indexMap.entrySet()) {
                 K key = entry.getKey();
@@ -190,7 +194,7 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
     }
 
     private <K, V> Map<V, K> reverseMapFromIndex(ConcurrentHashMap<K, Set<V>> indexMap) {
-        Map<V, K> result = new HashMap<>();
+        Map<V, K> result = new LinkedHashMap<>();
         if (indexMap != null) {
             for (Map.Entry<K, Set<V>> entry : indexMap.entrySet()) {
                 K key = entry.getKey();

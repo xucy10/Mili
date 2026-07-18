@@ -29,12 +29,25 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class CrossRegionHelperThread {
 
-    private static final Thread HELPER_THREAD;
+    private static Thread HELPER_THREAD;
     private static final BlockingQueue<CrossRegionEvent> EVENT_QUEUE = new LinkedBlockingQueue<>();
-    // Key: RegionizedWorldData instance (each region has exactly one).  Value: pending events for that region.
     private static final ConcurrentHashMap<RegionizedWorldData, ConcurrentLinkedQueue<CrossRegionEvent>> PENDING_BY_REGION = new ConcurrentHashMap<>();
     private static final AtomicLong EVENT_COUNTER = new AtomicLong(0);
     private static volatile boolean RUNNING = false;
+
+    public static void init() {
+        if (RUNNING) return;
+        HELPER_THREAD = new Thread(CrossRegionHelperThread::runLoop, "CrossRegion-Helper");
+        HELPER_THREAD.setDaemon(true);
+        HELPER_THREAD.start();
+    }
+
+    public static void shutdown() {
+        RUNNING = false;
+        if (HELPER_THREAD != null) {
+            HELPER_THREAD.interrupt();
+        }
+    }
 
     /**
      * Event type.  Each type determines what the target region should do when it
@@ -79,12 +92,6 @@ public class CrossRegionHelperThread {
         public String toString() {
             return "CrossRegionEvent{id=" + id + ", type=" + type + ", tick=" + tickStamp + "}";
         }
-    }
-
-    static {
-        HELPER_THREAD = new Thread(CrossRegionHelperThread::runLoop, "CrossRegion-Helper");
-        HELPER_THREAD.setDaemon(true);
-        HELPER_THREAD.start();
     }
 
     private static void runLoop() {

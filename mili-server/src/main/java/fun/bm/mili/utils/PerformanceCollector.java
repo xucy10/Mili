@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 public final class PerformanceCollector {
 
@@ -110,8 +111,8 @@ public final class PerformanceCollector {
 
     public static final class ValueMetric implements Metric {
         private final String name;
-        private final AtomicLong sum = new AtomicLong(0);
-        private final AtomicLong count = new AtomicLong(0);
+        private final LongAdder sum = new LongAdder();
+        private final LongAdder count = new LongAdder();
 
         ValueMetric(String name) {
             this.name = name;
@@ -121,26 +122,26 @@ public final class PerformanceCollector {
         public String getName() { return name; }
 
         void record(long value) {
-            sum.addAndGet(value);
-            count.incrementAndGet();
+            sum.add(value);
+            count.increment();
         }
 
         @Override
         public double getAverage() {
-            long c = count.get();
-            return c == 0 ? 0.0 : (double) sum.get() / c;
+            long c = count.sum();
+            return c == 0 ? 0.0 : (double) sum.sum() / c;
         }
 
         @Override
         public void reset() {
-            sum.set(0);
-            count.set(0);
+            sum.reset();
+            count.reset();
         }
     }
 
     public static final class CounterMetric implements Metric {
         private final String name;
-        private final AtomicLong value = new AtomicLong(0);
+        private final LongAdder value = new LongAdder();
 
         CounterMetric(String name) {
             this.name = name;
@@ -150,21 +151,21 @@ public final class PerformanceCollector {
         public String getName() { return name; }
 
         void increment(long delta) {
-            value.addAndGet(delta);
+            value.add(delta);
         }
 
         long getValue() {
-            return value.get();
+            return value.sum();
         }
 
         @Override
         public double getAverage() {
-            return value.get();
+            return value.sum();
         }
 
         @Override
         public void reset() {
-            value.set(0);
+            value.reset();
         }
     }
 

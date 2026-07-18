@@ -3,14 +3,14 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.mili.rust.RustOptimizer;
 
 /**
  * Adaptive Region Balancer.
@@ -114,10 +114,6 @@ public final class RegionBalancer {
     private static final ConcurrentHashMap<Long, RegionTask> PENDING_TASKS = new ConcurrentHashMap<>();
     private static final AtomicLong SEQUENCE = new AtomicLong(0);
     private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
-    private static final String RUST_OPTIMIZER_CLASS_NAME = "org.mili.rust.RustOptimizer";
-    private static final Method RUST_SCHEDULER_METHOD = findRustSchedulerMethod();
-    private static final Method RUST_TASK_UID_METHOD = findRustTaskUidMethod();
-    private static final Method RUST_NETWORK_OPT_METHOD = findRustNetworkOptimizeMethod();
 
     /**
      * Initialize the balancer.  Safe to call multiple times; idempotent.
@@ -148,90 +144,42 @@ public final class RegionBalancer {
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }
 
-    private static Method findRustSchedulerMethod() {
-        try {
-            Class<?> optimizerClass = Class.forName(RUST_OPTIMIZER_CLASS_NAME);
-            return optimizerClass.getMethod("scheduler", int.class, int.class);
-        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
-            return null;
-        }
-    }
-
-    private static Method findRustTaskUidMethod() {
-        try {
-            Class<?> optimizerClass = Class.forName(RUST_OPTIMIZER_CLASS_NAME);
-            return optimizerClass.getMethod("taskUid");
-        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
-            return null;
-        }
-    }
-
-    private static Method findRustNetworkOptimizeMethod() {
-        try {
-            Class<?> optimizerClass = Class.forName(RUST_OPTIMIZER_CLASS_NAME);
-            return optimizerClass.getMethod("networkOptimize", String.class);
-        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
-            return null;
-        }
-    }
-
     private static long nextTaskUid() {
-        if (RUST_TASK_UID_METHOD == null) {
-            return System.nanoTime();
-        }
-
         try {
-            Object result = RUST_TASK_UID_METHOD.invoke(null);
-            if (result instanceof String resultString) {
-                String[] parts = resultString.split(":", 2);
-                if (parts.length == 2) {
-                    return Long.parseLong(parts[1]);
-                }
+            String result = RustOptimizer.taskUid();
+            String[] parts = result.split(":", 2);
+            if (parts.length == 2) {
+                return Long.parseLong(parts[1]);
             }
-        } catch (ReflectiveOperationException | NumberFormatException ignored) {
-            // Fallback to a Java-side timestamp when the Rust bridge is unavailable.
+        } catch (NumberFormatException ignored) {
         }
         return System.nanoTime();
     }
 
     static MergePolicy getRustMergePolicy() {
-        if (RUST_SCHEDULER_METHOD == null) {
-            return MergePolicy.defaultPolicy();
-        }
-
         try {
-            Object result = RUST_SCHEDULER_METHOD.invoke(null, Math.min(4, Runtime.getRuntime().availableProcessors()), 512);
-            if (result instanceof String resultString) {
-                String[] parts = resultString.split(":");
-                if (parts.length >= 4) {
-                    int batch = parsePositive(parts[1], 1);
-                    int workerCount = parsePositive(parts[2], 1);
-                    int workUnits = parsePositive(parts[3], 512);
-                    return MergePolicy.fromRust(batch, workerCount, workUnits);
-                }
+            String result = RustOptimizer.scheduler(Math.min(4, Runtime.getRuntime().availableProcessors()), 512);
+            String[] parts = result.split(":");
+            if (parts.length >= 4) {
+                int batch = parsePositive(parts[1], 1);
+                int workerCount = parsePositive(parts[2], 1);
+                int workUnits = parsePositive(parts[3], 512);
+                return MergePolicy.fromRust(batch, workerCount, workUnits);
             }
-        } catch (ReflectiveOperationException | NumberFormatException ignored) {
-            // Fallback to Java-only behavior if the Rust bridge is unavailable.
+        } catch (NumberFormatException ignored) {
         }
         return MergePolicy.defaultPolicy();
     }
 
     private static int getRustNetworkHint(int defaultBatch) {
-        if (RUST_NETWORK_OPT_METHOD == null) {
-            return defaultBatch;
-        }
-
         try {
-            Object result = RUST_NETWORK_OPT_METHOD.invoke(null, "1,2,4,8");
-            if (result instanceof String resultString) {
-                String[] parts = resultString.split(":");
-                if (parts.length >= 2) {
-                    int hint = parsePositive(parts[1], defaultBatch);
-                    return Math.max(1, Math.min(RegionBalancerConfig.mergeBatchHardLimit, hint));
-                }
+            String result = RustOptimizer.networkOptimize("1,2,4,8");
+            String[] parts = result.split(":");
+            if (parts.length >= 2) {
+                int hint = parsePositive(parts[1], defaultBatch);
+                return Math.max(1, Math.min(RegionBalancerConfig.mergeBatchHardLimit, hint));
             }
-        } catch (ReflectiveOperationException | NumberFormatException ignored) {
-            // Fallback to the batch value already derived from the scheduler policy.
+        } catch (NumberFormatException ignored) {
         }
         return defaultBatch;
     }
@@ -312,16 +260,15 @@ public final class RegionBalancer {
                         WORKER_POOL.execute(() -> {
                             for (Runnable w : works) {
                                 try {
-                                    markTaskState(mergeList, TaskState.MERGED, "merged");
-                                    markTaskState(mergeList, TaskState.RUNNING, "running");
                                     w.run();
-                                    markTaskState(mergeList, TaskState.COMPLETED, "completed");
                                 }
                                 catch (Throwable ex) {
-                                    markTaskState(mergeList, TaskState.FAILED, "failed");
                                     com.mojang.logging.LogUtils.getClassLogger().error(
                                             "Merged region task failed", ex);
                                 }
+                            }
+                            for (RegionTask t : mergeList) {
+                                markTaskState(t, TaskState.COMPLETED, "completed");
                             }
                         });
                         continue;
@@ -331,11 +278,11 @@ public final class RegionBalancer {
 
                 WORKER_POOL.execute(() -> {
                     try {
-                        markTaskState(List.of(task), TaskState.RUNNING, "running");
+                        markTaskState(task, TaskState.RUNNING, "running");
                         task.work.run();
-                        markTaskState(List.of(task), TaskState.COMPLETED, "completed");
+                        markTaskState(task, TaskState.COMPLETED, "completed");
                     } catch (Throwable ex) {
-                        markTaskState(List.of(task), TaskState.FAILED, "failed");
+                        markTaskState(task, TaskState.FAILED, "failed");
                         com.mojang.logging.LogUtils.getClassLogger().error(
                                 "RegionBalancer task failed", ex);
                     }
@@ -406,16 +353,14 @@ public final class RegionBalancer {
         PENDING_TASKS.put(task.taskUid, task);
     }
 
-    private static void markTaskState(List<RegionTask> tasks, TaskState state, String trace) {
-        for (RegionTask task : tasks) {
-            TaskRecord record = TASK_RECORDS.computeIfAbsent(task.taskUid, id ->
-                    new TaskRecord(id, task.scheduleRef, task.work, task.tickCount));
-            record.state = state;
-            record.trace = trace + ":" + task.seq;
-            record.updatedNanos = System.nanoTime();
-            if (state == TaskState.COMPLETED || state == TaskState.FAILED || state == TaskState.CANCELLED) {
-                PENDING_TASKS.remove(task.taskUid);
-            }
+    private static void markTaskState(RegionTask task, TaskState state, String trace) {
+        TaskRecord record = TASK_RECORDS.computeIfAbsent(task.taskUid, id ->
+                new TaskRecord(id, task.scheduleRef, task.work, task.tickCount));
+        record.state = state;
+        record.trace = trace + ":" + task.seq;
+        record.updatedNanos = System.nanoTime();
+        if (state == TaskState.COMPLETED || state == TaskState.FAILED || state == TaskState.CANCELLED) {
+            PENDING_TASKS.remove(task.taskUid);
         }
     }
 

@@ -56,10 +56,7 @@ public class SaveAllUtil {
             withError.set(true);
         }
         region.lastSavedTime = System.currentTimeMillis();
-        int saved;
-        synchronized (savedRegionCount) {
-            saved = savedRegionCount.incrementAndGet();
-        }
+        int saved = savedRegionCount.incrementAndGet();
         if (saved >= regionCount) {
             if (withError.get()) {
                 currentSaveAll.getFirst().sendFailure(Component.literal("At least one region failed to save!"));
