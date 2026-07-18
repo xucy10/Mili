@@ -149,7 +149,7 @@ jobs:
 
       - name: Verify Rust Optimizer Binary
         run: |
-          if [ -f "mili-rust/build/rust/optimizer" ] || [ -f "mili-rust/build/rust/optimizer.exe" ]; then
+          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/mili_optimizer.dylib" ]; then
             echo "Rust optimizer binary exists"
             ls -la mili-rust/build/rust
           else
