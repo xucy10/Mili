@@ -208,9 +208,4 @@ public class CrossRegionHelperThread {
             submit(EventType.ENTITY_DAMAGE_SYNC, s, t, new Object[]{src.getUUID(), tgt.getUUID(), ds}, tick);
         }
     }
-
-    public static void shutdown() {
-        RUNNING = false;
-        HELPER_THREAD.interrupt();
-    }
 }
