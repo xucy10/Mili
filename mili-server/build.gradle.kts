@@ -272,6 +272,16 @@ tasks.named<Jar>("jar") {
     from(project(":mili-rust").layout.buildDirectory.dir("rust")) {
         into("rust")
     }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
+
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+    exclude("META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/maven/**")
+    exclude("META-INF/versions/**")
+    exclude("META-INF/*.md")
+    exclude("**/*.md", "**/module-info.class")
 }
 
 // Pufferfish Start

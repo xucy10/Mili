@@ -10,18 +10,18 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class GlobalEntitiesCounter implements IConfigModule {
     @HotReloadUnsupported
     @ConfigInfo(name = "enabled", comments = """
-            Enable global entities counter.
-            You need to set per-player-mob-spawns to false on paper-world-defaults.yml or paper-world.yml""")
+            启用全局实体计数器。
+            需要在 paper-world-defaults.yml 或 paper-world.yml 中将 per-player-mob-spawns 设为 false""")
     public static boolean enabled = false;
 
     @HotReloadUnsupported
-    @ConfigInfo(name = "async", comments = "Enable Asynchronous(maybe cause bugs)")
+    @ConfigInfo(name = "async", comments = "启用异步模式（可能导致错误）")
     public static boolean async = false;
 
     @HotReloadUnsupported
     @ConfigInfo(name = "always_count", comments = """
-            Always count entities.
-            If you want to count entities loaded by chunk loader,
-            you must to enabled it.""")
+            始终统计实体。
+            如果你想统计由区块加载器加载的实体，
+            必须启用此选项。""")
     public static boolean alwaysCount = false;
 }

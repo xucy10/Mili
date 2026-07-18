@@ -10,15 +10,15 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class LanguageConfig implements IConfigModule {
     @TransformedConfig(name = "lang", directory = {"optimizations", "language"})
     @ConfigInfo(name = "lang", comments = """
-            Please use the key from https://minecraft.wiki/w/Language
-            Sample of format: en_us zh_cn zh_hk zh_tw""")
+            请使用 https://minecraft.wiki/w/Language 中的语言键
+            格式示例：en_us zh_cn zh_hk zh_tw""")
     public static String lang = "en_us";
 
     @ConfigInfo(name = "full_blocking_load", comments = """
-            Whether to allow blocking server loading when loading localized language.
-            If you want only use your localized language to shown in your terminal,
-            you need to enable it.
+            是否允许在加载本地化语言时阻塞服务器加载。
+            如果你希望终端中只显示本地化语言，
+            则需要启用此选项。
             
-            WARNING: This may slow down the startup speed!""")
+            警告：这可能会降低启动速度！""")
     public static boolean full_blocking_load = false;
 }

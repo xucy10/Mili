@@ -49,24 +49,97 @@ public final class RustBridge {
 
     private static native void nativeInit();
 
-    // -- Chunk / Region (cheap calls, fine as-is) ----------------------------
+    // -- Chunk / Region (zero-cost pure Java) --------------------------------
 
-    public static native long chunkToRegion(int cx, int cz);
-    public static native long chunkToLocal(int cx, int cz);
-    public static native int chunkIndex(int cx, int cz);
-    public static native long regionKey(int rx, int rz);
-    public static native long decodeHeaderEntry(int entry);
-    public static native int encodeHeaderEntry(int offset, int count);
+    public static long chunkToRegion(int cx, int cz) {
+        return ((long)(cx >> 5) << 32) | ((cz >> 5) & 0xFFFFFFFFL);
+    }
+    public static long chunkToLocal(int cx, int cz) {
+        return ((long)(cx & 0x1F) << 32) | ((cz & 0x1F) & 0xFFFFFFFFL);
+    }
+    public static int chunkIndex(int cx, int cz) {
+        return 4 * ((cx & 0x1F) + (cz & 0x1F) * 32);
+    }
+    public static long regionKey(int rx, int rz) {
+        return ((long)rx << 32) | ((long)rz & 0xFFFFFFFFL);
+    }
+    public static long decodeHeaderEntry(int entry) {
+        return ((long)((entry >>> 8) & 0xFFFFFF) << 32) | ((long)(entry & 0xFF));
+    }
+    public static int encodeHeaderEntry(int offset, int count) {
+        return ((offset & 0xFFFFFF) << 8) | (count & 0xFF);
+    }
 
     // -- VarInt --------------------------------------------------------------
 
-    public static native int varintSize(int v);
-    public static native int varlongSize(long v);
+    public static int varintSize(int v) {
+        int u = v;
+        if ((u & 0xFFFFFF80) == 0) return 1;
+        if ((u & 0xFFFFC000) == 0) return 2;
+        if ((u & 0xFFE00000) == 0) return 3;
+        if ((u & 0xF0000000) == 0) return 4;
+        return 5;
+    }
+    public static int varlongSize(long v) {
+        if ((v & 0xFFFFFFFFFFFFFF80L) == 0) return 1;
+        if ((v & 0xFFFFFFFFFFFFC000L) == 0) return 2;
+        if ((v & 0xFFFFFFFFFFE00000L) == 0) return 3;
+        if ((v & 0xFFFFFFFFF0000000L) == 0) return 4;
+        if ((v & 0xFFFFFFF800000000L) == 0) return 5;
+        if ((v & 0xFFFFFC0000000000L) == 0) return 6;
+        if ((v & 0xFFFE000000000000L) == 0) return 7;
+        if ((v & 0xFF00000000000000L) == 0) return 8;
+        if ((v & 0x8000000000000000L) == 0) return 9;
+        return 10;
+    }
 
     // -- Hashing -------------------------------------------------------------
 
-    public static native long fnv1aHash(String s);
-    public static native int murmur3_32(byte[] data, int seed);
+    public static long fnv1aHash(String s) {
+        long hash = 0xcbf29ce484222325L;
+        for (int i = 0; i < s.length(); i++) {
+            hash ^= s.charAt(i) & 0xFF;
+            hash *= 0x100000001b3L;
+        }
+        return hash;
+    }
+    public static int murmur3_32(byte[] data, int seed) {
+        int len = data.length;
+        int h = seed;
+        int c1 = 0xCC9E2D97;
+        int c2 = 0x1B873593;
+        int i = 0;
+        while (i + 4 <= len) {
+            int k = (data[i] & 0xFF) | ((data[i+1] & 0xFF) << 8)
+                  | ((data[i+2] & 0xFF) << 16) | ((data[i+3] & 0xFF) << 24);
+            k *= c1;
+            k = Integer.rotateLeft(k, 15);
+            k *= c2;
+            h ^= k;
+            h = Integer.rotateLeft(h, 13);
+            h = h * 5 + 0xE6546B64;
+            i += 4;
+        }
+        int k1 = 0;
+        switch (len & 3) {
+            case 3: k1 ^= (data[i+2] & 0xFF) << 16;
+            case 2: k1 ^= (data[i+1] & 0xFF) << 8;
+            case 1: k1 ^= (data[i] & 0xFF);
+        }
+        if ((len & 3) != 0) {
+            k1 *= c1;
+            k1 = Integer.rotateLeft(k1, 15);
+            k1 *= c2;
+            h ^= k1;
+        }
+        h ^= len;
+        h ^= h >>> 16;
+        h *= 0x85EBCA6B;
+        h ^= h >>> 13;
+        h *= 0xC2B2AE35;
+        h ^= h >>> 16;
+        return h;
+    }
 
     // -- Protocol (infrequent) -----------------------------------------------
 

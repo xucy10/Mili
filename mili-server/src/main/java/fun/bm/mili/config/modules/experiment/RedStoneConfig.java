@@ -15,14 +15,14 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class RedStoneConfig implements IConfigModule {
     @TransformedConfig(name = "enabled", directory = {"experiment", "redstone-ignore-upwards-update"})
     @ConfigInfo(name = "redstone-ignore-upwards-update", comments = """
-            Should the pre-1.20 mechanism be reintroduced: 
-            Redstone dust does not connect to adjacent redstone dust on trapdoors that are open      
-            Pre-1.20.2 mechanism: Redstone dust, redstone repeaters, and redstone comparators do not check for attachment when receiving status updates from below""")
+            是否重新引入 1.20 之前的机制：
+            红石粉不会连接到相邻打开活板门上的红石粉
+            1.20.2 之前的机制：红石粉、红石中继器和红石比较器在接收来自下方的状态更新时不检查附着""")
     public static boolean redstoneIgnoreUpwardsUpdate = false;
 
     @TransformedConfig(name = "enabled", directory = {"experiment", "cce-update-suppression"})
     @ConfigInfo(name = "cce-update-suppression", comments = """
-            Is it permissible to use ClassCastException for update suppression?""")
+            是否允许使用 ClassCastException 进行更新抑制？""")
     public static boolean cce = false;
 
     @HotReloadUnsupported
@@ -32,12 +32,12 @@ public class RedStoneConfig implements IConfigModule {
     @ConfigInfo(name = "old-block-remove-behaviour")
     public static boolean oldBlockRemoveBehaviour = false;
 
-    @ConfigInfo(name = "tps-throttle-enabled", comments = "Enable TPS-based redstone update throttling")
+    @ConfigInfo(name = "tps-throttle-enabled", comments = "启用基于 TPS 的红石更新节流")
     public static boolean tpsThrottleEnabled = false;
 
-    @ConfigInfo(name = "tps-throttle-threshold", comments = "TPS threshold below which to throttle redstone updates")
+    @ConfigInfo(name = "tps-throttle-threshold", comments = "低于此 TPS 阈值时开始节流红石更新")
     public static double tpsThrottleThreshold = 18.0;
 
-    @ConfigInfo(name = "tps-throttle-skip-chance", comments = "Chance (0.0-1.0) to skip a redstone update when TPS is below threshold")
+    @ConfigInfo(name = "tps-throttle-skip-chance", comments = "当 TPS 低于阈值时跳过红石更新的概率（0.0-1.0）")
     public static double tpsThrottleSkipChance = 0.1;
 }

@@ -30,6 +30,6 @@ public class OldFeatureConfig implements IConfigModule {
     @TransformedConfig(name = "villager-infinite-trade", directory = {"misc", "villager-config"}, transformComments = false)
     @ConfigInfo(name = "villager-void-trade", comments =
             """
-                    Allow villager void trade.""")
+                    允许村民虚空交易。""")
     public static boolean villagerVoidTrade = false;
 }

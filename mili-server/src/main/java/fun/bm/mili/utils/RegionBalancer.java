@@ -11,8 +11,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.mili.rust.RustOptimizer;
-
 /**
  * Adaptive Region Balancer.
  * <p>
@@ -105,26 +103,26 @@ public final class RegionBalancer {
 
     // ---------- State ----------
 
-    private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
-    private static volatile ExecutorService WORKER_POOL;
-    private static final PriorityBlockingQueue<RegionTask> TASK_QUEUE =
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
+    private static volatile ExecutorService workerPool;
+    private static final PriorityBlockingQueue<RegionTask> taskQueue =
             new PriorityBlockingQueue<>();
-    private static final ConcurrentHashMap<Integer, AtomicLong> LAST_TICK_TIME =
+    private static final ConcurrentHashMap<Integer, AtomicLong> lastTickTime =
             new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Long, TaskRecord> TASK_RECORDS = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Long, RegionTask> PENDING_TASKS = new ConcurrentHashMap<>();
-    private static final AtomicLong SEQUENCE = new AtomicLong(0);
-    private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
+    private static final ConcurrentHashMap<Long, TaskRecord> taskRecords = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, RegionTask> pendingTasks = new ConcurrentHashMap<>();
+    private static final AtomicLong sequence = new AtomicLong(0);
+    private static final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     /**
      * Initialize the balancer.  Safe to call multiple times; idempotent.
      */
     public static void init() {
         if (!RegionBalancerConfig.enabled) return;
-        if (INITIALIZED.getAndSet(true)) return;
+        if (initialized.getAndSet(true)) return;
 
         int poolSize = RegionBalancerConfig.getThreadPoolSize();
-        WORKER_POOL = Executors.newFixedThreadPool(poolSize, r -> {
+        workerPool = Executors.newFixedThreadPool(poolSize, r -> {
             Thread t = new Thread(r, "RegionBalancer-Worker");
             t.setDaemon(true);
             return t;
@@ -146,52 +144,15 @@ public final class RegionBalancer {
     }
 
     private static long nextTaskUid() {
-        try {
-            String result = RustOptimizer.taskUid();
-            String[] parts = result.split(":", 2);
-            if (parts.length == 2) {
-                return Long.parseLong(parts[1]);
-            }
-        } catch (NumberFormatException ignored) {
-        }
         return System.nanoTime();
     }
 
     static MergePolicy getRustMergePolicy() {
-        try {
-            String result = RustOptimizer.scheduler(Math.min(4, Runtime.getRuntime().availableProcessors()), 512);
-            String[] parts = result.split(":");
-            if (parts.length >= 4) {
-                int batch = parsePositive(parts[1], 1);
-                int workerCount = parsePositive(parts[2], 1);
-                int workUnits = parsePositive(parts[3], 512);
-                return MergePolicy.fromRust(batch, workerCount, workUnits);
-            }
-        } catch (NumberFormatException ignored) {
-        }
         return MergePolicy.defaultPolicy();
     }
 
     private static int getRustNetworkHint(int defaultBatch) {
-        try {
-            String result = RustOptimizer.networkOptimize("1,2,4,8");
-            String[] parts = result.split(":");
-            if (parts.length >= 2) {
-                int hint = parsePositive(parts[1], defaultBatch);
-                return Math.max(1, Math.min(RegionBalancerConfig.mergeBatchHardLimit, hint));
-            }
-        } catch (NumberFormatException ignored) {
-        }
         return defaultBatch;
-    }
-
-    private static int parsePositive(String value, int fallback) {
-        try {
-            int parsed = Integer.parseInt(value);
-            return parsed > 0 ? parsed : fallback;
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
     }
 
     private static final class MergePolicy {
@@ -208,19 +169,12 @@ public final class RegionBalancer {
         static MergePolicy defaultPolicy() {
             return new MergePolicy(4, 4, false);
         }
-
-        static MergePolicy fromRust(int batch, int workerCount, int workUnits) {
-            int boundedBatch = Math.max(1, Math.min(RegionBalancerConfig.mergeBatchHardLimit, batch));
-            int maxMergeCount = Math.max(1, Math.min(RegionBalancerConfig.mergeBatchHardLimit, boundedBatch));
-            boolean aggressive = workUnits > 512 && workerCount >= 2;
-            return new MergePolicy(boundedBatch, maxMergeCount, aggressive);
-        }
     }
 
     private static void dispatchLoop() {
-        while (!SHUTDOWN.get()) {
+        while (!shutdown.get()) {
             try {
-                RegionTask task = TASK_QUEUE.poll(100, TimeUnit.MILLISECONDS);
+                RegionTask task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
                 if (task == null) continue;
 
                 // Re-score priority right before execution to avoid starvation
@@ -245,20 +199,20 @@ public final class RegionBalancer {
                         mergeBatchSize = Math.max(mergeBatchSize, Math.min(RegionBalancerConfig.mergeBatchHardLimit, policy.maxMergeCount));
                     }
                     while (mergeList.size() < mergeBatchSize) {
-                        RegionTask next = TASK_QUEUE.poll();
+                        RegionTask next = taskQueue.poll();
                         if (next == null) break;
                         RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);
                         if (nextSnap.isLowLoad()) {
                             mergeList.add(next);
                         } else {
-                            TASK_QUEUE.add(next); // high-load, put back
+                            taskQueue.add(next); // high-load, put back
                             break;
                         }
                     }
                     if (mergeList.size() > 1) {
                         final List<Runnable> works = new ArrayList<>();
                         for (RegionTask t : mergeList) works.add(t.work);
-                        WORKER_POOL.execute(() -> {
+                        workerPool.execute(() -> {
                             for (Runnable w : works) {
                                 try {
                                     w.run();
@@ -277,7 +231,7 @@ public final class RegionBalancer {
                 }
                 // Mili end - Region dynamic merge
 
-                WORKER_POOL.execute(() -> {
+                workerPool.execute(() -> {
                     try {
                         markTaskState(task, TaskState.RUNNING, "running");
                         task.work.run();
@@ -308,22 +262,22 @@ public final class RegionBalancer {
      * @param work        the actual tick work (must call the original tickRegion)
      */
     public static void submit(Object scheduleRef, long tickCount, Runnable work) {
-        if (!RegionBalancerConfig.enabled || WORKER_POOL == null) {
+        if (!RegionBalancerConfig.enabled || workerPool == null) {
             // Fallback: run synchronously
             work.run();
             return;
         }
 
         int key = System.identityHashCode(scheduleRef);
-        AtomicLong lastTick = LAST_TICK_TIME.computeIfAbsent(key, k -> new AtomicLong(0));
+        AtomicLong lastTick = lastTickTime.computeIfAbsent(key, k -> new AtomicLong(0));
         long last = lastTick.get();
 
         double priority = RegionLoadMonitor.computePriority(scheduleRef, last);
 
-        RegionTask task = new RegionTask(scheduleRef, work, tickCount, SEQUENCE.incrementAndGet());
+        RegionTask task = new RegionTask(scheduleRef, work, tickCount, sequence.incrementAndGet());
         task.priority = priority;
         registerTask(task);
-        TASK_QUEUE.add(task);
+        taskQueue.add(task);
     }
 
     /**
@@ -333,7 +287,7 @@ public final class RegionBalancer {
      * shared thread pool and waits for it to finish.
      */
     public static void submitAndWait(Object scheduleRef, long tickCount, Runnable work) {
-        if (!RegionBalancerConfig.enabled || WORKER_POOL == null) {
+        if (!RegionBalancerConfig.enabled || workerPool == null) {
             work.run();
             return;
         }
@@ -346,37 +300,37 @@ public final class RegionBalancer {
     }
 
     private static void registerTask(RegionTask task) {
-        TaskRecord record = TASK_RECORDS.computeIfAbsent(task.taskUid, id ->
+        TaskRecord record = taskRecords.computeIfAbsent(task.taskUid, id ->
                 new TaskRecord(id, task.scheduleRef, task.work, task.tickCount));
         record.state = TaskState.QUEUED;
         record.trace = "queued:" + task.seq;
         record.updatedNanos = System.nanoTime();
-        PENDING_TASKS.put(task.taskUid, task);
+        pendingTasks.put(task.taskUid, task);
     }
 
     private static void markTaskState(RegionTask task, TaskState state, String trace) {
-        TaskRecord record = TASK_RECORDS.computeIfAbsent(task.taskUid, id ->
+        TaskRecord record = taskRecords.computeIfAbsent(task.taskUid, id ->
                 new TaskRecord(id, task.scheduleRef, task.work, task.tickCount));
         record.state = state;
         record.trace = trace + ":" + task.seq;
         record.updatedNanos = System.nanoTime();
         if (state == TaskState.COMPLETED || state == TaskState.FAILED || state == TaskState.CANCELLED) {
-            PENDING_TASKS.remove(task.taskUid);
+            pendingTasks.remove(task.taskUid);
         }
     }
 
     public static TaskState getTaskState(long taskUid) {
-        TaskRecord record = TASK_RECORDS.get(taskUid);
+        TaskRecord record = taskRecords.get(taskUid);
         return record != null ? record.state : TaskState.UNKNOWN;
     }
 
     public static String getTaskTrace(long taskUid) {
-        TaskRecord record = TASK_RECORDS.get(taskUid);
+        TaskRecord record = taskRecords.get(taskUid);
         return record != null ? record.trace : "unknown";
     }
 
     public static boolean cancelTask(long taskUid) {
-        TaskRecord record = TASK_RECORDS.get(taskUid);
+        TaskRecord record = taskRecords.get(taskUid);
         if (record == null) {
             return false;
         }
@@ -384,12 +338,12 @@ public final class RegionBalancer {
         record.state = TaskState.CANCELLED;
         record.trace = "cancelled";
         record.updatedNanos = System.nanoTime();
-        PENDING_TASKS.remove(taskUid);
+        pendingTasks.remove(taskUid);
         return true;
     }
 
     public static boolean retryTask(long taskUid) {
-        TaskRecord record = TASK_RECORDS.get(taskUid);
+        TaskRecord record = taskRecords.get(taskUid);
         if (record == null || record.cancelRequested && record.state == TaskState.CANCELLED) {
             return false;
         }
@@ -402,52 +356,42 @@ public final class RegionBalancer {
         record.trace = "retried:" + record.retryCount;
         record.updatedNanos = System.nanoTime();
 
-        if (!RegionBalancerConfig.enabled || WORKER_POOL == null) {
+        if (!RegionBalancerConfig.enabled || workerPool == null) {
             record.work.run();
             record.state = TaskState.COMPLETED;
             record.trace = "completed:retry";
             return true;
         }
 
-        RegionTask retryTask = new RegionTask(record.scheduleRef, record.work, record.tickCount, SEQUENCE.incrementAndGet(), taskUid);
+        RegionTask retryTask = new RegionTask(record.scheduleRef, record.work, record.tickCount, sequence.incrementAndGet(), taskUid);
         retryTask.priority = RegionLoadMonitor.computePriority(record.scheduleRef, System.nanoTime());
         registerTask(retryTask);
-        TASK_QUEUE.add(retryTask);
+        taskQueue.add(retryTask);
         return true;
     }
 
     public static void clearTaskTrace(long taskUid) {
-        TaskRecord record = TASK_RECORDS.get(taskUid);
+        TaskRecord record = taskRecords.get(taskUid);
         if (record != null) {
             record.trace = "cleared";
         }
     }
 
-    /**
-     * Mark that a region has just completed a tick.
-     * Used to track starvation for priority boosting.
-     */
     public static void markTicked(Object scheduleRef) {
         if (!RegionBalancerConfig.enabled) return;
         int key = System.identityHashCode(scheduleRef);
-        AtomicLong last = LAST_TICK_TIME.get(key);
+        AtomicLong last = lastTickTime.get(key);
         if (last != null) {
             last.set(System.nanoTime());
         }
     }
 
-    /**
-     * Get the number of tasks currently waiting in the queue.
-     */
     public static int pendingTasks() {
-        return TASK_QUEUE.size();
+        return taskQueue.size();
     }
 
-    /**
-     * Get the number of active worker threads.
-     */
     public static int activeWorkers() {
-        if (WORKER_POOL instanceof ThreadPoolExecutor tpe) {
+        if (workerPool instanceof ThreadPoolExecutor tpe) {
             return tpe.getActiveCount();
         }
         return -1;
@@ -460,8 +404,8 @@ public final class RegionBalancer {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("pending_tasks", pendingTasks());
         stats.put("active_workers", activeWorkers());
-        stats.put("initialized", INITIALIZED.get());
-        stats.put("shutdown", SHUTDOWN.get());
+        stats.put("initialized", initialized.get());
+        stats.put("shutdown", shutdown.get());
         return stats;
     }
 
@@ -469,9 +413,9 @@ public final class RegionBalancer {
      * Shutdown the balancer.
      */
     public static void shutdown() {
-        SHUTDOWN.set(true);
-        if (WORKER_POOL != null) {
-            WORKER_POOL.shutdown();
+        shutdown.set(true);
+        if (workerPool != null) {
+            workerPool.shutdown();
         }
     }
 }

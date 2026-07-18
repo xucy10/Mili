@@ -25,6 +25,6 @@ public class RemovedConfig implements IConfigModule {
     @TransformedConfig(name = "better_shulker_box", directory = {"misc", "container_expansion"}, transform = false)
     @ConfigInfo(name = "removed", comments =
             """
-                    RemovedConfig redirect to here, no any function.""")
+                    已移除的配置重定向到此，无任何功能。""")
     public static boolean enabled = true;
 }

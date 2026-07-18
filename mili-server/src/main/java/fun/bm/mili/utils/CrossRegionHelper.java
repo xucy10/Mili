@@ -25,6 +25,7 @@ public class CrossRegionHelper {
     private static final LongAdder eventsProcessed = new LongAdder();
     private static final LongAdder eventsDropped = new LongAdder();
     private static final LongAdder batchesDispatched = new LongAdder();
+    private static final LongAdder regionQueueOverflows = new LongAdder();
 
     private static final int BATCH_SIZE = 64;
 
@@ -33,14 +34,12 @@ public class CrossRegionHelper {
         public final RegionizedWorldData sourceRegion;
         public final RegionizedWorldData targetRegion;
         public final long tickStamp;
-        public final long createdNanos;
 
         protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
             this.id = eventIdGen.incrementAndGet();
             this.sourceRegion = src;
             this.targetRegion = tgt;
             this.tickStamp = tick;
-            this.createdNanos = System.nanoTime();
         }
     }
 
@@ -158,6 +157,7 @@ public class CrossRegionHelper {
 
         if (queue.size() >= maxPending) {
             queue.poll();
+            regionQueueOverflows.increment();
         }
 
         queue.add(event);
@@ -243,6 +243,7 @@ public class CrossRegionHelper {
         stats.put("events_processed", eventsProcessed.sum());
         stats.put("events_dropped", eventsDropped.sum());
         stats.put("batches_dispatched", batchesDispatched.sum());
+        stats.put("region_queue_overflows", regionQueueOverflows.sum());
 
         long totalEventsProcessed = 0;
         for (ConcurrentLinkedQueue<Event> q : pendingByRegion.values()) {

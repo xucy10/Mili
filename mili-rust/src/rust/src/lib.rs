@@ -1,4 +1,3 @@
-pub mod chunk;
 pub mod entity_cull;
 pub mod frustum;
 pub mod jni_bridge;
@@ -9,7 +8,6 @@ pub mod occlusion;
 pub mod protocol;
 pub mod scheduler;
 pub mod util;
-pub mod varint;
 
 /// Parse a string of whitespace/comma/semicolon/pipe-separated numbers into `Vec<u64>`.
 /// Ignores non-numeric tokens silently.

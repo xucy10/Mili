@@ -9,15 +9,14 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "alternative_block_placement", directory = {"protocol"})
 public class AlternativeBlockPlacementProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            Specify the precise placement protocol type
-            NONE Disable precise placement protocol
-            CARPET Precise placement protocol version 2
-            CARPET_FIX Enhanced precise placement protocol version 2 (requires MasaGadget installed on client)
-            LITEMATICA Precise placement protocol version 3""")
+            指定精确放置协议类型
+            NONE 禁用精确放置协议
+            CARPET 精确放置协议版本 2
+            CARPET_FIX 增强精确放置协议版本 2（需要客户端安装 MasaGadget）
+            LITEMATICA 精确放置协议版本 3""")
     public static EnumAlternativePlaceType alternativeBlockPlacement = EnumAlternativePlaceType.NONE;
 
     public static boolean needIgnoreDistance() {
         return alternativeBlockPlacement != EnumAlternativePlaceType.NONE;
     }
 }
-

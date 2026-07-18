@@ -8,6 +8,6 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "bbor", directory = {"protocol"})
 public class BBORProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            Enable BBOR protocol support""")
+            启用 BBOR 协议支持""")
     public static boolean enabled = false;
 }

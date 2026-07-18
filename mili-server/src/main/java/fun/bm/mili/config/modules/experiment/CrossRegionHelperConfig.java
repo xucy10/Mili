@@ -10,17 +10,17 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class CrossRegionHelperConfig implements IConfigModule {
     @HotReloadUnsupported
     @ConfigInfo(name = "enabled", comments = """
-            Enable cross-region helper thread.
-            This thread does NOT process any game logic itself.
-            It only coordinates cross-region events (redstone, entity transfer, etc.)
-            by collecting events from source regions and routing them to target regions.
-            Actual logic is always executed on the target region's own tick thread.
+            启用跨区域辅助线程。
+            此线程本身不处理任何游戏逻辑。
+            它仅协调跨区域事件（红石、实体传送等），
+            通过从源区域收集事件并将其路由到目标区域。
+            实际逻辑始终在目标区域自身的 tick 线程上执行。
             """)
     public static boolean enabled = false;
 
-    @ConfigInfo(name = "queue-poll-timeout-ms", comments = "How long the helper thread waits for new events before checking again")
+    @ConfigInfo(name = "queue-poll-timeout-ms", comments = "辅助线程等待新事件的最长时间，超时后重新检查")
     public static int queuePollTimeoutMs = 50;
 
-    @ConfigInfo(name = "max-pending-events-per-region", comments = "Max pending events queued for a single target region before dropping old ones")
+    @ConfigInfo(name = "max-pending-events-per-region", comments = "单个目标区域排队的最大待处理事件数，超出后丢弃旧事件")
     public static int maxPendingEventsPerRegion = 1024;
 }

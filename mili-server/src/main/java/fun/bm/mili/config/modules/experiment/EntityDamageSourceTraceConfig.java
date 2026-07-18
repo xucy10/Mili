@@ -9,6 +9,6 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class EntityDamageSourceTraceConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments =
             """
-                    Allow trace damage source cross different Region Scheduler.""")
+                    允许跨不同区域调度器追踪伤害来源。""")
     public static boolean enabled = false;
 }

@@ -1,7 +1,6 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
-import io.papermc.paper.threadedregions.RegionizedWorldData;
 import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 
@@ -15,14 +14,14 @@ public final class SmartRegionManager {
 
     private static volatile boolean initialized = false;
 
-    private static final ConcurrentHashMap<Integer, RegionProfile> REGION_PROFILES = new ConcurrentHashMap<>();
-    private static final ConcurrentLinkedQueue<RegionMigrationTask> MIGRATION_QUEUE = new ConcurrentLinkedQueue<>();
-    private static final ConcurrentLinkedQueue<RegionMigrationTask> TASK_POOL = new ConcurrentLinkedQueue<>();
-    private static final int MAX_POOL_SIZE = 50;
+    private static final ConcurrentHashMap<Integer, RegionProfile> regionProfiles = new ConcurrentHashMap<>();
+    private static final ConcurrentLinkedQueue<RegionMigrationTask> migrationQueue = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<RegionMigrationTask> taskPool = new ConcurrentLinkedQueue<>();
+    private static final int maxPoolSize = 50;
 
-    private static final AtomicLong TOTAL_MIGRATIONS = new AtomicLong(0);
-    private static final AtomicLong SUCCESSFUL_MIGRATIONS = new AtomicLong(0);
-    private static final AtomicLong FAILED_MIGRATIONS = new AtomicLong(0);
+    private static final AtomicLong totalMigrations = new AtomicLong(0);
+    private static final AtomicLong successfulMigrations = new AtomicLong(0);
+    private static final AtomicLong failedMigrations = new AtomicLong(0);
 
     private static ScheduledExecutorService scheduler;
 
@@ -69,9 +68,9 @@ public final class SmartRegionManager {
             }
         }
 
-        REGION_PROFILES.clear();
-        MIGRATION_QUEUE.clear();
-        TASK_POOL.clear();
+        regionProfiles.clear();
+        migrationQueue.clear();
+        taskPool.clear();
 
         LogUtils.getLogger().info("[Mili] SmartRegionManager shutdown");
     }
@@ -83,7 +82,7 @@ public final class SmartRegionManager {
                 Integer regionKey = entry.getKey();
                 RegionLoadMonitor.RegionLoadSnapshot snapshot = entry.getValue();
 
-                RegionProfile profile = REGION_PROFILES.computeIfAbsent(
+                RegionProfile profile = regionProfiles.computeIfAbsent(
                         regionKey, k -> new RegionProfile(k)
                 );
 
@@ -104,68 +103,68 @@ public final class SmartRegionManager {
         long deadline = System.nanoTime() + 5_000_000L;
 
         while (processed < 5 && System.nanoTime() < deadline) {
-            RegionMigrationTask task = MIGRATION_QUEUE.poll();
+            RegionMigrationTask task = migrationQueue.poll();
             if (task == null) break;
 
             try {
                 boolean success = task.execute();
-                TOTAL_MIGRATIONS.incrementAndGet();
+                totalMigrations.incrementAndGet();
                 if (success) {
-                    SUCCESSFUL_MIGRATIONS.incrementAndGet();
+                    successfulMigrations.incrementAndGet();
                 } else {
-                    FAILED_MIGRATIONS.incrementAndGet();
+                    failedMigrations.incrementAndGet();
                 }
                 processed++;
 
-                if (TASK_POOL.size() < MAX_POOL_SIZE) {
+                if (taskPool.size() < maxPoolSize) {
                     task.reset(null, null);
-                    TASK_POOL.offer(task);
+                    taskPool.offer(task);
                 }
             } catch (Exception e) {
                 LogUtils.getLogger().warn(
                         "[Mili] Migration failed for region: {}", task.regionKey, e
                 );
-                FAILED_MIGRATIONS.incrementAndGet();
+                failedMigrations.incrementAndGet();
             }
         }
     }
 
     private static void scheduleMigration(Integer regionKey, RegionProfile profile) {
-        if (MIGRATION_QUEUE.size() > 50) return;
+        if (migrationQueue.size() > 50) return;
 
-        RegionMigrationTask task = TASK_POOL.poll();
+        RegionMigrationTask task = taskPool.poll();
         if (task != null) {
             task.reset(regionKey, profile);
         } else {
             task = new RegionMigrationTask(regionKey, profile);
         }
-        MIGRATION_QUEUE.add(task);
+        migrationQueue.add(task);
     }
 
     public static void registerRegion(Integer regionKey) {
-        REGION_PROFILES.computeIfAbsent(regionKey, k -> new RegionProfile(k));
+        regionProfiles.computeIfAbsent(regionKey, k -> new RegionProfile(k));
     }
 
     public static void unregisterRegion(Integer regionKey) {
-        REGION_PROFILES.remove(regionKey);
+        regionProfiles.remove(regionKey);
     }
 
     @Nullable
     public static RegionProfile getProfile(Integer regionKey) {
-        return REGION_PROFILES.get(regionKey);
+        return regionProfiles.get(regionKey);
     }
 
     public static Map<String, Object> getStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("total_migrations", TOTAL_MIGRATIONS.get());
-        stats.put("successful_migrations", SUCCESSFUL_MIGRATIONS.get());
-        stats.put("failed_migrations", FAILED_MIGRATIONS.get());
-        stats.put("tracked_regions", REGION_PROFILES.size());
-        stats.put("pending_migrations", MIGRATION_QUEUE.size());
+        stats.put("total_migrations", totalMigrations.get());
+        stats.put("successful_migrations", successfulMigrations.get());
+        stats.put("failed_migrations", failedMigrations.get());
+        stats.put("tracked_regions", regionProfiles.size());
+        stats.put("pending_migrations", migrationQueue.size());
 
         int overloadedCount = 0;
         int underloadedCount = 0;
-        for (RegionProfile profile : REGION_PROFILES.values()) {
+        for (RegionProfile profile : regionProfiles.values()) {
             if (profile.isOverloaded()) overloadedCount++;
             else if (profile.isUnderloaded()) underloadedCount++;
         }
@@ -295,7 +294,7 @@ public final class SmartRegionManager {
                         String.format("%.3f", profile.getTrendSlope())
                 );
 
-                Thread.sleep(10);
+                TimeUnit.MILLISECONDS.sleep(10);
 
                 profile.recordMigrationResult(true);
                 return true;

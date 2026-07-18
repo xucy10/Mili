@@ -14,16 +14,16 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         category = EnumConfigCategory.MISC,
         name = "auto_update",
         comments = """
-                Checks GitHub Releases for newer version's jars on a schedule.
-                Downloads are staged under auto_update/mili and written to auto_update/core.path,
-                which Hyacinthusclip can consume on the next restart.
+                定时检查 GitHub Releases 是否有新版本 jar。
+                下载文件暂存于 auto_update/mili 并写入 auto_update/core.path，
+                Hyacinthusclip 可在下次重启时使用。
                 
-                ATTENTION: full config option should be edited in luminol config system >> misc >> auto_update"""
+                注意：完整配置选项应在 luminol 配置系统 >> misc >> auto_update 中编辑"""
 )
 public class AutoUpdateConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            Whether the server should check for updates automatically.
-            You can enable it by edit this config, because they are both control the function.
-            One of them enabled, the full function will be enabled.""")
+            服务器是否自动检查更新。
+            你可以通过编辑此配置来启用它，因为它们都控制同一功能。
+            其中任意一个启用，完整功能即会启用。""")
     public static boolean enabled = false;
 }

@@ -133,60 +133,6 @@ pub fn hex_val(b: u8) -> Option<u8> {
     }
 }
 
-/// Fast power-of-two ceiling for u32.
-pub fn next_power_of_two_u32(value: u32) -> u32 {
-    value.next_power_of_two()
-}
-
-/// Fast modulo when `divisor` is a power of two.
-/// # Panics
-/// In debug builds if `divisor` is not a power of two or is zero.
-pub fn fast_mod(value: u32, divisor: u32) -> u32 {
-    debug_assert!(divisor.is_power_of_two() && divisor != 0);
-    value & (divisor - 1)
-}
-
-/// MurmurHash3 32-bit (x86 variant, no seed mixing).
-pub fn murmur3_32(data: &[u8], seed: u32) -> u32 {
-    let len = data.len() as u32;
-    let mut h = seed;
-    const C1: u32 = 0xCC9E2D97;
-    const C2: u32 = 0x1B873593;
-
-    for chunk in data.chunks_exact(4) {
-        let mut k = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        k = k.wrapping_mul(C1);
-        k = k.rotate_left(15);
-        k = k.wrapping_mul(C2);
-        h ^= k;
-        h = h.rotate_left(13);
-        h = h.wrapping_mul(5).wrapping_add(0xE6546B64);
-    }
-
-    let remainder = data.chunks_exact(4).remainder();
-    let mut k = 0u32;
-    match remainder.len() {
-        3 => k ^= (remainder[2] as u32) << 16,
-        2 => k ^= (remainder[1] as u32) << 8,
-        1 => k ^= remainder[0] as u32,
-        _ => {}
-    }
-    if !remainder.is_empty() {
-        k = k.wrapping_mul(C1);
-        k = k.rotate_left(15);
-        k = k.wrapping_mul(C2);
-        h ^= k;
-    }
-
-    h ^= len;
-    h ^= h >> 16;
-    h = h.wrapping_mul(0x85EBCA6B);
-    h ^= h >> 13;
-    h = h.wrapping_mul(0xC2B2AE35);
-    h ^= h >> 16;
-    h
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,24 +175,5 @@ mod tests {
     #[test]
     fn parse_hex_rejects_odd() {
         assert!(parse_hex_bytes("abc").is_err());
-    }
-
-    #[test]
-    fn next_power_of_two_basic() {
-        assert_eq!(next_power_of_two_u32(1), 1);
-        assert_eq!(next_power_of_two_u32(5), 8);
-        assert_eq!(next_power_of_two_u32(8), 8);
-    }
-
-    #[test]
-    fn fast_mod_correct() {
-        assert_eq!(fast_mod(17, 8), 17 % 8);
-        assert_eq!(fast_mod(31, 16), 31 % 16);
-    }
-
-    #[test]
-    fn murmur3_known_value() {
-        let hash = murmur3_32(b"hello", 0);
-        assert_ne!(hash, 0); // sanity check
     }
 }

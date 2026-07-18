@@ -8,10 +8,6 @@ name = "mili_optimizer"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
-[[bin]]
-name = "optimizer"
-path = "src/main.rs"
-
 [dependencies]
 rayon = "1.8"
 jni = { version = "0.21", features = ["invocation"] }

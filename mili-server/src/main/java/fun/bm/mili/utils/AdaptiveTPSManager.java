@@ -7,24 +7,25 @@ import io.papermc.paper.threadedregions.TickRegionScheduler;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AdaptiveTPSManager {
 
-    private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
-    private static final AtomicLong CURRENT_INTERVAL = new AtomicLong(50_000_000L);
+    private static final AtomicBoolean running = new AtomicBoolean(false);
+    private static final AtomicLong currentInterval = new AtomicLong(50_000_000L);
 
-    private static final long MIN_INTERVAL_NS = 20_000_000L;
-    private static final long MAX_INTERVAL_NS = 100_000_000L;
-    private static final long BASE_INTERVAL_NS = 50_000_000L;
+    private static final long minIntervalNs = 20_000_000L;
+    private static final long maxIntervalNs = 100_000_000L;
+    private static final long baseIntervalNs = 50_000_000L;
 
-    private static final RustCow<Collection<RegionLoadMonitor.RegionLoadSnapshot>> SNAPSHOT_CACHE =
+    private static final RustCow<Collection<RegionLoadMonitor.RegionLoadSnapshot>> snapshotCache =
             RustCow.owned(new ArrayList<>());
 
     public static void start() {
         if (!RegionBalancerConfig.enabled) return;
-        if (RUNNING.getAndSet(true)) return;
+        if (running.getAndSet(true)) return;
 
         Thread t = new Thread(AdaptiveTPSManager::runLoop, "AdaptiveTPS-Manager");
         t.setDaemon(true);
@@ -34,9 +35,9 @@ public class AdaptiveTPSManager {
     }
 
     private static void runLoop() {
-        while (RUNNING.get()) {
+        while (running.get()) {
             try {
-                Thread.sleep(1000);
+                TimeUnit.SECONDS.sleep(1);
 
                 if (!RegionBalancerConfig.enabled) continue;
 
@@ -51,10 +52,10 @@ public class AdaptiveTPSManager {
 
                 avgLoad /= count;
 
-                long adjusted = (long) (BASE_INTERVAL_NS * (1.0 + avgLoad * 0.5));
-                adjusted = Math.max(MIN_INTERVAL_NS, Math.min(MAX_INTERVAL_NS, adjusted));
+                long adjusted = (long) (baseIntervalNs * (1.0 + avgLoad * 0.5));
+                adjusted = Math.max(minIntervalNs, Math.min(maxIntervalNs, adjusted));
 
-                CURRENT_INTERVAL.set(adjusted);
+                currentInterval.set(adjusted);
                 TickRegionScheduler.TIME_BETWEEN_TICKS = adjusted;
 
                 LogUtils.getClassLogger().debug(
@@ -71,10 +72,10 @@ public class AdaptiveTPSManager {
     }
 
     static long getCurrentInterval() {
-        return CURRENT_INTERVAL.get();
+        return currentInterval.get();
     }
 
     public static void shutdown() {
-        RUNNING.set(false);
+        running.set(false);
     }
 }

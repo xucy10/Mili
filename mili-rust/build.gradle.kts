@@ -10,10 +10,10 @@ java {
 // --- Cargo build for Rust JNI library (.dll/.so) ---
 val cargoBuild = tasks.register<Exec>("buildRustBinary") {
     group = "build"
-    description = "Builds the Rust optimization helper (CLI + JNI library)"
+    description = "Builds the Rust JNI optimization library"
 
     workingDir(layout.projectDirectory.dir("src/rust"))
-    commandLine("cargo", "build", "--release")
+    commandLine("cargo", "build", "--release", "--lib")
     environment("CARGO_TARGET_DIR", layout.buildDirectory.dir("cargo-target").get().asFile.absolutePath)
 
     inputs.files(fileTree(layout.projectDirectory.dir("src/rust")) { include("**/*") })
@@ -25,15 +25,14 @@ val cargoBuild = tasks.register<Exec>("buildRustBinary") {
 
 val stageRustBinary = tasks.register("stageRustBinary") {
     group = "build"
-    description = "Stages Rust binaries into build directory"
+    description = "Stages Rust JNI library into build directory"
 
     dependsOn(cargoBuild)
 
-    val osName = System.getProperty("os.name").lowercase()
-    val (cliBinary, libExt) = when {
-        osName.contains("win") -> "optimizer.exe" to "dll"
-        osName.contains("mac") -> "optimizer" to "dylib"
-        else -> "optimizer" to "so"
+    val libExt = when {
+        System.getProperty("os.name").lowercase().contains("win") -> "dll"
+        System.getProperty("os.name").lowercase().contains("mac") -> "dylib"
+        else -> "so"
     }
 
     val cargoTargetDir = layout.buildDirectory.dir("cargo-target/release").get().asFile
@@ -44,12 +43,8 @@ val stageRustBinary = tasks.register("stageRustBinary") {
     doLast {
         rustBuildDir.mkdirs()
 
-        val optimizerFile = cargoTargetDir.resolve(cliBinary)
         val libFile = cargoTargetDir.resolve("mili_optimizer.$libExt")
 
-        if (optimizerFile.exists()) {
-            optimizerFile.copyTo(rustBuildDir.resolve(cliBinary), overwrite = true)
-        }
         if (libFile.exists()) {
             libFile.copyTo(rustBuildDir.resolve("mili_optimizer.$libExt"), overwrite = true)
         }

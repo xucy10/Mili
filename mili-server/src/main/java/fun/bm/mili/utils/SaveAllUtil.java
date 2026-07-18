@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SaveAllUtil {
-    public static final Object lock = new Object();
+    private static final Object lock = new Object();
     public static volatile long lastSaveAllTime = 0;
     private static volatile Pair<CommandSourceStack, Boolean> currentSaveAll = null;
     private static volatile int regionCount = 0;

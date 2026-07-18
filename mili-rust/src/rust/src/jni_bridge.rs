@@ -6,7 +6,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString, JByteArray, JDoubleArray};
 use jni::sys::{jboolean, jdouble, jint, jlong, jbyteArray, jdoubleArray, jsize};
 
-use crate::{chunk, entity_cull, frustum, lighting, mesh, protocol, scheduler, util, varint, occlusion, parse_number_list};
+use crate::{entity_cull, frustum, lighting, mesh, occlusion, protocol, scheduler, util, parse_number_list};
 
 // ============================================================================
 // Native init
@@ -14,56 +14,6 @@ use crate::{chunk, entity_cull, frustum, lighting, mesh, protocol, scheduler, ut
 
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_nativeInit(_env: JNIEnv, _class: JClass) {}
-
-// ============================================================================
-// Chunk / Region utilities (cheap, fine as single calls)
-// ============================================================================
-
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_chunkToRegion(_: JNIEnv, _: JClass, cx: jint, cz: jint) -> jlong {
-    let (rx, rz) = chunk::chunk_to_region(cx, cz);
-    pack_ints(rx, rz)
-}
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_chunkToLocal(_: JNIEnv, _: JClass, cx: jint, cz: jint) -> jlong {
-    let (lx, lz) = chunk::chunk_to_local(cx, cz);
-    pack_ints(lx, lz)
-}
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_chunkIndex(_: JNIEnv, _: JClass, cx: jint, cz: jint) -> jint { chunk::chunk_index(cx, cz) as jint }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_regionKey(_: JNIEnv, _: JClass, rx: jint, rz: jint) -> jlong { chunk::region_key(rx, rz) }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_decodeHeaderEntry(_: JNIEnv, _: JClass, e: jint) -> jlong {
-    let (o, c) = chunk::decode_header_entry(e as u32);
-    ((o as i64) << 32) | (c as i64)
-}
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_encodeHeaderEntry(_: JNIEnv, _: JClass, o: jint, c: jint) -> jint { chunk::encode_header_entry(o as u32, c as u8) as jint }
-
-// ============================================================================
-// VarInt
-// ============================================================================
-
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_varintSize(_: JNIEnv, _: JClass, v: jint) -> jint { varint::varint_size(v) as jint }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_varlongSize(_: JNIEnv, _: JClass, v: jlong) -> jint { varint::varlong_size(v) as jint }
-
-// ============================================================================
-// Hashing
-// ============================================================================
-
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_fnv1aHash(mut env: JNIEnv, _: JClass, input: JString) -> jlong {
-    let s: String = match env.get_string(&input) { Ok(s) => s.into(), Err(_) => return 0 };
-    const BASIS: u64 = 0xcbf29ce484222325; const PRIME: u64 = 0x100000001b3;
-    s.as_bytes().iter().fold(BASIS, |a, &b| (a ^ u64::from(b)).wrapping_mul(PRIME)) as jlong
-}
-
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_murmur3_32(mut env: JNIEnv, _: JClass, data: jbyteArray, seed: jint) -> jint {
-    let jba = unsafe { JByteArray::from_raw(data) };
-    let arr = match unsafe { env.get_array_elements(&jba, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(a) => a, Err(_) => return 0,
-    };
-    let slice = unsafe { std::slice::from_raw_parts(arr.as_ptr() as *const u8, arr.len()) };
-    util::murmur3_32(slice, seed as u32) as jint
-}
 
 // ============================================================================
 // Protocol optimization
@@ -459,12 +409,4 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_generateLightmap(
     };
     let _ = env.set_int_array_region(&result_array, 0, &result);
     result_array.into_raw()
-}
-
-// ============================================================================
-// Utility
-// ============================================================================
-
-fn pack_ints(a: i32, b: i32) -> jlong {
-    ((a as i64) << 32) | ((b as i64) & 0xFFFF_FFFF)
 }

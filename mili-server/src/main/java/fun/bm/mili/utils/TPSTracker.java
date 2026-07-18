@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLongArray;
 public final class TPSTracker {
     private static final int TICK_HISTORY_SIZE = 600;
     private static final int TICK_HISTORY_MASK = TICK_HISTORY_SIZE - 1;
-    private static final AtomicLongArray TICKS = new AtomicLongArray(TICK_HISTORY_SIZE);
+    private static final AtomicLongArray ticks = new AtomicLongArray(TICK_HISTORY_SIZE);
     private static final AtomicLong runningSum = new AtomicLong(0);
     private static final AtomicInteger tickCount = new AtomicInteger(0);
     private static volatile double currentTPS = 20.0;
@@ -30,7 +30,7 @@ public final class TPSTracker {
                 int count = tickCount.getAndIncrement();
                 int idx = count & TICK_HISTORY_MASK;
                 long now = System.currentTimeMillis();
-                long old = TICKS.getAndSet(idx, now);
+                long old = ticks.getAndSet(idx, now);
                 if (old > 0) {
                     runningSum.addAndGet(now - old);
                 }
@@ -53,7 +53,7 @@ public final class TPSTracker {
             return 20.0;
         }
         int target = ((count - 1) - ticks) & TICK_HISTORY_MASK;
-        long elapsed = System.currentTimeMillis() - TICKS.get(target);
+        long elapsed = System.currentTimeMillis() - ticks.get(target);
         if (elapsed <= 0) {
             return 20.0;
         }

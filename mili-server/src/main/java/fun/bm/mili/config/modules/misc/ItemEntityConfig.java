@@ -8,9 +8,9 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.MISC, name = "item-entity")
 public class ItemEntityConfig implements IConfigModule {
     @ConfigInfo(name = "follow-tick-sequence-merge", comments = """
-            Due to Paper's modification of the merge radius,
-            when the merge radius is large and stacks containing many items get stuck in an unexpected position,
-            individual items may never reach their destination.
-            This configuration option is added to fix this behavior.""")
+            由于 Paper 修改了合并半径，
+            当合并半径较大且包含大量物品的堆叠卡在意外位置时，
+            单个物品可能永远无法到达目的地。
+            此配置选项用于修复此行为。""")
     public static boolean followTickSequenceMerge = false;
 }

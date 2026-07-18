@@ -18,13 +18,13 @@ public final class ChunkRegionBridge {
 
     private ChunkRegionBridge() {}
 
-    private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private static ScheduledExecutorService scheduler;
 
-    private static final long SYNC_INTERVAL_MS = 250;
+    private static final long syncIntervalMs = 250;
 
     public static void init() {
-        if (!INITIALIZED.compareAndSet(false, true)) return;
+        if (!initialized.compareAndSet(false, true)) return;
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "Mili-ChunkRegionBridge");
@@ -35,8 +35,8 @@ public final class ChunkRegionBridge {
 
         scheduler.scheduleAtFixedRate(
                 ChunkRegionBridge::syncLoadData,
-                SYNC_INTERVAL_MS,
-                SYNC_INTERVAL_MS,
+                syncIntervalMs,
+                syncIntervalMs,
                 TimeUnit.MILLISECONDS
         );
 
@@ -68,7 +68,7 @@ public final class ChunkRegionBridge {
     }
 
     public static void shutdown() {
-        if (!INITIALIZED.compareAndSet(true, false)) return;
+        if (!initialized.compareAndSet(true, false)) return;
 
         if (scheduler != null) {
             scheduler.shutdown();

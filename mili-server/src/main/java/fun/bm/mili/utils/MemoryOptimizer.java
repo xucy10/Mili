@@ -3,10 +3,13 @@ package fun.bm.mili.utils;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
-import java.util.Map;
 import java.util.LinkedHashMap;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import com.mojang.logging.LogUtils;
 
 public final class MemoryOptimizer {
@@ -17,19 +20,19 @@ public final class MemoryOptimizer {
     private static ScheduledExecutorService scheduler;
     private static final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 
-    private static final AtomicLong lastGCTime = new AtomicLong(0);
-    private static final AtomicInteger gcCount = new AtomicInteger(0);
-    private static final AtomicLong totalFreedBytes = new AtomicLong(0);
+    private static final LongAdder gcCount = new LongAdder();
+    private static final LongAdder totalFreedBytes = new LongAdder();
     private static final AtomicInteger logCounter = new AtomicInteger(0);
 
     private static long maxMemoryBytes = 0;
     private static double gcThreshold = 0.85;
     private static double aggressiveGcThreshold = 0.95;
-    private static long minGcIntervalMs = 30_000;
     private static boolean autoMemoryTuning = true;
 
     public static void init() {
-        if (running) return;
+        if (running) {
+            return;
+        }
 
         maxMemoryBytes = Runtime.getRuntime().maxMemory();
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -40,7 +43,7 @@ public final class MemoryOptimizer {
         });
 
         scheduler.scheduleAtFixedRate(
-                MemoryOptimizer::monitor,
+                MemoryOptimizer::monitorMemory,
                 5_000,
                 5_000,
                 TimeUnit.MILLISECONDS
@@ -51,7 +54,9 @@ public final class MemoryOptimizer {
     }
 
     public static void shutdown() {
-        if (!running) return;
+        if (!running) {
+            return;
+        }
         running = false;
 
         if (scheduler != null) {
@@ -62,11 +67,12 @@ public final class MemoryOptimizer {
                 }
             } catch (InterruptedException e) {
                 scheduler.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
     }
 
-    private static void monitor() {
+    private static void monitorMemory() {
         try {
             MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
             long used = heapUsage.getUsed();
@@ -76,13 +82,13 @@ public final class MemoryOptimizer {
             double usageRatio = (double) used / max;
 
             if (usageRatio > aggressiveGcThreshold) {
-                performAggressiveGC(used);
+                performMemoryCleanup(used, true);
             } else if (usageRatio > gcThreshold) {
-                performNormalGC(used);
+                performMemoryCleanup(used, false);
             }
 
             if (autoMemoryTuning && usageRatio > 0.7) {
-                suggestCleanup();
+                logHighMemoryWarning(used, max);
             }
 
             logMemoryStatus(used, committed, max, usageRatio);
@@ -92,87 +98,53 @@ public final class MemoryOptimizer {
         }
     }
 
-    private static void performNormalGC(long currentUsed) {
-        long now = System.currentTimeMillis();
-        long lastGc = lastGCTime.get();
-
-        if (now - lastGc < minGcIntervalMs) return;
-
-        if (lastGCTime.compareAndSet(lastGc, now)) {
-            long before = getUsedMemory();
-
-            Runtime.getRuntime().gc();
-
-            try { Thread.sleep(100); } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            long after = getUsedMemory();
-            long freed = before - after;
-            if (freed > 0) {
-                totalFreedBytes.addAndGet(freed);
-            }
-
-            gcCount.incrementAndGet();
-
-            LogUtils.getLogger().debug(
-                    "[Mili] Normal GC hint: freed {} MB", freed / (1024 * 1024)
-            );
-        }
-    }
-
-    private static void performAggressiveGC(long currentUsed) {
+    private static void performMemoryCleanup(long currentUsed, boolean aggressive) {
         long before = getUsedMemory();
 
-        for (int i = 0; i < 3; i++) {
-            Runtime.getRuntime().gc();
-            try { Thread.sleep(50); } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        try {
+            TimeUnit.MILLISECONDS.sleep(aggressive ? 150 : 100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
         long after = getUsedMemory();
         long freed = before - after;
         if (freed > 0) {
-            totalFreedBytes.addAndGet(freed);
+            totalFreedBytes.add(freed);
         }
 
-        gcCount.incrementAndGet();
-        lastGCTime.set(System.currentTimeMillis());
+        gcCount.increment();
 
-        LogUtils.getLogger().warn(
-                "[Mili] Aggressive GC hint triggered: freed {} MB", freed / (1024 * 1024)
-        );
-    }
-
-    private static void suggestCleanup() {
-        Runtime runtime = Runtime.getRuntime();
-        long freeMemory = runtime.freeMemory();
-        long totalMemory = runtime.totalMemory();
-        long maxMemory = runtime.maxMemory();
-        long usedMemory = totalMemory - freeMemory;
-
-        double ratio = (double) usedMemory / maxMemory;
-
-        if (ratio > 0.8) {
+        if (aggressive) {
             LogUtils.getLogger().warn(
-                    "[Mili] High memory usage: {}% ({}/{} MB)",
-                    (int)(ratio * 100),
-                    usedMemory / (1024 * 1024),
-                    maxMemory / (1024 * 1024)
+                    "[Mili] High memory pressure detected: {} MB freed", freed / (1024 * 1024)
+            );
+        } else {
+            LogUtils.getLogger().debug(
+                    "[Mili] Memory pressure detected: {} MB freed", freed / (1024 * 1024)
             );
         }
+    }
+
+    private static void logHighMemoryWarning(long used, long max) {
+        double ratio = (double) used / max;
+        LogUtils.getLogger().warn(
+                "[Mili] High memory usage: {}% ({}/{} MB)",
+                (int)(ratio * 100),
+                used / (1024 * 1024),
+                max / (1024 * 1024)
+        );
     }
 
     private static void logMemoryStatus(long used, long committed, long max, double ratio) {
         if (logCounter.incrementAndGet() % 12 == 0) {
             LogUtils.getLogger().info(
-                    "[Mili] Memory: {}% used ({}/{} MB), GC count: {}, Total freed: {} MB",
+                    "[Mili] Memory: {}% used ({}/{} MB), cleanup count: {}, Total freed: {} MB",
                     (int)(ratio * 100),
                     used / (1024 * 1024),
                     max / (1024 * 1024),
-                    gcCount.get(),
-                    totalFreedBytes.get() / (1024 * 1024)
+                    gcCount.sum(),
+                    totalFreedBytes.sum() / (1024 * 1024)
             );
         }
     }
@@ -190,12 +162,12 @@ public final class MemoryOptimizer {
         return (double) usage.getUsed() / usage.getMax();
     }
 
-    public static int getGCCount() {
-        return gcCount.get();
+    public static long getCleanupCount() {
+        return gcCount.sum();
     }
 
     public static long getTotalFreedBytes() {
-        return totalFreedBytes.get();
+        return totalFreedBytes.sum();
     }
 
     public static Map<String, Object> getStats() {
@@ -203,18 +175,15 @@ public final class MemoryOptimizer {
         stats.put("used_memory_mb", getUsedMemory() / (1024 * 1024));
         stats.put("max_memory_mb", getMaxMemory() / (1024 * 1024));
         stats.put("usage_percent", (int)(getMemoryUsageRatio() * 100));
-        stats.put("gc_count", gcCount.get());
-        stats.put("total_freed_mb", totalFreedBytes.get() / (1024 * 1024));
+        stats.put("cleanup_count", gcCount.sum());
+        stats.put("total_freed_mb", totalFreedBytes.sum() / (1024 * 1024));
         stats.put("running", running);
 
         return stats;
     }
 
-    public static void requestGC() {
-        long now = System.currentTimeMillis();
-        if (now - lastGCTime.get() >= minGcIntervalMs / 2) {
-            performNormalGC(getUsedMemory());
-        }
+    public static void notifyHighMemory() {
+        LogUtils.getLogger().warn("[Mili] External high memory notification");
     }
 
     public static void setGcThreshold(double threshold) {
@@ -223,9 +192,5 @@ public final class MemoryOptimizer {
 
     public static void setAggressiveGcThreshold(double threshold) {
         aggressiveGcThreshold = Math.max(gcThreshold + 0.05, Math.min(0.99, threshold));
-    }
-
-    public static void setMinGcIntervalMs(long intervalMs) {
-        minGcIntervalMs = Math.max(5_000, intervalMs);
     }
 }

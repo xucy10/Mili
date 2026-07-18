@@ -12,6 +12,6 @@ public class RedStoneConfig implements IConfigModule {
     @TransformedConfig(name = "allow_skip_cooldown", directory = {"misc", "redstone"})
     @ConfigInfo(name = "shears_rotate", comments =
             """
-                    Allows you to use the Shears to right-click to rotate the block.""")
+                    允许使用剪刀右键旋转方块。""")
     public static boolean shears = false;
 }

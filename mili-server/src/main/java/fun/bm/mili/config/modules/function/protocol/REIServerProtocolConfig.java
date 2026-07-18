@@ -8,6 +8,6 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "rei", directory = {"protocol"})
 public class REIServerProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            Enable Roughly Enough Items protocol support""")
+            启用 Roughly Enough Items 协议支持""")
     public static boolean enabled = false;
 }

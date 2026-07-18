@@ -25,7 +25,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -192,28 +195,22 @@ public class ServerI18nUtil {
     }
 
     private static byte[] fetch(String urlString) throws IOException, InterruptedException {
-        try {
-            HttpResponse<String> response;
-            try (HttpClient httpClient = HttpClient.newHttpClient()) {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(urlString))
-                        .timeout(Duration.ofSeconds(10))
-                        .build();
-                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            }
-
-            int responseCode = response.statusCode();
-            if (responseCode != 200) {
-                logger.info("Unexpected response code: {}", responseCode);
-                logger.info("Response body: {}", response.body());
-                throw new UnsupportedEncodingException("Unexpected response code");
-            } else {
-                return response.body().getBytes();
-            }
-        } catch (Exception e) {
-            logger.warn("Error in getting info!");
-            throw e;
+        HttpResponse<String> response;
+        try (HttpClient httpClient = HttpClient.newHttpClient()) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(urlString))
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         }
+
+        int responseCode = response.statusCode();
+        if (responseCode != 200) {
+            logger.info("Unexpected response code: {}", responseCode);
+            logger.info("Response body: {}", response.body());
+            throw new UnsupportedEncodingException("Unexpected response code");
+        }
+        return response.body().getBytes();
     }
 
     private static void fetchAndSave(String url, String savePath) throws IOException, InterruptedException {
@@ -288,14 +285,8 @@ public class ServerI18nUtil {
         Path filePath = Path.of(langPath);
         try (InputStream fileStream = Files.newInputStream(filePath)) {
             Language.loadFromJson(fileStream, output);
-        } catch (NoSuchFileException e) {
-            logger.warn("Couldn't find language file: {}", langPath);
-            throw e;
         } catch (JsonSyntaxException e) {
             throw new MalformedJsonException(e, langPath);
-        } catch (Exception e) {
-            logger.warn("Failed to load language from filesystem {}", filePath);
-            throw e;
         }
     }
 

@@ -50,8 +50,10 @@ public class RandomProfilePool {
     private static int getNextId() {
         synchronized (lock) {
             int newId = lastUsedId + 1;
-            while (cache.getIfPresent(newId) != null) {
+            int iterations = 0;
+            while (cache.getIfPresent(newId) != null && iterations < 10_000) {
                 newId++;
+                iterations++;
             }
             lastUsedId = newId;
             return newId;

@@ -69,6 +69,6 @@ public class ServuxProtocolConfig implements IConfigModule {
     @TransformedConfig(name = "litematics-print-max-delay-ticks", directory = {"function", "servux-protocol", "litematics"})
     @TransformedConfig(name = "litematics-print-max-delay-ticks", directory = {"function", "survux-protocol"})
     @CommandSuggestions(suggest = {"-1", "1200"})
-    @ConfigInfo(name = "litematics-print-max-delay-ticks", directory = {"litematics"}, comments = "The max delay ticks for printing litematics, -1 to disable")
+    @ConfigInfo(name = "litematics-print-max-delay-ticks", directory = {"litematics"}, comments = "打印 litematics 的最大延迟 tick 数，-1 禁用")
     public static int maxDelay = 1200;
 }

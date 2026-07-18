@@ -8,10 +8,10 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.MISC, name = "disable-check")
 public class DisableCheckConfig implements IConfigModule {
     @ConfigInfo(name = "disable-op-move-check", comments = """
-            Disable the check for the operator's move check""")
+            禁用 OP 移动检查""")
     public static boolean disableOpMoveCheck = false;
 
     @ConfigInfo(name = "disable-op-fly-check", comments = """
-            Disable the check for the operator's fly check""")
+            禁用 OP 飞行检查""")
     public static boolean disableOpFlyCheck = false;
 }
