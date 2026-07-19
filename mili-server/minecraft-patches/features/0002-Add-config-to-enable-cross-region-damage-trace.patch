@@ -8,7 +8,7 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7b438ddeb 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1442,7 +1442,14 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1442,8 +1442,15 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          LivingEntity killCredit = this.getKillCredit();
          if (killCredit != null) {
              this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
