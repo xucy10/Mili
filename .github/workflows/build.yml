@@ -81,6 +81,7 @@ jobs:
         run: |
           echo "=== Pre-clean state ==="
           rm -rf mili-server/build mili-api/build
+          rm -rf mili-server/src/minecraft
           find . -type d -name "taskCache" -path "*/paperweight/*" -exec rm -rf {} + 2>/dev/null || true
           echo "=== Post-clean state ==="
           ls -la .gradle/caches/paperweight 2>/dev/null || echo "paperweight cache removed"
