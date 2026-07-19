@@ -47,17 +47,17 @@ public final class TPSTracker {
         return calculateTPS(ticks);
     }
 
-    private static double calculateTPS(int ticks) {
+    private static double calculateTPS(int requestedTicks) {
         int count = tickCount.get();
-        if (count < ticks) {
+        if (count < requestedTicks) {
             return 20.0;
         }
-        int target = ((count - 1) - ticks) & TICK_HISTORY_MASK;
+        int target = ((count - 1) - requestedTicks) & TICK_HISTORY_MASK;
         long elapsed = System.currentTimeMillis() - ticks.get(target);
         if (elapsed <= 0) {
             return 20.0;
         }
-        return ticks / (elapsed / 1000.0);
+        return requestedTicks / (elapsed / 1000.0);
     }
 
     public static String formatTPS() {
