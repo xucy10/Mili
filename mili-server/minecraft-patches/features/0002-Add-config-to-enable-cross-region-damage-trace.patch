@@ -8,7 +8,9 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7b438ddeb 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1445,6 +1445,13 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1442,7 +1442,14 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         LivingEntity killCredit = this.getKillCredit();
+         if (killCredit != null) {
              this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
              killCredit.awardKillScore(this, damageSource);
              this.createWitherRose(killCredit);
@@ -16,16 +18,25 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
 +        } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +            final LivingEntity entitylivingnew = this.getKillCreditOrigin();
 +            if (entitylivingnew != null) {
-+                this.damageTransferToAsync(entitylivingnew, cause);
++                this.damageTransferToAsync(entitylivingnew, damageSource);
 +            }
 +        // Luminol End - Cross Region Damage trace
          }
  
          this.level().broadcastEntityEvent(this, EntityEvent.DEATH);
-@@ -1468,6 +1475,25 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1462,12 +1469,31 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+     }
+ 
+     // Leaves start - exp fix
+     private boolean shouldDropExperience(boolean eventResult, boolean forceUseEvent) {
+         if (forceUseEvent) {
+             return eventResult;
+         }
+         return wasExperienceConsumed() ? false : eventResult;
      }
      // Leaves end - exp fix
  
+-    private void tellNeutralMobsThatIDied() {
 +    // Luminol Start - Cross Region Damage trace
 +    private void damageTransferToAsync(LivingEntity entity, DamageSource cause) {
 +        // Operations running on current entity
@@ -45,14 +56,16 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
 +    }
 +    // Luminol End - Cross Region Damage trace
 +
-     private void tellNeutralMobsThatIDied() {
++    protected void tellNeutralMobsThatIDied() { // Leaves private -> protected
          AABB aabb = new AABB(this.blockPosition()).inflate(32.0, 10.0, 32.0);
          this.level()
+             .getEntitiesOfClass(Mob.class, aabb, EntitySelector.NO_SPECTATORS)
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
 index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b6b18313d 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -1975,6 +1975,13 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1974,6 +1974,13 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+         org.bukkit.event.entity.EntityDeathEvent deathEvent = CraftEventFactory.callEntityDeathEvent(this, damageSource, this.drops, () -> {
              final LivingEntity killer = this.getKillCredit();
              if (killer != null) {
                  killer.awardKillScore(this, damageSource);
@@ -66,7 +79,7 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
              }
          }); // Paper end
          this.postDeathDropItems(deathEvent); // Paper
-@@ -1985,6 +1992,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1981,6 +1988,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          return deathEvent; // Paper
      }
  
@@ -86,7 +99,12 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
      protected void dropEquipment(ServerLevel level) {
      }
      protected void postDeathDropItems(org.bukkit.event.entity.EntityDeathEvent event) {} // Paper - method for post death logic that cannot be ran before the event is potentially cancelled
-@@ -2612,6 +2632,18 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2606,7 +2626,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+     public @Nullable LivingEntity getKillCredit() {
+         if (this.lastHurtByPlayer != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByPlayer.getEntity(this.level(), Player.class))) { // Folia - region threading
+             return this.lastHurtByPlayer.getEntity(this.level(), Player.class);
+         } else {
+             return this.lastHurtByMob != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByMob.getEntity(this.level(), LivingEntity.class)) ? this.lastHurtByMob.getEntity(this.level(), LivingEntity.class) : null; // Folia - region threading
          }
      }
  
