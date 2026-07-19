@@ -14,7 +14,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         """)
 public class VillagerOptimizerConfig implements ConfigModule {
     @ConfigInfo(name = "enabled", comments = "启用高级村民 AI 优化")
-    public static boolean enabled = false;
+    public static boolean enabled = true;
 
     @ConfigInfo(name = "check_interval", comments = "检查村民活动状态的间隔（游戏刻）")
     public static int checkInterval = 150;

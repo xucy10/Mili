@@ -112,7 +112,7 @@ index d8a2f8a1fbf0189e86ccbce70a84641a143cdb91..76930a603a5bf07e62e8ef3a41bbb521
 +        if (fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig.enabled) {
 +            io.papermc.paper.threadedregions.RegionizedWorldData data = this.getCurrentWorldData();
 +            if (data != null) {
-+                fun.bm.mili.utils.CrossRegionHelperThread.onRegionTick(this, data);
++                fun.bm.mili.utils.CrossRegionHelper.onRegionTick(this, data);
 +            }
 +        }
 +        // Mili end - Cross Region Helper
@@ -190,4 +190,3 @@ index 91f0fbd75bc93355dc872390d91af83c76dc1dce..e7223540a7cef20b661bdb857ffba962
              int spawnableChunkCount,
              Object2IntOpenHashMap<MobCategory> mobCategoryCounts,
              PotentialCalculator spawnPotential,
-

@@ -14,7 +14,7 @@ public class RegionBalancerConfig implements IConfigModule {
             使用固定大小的线程池和基于区域负载的优先级调度替换每个区域的专用线程。
             优点：减少上下文切换，提高 CPU 利用率，稳定 TPS。
             """)
-    public static boolean enabled = false;
+    public static boolean enabled = true;
 
     @ConfigInfo(name = "thread-pool-size", comments = """
             区域 tick 的工作线程数量。

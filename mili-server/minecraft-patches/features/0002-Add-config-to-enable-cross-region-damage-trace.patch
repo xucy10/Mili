@@ -31,7 +31,7 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
 +        // Operations running on current entity
 +        this.awardStat(Stats.ENTITY_KILLED_BY.get(entity.getType()));
 +        this.createWitherRose(entity);
-+        fun.bm.mili.utils.CrossRegionHelperThread.submitDamageCrossRegion(this, entity, cause, this.level().getServer().getTickCount());
++        fun.bm.mili.utils.CrossRegionHelper.submitDamageCrossRegion(this, entity, cause, this.level().getServer().getTickCount());
 +
 +        // the entity might be in another tickregion sometimes, so we need to schedule the task onto the entity
 +        // to ensure thread safe
@@ -72,7 +72,7 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
  
 +    // Luminol Start - Cross Region Damage trace
 +    private void damageTransferToAsync(LivingEntity entity, DamageSource damageSource) {
-+        fun.bm.mili.utils.CrossRegionHelperThread.submitDamageCrossRegion(this, entity, damageSource, this.level().getServer().getTickCount());
++        fun.bm.mili.utils.CrossRegionHelper.submitDamageCrossRegion(this, entity, damageSource, this.level().getServer().getTickCount());
 +        entity.getBukkitEntity().taskScheduler.schedule((LivingEntity nmsEntity) -> {
 +            try {
 +                nmsEntity.awardKillScore(this, damageSource);
@@ -105,4 +105,3 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
      public final float getMaxHealth() {
          return (float)this.getAttributeValue(Attributes.MAX_HEALTH);
      }
-
