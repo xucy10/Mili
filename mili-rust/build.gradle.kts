@@ -35,6 +35,8 @@ val stageRustBinary = tasks.register("stageRustBinary") {
         else -> "so"
     }
 
+    val libPrefix = if (System.getProperty("os.name").lowercase().contains("win")) "" else "lib"
+
     val cargoTargetDir = layout.buildDirectory.dir("cargo-target/release").get().asFile
     val rustBuildDir = layout.buildDirectory.dir("rust").get().asFile
 
@@ -43,7 +45,7 @@ val stageRustBinary = tasks.register("stageRustBinary") {
     doLast {
         rustBuildDir.mkdirs()
 
-        val libFile = cargoTargetDir.resolve("mili_optimizer.$libExt")
+        val libFile = cargoTargetDir.resolve("${libPrefix}mili_optimizer.$libExt")
 
         if (libFile.exists()) {
             libFile.copyTo(rustBuildDir.resolve("mili_optimizer.$libExt"), overwrite = true)
