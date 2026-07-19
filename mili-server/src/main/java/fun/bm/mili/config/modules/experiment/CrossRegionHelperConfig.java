@@ -16,7 +16,7 @@ public class CrossRegionHelperConfig implements IConfigModule {
             通过从源区域收集事件并将其路由到目标区域。
             实际逻辑始终在目标区域自身的 tick 线程上执行。
             """)
-    public static boolean enabled = false;
+    public static boolean enabled = true;
 
     @ConfigInfo(name = "queue-poll-timeout-ms", comments = "辅助线程等待新事件的最长时间，超时后重新检查")
     public static int queuePollTimeoutMs = 50;
