@@ -24,7 +24,7 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
          }
  
          this.level().broadcastEntityEvent(this, EntityEvent.DEATH);
-@@ -1462,12 +1469,31 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1460,12 +1467,31 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      // Leaves start - exp fix
@@ -99,7 +99,7 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
      protected void dropEquipment(ServerLevel level) {
      }
      protected void postDeathDropItems(org.bukkit.event.entity.EntityDeathEvent event) {} // Paper - method for post death logic that cannot be ran before the event is potentially cancelled
-@@ -2606,8 +2626,20 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2607,8 +2627,20 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      public @Nullable LivingEntity getKillCredit() {
          if (this.lastHurtByPlayer != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByPlayer.getEntity(this.level(), Player.class))) { // Folia - region threading
              return this.lastHurtByPlayer.getEntity(this.level(), Player.class);
