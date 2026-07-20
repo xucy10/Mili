@@ -24,7 +24,7 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 +        }
  
          this.level().broadcastEntityEvent(this, EntityEvent.DEATH);
-@@ -1469,12 +1476,34 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1469,15 +1476,34 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      // Leaves start - exp fix
