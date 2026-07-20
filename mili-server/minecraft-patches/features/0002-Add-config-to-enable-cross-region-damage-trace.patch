@@ -5,15 +5,15 @@ Subject: [PATCH] Add config to enable cross region damage trace
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7b438ddeb 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1442,8 +1442,15 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1452,8 +1452,15 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          LivingEntity killCredit = this.getKillCredit();
          if (killCredit != null) {
              this.awardStat(Stats.ENTITY_KILLED_BY.get(killCredit.getType()));
              killCredit.awardKillScore(this, damageSource);
              this.createWitherRose(killCredit);
+-        }
 +        // Luminol Start - Cross Region Damage trace
 +        } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +            final LivingEntity entitylivingnew = this.getKillCreditOrigin();
@@ -21,10 +21,10 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
 +                this.damageTransferToAsync(entitylivingnew, damageSource);
 +            }
 +        // Luminol End - Cross Region Damage trace
-         }
++        }
  
          this.level().broadcastEntityEvent(this, EntityEvent.DEATH);
-@@ -1460,12 +1467,31 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1469,12 +1476,34 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      // Leaves start - exp fix
@@ -61,14 +61,14 @@ index 607ce65a719e333ce2275346a356032327d00ccf..dcdb01fe5333d407a10f9872d09992c7
          this.level()
              .getEntitiesOfClass(Mob.class, aabb, EntitySelector.NO_SPECTATORS)
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b6b18313d 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -1974,7 +1974,14 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1999,6 +1999,13 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          org.bukkit.event.entity.EntityDeathEvent deathEvent = CraftEventFactory.callEntityDeathEvent(this, damageSource, this.drops, () -> {
              final LivingEntity killer = this.getKillCredit();
              if (killer != null) {
                  killer.awardKillScore(this, damageSource);
+-            }
 +            // Luminol Start - Cross Region Damage trace
 +            } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
 +                final LivingEntity killernew = this.getKillCreditOrigin();
@@ -76,13 +76,17 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
 +                    this.damageTransferToAsync(killernew, damageSource);
 +                }
 +            // Luminol End - Cross Region Damage trace
-             }
++            }
          }); // Paper end
          this.postDeathDropItems(deathEvent); // Paper
-@@ -1981,6 +1988,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2006,6 +2013,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+         this.drops = new java.util.ArrayList<>();
+         // this.dropEquipment(level); // CraftBukkit - moved up
+         // CraftBukkit end
+         // this.dropExperience(level, damageSource.getEntity()); // Leaves - exp fix
          return deathEvent; // Paper
      }
- 
++
 +    // Luminol Start - Cross Region Damage trace
 +    private void damageTransferToAsync(LivingEntity entity, DamageSource damageSource) {
 +        fun.bm.mili.utils.CrossRegionHelper.submitDamageCrossRegion(this, entity, damageSource, this.level().getServer().getTickCount());
@@ -95,11 +99,9 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
 +        }, null, 1L );
 +    }
 +    // Luminol End - Cross Region Damage trace
-+
+ 
      protected void dropEquipment(ServerLevel level) {
-     }
-     protected void postDeathDropItems(org.bukkit.event.entity.EntityDeathEvent event) {} // Paper - method for post death logic that cannot be ran before the event is potentially cancelled
-@@ -2607,8 +2627,20 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2632,9 +2652,21 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      public @Nullable LivingEntity getKillCredit() {
          if (this.lastHurtByPlayer != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByPlayer.getEntity(this.level(), Player.class))) { // Folia - region threading
              return this.lastHurtByPlayer.getEntity(this.level(), Player.class);
@@ -107,7 +109,7 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
              return this.lastHurtByMob != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByMob.getEntity(this.level(), LivingEntity.class)) ? this.lastHurtByMob.getEntity(this.level(), LivingEntity.class) : null; // Folia - region threading
          }
      }
- 
++
 +    // Luminol Start - Cross Region Damage trace
 +    @Nullable
 +    public LivingEntity getKillCreditOrigin() {
@@ -119,7 +121,9 @@ index 7a63f52efca133d9d1a773da2443333009d87113..5bae274f5ee869e540e4330e03af671b
 +        return null;
 +    }
 +    // Luminol End - Cross Region Damage trace
-+
+ 
      public final float getMaxHealth() {
          return (float)this.getAttributeValue(Attributes.MAX_HEALTH);
      }
+-- 
+2.47.1
