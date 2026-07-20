@@ -79,7 +79,7 @@ diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/
 +            }
          }); // Paper end
           this.postDeathDropItems(deathEvent); // Paper
-@@ -2006,6 +2013,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2006,7 +2013,20 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          this.drops = new java.util.ArrayList<>();
          // this.dropEquipment(level); // CraftBukkit - moved up
          // CraftBukkit end
@@ -100,7 +100,7 @@ diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/
 +    }
 +    // Luminol End - Cross Region Damage trace
  
-     protected void dropEquipment(ServerLevel level) {
+      protected void dropEquipment(ServerLevel level) {
 @@ -2632,9 +2652,21 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      public @Nullable LivingEntity getKillCredit() {
          if (this.lastHurtByPlayer != null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.lastHurtByPlayer.getEntity(this.level(), Player.class))) { // Folia - region threading
