@@ -63,7 +63,7 @@ diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -1999,6 +1999,13 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1999,7 +1999,14 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          org.bukkit.event.entity.EntityDeathEvent deathEvent = CraftEventFactory.callEntityDeathEvent(this, damageSource, this.drops, () -> {
              final LivingEntity killer = this.getKillCredit();
              if (killer != null) {
@@ -78,7 +78,7 @@ diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/
 +            // Luminol End - Cross Region Damage trace
 +            }
          }); // Paper end
-         this.postDeathDropItems(deathEvent); // Paper
+          this.postDeathDropItems(deathEvent); // Paper
 @@ -2006,6 +2013,19 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          this.drops = new java.util.ArrayList<>();
          // this.dropEquipment(level); // CraftBukkit - moved up
