@@ -769,3 +769,5 @@ index bef794c3f58c41d910aa0bcc63fbdeea7225fddf..a601da588e6973cc5b87d3e3eeba49b5
 +    public LevelResource(String id) { // Leaves - private -> public
          this.id = id;
      }
+-- 
+2.47.1
