@@ -217,7 +217,7 @@ index 07332a86e6e0441bafacb020f27ec36a277f1486..590891d70a71ab30ceae3a3cf1923745
                  playerList.op(nameAndId);
                  i++;
 diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
-index 5fbcb5eac1d5449247da77b6120edbe2f2dd1d58..69cc67b7618d38e65ccb1f4c58013ef116886ad2 100644
+index 4abfcaae4fe024296961987704e2a11a03ee518b..69cc67b7618d38e65ccb1f4c58013ef116886ad2 100644
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
 @@ -252,6 +252,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
@@ -228,10 +228,9 @@ index 5fbcb5eac1d5449247da77b6120edbe2f2dd1d58..69cc67b7618d38e65ccb1f4c58013ef1
          this.setPlayerList(new DedicatedPlayerList(this, this.registries(), this.playerDataStorage));
          org.spigotmc.SpigotConfig.init((java.io.File) this.options.valueOf("spigot-settings"));
          org.spigotmc.SpigotConfig.registerCommands();
-@@ -263,6 +264,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -263,5 +263,6 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
-         fun.bm.mili.utils.ServerI18nUtil.init(); // Mili - I18n support
 +        this.getBotList().loadResumeBotInfo(); // Leaves - load resident bot info
          if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
