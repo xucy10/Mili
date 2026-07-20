@@ -761,7 +761,7 @@ diff --git a/net/minecraft/world/level/storage/LevelResource.java b/net/minecraf
 index bef794c3f58c41d910aa0bcc63fbdeea7225fddf..a601da588e6973cc5b87d3e3eeba49b53f6d9a6d 100644
 --- a/net/minecraft/world/level/storage/LevelResource.java
 +++ b/net/minecraft/world/level/storage/LevelResource.java
-@@ -15,7 +15,7 @@ public class LevelResource {
+@@ -15,6 +15,6 @@ public class LevelResource {
      public static final LevelResource ROOT = new LevelResource(".");
      private final String id;
  
