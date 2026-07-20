@@ -79,7 +79,7 @@ diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/
 +            }
          }); // Paper end
           this.postDeathDropItems(deathEvent); // Paper
-@@ -2006,7 +2013,20 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -2006,8 +2013,21 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
          this.drops = new java.util.ArrayList<>();
          // this.dropEquipment(level); // CraftBukkit - moved up
          // CraftBukkit end
