@@ -3,8 +3,15 @@ From: Mili <mili@mili.fun>
 Date: Mon, 21 Jul 2025 00:00:00 +0800
 Subject: [PATCH] Fix ClassLoadUtil: add ClassGraph fallback for Paperclip
 
+Paperclip's nested jar classloader doesn't support getResources()
+enumeration. This causes config modules under fun.bm.mili.config.modules
+to not be discovered, resulting in 0KB mili_config.toml.
+
+Add ClassGraph as a fallback when the standard classloader approach
+finds no classes.
+
 diff --git a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
-index 23f498a2dc1be0345b3f2a6fb722ef1925baab0..2ad120b000000000000000000000000000000001 100644
+index 23f498a2dc1be0345b3f2a6fb722ef1925baab09..418db5db4848211e08e5ab470c475df843e03312 100644
 --- a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 +++ b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 @@ -1,7 +1,11 @@
@@ -33,11 +40,11 @@ index 23f498a2dc1be0345b3f2a6fb722ef1925baab0..2ad120b00000000000000000000000000
          try {
 -            dirs = MinecraftServer.class.getClassLoader().getResources(packageDirName);
 +            String packageDirName = pack.replace('.', '/');
-+            Enumeration<URL> dirs = MinecraftServer.class.getClassLoader().getResources(packageDirName);
++            Enumeration<URL> dirs = ClassLoader.getSystemClassLoader().getResources(packageDirName);
              while (dirs.hasMoreElements()) {
                  URL url = dirs.nextElement();
                  String protocol = url.getProtocol();
-@@ -41,7 +46,22 @@ public class ClassLoadUtil {
+@@ -41,7 +46,21 @@ public class ClassLoadUtil {
                  }
              }
          } catch (IOException e) {
@@ -49,7 +56,6 @@ index 23f498a2dc1be0345b3f2a6fb722ef1925baab0..2ad120b00000000000000000000000000
 +            LOGGER.info("No classes found via standard classloader for package {}, using ClassGraph", pack);
 +            try (ScanResult scanResult = new ClassGraph()
 +                    .acceptPackages(pack)
-+                    .overrideClassLoaders(MinecraftServer.class.getClassLoader())
 +                    .scan()) {
 +                for (Class<?> clazz : scanResult.getAllClasses().loadClasses()) {
 +                    classes.add(clazz);

@@ -8,7 +8,7 @@ As a part of : Leaves (https://github.com/LeavesMC/Leaves/blob/d93e9766d3797d130
 Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/src/main/java/org/leavesmc/leaves/util/ItemOverstackUtils.java b/src/main/java/org/leavesmc/leaves/util/ItemOverstackUtils.java
-index 112dc08eb62c4c50fb4859f51a366cedf027ca00..b5f661fd20b382725ad117c56ce2c94ded32b1b7 100644
+index 112dc08eb62c4c50fb4859f51a366cedf027ca00..1613aae6e0e81782c9db76b2981097454fc36a6a 100644
 --- a/src/main/java/org/leavesmc/leaves/util/ItemOverstackUtils.java
 +++ b/src/main/java/org/leavesmc/leaves/util/ItemOverstackUtils.java
 @@ -17,6 +17,7 @@
@@ -74,4 +74,3 @@ index 112dc08eb62c4c50fb4859f51a366cedf027ca00..b5f661fd20b382725ad117c56ce2c94d
              }
              return -1;
          }
-
