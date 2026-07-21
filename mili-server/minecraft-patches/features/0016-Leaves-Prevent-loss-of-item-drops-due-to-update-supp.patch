@@ -1,12 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Tue, 18 Nov 2025 00:35:13 +0800
-Subject: [PATCH] Leaves: Prevent loss of item drops due to update suppression
- when breaking blocks
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:00 +0800
+Subject: [PATCH] Leaves-Prevent-loss-of-item-drops-due-to-update-supp
 
-Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
-As a part of : Leaves (https://github.com/LeavesMC/Leaves/blob/ea91106ae57fc4cc14e2e0225009cf9919072f7f/leaves-server/minecraft-patches/features/0090-Servux-Protocol.patch)
-Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
 index 3301e521a79adbc6dd76be05e69cce1c97f8697e..8dc1db0e6bafba19e07a7fa78f3920d572d38466 100644

@@ -1,11 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Sun, 8 Mar 2026 23:56:06 +0800
+From: violetc <58360096+s-yh-china@users.noreply.github.com>
+Date: Tue, 21 Jul 2026 13:55:38 +0800
 Subject: [PATCH] Leaves: Creative fly no clip
 
-Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
-As a part of : Leaves (https://github.com/LeavesMC/Leaves/blob/da12a58e8d3bd3cd13b52a60676d5a1e03acd30a/leaves-server/minecraft-patches/features/0049-Creative-fly-no-clip.patch)
-Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/entity/ExperienceOrb.java b/net/minecraft/world/entity/ExperienceOrb.java
 index f2ec0bd8cca3c08d558790537e17a8a2f95f1953..29d904b02a2c7b3d25261ca26c7c0479b00999ef 100644
@@ -21,13 +18,13 @@ index f2ec0bd8cca3c08d558790537e17a8a2f95f1953..29d904b02a2c7b3d25261ca26c7c0479
              } else {
                  this.followingPlayer = null;
 diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
-index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb2197a2da 100644
+index 8657d2cbcb4ae3208fcca3b9bbdebcd715455b4a..99b3910526d60bdff11ee80c071d6996884cca02 100644
 --- a/net/minecraft/world/entity/player/Player.java
 +++ b/net/minecraft/world/entity/player/Player.java
-@@ -285,8 +285,8 @@ public abstract class Player extends Avatar implements ContainerUser {
-         if (this.cullTask != null) this.cullTask.requestCullSignal(); // Luminol - Ray tracing entity tracker
-         // Luminol end
+@@ -245,8 +245,8 @@ public abstract class Player extends Avatar implements ContainerUser {
  
+     @Override
+     public void tick() {
 -        this.noPhysics = this.isSpectator();
 -        if (this.isSpectator() || this.isPassenger()) {
 +        this.noPhysics = this.isCreativeFlyOrSpectator(); // Leaves - creative no clip
@@ -35,7 +32,7 @@ index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb
              this.setOnGround(false);
          }
  
-@@ -415,7 +415,7 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -375,7 +375,7 @@ public abstract class Player extends Avatar implements ContainerUser {
          if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.SWIMMING)) {
              Pose desiredPose = this.getDesiredPose();
              Pose pose;
@@ -44,7 +41,7 @@ index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb
                  pose = desiredPose;
              } else if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.CROUCHING)) {
                  pose = Pose.CROUCHING;
-@@ -544,7 +544,7 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -504,7 +504,7 @@ public abstract class Player extends Avatar implements ContainerUser {
          this.updateSwingTime();
          this.yHeadRot = this.getYRot();
          this.setSpeed((float)this.getAttributeValue(Attributes.MOVEMENT_SPEED));
@@ -53,7 +50,7 @@ index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb
              AABB aabb;
              if (this.isPassenger() && !this.getVehicle().isRemoved()) {
                  aabb = this.getBoundingBox().minmax(this.getVehicle().getBoundingBox()).inflate(1.0, 0.0, 1.0);
-@@ -1877,9 +1877,29 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -1836,9 +1836,29 @@ public abstract class Player extends Avatar implements ContainerUser {
          return this.gameMode() == GameType.SPECTATOR;
      }
  
@@ -85,7 +82,7 @@ index 29ca31b05ec5636243b13fee8b3399d5e21808b4..8966953ee80a1527c9c4cc4d0a7a3bdb
  
      @Override
 diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
-index 4bb36d2965785fadf628a9bfac4fa2aa305aaf65..44786e4f77285f1fbd4643f560105e410035afeb 100644
+index 4bb36d2965785fadf628a9bfac4fa2aa305aaf65..1191ac4b0f8da7f5370d1809626f040f66462b4f 100644
 --- a/net/minecraft/world/item/BlockItem.java
 +++ b/net/minecraft/world/item/BlockItem.java
 @@ -170,8 +170,9 @@ public class BlockItem extends Item {
@@ -100,7 +97,7 @@ index 4bb36d2965785fadf628a9bfac4fa2aa305aaf65..44786e4f77285f1fbd4643f560105e41
  
          org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(
 diff --git a/net/minecraft/world/item/StandingAndWallBlockItem.java b/net/minecraft/world/item/StandingAndWallBlockItem.java
-index be685383b8e7c8111e976fc560f16d43d6545a34..6a2219b45eae0ff6fc48de9a6e6cabf2ec60cb07 100644
+index be685383b8e7c8111e976fc560f16d43d6545a34..6374fae4d9466e54a8ea35091a6c590eb7e2ba83 100644
 --- a/net/minecraft/world/item/StandingAndWallBlockItem.java
 +++ b/net/minecraft/world/item/StandingAndWallBlockItem.java
 @@ -44,7 +44,7 @@ public class StandingAndWallBlockItem extends BlockItem {
@@ -146,4 +143,3 @@ index 1d60054146f970ec24054d2c76a27e2d8620ec67..a5469971734a3f4f08d676426821fbf0
          NOCLIP.set(noClipDirection);
          Vec3 vec3 = entity.position();
          entity.move(MoverType.PISTON, new Vec3(progress * direction.getStepX(), progress * direction.getStepY(), progress * direction.getStepZ()));
-

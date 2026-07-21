@@ -1,11 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Tue, 18 Nov 2025 23:11:26 +0800
-Subject: [PATCH] Leaves: Old Block remove behaviour
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:00 +0800
+Subject: [PATCH] Leaves-Old-Block-remove-behaviour
 
-Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
-As a part of : Leaves (https://github.com/LeavesMC/Leaves)
-Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/Containers.java b/net/minecraft/world/Containers.java
 index da10ca5ef12be1a834adda9243c082dadde24ec0..f682930f765d04f0a278b0648c2773ab5d4d740e 100644
@@ -249,7 +246,7 @@ index cea0f015290137a5284f4a3021c954272b3db543..53d983505b4c92824083ecd123901874
      protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
          Containers.updateNeighboursAfterDestroy(state, level, pos);
 diff --git a/net/minecraft/world/level/block/CrafterBlock.java b/net/minecraft/world/level/block/CrafterBlock.java
-index 3faa541c4a4623e915269d6241e1a3a3c6e374ff..18c660893a33ecf70c3d225525505852e4449182 100644
+index c5fe15844d405a27cdae18c903dd481c25b437de..8b48b263f1437799b63b62abd5ccbc86261a741a 100644
 --- a/net/minecraft/world/level/block/CrafterBlock.java
 +++ b/net/minecraft/world/level/block/CrafterBlock.java
 @@ -128,6 +128,14 @@ public class CrafterBlock extends BaseEntityBlock {
@@ -501,10 +498,10 @@ index 3c12d8e23f20b666b0005e597ba2e803c02d5d78..17c371f4c24e8a81705bdd322b1de5de
      protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
          if (state.getValue(POWERED) && level.getBlockTicks().hasScheduledTick(pos, this)) {
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 48f9e234e4025633cbc41d334d88ada36c2e0d7b..5c154d15e5aa45988436722595c7fca74e166c9a 100644
+index c44447a55fad3868a683affdb13b9f48797999f5..cdcb0535a428f40241cf6299dc4c02c953664b8f 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
-@@ -368,6 +368,27 @@ public class RedStoneWireBlock extends Block {
+@@ -369,6 +369,27 @@ public class RedStoneWireBlock extends Block {
          }
      }
  
@@ -597,7 +594,7 @@ index 2815fb48530de3a2f9ef0f472a0fd0a2c32140b6..6b5e5bbbeb11bd8ce100ef3c215dfcf4
      protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
          if (state.getValue(SHRIEKING)) {
 diff --git a/net/minecraft/world/level/block/ShulkerBoxBlock.java b/net/minecraft/world/level/block/ShulkerBoxBlock.java
-index 77840814806c7d07b58cd716cf7ec095e894498a..e820cd03e695649a8f83e23ae822524a8f78e23b 100644
+index 2269f8b2e85131bb9685d8ec8dd31e849f8176bb..3997443f70ef4df238cc9f36b434009d9dce12f6 100644
 --- a/net/minecraft/world/level/block/ShulkerBoxBlock.java
 +++ b/net/minecraft/world/level/block/ShulkerBoxBlock.java
 @@ -150,6 +150,19 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
@@ -672,7 +669,7 @@ index 42a5e9a7f5d604e4821a116ba13319df052faf97..e90e142cfb15335522a48ad82aa90018
      protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
          if (!movedByPiston) {
 diff --git a/net/minecraft/world/level/block/entity/BlockEntityType.java b/net/minecraft/world/level/block/entity/BlockEntityType.java
-index 6a9d23d25a79c73d5792011faf0e5a1c4c25bc64..84e0d3cd3c349f0d588a4b4c2d6844480a92b4ca 100644
+index 6a9d23d25a79c73d5792011faf0e5a1c4c25bc64..f863b5585a6c127aeaadb1f31ea2b5972766486e 100644
 --- a/net/minecraft/world/level/block/entity/BlockEntityType.java
 +++ b/net/minecraft/world/level/block/entity/BlockEntityType.java
 @@ -306,7 +306,7 @@ public class BlockEntityType<T extends BlockEntity> {
@@ -765,7 +762,7 @@ index 418517faeaf40ae2f7dea5635e4232cd89db3ead..0de2f6627fb6295d7927ac3e37026f4d
              this.getBlock().affectNeighborsAfterRemoval(this.asState(), level, pos, movedByPiston);
          }
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 5551d80a81c2878136f96b3e695c4888c7105a49..73dd8e67938fbfff745b189c06a93174976ba1bf 100644
+index 68b14fe512b0cd97e463a883b32e5949de25a9f6..c8575dc3c0dbac32cb28aca3fb664f2f7cc583ff 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -406,22 +406,28 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
@@ -809,4 +806,3 @@ index 5551d80a81c2878136f96b3e695c4888c7105a49..73dd8e67938fbfff745b189c06a93174
  
                  if (!section.getBlockState(i, i1, i2).is(block)) {
                      return null;
-

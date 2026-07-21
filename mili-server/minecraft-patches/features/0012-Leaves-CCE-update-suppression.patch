@@ -8,7 +8,7 @@ As a part of : Leaves (https://github.com/LeavesMC/Leaves)
 Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/level/block/ShulkerBoxBlock.java b/net/minecraft/world/level/block/ShulkerBoxBlock.java
-index 46d6c6e3befc70a6878e12a4d75575e6d48d10ca..77840814806c7d07b58cd716cf7ec095e894498a 100644
+index 5efdd4785d76086593cf062ebb7a63f5a05adac8..2269f8b2e85131bb9685d8ec8dd31e849f8176bb 100644
 --- a/net/minecraft/world/level/block/ShulkerBoxBlock.java
 +++ b/net/minecraft/world/level/block/ShulkerBoxBlock.java
 @@ -183,7 +183,9 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
@@ -22,4 +22,3 @@ index 46d6c6e3befc70a6878e12a4d75575e6d48d10ca..77840814806c7d07b58cd716cf7ec095
          } catch (ClassCastException ex) {
              if (fun.bm.mili.config.modules.fixes.UpdateSuppressionCrashFixConfig.enabled) {
                  throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, null, this, null, ex);
-

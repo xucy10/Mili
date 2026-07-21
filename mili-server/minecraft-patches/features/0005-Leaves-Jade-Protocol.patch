@@ -1,31 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Bacteriawa <A3167717663@hotmail.com>
-Date: Fri, 13 Feb 2026 16:17:36 +0800
+Date: Sat, 30 Aug 2025 17:16:32 +0800
 Subject: [PATCH] Leaves: Jade Protocol
 
-This patch is Powered by Jade(https://github.com/Snownee/Jade)
-Co-authored by: violetc <58360096+s-yh-china@users.noreply.github.com>
-As a part of : Leaves (https://github.com/LeavesMC/Leaves)
-Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
-diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 7c2d53ca863c2e50c6871938efc426ddefff9b5c..8c1e6837b0328c66fdda322c3c7ceba31c4f017f 100644
---- a/net/minecraft/server/level/ServerPlayer.java
-+++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1451,7 +1451,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
-         } else if (fun.bm.mili.config.modules.experiment.EntityDamageSourceTraceConfig.enabled) {
-             final LivingEntity entitylivingnew = this.getKillCreditOrigin();
-             if (entitylivingnew != null) {
--                this.damageTransferToAsync(entitylivingnew, cause);
-+                this.damageTransferToAsync(entitylivingnew, damageSource);
-             }
-         // Luminol End - Cross Region Damage trace
-         }
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index df66e24c61af9d57d619c91849e28f1bec64a036..8386757c5fd3d8df3ae77a4eeeb25a2f28840cda 100644
+index 3f290ef6df8edab8ab3af12cf790304c8aca5b31..22bf5e8925c58be15308536d23c946ece58464d3 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -3843,7 +3843,7 @@ public class ServerGamePacketListenerImpl
+@@ -3841,7 +3841,7 @@ public class ServerGamePacketListenerImpl
      }
  
      @Deprecated @io.papermc.paper.annotation.DoNotUse // Paper - Add PlayerLoadedWorldEvent
@@ -138,4 +121,3 @@ index bae72197acc929c7ed3e964f156115d728eb2176..8f3094f42f3366a1313d70c0b27fbe56
      private final Predicate<LootContext> composedPredicate;
  
      protected CompositeLootItemCondition(List<LootItemCondition> terms, Predicate<LootContext> composedPredicate) {
-

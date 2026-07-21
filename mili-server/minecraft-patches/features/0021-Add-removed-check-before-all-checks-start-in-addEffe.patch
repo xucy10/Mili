@@ -1,11 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Tue, 13 Jan 2026 21:04:59 +0800
-Subject: [PATCH] Add removed check before all checks start in addEffect
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:02 +0800
+Subject: [PATCH] Add-removed-check-before-all-checks-start-in-addEffe
 
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index e4ae4354e81f34f0db410333fc9b8e17383a5f41..fc8833655102ca98bb331782a624af79cbef414f 100644
+index fde90a8ae313319b1b458678ccdb6a2cb6caffd7..56fe7ccdccf21bb58a4da0bc2f22517de85bd291 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
 @@ -1186,6 +1186,7 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
@@ -16,4 +16,3 @@ index e4ae4354e81f34f0db410333fc9b8e17383a5f41..fc8833655102ca98bb331782a624af79
          if (!this.hasNullCallback()) ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, "Cannot add effects to entities asynchronously"); // Folia - region threading
          if (this.isTickingEffects) {
              this.effectsToProcess.add(new ProcessableEffect(effectInstance, cause));
-

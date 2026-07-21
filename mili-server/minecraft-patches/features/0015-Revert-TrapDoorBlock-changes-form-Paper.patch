@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Tue, 18 Nov 2025 00:24:32 +0800
-Subject: [PATCH] Revert TrapDoorBlock changes form Paper
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:00 +0800
+Subject: [PATCH] Revert-TrapDoorBlock-changes-form-Paper
 
 
 diff --git a/net/minecraft/world/level/block/TrapDoorBlock.java b/net/minecraft/world/level/block/TrapDoorBlock.java

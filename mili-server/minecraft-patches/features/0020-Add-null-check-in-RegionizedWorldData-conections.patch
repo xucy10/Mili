@@ -1,12 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Wed, 17 Dec 2025 00:20:57 +0800
-Subject: [PATCH] Add null check in RegionizedWorldData >> conections
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:01 +0800
+Subject: [PATCH] Add-null-check-in-RegionizedWorldData-conections
 
-some of our function patches will crash because of get null in conn.getPlayer(), then when we process player.chunkPosition() will get NPE, so we need to fix it.
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34b27766f1 100644
+index 4a59842f80833456c6f2f793cbb1a662e3259347..8f30174a300f8f0c8f748b370be518dac507e4a6 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
 @@ -241,14 +241,17 @@ public final class RegionizedWorldData {
@@ -41,7 +40,7 @@ index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34
              }
              for (final Entity entity : from.allEntities) {
                  final ChunkPos pos = entity.chunkPosition();
-@@ -626,6 +636,7 @@ public final class RegionizedWorldData {
+@@ -624,6 +634,7 @@ public final class RegionizedWorldData {
      private static void cleanUpConnection(final Connection conn) {
          // note: ALL connections HERE have a player
          final ServerPlayer player = conn.getPlayer();
@@ -49,4 +48,3 @@ index c7de740dd9babfc1373a5663cd552214b75a0674..61deaf0184c984a71d104a495b4dee34
          // now that the connection is removed, we can allow this region to die
          player.level().moonrise$getChunkTaskScheduler().chunkHolderManager.removeTicketAtLevel(
              ServerGamePacketListenerImpl.DISCONNECT_TICKET, player.connection.disconnectPos,
-

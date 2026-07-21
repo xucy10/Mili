@@ -13,7 +13,7 @@ MasaGadget(https://github.com/plusls/MasaGadget)
 litematica(https://github.com/maruohon/litematica)
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 8386757c5fd3d8df3ae77a4eeeb25a2f28840cda..fd74636d911596daae8cfe563c2dd5e3d37a1549 100644
+index 22bf5e8925c58be15308536d23c946ece58464d3..15227b48132dda721b5223a5ad9587ee4df29a03 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -2134,7 +2134,7 @@ public class ServerGamePacketListenerImpl
@@ -60,7 +60,7 @@ index d75c95d728efc0b4064f562ca80b68b23883feaf..be685383b8e7c8111e976fc560f16d43
                      blockState = blockState1;
                      break;
 diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
-index 492b1615d96133c5082e0f16015f114299f8082f..fb47a2acb0e4232359f5da061c1620a7b1d6c476 100644
+index 492b1615d96133c5082e0f16015f114299f8082f..220f557ec5372aef713dbc564fb95835adb01c25 100644
 --- a/net/minecraft/world/level/block/Block.java
 +++ b/net/minecraft/world/level/block/Block.java
 @@ -489,6 +489,32 @@ public class Block extends BlockBehaviour implements ItemLike {
@@ -96,4 +96,3 @@ index 492b1615d96133c5082e0f16015f114299f8082f..fb47a2acb0e4232359f5da061c1620a7
      public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
          return this.defaultBlockState();
      }
-

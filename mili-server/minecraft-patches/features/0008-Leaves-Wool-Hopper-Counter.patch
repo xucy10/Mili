@@ -10,7 +10,7 @@ Licensed under: MIT
 This patch is Powered by fabric-carpet(https://github.com/gnembon/fabric-carpet)
 
 diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 3d2bf6371d39946576745aa7977cdc0f2ff07036..ed906ec726fa0eb12c0108dc751af2dcadf2bfb1 100644
+index 4ae14236535d04713990f5abb3777001071f591c..313f6e4fcb762c1285c2016495779d61bb0238f1 100644
 --- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 @@ -239,8 +239,30 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
@@ -93,4 +93,3 @@ index 3d2bf6371d39946576745aa7977cdc0f2ff07036..ed906ec726fa0eb12c0108dc751af2dc
          boolean flag = false;
          // CraftBukkit start
          if (org.bukkit.event.inventory.InventoryPickupItemEvent.getHandlerList().getRegisteredListeners().length > 0) { // Paper - optimize hoppers
-

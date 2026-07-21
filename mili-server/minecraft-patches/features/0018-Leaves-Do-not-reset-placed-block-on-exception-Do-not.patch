@@ -1,12 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Tue, 18 Nov 2025 23:26:27 +0800
-Subject: [PATCH] Leaves: Do not reset placed block on exception & Do not
- prevent block entity and entity crash at LevelChunk
+From: xucy10 <someonm201141923@outlook.com>
+Date: Tue, 21 Jul 2026 13:48:01 +0800
+Subject: [PATCH] Leaves-Do-not-reset-placed-block-on-exception-Do-not
 
-Co-authored by: MC_XiaoHei <xiaohei.xor7@outlook.com>
-As a part of : Leaves (https://github.com/LeavesMC/Leaves)
-Licensed under: GPL-3.0 (https://www.gnu.org/licenses/gpl-3.0.html)
 
 diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
 index a5d3caab2072b2c9bf8fdcbdb7c52c2dee16cfaf..4bb36d2965785fadf628a9bfac4fa2aa305aaf65 100644
@@ -46,7 +42,7 @@ index a5d3caab2072b2c9bf8fdcbdb7c52c2dee16cfaf..4bb36d2965785fadf628a9bfac4fa2aa
                          // CraftBukkit start
                          if (bukkitState != null) {
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 318725a0c9b2bdece7e6287cd521844af81aaf69..b1829ac08ba90e8e1522ee790b7f96515da2b9c4 100644
+index c8575dc3c0dbac32cb28aca3fb664f2f7cc583ff..4b9fa3937920cf450b245a0d902396fa56c6ade5 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -1005,12 +1005,14 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
