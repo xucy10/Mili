@@ -54,7 +54,7 @@ public class EntryIngredient {
                 } else {
                     buffer.writeVarInt(itemStack.getCount());
                     ITEM_STREAM_CODEC.encode(buffer, itemStack.getItemHolder());
-                    DataComponentPatch.STREAM_CODEC.encode(buffer, itemStack.components.asPatch());
+                    DataComponentPatch.STREAM_CODEC.encode(buffer, itemStack.getComponentsPatch());
                 }
             });
         }

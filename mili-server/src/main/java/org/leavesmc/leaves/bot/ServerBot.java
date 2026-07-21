@@ -97,6 +97,7 @@ public class ServerBot extends ServerPlayer {
     public BotCreateState createState;
     public UUID createPlayer;
     public boolean handsBusy = false;
+    protected int spawnInvulnerableTime = 60; // Leaves - spawn invulnerable time
 
     private final int tracingRange;
     private final BotStatsCounter stats;
