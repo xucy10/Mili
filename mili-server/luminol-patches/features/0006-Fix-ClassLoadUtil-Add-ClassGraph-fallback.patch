@@ -3,7 +3,6 @@ From: Mili <mili@mili.fun>
 Date: Mon, 21 Jul 2025 00:00:00 +0800
 Subject: [PATCH] Fix ClassLoadUtil: add ClassGraph fallback for Paperclip
 
-
 diff --git a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
 --- a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
