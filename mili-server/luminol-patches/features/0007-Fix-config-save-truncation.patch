@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@mili.fun>
+Date: Mon, 21 Jul 2025 00:00:00 +0800
+Subject: [PATCH] Fix config save truncation using atomic temp file write
+
+---
+ .../luminol/config/ConfigsInstance.java       | 24 ++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+index 6c96114aca59260f03873e82a338c639afc92653..7b38ae9ab7cf164e6cd40e8c1c3bcb9eecd669e0 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+@@ -723,7 +723,29 @@ public class ConfigsInstance {
+      * Save configuration to file
+      */
+     public void saveConfigs() {
+-        configFileInstance.save();
++        File tempFile = new File(baseConfigFile.getParent(), baseConfigFile.getName() + ".tmp");
++        try {
++            CommentedFileConfig tempConfig = CommentedFileConfig.builder(tempFile.toPath()).build();
++            tempConfig.clear();
++            for (String key : defaultvalueMap.keySet()) {
++                Object value = configFileInstance.get(key);
++                if (value != null) {
++                    tempConfig.set(key, value);
++                }
++                String comment = configFileInstance.getComment(key);
++                if (comment != null && !comment.isEmpty()) {
++                    tempConfig.setComment(key, comment);
++                }
++            }
++            tempConfig.save();
++            tempConfig.close();
++            java.nio.file.Files.move(tempFile.toPath(), baseConfigFile.toPath(),
++                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
++        } catch (Exception e) {
++            logger.error("Failed to save config via temp file, falling back to direct save", e);
++            try { tempFile.delete(); } catch (Exception ignored) {}
++            configFileInstance.save();
++        }
+     }
+ 
+     /**
