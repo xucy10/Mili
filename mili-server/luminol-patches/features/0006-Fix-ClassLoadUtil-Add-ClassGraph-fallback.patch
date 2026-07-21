@@ -3,14 +3,9 @@ From: Mili <mili@mili.fun>
 Date: Mon, 21 Jul 2025 00:00:00 +0800
 Subject: [PATCH] Fix ClassLoadUtil: add ClassGraph fallback for Paperclip
 
-Paperclip's nested jar classloader doesn't support getResources()
-enumeration. This causes config modules under fun.bm.mili.config.modules
-to not be discovered, resulting in 0KB mili_config.toml.
-
-Add ClassGraph as a fallback when the standard classloader approach
-finds no classes.
 
 diff --git a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
 --- a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 +++ b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 @@ -1,17 +1,22 @@
