@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@mili.fun>
+Date: Mon, 21 Jul 2025 00:00:00 +0800
+Subject: [PATCH] Fix config save truncation using atomic temp file write
+
+---
+ .../me/earthme/luminol/config/ConfigsInstance.java | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+index 6c96114..1fbd706 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+@@ -723,7 +723,19 @@ public class ConfigsInstance {
+      * Save configuration to file
+      */
+     public void saveConfigs() {
+-        configFileInstance.save();
++        File tempFile = new File(baseConfigFile.getParent(), baseConfigFile.getName() + ".tmp");
++        try {
++            CommentedFileConfig tempConfig = CommentedFileConfig.builder(tempFile.toPath()).build();
++            tempConfig.mergeFrom(configFileInstance);
++            tempConfig.save();
++            tempConfig.close();
++            baseConfigFile.delete();
++            tempFile.renameTo(baseConfigFile);
++        } catch (Exception e) {
++            logger.error("Failed to save config via temp file, falling back to direct save", e);
++            tempFile.delete();
++            configFileInstance.save();
++        }
+     }
+ 
+     /**
