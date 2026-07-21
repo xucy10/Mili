@@ -31,6 +31,10 @@ public class MiliPerfCommand implements CommandExecutor {
         sendMemoryStats(sender);
         sender.sendMessage("");
         sendCrossRegionStats(sender);
+        sender.sendMessage("");
+        sendOptimizationStats(sender);
+        sender.sendMessage("");
+        sendFeatureStats(sender);
 
         return true;
     }
@@ -77,6 +81,40 @@ public class MiliPerfCommand implements CommandExecutor {
         Map<String, Object> crStats = CrossRegionHelper.getStats();
         for (Map.Entry<String, Object> entry : crStats.entrySet()) {
             sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
+                    ChatColor.WHITE + entry.getValue());
+        }
+    }
+
+    private void sendOptimizationStats(CommandSender sender) {
+        sender.sendMessage(ChatColor.YELLOW + "-- Optimizations --");
+
+        printStats(sender, "Entity Dirty", EntityDirtyTracker.getStats());
+        printStats(sender, "Dynamic VD", DynamicViewDistanceManager.getStats());
+        printStats(sender, "Cross-Dim Teleport", CrossDimensionTeleportQueue.getStats());
+        printStats(sender, "Async Pathfinder", AsyncPathfinder.getStats());
+        printStats(sender, "Redstone Dirty", RedstoneDirtyTracker.getStats());
+        printStats(sender, "Chunk Delta", ChunkDeltaCompressor.getStats());
+        printStats(sender, "Light Callback", LightCallbackManager.getStats());
+        printStats(sender, "Entity Density", EntityDensityTracker.getStats());
+        printStats(sender, "Mmap Storage", MmapRegionStorage.getStats());
+    }
+
+    private void sendFeatureStats(CommandSender sender) {
+        sender.sendMessage(ChatColor.YELLOW + "-- Features --");
+
+        printStats(sender, "Redstone Stats", RedstoneStats.getStats());
+        printStats(sender, "Player Heatmap", PlayerHeatmap.getStats());
+        printStats(sender, "Auto Backup", Map.of(
+                "Running", AutoBackupManager.isRunning(),
+                "Last Backup", AutoBackupManager.getLastBackupResult()));
+        printStats(sender, "Structure Proj", StructureProjectionManager.getStats());
+    }
+
+    private void printStats(CommandSender sender, String prefix, Map<String, Object> stats) {
+        if (stats.isEmpty()) return;
+        sender.sendMessage(ChatColor.AQUA + "  [" + prefix + "]");
+        for (Map.Entry<String, Object> entry : stats.entrySet()) {
+            sender.sendMessage(ChatColor.GRAY + "    " + entry.getKey() + ": " +
                     ChatColor.WHITE + entry.getValue());
         }
     }
