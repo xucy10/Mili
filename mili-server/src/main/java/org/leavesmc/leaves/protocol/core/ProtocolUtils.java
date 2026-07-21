@@ -88,7 +88,8 @@ public class ProtocolUtils {
             return selector;
         }
         ServerPlayer player = common instanceof ServerGamePacketListenerImpl game ? game.getPlayer() : null;
-        selector = new IdentifierSelector(new Context(common.playerProfile(), common.connection), player);
+        com.mojang.authlib.GameProfile profile = player != null ? player.getGameProfile() : null;
+        selector = new IdentifierSelector(new Context(profile, common.connection), player);
         if (player != null) {
             SELECTOR_CACHE.put(common, selector);
         }
