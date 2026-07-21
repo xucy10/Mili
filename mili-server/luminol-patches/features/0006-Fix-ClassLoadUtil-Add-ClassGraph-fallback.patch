@@ -4,10 +4,10 @@ Date: Mon, 21 Jul 2025 00:00:00 +0800
 Subject: [PATCH] Fix ClassLoadUtil: add ClassGraph fallback for Paperclip
 
 diff --git a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
-index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
+index 23f498a2dc1be0345b3f2a6fb722ef1925baab0..2ad120b000000000000000000000000000000001 100644
 --- a/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
 +++ b/src/main/java/me/earthme/luminol/utils/ClassLoadUtil.java
-@@ -1,17 +1,22 @@
+@@ -1,7 +1,11 @@
  package me.earthme.luminol.utils;
  
 +import io.github.classgraph.ClassGraph;
@@ -19,14 +19,7 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
  
  import java.io.File;
  import java.io.IOException;
- import java.net.JarURLConnection;
- import java.net.URL;
- import java.net.URLDecoder;
- import java.nio.charset.StandardCharsets;
- import java.util.Enumeration;
- import java.util.LinkedHashSet;
- import java.util.Set;
- import java.util.jar.JarEntry;
+@@ -16,13 +20,14 @@ import java.util.jar.JarEntry;
  import java.util.jar.JarFile;
  
  public class ClassLoadUtil {
@@ -37,7 +30,6 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
 -        String packageDirName = pack.replace('.', '/');
 -        Enumeration<URL> dirs;
  
-+        // Try standard classloader approach first
          try {
 -            dirs = MinecraftServer.class.getClassLoader().getResources(packageDirName);
 +            String packageDirName = pack.replace('.', '/');
@@ -45,15 +37,14 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
              while (dirs.hasMoreElements()) {
                  URL url = dirs.nextElement();
                  String protocol = url.getProtocol();
-@@ -30,12 +35,26 @@
+@@ -41,7 +46,22 @@ public class ClassLoadUtil {
                  }
              }
          } catch (IOException e) {
 -            throw new RuntimeException(e);
 +            LOGGER.warn("Standard classloader scan failed for package {}, trying ClassGraph fallback", pack, e);
-         }
- 
-+        // Fallback to ClassGraph if standard approach found nothing
++        }
++
 +        if (classes.isEmpty()) {
 +            LOGGER.info("No classes found via standard classloader for package {}, using ClassGraph", pack);
 +            try (ScanResult scanResult = new ClassGraph()
@@ -67,8 +58,6 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
 +            } catch (Exception e) {
 +                LOGGER.error("ClassGraph scan also failed for package {}", pack, e);
 +            }
-+        }
-+
-         return classes;
-     }
+         }
  
+         return classes;
