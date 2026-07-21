@@ -83,9 +83,10 @@ jobs:
           rm -rf mili-server/build mili-api/build
           rm -rf mili-server/src/minecraft
           find . -type d -name "taskCache" -path "*/paperweight/*" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf .gradle/configuration-cache
           echo "=== Post-clean state ==="
-          ls -la .gradle/caches/paperweight 2>/dev/null || echo "paperweight cache removed"
-          rm -rf .gradle/caches/paperweight/upstreams/server-work
+          rm -rf .gradle/caches/paperweight
+          ls -la .gradle/caches/ 2>/dev/null || echo "caches dir removed"
 
       - name: Init Luminol Local Repo
         run: |
@@ -104,7 +105,7 @@ jobs:
           ls -la libs/hyacinthusclip.jar
 
       - name: Apply All Patches
-        run: ./gradlew applyAllPatches
+        run: ./gradlew applyAllPatches --no-configuration-cache
 
       - name: Verify Generated Source
         run: |

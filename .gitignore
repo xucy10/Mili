@@ -4,6 +4,8 @@
 # Ignore Gradle build output directory
 build
 /run
+**/bin/
+*.class
 
 /lophine-server/build.gradle.kts
 /lophine-api/build.gradle.kts
@@ -14,5 +16,8 @@ build
 /lophine-src
 
 .idea/
+.vscode/
+run_build.bat
+run_build.ps1
 # Hyacinthusclip JAR (downloaded during CI build)
 libs/
