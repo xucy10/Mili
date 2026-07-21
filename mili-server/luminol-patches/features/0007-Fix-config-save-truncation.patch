@@ -4,22 +4,21 @@ Date: Mon, 21 Jul 2025 00:00:00 +0800
 Subject: [PATCH] Fix config save truncation using atomic temp file write
 
 ---
- .../luminol/config/ConfigsInstance.java       | 25 ++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
+ .../luminol/config/ConfigsInstance.java       | 24 ++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
 diff --git a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
-index 6c96114aca59260f03873e82a338c639afc92653..43aea0d16ee4c4a1a5646a6deb8e55d866e50ed8 100644
+index 6c96114aca59260f03873e82a338c639afc92653..9dce4183a34b4c1538f9a8e2f3e7c5d866b86a9e 100644
 --- a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
 +++ b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
-@@ -723,7 +723,30 @@ public class ConfigsInstance {
+@@ -723,7 +723,29 @@ public class ConfigsInstance {
       * Save configuration to file
       */
      public void saveConfigs() {
 -        configFileInstance.save();
-+        File tempFile = new File(baseConfigFile.getParent(), baseConfigFile.getName() + ".tmp");
++        File tempFile = new File(baseConfigFile.getParent(), baseConfigFile.getName() + ".tmp.toml");
 +        try {
-+            CommentedFileConfig tempConfig = CommentedFileConfig.builder(tempFile.toPath(),
-+                    new com.electronwill.nightconfig.toml.TomlFormat()).build();
++            CommentedFileConfig tempConfig = CommentedFileConfig.builder(tempFile.toPath()).build();
 +            tempConfig.clear();
 +            for (String key : defaultvalueMap.keySet()) {
 +                Object value = configFileInstance.get(key);
