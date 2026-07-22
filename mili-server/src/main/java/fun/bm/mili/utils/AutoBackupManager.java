@@ -3,7 +3,6 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.function.AutoBackupConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
 import java.nio.file.*;
@@ -14,6 +13,7 @@ import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.stream.Stream;
 import java.util.zip.*;
+import org.jspecify.annotations.Nullable;
 
 public class AutoBackupManager {
     private static ScheduledExecutorService scheduler;
@@ -49,9 +49,13 @@ public class AutoBackupManager {
     public static String getLastBackupResult() { return lastBackupResult; }
 
     public static CompletableFuture<Boolean> backupNow() {
+        return backupNow((String) null);
+    }
+
+    public static CompletableFuture<Boolean> backupNow(String worldName) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                doBackup();
+                doBackup(worldName);
                 return true;
             } catch (Exception e) {
                 lastBackupResult = "Error: " + e.getMessage();
@@ -62,7 +66,7 @@ public class AutoBackupManager {
 
     private static void performBackup() {
         try {
-            doBackup();
+            doBackup(null);
             cleanupOldBackups();
         } catch (Exception e) {
             lastBackupResult = "Error: " + e.getMessage();
@@ -70,23 +74,7 @@ public class AutoBackupManager {
         }
     }
 
-    private static void doBackup() throws IOException {
-        if (AutoBackupConfig.saveOnBackup) {
-            try {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(JavaPlugin.getProvidingPlugin(AutoBackupManager.class),
-                        () -> {
-                            for (World world : Bukkit.getWorlds()) {
-                                world.save();
-                            }
-                            future.complete(null);
-                        });
-                future.get(60, TimeUnit.SECONDS);
-            } catch (InterruptedException | java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
-                throw new IOException("Backup save interrupted", e);
-            }
-        }
-
+    private static void doBackup(@Nullable String specificWorld) throws IOException {
         if (AutoBackupConfig.notifyPlayers) {
             Bukkit.broadcast(net.kyori.adventure.text.Component.text(
                     "[Mili] World backup in progress...", net.kyori.adventure.text.format.NamedTextColor.YELLOW));
@@ -97,7 +85,13 @@ public class AutoBackupManager {
         Files.createDirectories(backupDir);
 
         List<World> worlds = new ArrayList<>();
-        if (AutoBackupConfig.backupWorlds.isEmpty()) {
+        if (specificWorld != null) {
+            World w = Bukkit.getWorld(specificWorld);
+            if (w == null) {
+                throw new IOException("World not found: " + specificWorld);
+            }
+            worlds.add(w);
+        } else if (AutoBackupConfig.backupWorlds.isEmpty()) {
             worlds.addAll(Bukkit.getWorlds());
         } else {
             for (String name : AutoBackupConfig.backupWorlds) {
@@ -111,27 +105,31 @@ public class AutoBackupManager {
 
         for (World world : worlds) {
             Path worldFolder = world.getWorldFolder().toPath();
+            String displayName = world.getName();
             if (AutoBackupConfig.compress) {
-                Path zipFile = backupDir.resolve(timestamp + "_" + world.getName() + ".zip");
+                Path zipFile = backupDir.resolve(timestamp + "_" + displayName + ".zip");
                 totalSize += compressDirectory(worldFolder, zipFile);
             } else {
-                Path dest = backupDir.resolve(timestamp + "_" + world.getName());
+                Path dest = backupDir.resolve(timestamp + "_" + displayName);
                 copyDirectory(worldFolder, dest);
                 totalSize += dirSize(dest);
             }
         }
 
         lastBackupTime = System.currentTimeMillis();
-        lastBackupResult = String.format("OK - %d worlds, %s",
-                worldCount, formatSize(totalSize));
+        String worldNames = worlds.stream().map(World::getName).collect(java.util.stream.Collectors.joining(", "));
+        lastBackupResult = String.format("OK - %d worlds (%s), %s",
+                worldCount, worldNames, formatSize(totalSize));
 
         if (AutoBackupConfig.notifyPlayers) {
+            String msg = specificWorld != null
+                    ? "[Mili] Backup complete! World: " + specificWorld + " (" + formatSize(totalSize) + ")"
+                    : "[Mili] Backup complete! All worlds (" + formatSize(totalSize) + ")";
             Bukkit.broadcast(net.kyori.adventure.text.Component.text(
-                    "[Mili] Backup complete! (" + formatSize(totalSize) + ")",
-                    net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                    msg, net.kyori.adventure.text.format.NamedTextColor.GREEN));
         }
 
-        Bukkit.getLogger().info("[Mili Backup] Completed: " + worldCount + " worlds, " + formatSize(totalSize));
+        Bukkit.getLogger().info("[Mili Backup] Completed: " + worldNames + " (" + formatSize(totalSize) + ")");
     }
 
     private static long compressDirectory(Path source, Path target) throws IOException {
@@ -143,7 +141,7 @@ public class AutoBackupManager {
                     String relative = source.relativize(path).toString().replace('\\', '/');
                     ZipEntry entry = new ZipEntry(relative);
                     zos.putNextEntry(entry);
-                    byte[] bytes = Files.readAllBytes(path);
+                    byte[] bytes = readAllBytesRetry(path);
                     zos.write(bytes);
                     zos.closeEntry();
                     totalSize += bytes.length;
@@ -154,18 +152,50 @@ public class AutoBackupManager {
     }
 
     private static void copyDirectory(Path source, Path target) throws IOException {
-        Files.walk(source).forEach(src -> {
-            try {
-                Path dest = target.resolve(source.relativize(src));
-                if (Files.isDirectory(src)) {
-                    Files.createDirectories(dest);
-                } else {
-                    Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+        try (Stream<Path> paths = Files.walk(source)) {
+            paths.forEach(src -> {
+                try {
+                    Path dest = target.resolve(source.relativize(src));
+                    if (Files.isDirectory(src)) {
+                        Files.createDirectories(dest);
+                    } else {
+                        copyFileRetry(src, dest);
+                    }
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
                 }
+            });
+        }
+    }
+
+    private static byte[] readAllBytesRetry(Path path) throws IOException {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                return Files.readAllBytes(path);
             } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                if (attempt < 4) {
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+                } else {
+                    throw e;
+                }
             }
-        });
+        }
+        throw new IOException("Unreachable");
+    }
+
+    private static void copyFileRetry(Path src, Path dest) throws IOException {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            } catch (IOException e) {
+                if (attempt < 4) {
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     private static void cleanupOldBackups() {

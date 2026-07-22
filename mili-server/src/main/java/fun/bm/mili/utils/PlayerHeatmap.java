@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PlayerHeatmap {
     private static volatile boolean enabled = false;
     private static final ConcurrentHashMap<String, WorldHeatmapData> worldData = new ConcurrentHashMap<>();
+    private static long lastCleanupTime = System.currentTimeMillis();
 
     public static void setEnabled(boolean v) { enabled = v; }
     public static boolean isEnabled() { return enabled; }
@@ -23,6 +24,21 @@ public class PlayerHeatmap {
         for (World world : Bukkit.getWorlds()) {
             worldData.computeIfAbsent(world.getName(), k -> new WorldHeatmapData())
                     .recordPlayers(world);
+        }
+        cleanupOldData();
+    }
+
+    private static void cleanupOldData() {
+        int maxMinutes = fun.bm.mili.config.modules.function.PlayerHeatmapConfig.maxHistoryMinutes;
+        if (maxMinutes <= 0) return;
+
+        long now = System.currentTimeMillis();
+        if (now - lastCleanupTime < 60_000) return;
+        lastCleanupTime = now;
+
+        long cutoff = now - (maxMinutes * 60_000L);
+        for (WorldHeatmapData data : worldData.values()) {
+            data.cleanup(cutoff);
         }
     }
 
@@ -109,6 +125,12 @@ public class PlayerHeatmap {
 
         Map<Long, Integer> getHeatMap() {
             return Collections.unmodifiableMap(heatMap);
+        }
+
+        void cleanup(long cutoffMs) {
+            lastSeenPositions.entrySet().removeIf(e -> e.getValue() < cutoffMs);
+            heatMap.clear();
+            totalRecords.set(0);
         }
 
         private static long pack(int x, int z) {

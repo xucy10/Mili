@@ -99,6 +99,7 @@ public class CrossRegionHelper {
             pendingByRegion = new ConcurrentHashMap<>();
 
     private static volatile boolean running = false;
+    private static volatile long lastDropWarning = 0;
 
     private static Thread dispatcherThread;
 
@@ -168,8 +169,12 @@ public class CrossRegionHelper {
 
         if (!inboundQueue.offer(event)) {
             eventsDropped.increment();
-            com.mojang.logging.LogUtils.getClassLogger()
-                    .warn("[Mili] CrossRegionHelper queue full, dropping event");
+            long now = System.currentTimeMillis();
+            if (now - lastDropWarning > 5000) {
+                lastDropWarning = now;
+                com.mojang.logging.LogUtils.getClassLogger()
+                        .warn("[Mili] CrossRegionHelper queue full, dropping events (suppressing for 5s)");
+            }
         }
     }
 
@@ -177,10 +182,14 @@ public class CrossRegionHelper {
                                                   BlockPos neighbor, Direction dir) {
         if (!CrossRegionHelperConfig.enabled || level == null) return;
 
-        RegionizedWorldData region = level.getCurrentWorldData();
-        if (region == null) return;
+        RegionizedWorldData srcRegion = level.getCurrentWorldData();
+        if (srcRegion == null) return;
 
-        submit(new RedstoneSignal(pos, neighbor, dir, region, region, level.getGameTime()));
+        RegionizedWorldData tgtRegion = level.getCurrentWorldData();
+        if (tgtRegion == null) return;
+        if (srcRegion == tgtRegion) return; // not cross-region, skip
+
+        submit(new RedstoneSignal(pos, neighbor, dir, srcRegion, tgtRegion, level.getGameTime()));
     }
 
     public static void submitDamageCrossRegion(LivingEntity source, LivingEntity target,

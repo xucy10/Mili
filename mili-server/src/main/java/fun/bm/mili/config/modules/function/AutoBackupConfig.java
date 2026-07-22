@@ -16,7 +16,7 @@ import java.util.Set;
 public class AutoBackupConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
             启用自动备份功能""")
-    public static boolean enabled = false;
+    public static boolean enabled = true;
 
     @ConfigInfo(name = "interval-minutes", comments = """
             备份间隔（分钟）""")
@@ -51,12 +51,12 @@ public class AutoBackupConfig implements IConfigModule {
 
     @Override
     public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+        if (command == null) {
+            command = new BackupCommand();
+        }
+        command.register();
         if (enabled) {
             AutoBackupManager.start();
-            if (command == null) {
-                command = new BackupCommand();
-            }
-            command.register();
         }
     }
 

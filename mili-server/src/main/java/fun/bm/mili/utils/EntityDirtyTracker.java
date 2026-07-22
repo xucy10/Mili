@@ -97,9 +97,9 @@ public class EntityDirtyTracker {
     }
 
     private static class EntityState {
-        double lastX, lastY, lastZ;
-        float lastYRot, lastXRot;
-        boolean wasOnGround;
-        int idleTicks;
+        volatile double lastX, lastY, lastZ;
+        volatile float lastYRot, lastXRot;
+        volatile boolean wasOnGround;
+        volatile int idleTicks;
     }
 }

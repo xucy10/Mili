@@ -6,11 +6,38 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Map;
 
-public class MiliPerfCommand implements CommandExecutor {
+public class MiliPerfCommand implements CommandExecutor, TabCompleter {
+
+    public void register() {
+        org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "miperf",
+                new Command("miperf") {
+                    @Override
+                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel,
+                                           @NotNull String[] args) {
+                        return onCommand(sender, this, commandLabel, args);
+                    }
+
+                    @Override
+                    public @NotNull java.util.List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+                        return onTabComplete(sender, this, alias, args);
+                    }
+                });
+    }
+
+    public void unregister() {
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (!sender.hasPermission("mili.admin.perf")) return List.of();
+        return List.of();
+    }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
@@ -97,6 +124,8 @@ public class MiliPerfCommand implements CommandExecutor {
         printStats(sender, "Light Callback", LightCallbackManager.getStats());
         printStats(sender, "Entity Density", EntityDensityTracker.getStats());
         printStats(sender, "Mmap Storage", MmapRegionStorage.getStats());
+        printStats(sender, "Network", NetworkOptimizer.getStats());
+        printStats(sender, "TechMC", TechnicalMCOptimizer.getStats());
     }
 
     private void sendFeatureStats(CommandSender sender) {

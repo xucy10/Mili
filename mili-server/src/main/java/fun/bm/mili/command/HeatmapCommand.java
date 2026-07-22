@@ -1,16 +1,23 @@
 package fun.bm.mili.command;
 
 import fun.bm.mili.utils.PlayerHeatmap;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-public class HeatmapCommand implements CommandExecutor {
+public class HeatmapCommand implements CommandExecutor, TabCompleter {
+
+    private static final List<String> SUBCOMMANDS = List.of("reset", "export");
 
     public void register() {
         org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "heatmap",
@@ -20,10 +27,30 @@ public class HeatmapCommand implements CommandExecutor {
                                            @NotNull String[] args) {
                         return onCommand(sender, this, commandLabel, args);
                     }
+
+                    @Override
+                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+                        return onTabComplete(sender, this, alias, args);
+                    }
                 });
     }
 
     public void unregister() {
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (!sender.hasPermission("mili.admin.heatmap")) return List.of();
+        if (args.length == 1) {
+            String partial = args[0].toLowerCase();
+            return SUBCOMMANDS.stream().filter(s -> s.startsWith(partial)).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("export")) {
+            String partial = args[1].toLowerCase();
+            return Bukkit.getWorlds().stream().map(World::getName)
+                    .filter(n -> n.toLowerCase().startsWith(partial)).toList();
+        }
+        return List.of();
     }
 
     @Override

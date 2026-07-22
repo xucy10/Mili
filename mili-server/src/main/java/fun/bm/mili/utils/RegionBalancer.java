@@ -143,8 +143,10 @@ public final class RegionBalancer {
                 "RegionBalancer initialized with {} worker threads", poolSize);
     }
 
+    private static final AtomicLong taskUidGen = new AtomicLong(0);
+
     private static long nextTaskUid() {
-        return System.nanoTime();
+        return taskUidGen.incrementAndGet();
     }
 
     static MergePolicy getRustMergePolicy() {
@@ -344,7 +346,7 @@ public final class RegionBalancer {
 
     public static boolean retryTask(long taskUid) {
         TaskRecord record = taskRecords.get(taskUid);
-        if (record == null || record.cancelRequested && record.state == TaskState.CANCELLED) {
+        if (record == null || record.cancelRequested || record.state == TaskState.CANCELLED) {
             return false;
         }
         if (record.state == TaskState.RUNNING) {
@@ -416,6 +418,14 @@ public final class RegionBalancer {
         shutdown.set(true);
         if (workerPool != null) {
             workerPool.shutdown();
+            try {
+                if (!workerPool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    workerPool.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                workerPool.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

@@ -5,11 +5,13 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Map;
 
-public class RedstoneStatsCommand implements CommandExecutor {
+public class RedstoneStatsCommand implements CommandExecutor, TabCompleter {
 
     public void register() {
         org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "redstone-stats",
@@ -19,10 +21,24 @@ public class RedstoneStatsCommand implements CommandExecutor {
                                            @NotNull String[] args) {
                         return onCommand(sender, this, commandLabel, args);
                     }
+
+                    @Override
+                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+                        return onTabComplete(sender, this, alias, args);
+                    }
                 });
     }
 
     public void unregister() {
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (!sender.hasPermission("mili.admin.redstone-stats")) return List.of();
+        if (args.length == 1 && "reset".startsWith(args[0].toLowerCase())) {
+            return List.of("reset");
+        }
+        return List.of();
     }
 
     @Override

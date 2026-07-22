@@ -30,7 +30,7 @@ public class RedstoneDirtyTracker {
                     long nearbyKey = pack(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
                     DirtyBlock existing = dirtyBlocks.get(nearbyKey);
                     if (existing != null) {
-                        existing.coalescedCount++;
+                        existing.coalescedCount.incrementAndGet();
                         coalescedUpdates.incrementAndGet();
                         return;
                     }
@@ -79,7 +79,7 @@ public class RedstoneDirtyTracker {
     public static class DirtyBlock {
         public final BlockPos pos;
         public final String worldName;
-        public int coalescedCount = 1;
+        public final AtomicInteger coalescedCount = new AtomicInteger(1);
 
         public DirtyBlock(BlockPos pos, String worldName) {
             this.pos = pos;
