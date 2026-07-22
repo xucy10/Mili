@@ -15,12 +15,18 @@ jarName_dir="mili-server/build/libs/$jarName"
 
 flag_release=false
 pre=false
+make_latest=false
 
 if [ "$release" = "1" ]; then
   pre=true
   flag_release=true
   make_latest=true
 elif [ "$release" = "2" ]; then
+  flag_release=true
+  make_latest=true
+fi
+
+if [ "$flag_release" = "false" ] && [[ "$GITHUB_REF_NAME" == ver/* ]]; then
   flag_release=true
   make_latest=true
 fi
