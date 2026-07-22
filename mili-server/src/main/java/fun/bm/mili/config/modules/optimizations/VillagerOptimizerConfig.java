@@ -7,6 +7,9 @@ import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.config.flags.HotReloadUnsupported;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @ConfigClassInfo(category = EnumConfigCategory.OPTIMIZATIONS, name = "villager_optimizer", comments = """
         结合 LaggRemover 和 VillagerLobotomizer 功能的高级村民 AI 优化。
         在保留交易功能的同时禁用被困村民的 AI。
@@ -66,7 +69,7 @@ public class VillagerOptimizerConfig implements ConfigModule {
 
     @HotReloadUnsupported
     @ConfigInfo(name = "always_active_names", comments = "始终保持村民活跃的名称列表")
-    public static String[] alwaysActiveNames = new String[]{"alwaysbrain"};
+    public static List<String> alwaysActiveNames = new ArrayList<>(List.of("alwaysbrain"));
 
     @Override
     public void onLoaded(CommentedFileConfig configInstance) {}

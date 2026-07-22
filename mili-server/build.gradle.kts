@@ -157,6 +157,7 @@ sourceSets {
         resources { srcDir("../folia-server/src/main/resources") }
         java { srcDir("../luminol-server/src/main/java") }
         resources { srcDir("../luminol-server/src/main/resources") }
+        resources { srcDir("src/main/resources") }
     }
     test {
         java { srcDir("../paper-server/src/test/java") }
@@ -339,6 +340,16 @@ tasks.compileTestJava {
 // Bump compile tasks to 1GB memory to avoid OOMs
 tasks.withType<JavaCompile>().configureEach {
     options.forkOptions.memoryMaximumSize = "1G"
+}
+
+// Mili - inject bstats plugin id from env var or Gradle property into mili.properties
+tasks.processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    val bstatsId = System.getenv("BSTATS_PLUGIN_ID")
+        ?: providers.gradleProperty("bstatsPluginId").getOrElse("0")
+    filesMatching("mili.properties") {
+        expand("bstats_plugin_id" to bstatsId)
+    }
 }
 
 val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {

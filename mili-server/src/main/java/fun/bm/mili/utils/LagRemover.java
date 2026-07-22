@@ -40,7 +40,7 @@ public final class LagRemover {
     private final int localLagRemovalCooldown;
 
     private long lastSmartAIRun = 0;
-    private final List<java.util.UUID> cooldownPlayers = new ArrayList<>();
+    private final java.util.Set<java.util.UUID> cooldownPlayers = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private LagRemover(org.bukkit.plugin.Plugin plugin) {
         this.plugin = plugin;
