@@ -49,6 +49,9 @@ public class TomlConfigData {
      */
     public TomlConfigData(File file) {
         this.file = file;
+        // Ensure the Rust native library is loaded before any JNI calls.
+        // Config loading happens early in startup before RenderHelper triggers load().
+        RustBridge.load();
     }
 
     // ========================================================================
@@ -100,7 +103,10 @@ public class TomlConfigData {
             root.addProperty(COMMENT_PREFIX + entry.getKey(), entry.getValue());
         }
 
-        RustBridge.configSaveMerge(file.getAbsolutePath(), root.toString());
+        boolean success = RustBridge.configSaveMerge(file.getAbsolutePath(), root.toString());
+        if (!success) {
+            throw new RuntimeException("Failed to save config file: " + file.getAbsolutePath());
+        }
     }
 
     // ========================================================================
@@ -145,6 +151,22 @@ public class TomlConfigData {
      */
     public void set(String key, Object value) {
         values.put(key, value);
+    }
+
+    /**
+     * Set a value at a dot-notation key and immediately persist to disk.
+     *
+     * @param key dot-notation key
+     * @param value the value to set
+     */
+    public void setAndSave(String key, Object value) {
+        Object oldValue = values.put(key, value);
+        try {
+            save();
+        } catch (RuntimeException e) {
+            values.put(key, oldValue);
+            throw e;
+        }
     }
 
     /**
@@ -242,10 +264,9 @@ public class TomlConfigData {
     }
 
     /**
-     * Get all keys that start with the given prefix.
+     * Get all keys in this config.
      *
-     * @param prefix the key prefix
-     * @return a set of matching keys
+     * @return a set of all keys
      */
     public Set<String> keySet() {
         return values.keySet();
@@ -254,7 +275,7 @@ public class TomlConfigData {
     /**
      * Get all value entries.
      *
-     * @return an unmodifiable view of the value entries
+     * @return a set of value entries
      */
     public Set<Map.Entry<String, Object>> entrySet() {
         return values.entrySet();

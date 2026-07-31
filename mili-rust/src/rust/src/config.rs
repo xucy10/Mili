@@ -479,6 +479,9 @@ fn set_value_in_document(
                     }
                 }
             }
+        } else {
+            // Value::Null: remove the key from the document
+            doc.remove(key);
         }
         return;
     }
@@ -498,6 +501,9 @@ fn set_value_in_document(
                         }
                     }
                 }
+            } else {
+                // Value::Null: remove the key from the table
+                current.remove(*part);
             }
         } else {
             // Ensure sub-table exists
