@@ -1,8 +1,7 @@
 package me.earthme.luminol.config;
 
-import com.electronwill.nightconfig.core.UnmodifiableConfig;
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.rust.TomlConfigData;
 import io.papermc.paper.threadedregions.RegionizedServer;
 import me.earthme.luminol.commands.config.ConfigCommand;
 import me.earthme.luminol.config.flags.*;
@@ -42,7 +41,7 @@ public class ConfigsInstance {
 
     // Constants and state flags
     public boolean alreadyInit = false;
-    private CommentedFileConfig configFileInstance;
+    private TomlConfigData configFileInstance;
 
     /**
      * Private constructor to create a configuration instance
@@ -169,7 +168,7 @@ public class ConfigsInstance {
             baseConfigFile.createNewFile();
         }
 
-        configFileInstance = CommentedFileConfig.of(baseConfigFile);
+        configFileInstance = new TomlConfigData(baseConfigFile);
         configFileInstance.load();
 
         try {
@@ -348,7 +347,7 @@ public class ConfigsInstance {
 
         // Handle removed configurations
         if (removed) {
-            configFileInstance.remove("removed");
+            configFileInstance.remove(fullConfigKeyName);
             return;
         }
 
@@ -453,7 +452,10 @@ public class ConfigsInstance {
             actuallyValue = tryTransform(field, actuallyValue);
             configFileInstance.set(fullConfigKeyName, actuallyValue);
         } catch (IllegalFormatConversionException e) {
-            if (configInfo.allowAutoReset()) resetConfig(fullConfigKeyName);
+            if (configInfo.allowAutoReset()) {
+                resetConfig(fullConfigKeyName);
+                actuallyValue = defaultvalueMap.get(fullConfigKeyName);
+            }
             e0 = e;
             logger.error("Failed to transform config {}, reset to default!", fullConfigKeyName);
         }
@@ -527,8 +529,8 @@ public class ConfigsInstance {
      */
     public void removeConfig(String name, String[] keys) {
         configFileInstance.remove(name);
-        Object configAtPath = configFileInstance.get(String.join(".", keys));
-        if (configAtPath instanceof UnmodifiableConfig && ((UnmodifiableConfig) configAtPath).isEmpty()) {
+        Object configAtPath = configFileInstance.getConfigSection(String.join(".", keys));
+        if (configAtPath == null) {
             removeConfig(keys);
         }
     }
@@ -538,8 +540,8 @@ public class ConfigsInstance {
      */
     public void removeConfig(String[] keys) {
         configFileInstance.remove(String.join(".", keys));
-        Object configAtPath = configFileInstance.get(String.join(".", Arrays.copyOfRange(keys, 1, keys.length)));
-        if (configAtPath instanceof UnmodifiableConfig && ((UnmodifiableConfig) configAtPath).isEmpty()) {
+        Object configAtPath = configFileInstance.getConfigSection(String.join(".", Arrays.copyOfRange(keys, 1, keys.length)));
+        if (configAtPath == null) {
             removeConfig(Arrays.copyOfRange(keys, 1, keys.length));
         }
     }
@@ -650,6 +652,14 @@ public class ConfigsInstance {
      */
     public boolean setConfig(String key, Object value) {
         if (configFileInstance.contains(key) && configFileInstance.get(key) != null) {
+            Object oldValue = configFileInstance.get(key);
+            configFileInstance.set(key, value);
+            try {
+                configFileInstance.save();
+            } catch (RuntimeException e) {
+                configFileInstance.set(key, oldValue);
+                throw e;
+            }
             stagedConfigMap.put(key, value);
             return true;
         }
@@ -737,6 +747,20 @@ public class ConfigsInstance {
      * Reset configuration by key
      */
     public void resetConfig(String key) {
+        Object defaultValue = defaultvalueMap.get(key);
+        if (defaultValue == null) {
+            logger.warn("No default value found for config key: {}, reset skipped", key);
+            stagedConfigMap.put(key, null);
+            return;
+        }
+        Object oldValue = configFileInstance.get(key);
+        configFileInstance.set(key, defaultValue);
+        try {
+            configFileInstance.save();
+        } catch (RuntimeException e) {
+            configFileInstance.set(key, oldValue);
+            throw e;
+        }
         stagedConfigMap.put(key, null);
     }
 
@@ -747,7 +771,8 @@ public class ConfigsInstance {
      * Get default configuration value as string
      */
     public String getDefaultConfig(String key) {
-        return defaultvalueMap.get(key).toString();
+        Object val = defaultvalueMap.get(key);
+        return val == null ? null : val.toString();
     }
 
     /**
@@ -795,7 +820,7 @@ public class ConfigsInstance {
     /**
      * Get the underlying configuration file instance
      */
-    public CommentedFileConfig getFileInstance() {
+    public TomlConfigData getFileInstance() {
         return configFileInstance;
     }
 

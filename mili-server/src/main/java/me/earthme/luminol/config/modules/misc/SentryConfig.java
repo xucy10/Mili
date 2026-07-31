@@ -1,6 +1,6 @@
 package me.earthme.luminol.config.modules.misc;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import gg.pufferfish.pufferfish.sentry.SentryManager;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.CommandSuggestions;
@@ -28,7 +28,7 @@ public class SentryConfig implements IConfigModule {
     public static boolean onlyLogThrown = true;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         String sentryEnvironment = System.getenv("SENTRY_DSN");
 
         sentryDsn = sentryEnvironment != null && !sentryEnvironment.isBlank()

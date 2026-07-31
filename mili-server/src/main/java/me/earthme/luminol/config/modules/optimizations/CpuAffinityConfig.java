@@ -1,6 +1,6 @@
 package me.earthme.luminol.config.modules.optimizations;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import com.mojang.logging.LogUtils;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.*;
@@ -36,7 +36,7 @@ public class CpuAffinityConfig implements IConfigModule {
     public static BitSet tickRegionAffinityBitSet;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         if (!cpuAffinityEnabled) return;
 
         tickRegionAffinityBitSet = parseAffinity(tickRegionAffinity);

@@ -1,0 +1,166 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@bm.fun>
+Date: Thu, 31 Jul 2026 21:30:00 +0800
+Subject: [PATCH] Rendering optimization integration
+
+Integrate Rust native batch entity culling into the server entity tracking
+system. Entity now implements Cullable interface, ServerEntity.sendChanges()
+skips culled entities, ChunkMap.TrackedEntity drives Rust bulk culling per
+chunk tick, and DynamicViewDistanceManager is ticked from the server tick loop.
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1772,6 +1772,14 @@ public abstract class MinecraftServer {
+         //KioCG end
+         this.tickChildren(hasTimeLeft, region); // Folia - region threading
++        // Mili start - dynamic view distance manager tick
++        if (region != null && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % 20 == 0) {
++            try {
++                fun.bm.mili.utils.DynamicViewDistanceManager.tick();
++            } catch (Exception e) {
++                LOGGER.warn("Dynamic view distance manager tick failed", e);
++            }
++        }
++        // Mili end - dynamic view distance manager tick
+         // KioCG start - ChunkHot
+         if (region != null && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % 20 == 0){
+             final java.util.Iterator<net.minecraft.world.level.chunk.LevelChunk> chunkIterator = chunks.unsafeIterator();
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1229,6 +1229,17 @@ public class ChunkMap {
+             for (int i = 0, len = players.size(); i < len; ++i) {
+                 final ServerPlayer player = playersRaw[i];
+                 this.updatePlayer(player);
+             }
+ 
++            // Mili start - Rust batch entity culling
++            if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled && !this.seenBy.isEmpty()) {
++                java.util.List<ServerPlayer> viewerList = new java.util.ArrayList<>(this.seenBy.size());
++                for (ServerPlayerConnection conn : this.seenBy) {
++                    viewerList.add(conn.getPlayer());
++                }
++                this.mili$cullEntities(viewerList);
++            }
++            // Mili end - Rust batch entity culling
++
+             if (lastChunkUpdate != currChunkUpdate || lastTrackedChunk != chunk) {
+                 // need to purge any players possible not in the chunk list
+                 for (final ServerPlayerConnection conn : new java.util.ArrayList<>(this.seenBy)) {
+@@ -1425,6 +1436,42 @@ public class ChunkMap {
+         public void updatePlayers(List<ServerPlayer> playersList) {
+             for (ServerPlayer serverPlayer : playersList) {
+                 this.updatePlayer(serverPlayer);
+             }
+         }
++
++        // Mili start - Rust batch entity culling integration
++        public void mili$cullEntities(java.util.List<ServerPlayer> viewers) {
++            if (viewers.isEmpty() || !fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
++                return;
++            }
++            if (!(this.entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable)) {
++                return;
++            }
++            if (cullable.isForcedVisible() || this.entity.isCurrentlyGlowing()) {
++                cullable.setCulled(false);
++                return;
++            }
++            if (this.entity.getType().skipRaytracningCheck) {
++                cullable.setCulled(false);
++                return;
++            }
++            // Use Rust native bulk culling if available
++            if (fun.bm.mili.rust.EntityCullHelper.isNativeAvailable()) {
++                java.util.List<Entity> entityList = java.util.Collections.singletonList(this.entity);
++                for (ServerPlayer viewer : viewers) {
++                    byte[] results = fun.bm.mili.rust.EntityCullHelper.cullEntitiesNative(
++                        viewer, entityList,
++                        fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
++                        fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit
++                    );
++                    if (results != null && results.length > 0) {
++                        boolean culled = results[0] == 1 || results[0] == 4;
++                        cullable.setCulled(culled);
++                    }
++                }
++            } else {
++                // Java fallback: simple distance-based culling
++                boolean anyVisible = false;
++                for (ServerPlayer viewer : viewers) {
++                    double dx = this.entity.getX() - viewer.getX();
++                    double dz = this.entity.getZ() - viewer.getZ();
++                    double distSq = dx * dx + dz * dz;
++                    double reach = fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance;
++                    if (distSq <= reach * reach) {
++                        anyVisible = true;
++                        break;
++                    }
++                }
++                cullable.setCulled(!anyVisible);
++            }
++        }
++        // Mili end - Rust batch entity culling integration
+     }
+ }
+diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
+--- a/net/minecraft/server/level/ServerEntity.java
++++ b/net/minecraft/server/level/ServerEntity.java
+@@ -97,6 +97,12 @@
+     public void sendChanges() {
++        // Mili start - skip entity update packets if culled
++        if (this.entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable && cullable.isCulled()) {
++            this.tickCount++;
++            return;
++        }
++        // Mili end - skip entity update packets if culled
+         // Paper start - optimise collisions
+         if (((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)this.entity).moonrise$isHardColliding()) {
+             this.teleportDelay = 9999;
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -155,7 +155,7 @@
+-public abstract class Entity implements SyncedDataHolder, DebugValueSource, Nameable, ItemOwner, SlotProvider, EntityAccess, ScoreHolder, DataComponentGetter, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity { // Paper - rewrite chunk system // Paper - optimise entity tracker
++public abstract class Entity implements SyncedDataHolder, DebugValueSource, Nameable, ItemOwner, SlotProvider, EntityAccess, ScoreHolder, DataComponentGetter, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity, dev.tr7zw.entityculling.versionless.access.Cullable { // Paper - rewrite chunk system // Paper - optimise entity tracker // Mili - entity culling
+@@ -6452,4 +6452,37 @@
+     public boolean shouldTickHot() { return this.tickCount > 20 * 10 && this.isAlive(); } // KioCG
++
++    // Mili start - entity culling
++    private boolean mili$cullTimeout = false;
++    private boolean mili$forcedVisible = false;
++    private boolean mili$culled = false;
++    private boolean mili$outOfCamera = false;
++
++    @Override
++    public void setTimeout() {
++        this.mili$cullTimeout = true;
++    }
++
++    @Override
++    public boolean isForcedVisible() {
++        return this.mili$forcedVisible;
++    }
++
++    @Override
++    public void setCulled(boolean value) {
++        this.mili$culled = value;
++    }
++
++    @Override
++    public boolean isCulled() {
++        return this.mili$culled;
++    }
++
++    @Override
++    public void setOutOfCamera(boolean value) {
++        this.mili$outOfCamera = value;
++    }
++
++    @Override
++    public boolean isOutOfCamera() {
++        return this.mili$outOfCamera;
++    }
++    // Mili end - entity culling
+ }

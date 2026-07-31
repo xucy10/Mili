@@ -1,6 +1,6 @@
 package me.earthme.luminol.config;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.commands.CommandRegister;
 import me.earthme.luminol.config.flags.TransformedConfig;
 import org.jetbrains.annotations.NotNull;
@@ -78,8 +78,8 @@ public class ConfigManager {
             ConfigsInstance origin = getConfigs(config[0]);
             ConfigsInstance target = getConfigs(config[1]);
             if (origin == null || target == null) continue;
-            CommentedFileConfig originConfig = origin.getFileInstance();
-            CommentedFileConfig targetConfig = target.getFileInstance();
+            TomlConfigData originConfig = origin.getFileInstance();
+            TomlConfigData targetConfig = target.getFileInstance();
 
             final String oldConfigKeyName = config[2];
             final String newConfigKeyName = config[3];

@@ -1,7 +1,7 @@
 package me.earthme.luminol.config.modules.function;
 
 import abomination.LinearRegionFile;
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.IllegalFormatConversionExceptionWithOrigin;
 import me.earthme.luminol.config.flags.*;
@@ -46,7 +46,7 @@ public class RegionFormatConfig implements IConfigModule {
     public static BufferedLinearRegionFileFlusher blinearFlusher = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (exs != null) {
             for (Exception e : exs) {
                 if (e instanceof IllegalFormatConversionExceptionWithOrigin) {

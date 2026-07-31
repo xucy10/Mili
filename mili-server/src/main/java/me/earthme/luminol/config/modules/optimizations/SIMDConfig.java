@@ -1,6 +1,6 @@
 package me.earthme.luminol.config.modules.optimizations;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import com.mojang.logging.LogUtils;
 import gg.pufferfish.pufferfish.simd.SIMDDetection;
 import me.earthme.luminol.config.IConfigModule;
@@ -21,7 +21,7 @@ public class SIMDConfig implements IConfigModule {
     public static boolean enabled = true;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         if (!enabled) {
             return;
         }

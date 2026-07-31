@@ -1,6 +1,6 @@
 package me.earthme.luminol.config.modules.misc;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -41,7 +41,7 @@ public class AutoUpdateConfig implements IConfigModule {
     public AutoUpdateHelper instance = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (enabled) {
             if (instance == null) {
                 instance = new AutoUpdateHelper();
@@ -51,7 +51,7 @@ public class AutoUpdateConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         if (instance != null) instance.shutdown();
     }
 }

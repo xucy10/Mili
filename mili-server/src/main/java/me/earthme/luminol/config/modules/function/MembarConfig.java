@@ -1,6 +1,6 @@
 package me.earthme.luminol.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.*;
 import me.earthme.luminol.enums.EnumBarType;
@@ -38,7 +38,7 @@ public class MembarConfig implements IConfigModule {
     private static boolean inited = false;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         AbstractGlobalServerBar membar = GlobalServerBarManager.get(EnumBarType.MEMORY);
         if (memoryBarEnabled) {
             membar.init();
@@ -52,7 +52,7 @@ public class MembarConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         AbstractGlobalServerBar membar = GlobalServerBarManager.get(EnumBarType.MEMORY);
         membar.cancelBarUpdateTask();
         membar.runUnloadTask();

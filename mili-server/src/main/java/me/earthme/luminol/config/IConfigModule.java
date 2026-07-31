@@ -1,6 +1,6 @@
 package me.earthme.luminol.config;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,13 +10,13 @@ public interface IConfigModule {
     default void beforeFinalLoad() {
     }
 
-    default void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    default void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
     }
 
-    default void onUnloaded(CommentedFileConfig configInstance) {
+    default void onUnloaded(TomlConfigData configInstance) {
     }
 
-    default <T> T get(String keyName, T defaultValue, @NotNull CommentedFileConfig config) {
+    default <T> T get(String keyName, T defaultValue, @NotNull TomlConfigData config) {
         if (!config.contains(keyName)) {
             config.set(keyName, defaultValue);
             return defaultValue;
