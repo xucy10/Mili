@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@bm.fun>
+Date: Fri, 31 Jul 2026 21:19:24 +0800
+Subject: [PATCH] Fix config sync, atomicity, NPE, and removed config cleanup
+
+---
+ .../luminol/config/ConfigsInstance.java       | 32 +++++++++++++++++--
+ 1 file changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+index 1dbc615..b04229f 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+@@ -347,7 +347,7 @@ public class ConfigsInstance {
+ 
+         // Handle removed configurations
+         if (removed) {
+-            configFileInstance.remove("removed");
++            configFileInstance.remove(fullConfigKeyName);
+             return;
+         }
+ 
+@@ -452,7 +452,10 @@ public class ConfigsInstance {
+             actuallyValue = tryTransform(field, actuallyValue);
+             configFileInstance.set(fullConfigKeyName, actuallyValue);
+         } catch (IllegalFormatConversionException e) {
+-            if (configInfo.allowAutoReset()) resetConfig(fullConfigKeyName);
++            if (configInfo.allowAutoReset()) {
++                resetConfig(fullConfigKeyName);
++                actuallyValue = defaultvalueMap.get(fullConfigKeyName);
++            }
+             e0 = e;
+             logger.error("Failed to transform config {}, reset to default!", fullConfigKeyName);
+         }
+@@ -649,6 +652,14 @@ public class ConfigsInstance {
+      */
+     public boolean setConfig(String key, Object value) {
+         if (configFileInstance.contains(key) && configFileInstance.get(key) != null) {
++            Object oldValue = configFileInstance.get(key);
++            configFileInstance.set(key, value);
++            try {
++                configFileInstance.save();
++            } catch (RuntimeException e) {
++                configFileInstance.set(key, oldValue);
++                throw e;
++            }
+             stagedConfigMap.put(key, value);
+             return true;
+         }
+@@ -736,6 +747,20 @@ public class ConfigsInstance {
+      * Reset configuration by key
+      */
+     public void resetConfig(String key) {
++        Object defaultValue = defaultvalueMap.get(key);
++        if (defaultValue == null) {
++            logger.warn("No default value found for config key: {}, reset skipped", key);
++            stagedConfigMap.put(key, null);
++            return;
++        }
++        Object oldValue = configFileInstance.get(key);
++        configFileInstance.set(key, defaultValue);
++        try {
++            configFileInstance.save();
++        } catch (RuntimeException e) {
++            configFileInstance.set(key, oldValue);
++            throw e;
++        }
+         stagedConfigMap.put(key, null);
+     }
+ 
+@@ -746,7 +771,8 @@ public class ConfigsInstance {
+      * Get default configuration value as string
+      */
+     public String getDefaultConfig(String key) {
+-        return defaultvalueMap.get(key).toString();
++        Object val = defaultvalueMap.get(key);
++        return val == null ? null : val.toString();
+     }
+ 
+     /**
+-- 
+2.54.0.windows.1
+
