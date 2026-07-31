@@ -7,9 +7,20 @@ plugins {
 }
 
 paperweight {
-    upstreams.register("luminol") {
-        repo = "file://" + rootProject.layout.projectDirectory.dir("Luminol-ver-1.21.11").asFile.absolutePath.replace("\\", "/")
-        ref = "HEAD"
+    upstreams.register("folia") {
+        repo = github("PaperMC", "Folia")
+        ref = providers.gradleProperty("foliaRef")
+
+        patchFile {
+            path = "folia-server/build.gradle.kts"
+            outputFile = file("mili-server/build.gradle.kts.base")
+            patchFile = file("mili-server/build.gradle.kts.patch")
+        }
+        patchFile {
+            path = "folia-api/build.gradle.kts"
+            outputFile = file("mili-api/build.gradle.kts.base")
+            patchFile = file("mili-api/build.gradle.kts.patch")
+        }
 
         patchRepo("paperApi") {
             upstreamPath = "paper-api"

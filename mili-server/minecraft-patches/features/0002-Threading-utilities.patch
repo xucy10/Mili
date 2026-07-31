@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Sat, 15 Nov 2025 14:03:43 +0800
+Subject: [PATCH] Threading utilities
+
+
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 2c3d36a9d4bf361c516fe1fe6e29d225002b303c..1bdb96fb0fcbb1f20206b38c3923cbe412622f59 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -136,6 +136,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     private final RegistryAccess registryAccess;
+     private final DamageSources damageSources;
+     private final PalettedContainerFactory palettedContainerFactory;
++    public final me.earthme.luminol.utils.thread.RegionizedBlockableEventLoop regionizedBlockableEventLoop = new me.earthme.luminol.utils.thread.RegionizedBlockableEventLoop(this); // Luminol - Threading utilies
+     private final java.util.concurrent.atomic.AtomicLong subTickCount = new java.util.concurrent.atomic.AtomicLong(); //private long subTickCount; // Folia - region threading
+ 
+     // CraftBukkit start

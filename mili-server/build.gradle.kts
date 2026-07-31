@@ -26,7 +26,7 @@ paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
     gitFilePatches = false
     
-    val fork = forks.register("folia") {
+    val folia = forks.register("folia") {
         rootDirectory = upstreamsDirectory().map { it.dir("folia") }
         upstream.patchDir("paperServer") {
             upstreamPath = "paper-server"
@@ -36,35 +36,19 @@ paperweight {
         }
     }
 
-    val luminol = forks.register("luminol") {
-        forks = fork
+    val mili = forks.register("mili") {
+        forks = folia
         upstream.patchRepo("paperServer") {
-            upstreamRepo = fork.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("luminol-server/paper-patches")
+            upstreamRepo = folia.patchedRepo("paperServer")
+            patchesDir = rootDirectory.dir("mili-server/paper-patches")
             outputDir = rootDirectory.dir("paper-server")
         }
 
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("luminol-server/folia-patches")
+            patchesDir = rootDirectory.dir("mili-server/folia-patches")
             outputDir = rootDirectory.dir("folia-server")
-        }
-    }
-
-    val mili = forks.register("mili") {
-        forks = luminol
-        upstream.patchRepo("paperServer") {
-            upstreamRepo = luminol.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("mili-server/paper-patches")
-            outputDir = rootDirectory.dir("paper-server")
-        }
-
-        upstream.patchDir("luminolServer") {
-            upstreamPath = "luminol-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/luminol-patches")
-            outputDir = rootDirectory.dir("luminol-server")
         }
     }
 
@@ -159,8 +143,7 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
-        java { srcDir("../luminol-server/src/main/java") }
-        resources { srcDir("../luminol-server/src/main/resources") }
+        java { srcDir("src/main/java") }
         resources { srcDir("src/main/resources") }
     }
     test {
@@ -168,8 +151,6 @@ sourceSets {
         resources { srcDir("../paper-server/src/test/resources") }
         java { srcDir("../folia-server/src/test/java") }
         resources { srcDir("../folia-server/src/test/resources") }
-        java { srcDir("../luminol-server/src/test/java") }
-        resources { srcDir("../luminol-server/src/test/resources") }
     }
 }
 val log4jPlugins = sourceSets.create("log4jPlugins") {
