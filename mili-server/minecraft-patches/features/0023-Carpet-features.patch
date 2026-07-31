@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: xucy10 <someonm201141923@outlook.com>
+From: xucy10 <someonm20141923@outlook.com>
 Date: Tue, 21 Jul 2026 13:57:53 +0800
 Subject: [PATCH] Carpet features
 
@@ -41,7 +41,7 @@ index f9a5058e50c7fc6ebc2fc311bbc7064bfbd89035..3879c1e3355179f7736ac3d380ee42f4
  
      public boolean place(ServerLevel level, BlockPos pos, @Block.UpdateFlags int flags) {
 -        BlockState blockState = (flags & Block.UPDATE_KNOWN_SHAPE) != 0 ? this.state : Block.updateFromNeighbourShapes(this.state, level, pos);
-+        BlockState blockState = (flags & Block.UPDATE_KNOWN_SHAPE) != 0 || fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates()
++        BlockState blockState = (flags & Block.UPDATE_KNOWN_SHAPE) != 0 || (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() && this.state.getFluidState().isEmpty())
 +            ? this.state
 +            : Block.updateFromNeighbourShapes(this.state, level, pos);
          if (blockState.isAir()) {
@@ -643,8 +643,8 @@ index 7803ff8e2e37b44d6e1b094e3141e0c99137659a..c3ccee359feee05b7b4511919f3ae1db
          BlockState state = newState;
          BlockState blockState = oldState;
          BlockState blockState1 = currentState;
-+        boolean skipInteractionUpdates = fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates();
-+        if (skipInteractionUpdates) {
++        boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && newState.getFluidState().isEmpty() && oldState.getFluidState().isEmpty();
++        if (skipUpdates) {
 +            flags &= ~Block.UPDATE_NEIGHBORS;
 +        }
          if (blockState1 == state) {
@@ -655,7 +655,7 @@ index 7803ff8e2e37b44d6e1b094e3141e0c99137659a..c3ccee359feee05b7b4511919f3ae1db
              }
  
 -            if ((flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
-+            if (!skipInteractionUpdates && (flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
++            if (!skipUpdates && (flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
                  int i = flags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
  
                  // CraftBukkit start
@@ -1052,12 +1052,12 @@ index 4b9fa3937920cf450b245a0d902396fa56c6ade5..62cb6d79fc4e0b927144323371cf2965
                  boolean flag = !blockState.is(block);
                  boolean flag1 = (flags & Block.UPDATE_MOVE_BY_PISTON) != 0;
                  boolean flag2 = (flags & Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS) == 0;
-+                boolean skipInteractionUpdates = fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates();
++                boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && state.getFluidState().isEmpty() && blockState.getFluidState().isEmpty();
                  // Leaves start - behaviour 1.21.1-
                  if (!fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
                      if (flag && blockState.hasBlockEntity() && !state.shouldChangedStateKeepBlockEntity(blockState)) {
 -                        if (!this.level.isClientSide() && flag2) {
-+                        if (!this.level.isClientSide() && flag2 && !skipInteractionUpdates) {
++                        if (!this.level.isClientSide() && flag2 && !skipUpdates) {
                              BlockEntity blockEntity = this.level.getBlockEntity(pos);
                              if (blockEntity != null) {
                                  blockEntity.preRemoveSideEffects(pos, blockState);
@@ -1065,7 +1065,7 @@ index 4b9fa3937920cf450b245a0d902396fa56c6ade5..62cb6d79fc4e0b927144323371cf2965
  
                      if ((flag || block instanceof BaseRailBlock)
                          && this.level instanceof ServerLevel serverLevel
-+                        && !skipInteractionUpdates
++                        && !skipUpdates
                          && ((flags & Block.UPDATE_NEIGHBORS) != 0 || flag1)) {
                          blockState.affectNeighborsAfterRemoval(serverLevel, pos, flag1);
                      }
@@ -1075,7 +1075,7 @@ index 4b9fa3937920cf450b245a0d902396fa56c6ade5..62cb6d79fc4e0b927144323371cf2965
                  } else {
 -                    if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.getCurrentWorldData().captureBlockStates || block instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
 +                    if (!this.level.isClientSide()
-+                        && !skipInteractionUpdates
++                        && !skipUpdates
 +                        && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0
 +                        && (!this.level.getCurrentWorldData().captureBlockStates || block instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
                          state.onPlace(this.level, pos, blockState, flag1);
@@ -1137,7 +1137,7 @@ index c6e5f3dc65a06a4a3b07278a1a6cd0f4061c0de2..c1f5d21bbe7d06c54615fa3a296a771b
      static void executeShapeUpdate(
          LevelAccessor level, Direction direction, BlockPos pos, BlockPos neighborPos, BlockState neighborState, @Block.UpdateFlags int flags, int recursionLeft
      ) {
-+        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) {
++        if ((fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate || fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates()) && level.getBlockState(pos).getFluidState().isEmpty() && neighborState.getFluidState().isEmpty()) {
 +            return;
 +        }
          BlockState blockState = level.getBlockState(pos);
@@ -1147,7 +1147,7 @@ index c6e5f3dc65a06a4a3b07278a1a6cd0f4061c0de2..c1f5d21bbe7d06c54615fa3a296a771b
  
      static void executeUpdate(Level level, BlockState state, BlockPos pos, Block neighborBlock, @Nullable Orientation orientation, boolean movedByPiston, BlockPos sourcePos) {
          // Paper end - Add source block to BlockPhysicsEvent
-+        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) {
++        if ((fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate || fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates()) && state.getFluidState().isEmpty() && neighborBlock.defaultBlockState().getFluidState().isEmpty()) {
 +            return;
 +        }
          try {
