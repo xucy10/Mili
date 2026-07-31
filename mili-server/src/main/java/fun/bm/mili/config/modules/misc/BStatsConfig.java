@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.misc;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.metrics.MiliMetrics;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
@@ -20,7 +20,7 @@ public class BStatsConfig implements IConfigModule {
     public static int pluginId = 0;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         pluginId = loadPluginId();
         if (pluginId <= 0) {
             LOGGER.info("[MiliBStats] bStats disabled (pluginId=0 or not set)");

@@ -1,0 +1,364 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Thu, 31 Jul 2025 16:30:00 +0800
+Subject: [PATCH] Migrate config system to Rust-backed TomlConfigData
+
+Replace NightConfig's CommentedFileConfig with a Rust-backed TomlConfigData
+implementation that delegates TOML parsing and serialization to the native
+mili_optimizer library via JNI. The Java side retains full reflection-based
+field injection with a drop-in compatible API.
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+index 6c96114..1dbc615 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigsInstance.java
+@@ -1,8 +1,7 @@
+ package me.earthme.luminol.config;
+ 
+-import com.electronwill.nightconfig.core.UnmodifiableConfig;
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+ import com.mojang.logging.LogUtils;
++import fun.bm.mili.rust.TomlConfigData;
+ import io.papermc.paper.threadedregions.RegionizedServer;
+ import me.earthme.luminol.commands.config.ConfigCommand;
+ import me.earthme.luminol.config.flags.*;
+@@ -42,7 +41,7 @@ public class ConfigsInstance {
+ 
+     // Constants and state flags
+     public boolean alreadyInit = false;
+-    private CommentedFileConfig configFileInstance;
++    private TomlConfigData configFileInstance;
+ 
+     /**
+      * Private constructor to create a configuration instance
+@@ -169,7 +168,7 @@ public class ConfigsInstance {
+             baseConfigFile.createNewFile();
+         }
+ 
+-        configFileInstance = CommentedFileConfig.of(baseConfigFile);
++        configFileInstance = new TomlConfigData(baseConfigFile);
+         configFileInstance.load();
+ 
+         try {
+@@ -527,8 +526,8 @@ public class ConfigsInstance {
+      */
+     public void removeConfig(String name, String[] keys) {
+         configFileInstance.remove(name);
+-        Object configAtPath = configFileInstance.get(String.join(".", keys));
+-        if (configAtPath instanceof UnmodifiableConfig && ((UnmodifiableConfig) configAtPath).isEmpty()) {
++        Object configAtPath = configFileInstance.getConfigSection(String.join(".", keys));
++        if (configAtPath == null) {
+             removeConfig(keys);
+         }
+     }
+@@ -538,8 +537,8 @@ public class ConfigsInstance {
+      */
+     public void removeConfig(String[] keys) {
+         configFileInstance.remove(String.join(".", keys));
+-        Object configAtPath = configFileInstance.get(String.join(".", Arrays.copyOfRange(keys, 1, keys.length)));
+-        if (configAtPath instanceof UnmodifiableConfig && ((UnmodifiableConfig) configAtPath).isEmpty()) {
++        Object configAtPath = configFileInstance.getConfigSection(String.join(".", Arrays.copyOfRange(keys, 1, keys.length)));
++        if (configAtPath == null) {
+             removeConfig(Arrays.copyOfRange(keys, 1, keys.length));
+         }
+     }
+@@ -795,7 +794,7 @@ public class ConfigsInstance {
+     /**
+      * Get the underlying configuration file instance
+      */
+-    public CommentedFileConfig getFileInstance() {
++    public TomlConfigData getFileInstance() {
+         return configFileInstance;
+     }
+ 
+
+diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/main/java/me/earthme/luminol/config/ConfigManager.java
+index 490316c..7aa803b 100644
+--- a/src/main/java/me/earthme/luminol/config/ConfigManager.java
++++ b/src/main/java/me/earthme/luminol/config/ConfigManager.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.commands.CommandRegister;
+ import me.earthme.luminol.config.flags.TransformedConfig;
+ import org.jetbrains.annotations.NotNull;
+@@ -78,8 +78,8 @@ public class ConfigManager {
+             ConfigsInstance origin = getConfigs(config[0]);
+             ConfigsInstance target = getConfigs(config[1]);
+             if (origin == null || target == null) continue;
+-            CommentedFileConfig originConfig = origin.getFileInstance();
+-            CommentedFileConfig targetConfig = target.getFileInstance();
++            TomlConfigData originConfig = origin.getFileInstance();
++            TomlConfigData targetConfig = target.getFileInstance();
+ 
+             final String oldConfigKeyName = config[2];
+             final String newConfigKeyName = config[3];
+
+diff --git a/src/main/java/me/earthme/luminol/config/IConfigModule.java b/src/main/java/me/earthme/luminol/config/IConfigModule.java
+index dc880ce..5ae65cc 100644
+--- a/src/main/java/me/earthme/luminol/config/IConfigModule.java
++++ b/src/main/java/me/earthme/luminol/config/IConfigModule.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+@@ -10,13 +10,13 @@ public interface IConfigModule {
+     default void beforeFinalLoad() {
+     }
+ 
+-    default void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    default void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+     }
+ 
+-    default void onUnloaded(CommentedFileConfig configInstance) {
++    default void onUnloaded(TomlConfigData configInstance) {
+     }
+ 
+-    default <T> T get(String keyName, T defaultValue, @NotNull CommentedFileConfig config) {
++    default <T> T get(String keyName, T defaultValue, @NotNull TomlConfigData config) {
+         if (!config.contains(keyName)) {
+             config.set(keyName, defaultValue);
+             return defaultValue;
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/function/MembarConfig.java b/src/main/java/me/earthme/luminol/config/modules/function/MembarConfig.java
+index c10f57d..ed0f925 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/function/MembarConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/function/MembarConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.function;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.*;
+ import me.earthme.luminol.enums.EnumBarType;
+@@ -38,7 +38,7 @@ public class MembarConfig implements IConfigModule {
+     private static boolean inited = false;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         AbstractGlobalServerBar membar = GlobalServerBarManager.get(EnumBarType.MEMORY);
+         if (memoryBarEnabled) {
+             membar.init();
+@@ -52,7 +52,7 @@ public class MembarConfig implements IConfigModule {
+     }
+ 
+     @Override
+-    public void onUnloaded(CommentedFileConfig configInstance) {
++    public void onUnloaded(TomlConfigData configInstance) {
+         AbstractGlobalServerBar membar = GlobalServerBarManager.get(EnumBarType.MEMORY);
+         membar.cancelBarUpdateTask();
+         membar.runUnloadTask();
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/function/RegionBarConfig.java b/src/main/java/me/earthme/luminol/config/modules/function/RegionBarConfig.java
+index d577d74..99e877f 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/function/RegionBarConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/function/RegionBarConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.function;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.*;
+ import me.earthme.luminol.enums.EnumBarType;
+@@ -38,7 +38,7 @@ public class RegionBarConfig implements IConfigModule {
+     private static boolean inited = false;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         AbstractGlobalServerBar regionbar = GlobalServerBarManager.get(EnumBarType.REGION);
+         if (regionbarEnabled) {
+             regionbar.init();
+@@ -52,7 +52,7 @@ public class RegionBarConfig implements IConfigModule {
+     }
+ 
+     @Override
+-    public void onUnloaded(CommentedFileConfig configInstance) {
++    public void onUnloaded(TomlConfigData configInstance) {
+         AbstractGlobalServerBar regionbar = GlobalServerBarManager.get(EnumBarType.REGION);
+         regionbar.cancelBarUpdateTask();
+         regionbar.runUnloadTask();
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/function/RegionFormatConfig.java b/src/main/java/me/earthme/luminol/config/modules/function/RegionFormatConfig.java
+index 77e0d5d..053c869 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/function/RegionFormatConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/function/RegionFormatConfig.java
+@@ -1,7 +1,7 @@
+ package me.earthme.luminol.config.modules.function;
+ 
+ import abomination.LinearRegionFile;
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.IllegalFormatConversionExceptionWithOrigin;
+ import me.earthme.luminol.config.flags.*;
+@@ -46,7 +46,7 @@ public class RegionFormatConfig implements IConfigModule {
+     public static BufferedLinearRegionFileFlusher blinearFlusher = null;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
+         if (exs != null) {
+             for (Exception e : exs) {
+                 if (e instanceof IllegalFormatConversionExceptionWithOrigin) {
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/function/TpsBarConfig.java b/src/main/java/me/earthme/luminol/config/modules/function/TpsBarConfig.java
+index d2119ab..f81e120 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/function/TpsBarConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/function/TpsBarConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.function;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.*;
+ import me.earthme.luminol.enums.EnumBarType;
+@@ -50,7 +50,7 @@ public class TpsBarConfig implements IConfigModule {
+     private static boolean inited = false;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         AbstractGlobalServerBar tpsbar = GlobalServerBarManager.get(EnumBarType.TPS);
+ 
+         if (tpsbarEnabled) {
+@@ -65,7 +65,7 @@ public class TpsBarConfig implements IConfigModule {
+     }
+ 
+     @Override
+-    public void onUnloaded(CommentedFileConfig configInstance) {
++    public void onUnloaded(TomlConfigData configInstance) {
+         AbstractGlobalServerBar tpsbar = GlobalServerBarManager.get(EnumBarType.TPS);
+         tpsbar.cancelBarUpdateTask();
+         tpsbar.runUnloadTask();
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/misc/AutoUpdateConfig.java b/src/main/java/me/earthme/luminol/config/modules/misc/AutoUpdateConfig.java
+index ce01352..207ff20 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/misc/AutoUpdateConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/misc/AutoUpdateConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.misc;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.ConfigClassInfo;
+ import me.earthme.luminol.config.flags.ConfigInfo;
+@@ -42,7 +42,7 @@ public class AutoUpdateConfig implements IConfigModule {
+     public AutoUpdateHelper instance = null;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
+         if (enabled || fun.bm.mili.config.modules.misc.AutoUpdateConfig.enabled) {
+             if (instance == null) {
+                 instance = new AutoUpdateHelper();
+@@ -52,7 +52,7 @@ public class AutoUpdateConfig implements IConfigModule {
+     }
+ 
+     @Override
+-    public void onUnloaded(CommentedFileConfig configInstance) {
++    public void onUnloaded(TomlConfigData configInstance) {
+         if (instance != null) instance.shutdown();
+     }
+ }
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/misc/SentryConfig.java b/src/main/java/me/earthme/luminol/config/modules/misc/SentryConfig.java
+index af44145..4eb6a0d 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/misc/SentryConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/misc/SentryConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.misc;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import gg.pufferfish.pufferfish.sentry.SentryManager;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.CommandSuggestions;
+@@ -28,7 +28,7 @@ public class SentryConfig implements IConfigModule {
+     public static boolean onlyLogThrown = true;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
+         String sentryEnvironment = System.getenv("SENTRY_DSN");
+ 
+         sentryDsn = sentryEnvironment != null && !sentryEnvironment.isBlank()
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/optimizations/CpuAffinityConfig.java b/src/main/java/me/earthme/luminol/config/modules/optimizations/CpuAffinityConfig.java
+index a70f5bf..a121bf9 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/optimizations/CpuAffinityConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/optimizations/CpuAffinityConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.optimizations;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import com.mojang.logging.LogUtils;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.*;
+@@ -36,7 +36,7 @@ public class CpuAffinityConfig implements IConfigModule {
+     public static BitSet tickRegionAffinityBitSet;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         if (!cpuAffinityEnabled) return;
+ 
+         tickRegionAffinityBitSet = parseAffinity(tickRegionAffinity);
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/optimizations/KaiijuEntityLimiterConfig.java b/src/main/java/me/earthme/luminol/config/modules/optimizations/KaiijuEntityLimiterConfig.java
+index e5573a0..fc4dc82 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/optimizations/KaiijuEntityLimiterConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/optimizations/KaiijuEntityLimiterConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.optimizations;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import dev.kaiijumc.kaiiju.KaiijuEntityLimits;
+ import me.earthme.luminol.config.IConfigModule;
+ import me.earthme.luminol.config.flags.ConfigClassInfo;
+@@ -12,7 +12,7 @@ import java.util.Set;
+ @ConfigClassInfo(category = EnumConfigCategory.OPTIMIZATIONS, name = "kaiiju_entity_limiter")
+ public class KaiijuEntityLimiterConfig implements IConfigModule {
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         KaiijuEntityLimits.init();
+     }
+ }
+\ No newline at end of file
+
+diff --git a/src/main/java/me/earthme/luminol/config/modules/optimizations/SIMDConfig.java b/src/main/java/me/earthme/luminol/config/modules/optimizations/SIMDConfig.java
+index 3ab6f04..cb88172 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/optimizations/SIMDConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/optimizations/SIMDConfig.java
+@@ -1,6 +1,6 @@
+ package me.earthme.luminol.config.modules.optimizations;
+ 
+-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
++import fun.bm.mili.rust.TomlConfigData;
+ import com.mojang.logging.LogUtils;
+ import gg.pufferfish.pufferfish.simd.SIMDDetection;
+ import me.earthme.luminol.config.IConfigModule;
+@@ -21,7 +21,7 @@ public class SIMDConfig implements IConfigModule {
+     public static boolean enabled = true;
+ 
+     @Override
+-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
++    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
+         if (!enabled) {
+             return;
+         }
+

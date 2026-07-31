@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -19,7 +19,7 @@ public class CreativeFlyNoClipConfig implements IConfigModule {
     public static boolean enabled = false;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         CarpetServerProtocol.CarpetRules.register(CarpetServerProtocol.CarpetRule.of("carpet", "creativeNoClip", enabled));
     }
 }

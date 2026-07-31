@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.command.counter.CounterCommand;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
@@ -23,7 +23,7 @@ public class WoolHopperCounterConfig implements IConfigModule {
     private static CounterCommand counterCommand = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (enabled) {
             if (counterCommand == null) {
                 counterCommand = new CounterCommand();
@@ -33,7 +33,7 @@ public class WoolHopperCounterConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         if (counterCommand != null) {
             counterCommand.unregister();
         }

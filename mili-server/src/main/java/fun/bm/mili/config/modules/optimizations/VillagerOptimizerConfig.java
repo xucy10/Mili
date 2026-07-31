@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.optimizations;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.config.ConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -72,8 +72,8 @@ public class VillagerOptimizerConfig implements ConfigModule {
     public static List<String> alwaysActiveNames = new ArrayList<>(List.of("alwaysbrain"));
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance) {}
+    public void onLoaded(TomlConfigData configInstance) {}
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {}
+    public void onUnloaded(TomlConfigData configInstance) {}
 }

@@ -7,6 +7,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
+dependencies {
+    compileOnly("com.google.code.gson:gson:2.10.1")
+}
+
 // --- Cargo build for Rust JNI library (.dll/.so) ---
 val cargoBuild = tasks.register<Exec>("buildRustBinary") {
     group = "build"

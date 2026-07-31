@@ -1,6 +1,5 @@
 package fun.bm.mili.metrics;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import fun.bm.mili.config.modules.misc.BStatsConfig;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;

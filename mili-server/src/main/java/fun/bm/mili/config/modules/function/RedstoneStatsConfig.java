@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.command.RedstoneStatsCommand;
 import fun.bm.mili.utils.RedstoneStats;
 import me.earthme.luminol.config.IConfigModule;
@@ -42,7 +42,7 @@ public class RedstoneStatsConfig implements IConfigModule {
     private static RedstoneStatsCommand command = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (enabled) {
             RedstoneStats.setEnabled(true);
             if (command == null) {
@@ -53,7 +53,7 @@ public class RedstoneStatsConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         RedstoneStats.setEnabled(false);
         if (command != null) {
             command.unregister();

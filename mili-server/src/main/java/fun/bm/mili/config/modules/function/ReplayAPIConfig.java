@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.utils.RandomProfilePool;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
@@ -28,7 +28,7 @@ public class ReplayAPIConfig implements IConfigModule {
     public static int cachePhotographerSize = 100;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         RandomProfilePool.init();
     }
 }

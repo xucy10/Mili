@@ -414,4 +414,75 @@ public final class RustBridge {
     public static int unpackBlock(byte packed) {
         return packed & 0x0F;
     }
+
+    // ========================================================================
+    // Config Engine — TOML parse/serialize with comment preservation
+    // ========================================================================
+
+    /**
+     * Load a TOML file and return a flattened JSON string.
+     *
+     * <p>JSON format: {@code {"section.key": value, "__comment__:section.key": "comment", ...}}
+     *
+     * @param path absolute or relative file path
+     * @return JSON string, or empty string on failure
+     */
+    public static native String configLoad(String path);
+
+    /**
+     * Save a flattened JSON map to a TOML file (full rewrite).
+     *
+     * <p>Comments are extracted from {@code __comment__:key} entries in the JSON.
+     *
+     * @param path file path to write
+     * @param json flattened JSON map
+     * @return {@code true} on success
+     */
+    public static native boolean configSave(String path, String json);
+
+    /**
+     * Save a flattened JSON map to a TOML file (merge mode).
+     *
+     * <p>Preserves existing comments in the file, updates/adds/removes keys from JSON.
+     *
+     * @param path file path to write
+     * @param json flattened JSON map
+     * @return {@code true} on success
+     */
+    public static native boolean configSaveMerge(String path, String json);
+
+    /**
+     * Check if a key exists in a TOML file.
+     *
+     * @param path file path
+     * @param key dot-notation key (e.g. {@code "section.subsection.key"})
+     * @return {@code true} if the key exists
+     */
+    public static native boolean configContains(String path, String key);
+
+    /**
+     * Get a value from a TOML file as a JSON string.
+     *
+     * @param path file path
+     * @param key dot-notation key
+     * @return JSON value string, or {@code "null"} if not found
+     */
+    public static native String configGetValue(String path, String key);
+
+    /**
+     * Remove a key from a TOML file.
+     *
+     * @param path file path
+     * @param key dot-notation key
+     * @return {@code true} if the key was removed
+     */
+    public static native boolean configRemove(String path, String key);
+
+    /**
+     * Clear all entries from a TOML file (truncate to empty).
+     *
+     * @param path file path
+     * @return {@code true} on success
+     */
+    public static native boolean configClear(String path);
 }

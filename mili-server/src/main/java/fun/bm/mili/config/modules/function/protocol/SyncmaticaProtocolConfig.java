@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function.protocol;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -22,7 +22,7 @@ public class SyncmaticaProtocolConfig implements IConfigModule {
             Maximum Projection File Size (in bytes)""")
     public static int quotaLimit = 40000000;
 
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> e) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {
         SyncmaticaProtocol.init(enabled);
     }
 }

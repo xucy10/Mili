@@ -7,10 +7,14 @@ plugins {
     `java-library`
     `maven-publish`
     idea
+    kotlin("jvm") version "2.3.21"
     id("moe.luminolmc.hyacinthusweight.core")
     id("io.papermc.fill.gradle") version "1.0.10"
 }
 
+kotlin {
+    jvmToolchain(21)
+}
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {

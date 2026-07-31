@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.optimizations;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.utils.DynamicViewDistanceManager;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
@@ -41,12 +41,12 @@ public class DynamicViewDistanceConfig implements IConfigModule {
     public static double playerDensityWeight = 0.5;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         DynamicViewDistanceManager.setEnabled(enabled);
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         DynamicViewDistanceManager.setEnabled(false);
     }
 }

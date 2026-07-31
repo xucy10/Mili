@@ -6,7 +6,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString, JByteArray, JDoubleArray};
 use jni::sys::{jboolean, jdouble, jint, jlong, jbyteArray, jdoubleArray, jsize};
 
-use crate::{entity_cull, frustum, lighting, mesh, occlusion, protocol, scheduler, util, parse_number_list};
+use crate::{config, entity_cull, frustum, lighting, mesh, occlusion, protocol, scheduler, util, parse_number_list};
 
 // ============================================================================
 // Native init
@@ -409,4 +409,175 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_generateLightmap(
     };
     let _ = env.set_int_array_region(&result_array, 0, &result);
     result_array.into_raw()
+}
+
+// ============================================================================
+// Config Engine — TOML parse/serialize with comment preservation
+// ============================================================================
+
+/// Load a TOML file and return a flattened JSON string.
+///
+/// JSON format: `{"section.key": value, "__comment__:section.key": "comment", ...}`
+/// Returns empty string on failure.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configLoad(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+) -> jni::sys::jstring {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return env.new_string("").unwrap().into_raw(),
+    };
+
+    match config::load_config(&path_str) {
+        Some(json) => env.new_string(&json).unwrap().into_raw(),
+        None => env.new_string("").unwrap().into_raw(),
+    }
+}
+
+/// Save a flattened JSON map to a TOML file (full rewrite, preserves comments from JSON).
+///
+/// Returns `true` on success.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSave(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+    json: JString,
+) -> jboolean {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let json_str: String = match env.get_string(&json) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if config::save_config(&path_str, &json_str) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Save a flattened JSON map to a TOML file (merge mode, preserves existing comments).
+///
+/// Returns `true` on success.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSaveMerge(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+    json: JString,
+) -> jboolean {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let json_str: String = match env.get_string(&json) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if config::save_config_merge(&path_str, &json_str) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Check if a key exists in a TOML file.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configContains(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+    key: JString,
+) -> jboolean {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let key_str: String = match env.get_string(&key) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if config::contains_key(&path_str, &key_str) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Get a value from a TOML file as a JSON string.
+///
+/// Returns "null" if the key doesn't exist.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configGetValue(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+    key: JString,
+) -> jni::sys::jstring {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return env.new_string("null").unwrap().into_raw(),
+    };
+    let key_str: String = match env.get_string(&key) {
+        Ok(s) => s.into(),
+        Err(_) => return env.new_string("null").unwrap().into_raw(),
+    };
+
+    let result = config::get_value(&path_str, &key_str);
+    env.new_string(&result).unwrap().into_raw()
+}
+
+/// Remove a key from a TOML file.
+///
+/// Returns `true` if the key was removed.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configRemove(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+    key: JString,
+) -> jboolean {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+    let key_str: String = match env.get_string(&key) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if config::remove_key(&path_str, &key_str) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Clear all entries from a TOML file.
+///
+/// Returns `true` on success.
+#[no_mangle]
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configClear(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+) -> jboolean {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return 0,
+    };
+
+    if config::clear_config(&path_str) {
+        1
+    } else {
+        0
+    }
 }

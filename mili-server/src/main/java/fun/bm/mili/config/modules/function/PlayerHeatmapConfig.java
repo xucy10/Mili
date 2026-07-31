@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.function;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.command.HeatmapCommand;
 import fun.bm.mili.utils.PlayerHeatmap;
 import me.earthme.luminol.config.IConfigModule;
@@ -38,7 +38,7 @@ public class PlayerHeatmapConfig implements IConfigModule {
     private static HeatmapCommand command = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (enabled) {
             PlayerHeatmap.setEnabled(true);
             if (command == null) {
@@ -49,7 +49,7 @@ public class PlayerHeatmapConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         PlayerHeatmap.setEnabled(false);
         if (command != null) {
             command.unregister();

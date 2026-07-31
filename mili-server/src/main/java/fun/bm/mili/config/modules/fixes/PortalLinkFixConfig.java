@@ -1,6 +1,6 @@
 package fun.bm.mili.config.modules.fixes;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.portal.PortalLinkListener;
 import fun.bm.mili.portal.PortalLinkManager;
 import me.earthme.luminol.config.IConfigModule;
@@ -34,7 +34,7 @@ public class PortalLinkFixConfig implements IConfigModule {
     private static PortalLinkListener listener = null;
 
     @Override
-    public void onLoaded(CommentedFileConfig configInstance, @Nullable Set<Exception> exs) {
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         PortalLinkManager.setEnabled(enabled);
         PortalLinkManager.setSearchRadius(searchRadius);
         PortalLinkManager.setStrictMatching(strictMatching);
@@ -46,7 +46,7 @@ public class PortalLinkFixConfig implements IConfigModule {
     }
 
     @Override
-    public void onUnloaded(CommentedFileConfig configInstance) {
+    public void onUnloaded(TomlConfigData configInstance) {
         PortalLinkManager.setEnabled(false);
         if (listener != null) {
             listener.unregister();
