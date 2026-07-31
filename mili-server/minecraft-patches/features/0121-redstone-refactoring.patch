@@ -3,13 +3,9 @@ From: Mili <mili@bm.fun>
 Date: Fri, 31 Jul 2026 21:01:00 +0800
 Subject: [PATCH] redstone refactoring
 
----
- .../world/level/block/RedStoneWireBlock.java  | 42 ++++++++++++++-----
- .../world/level/redstone/NeighborUpdater.java | 16 ++++++-
- 2 files changed, 46 insertions(+), 12 deletions(-)
 
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 0d48baf..339f880 100644
+index 0d48bafd56286b3b09366f82b525967ee892a40c..339f88040830f217ab5e6eba86fc9f49dc9e9bcb 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
 @@ -275,14 +275,36 @@ public class RedStoneWireBlock extends Block {
@@ -96,7 +92,7 @@ index 0d48baf..339f880 100644
              } else
                  // Paper end - optimize redstone (Alternate Current)
 diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
-index a55a4f3..e27d406 100644
+index a55a4f3bcfd8ab3cf8ad985dcf5428d33ece0e0a..e27d406e1a30e3a558a2bd36131f8df8f17e8696 100644
 --- a/net/minecraft/world/level/redstone/NeighborUpdater.java
 +++ b/net/minecraft/world/level/redstone/NeighborUpdater.java
 @@ -17,6 +17,18 @@ import org.jspecify.annotations.Nullable;
@@ -136,6 +132,3 @@ index a55a4f3..e27d406 100644
              return;
          }
          try {
--- 
-2.54.0.windows.1
-
