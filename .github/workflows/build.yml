@@ -87,14 +87,6 @@ jobs:
           echo "=== Post-clean state ==="
           echo "Preserving .gradle/caches/paperweight for paperweight git upstream integrity"
 
-      - name: Init Luminol Local Repo
-        run: |
-          cd Luminol-ver-1.21.11
-          git init
-          git add -A
-          git commit -m "luminol"
-          cd ..
-
       - name: Download Hyacinthusclip
         run: |
           mkdir -p libs
@@ -109,7 +101,7 @@ jobs:
       - name: Verify Generated Source
         run: |
           echo "=== Checking generated API source dirs ==="
-          for d in paper-api folia-api luminol-api paper-server folia-server luminol-server; do
+          for d in paper-api folia-api mili-api paper-server folia-server mili-server; do
             if [ -d "$d" ] && [ "$(ls -A $d 2>/dev/null)" ]; then
               echo "OK: $d/ exists ($(find $d -name '*.java' | wc -l) java files)"
             else
