@@ -4,9 +4,10 @@ Date: Thu, 31 Jul 2026 21:30:00 +0800
 Subject: [PATCH] Rendering optimization integration
 
 Integrate Rust native batch entity culling into the server entity tracking
-system. Entity now implements Cullable interface, ServerEntity.sendChanges()
-skips culled entities, ChunkMap.TrackedEntity drives Rust bulk culling per
-chunk tick, and DynamicViewDistanceManager is ticked from the server tick loop.
+system. Entity implements Cullable interface, ServerEntity.sendChanges()
+skips culled entities. Batch culling is done at the newTrackerTick level —
+one JNI call per viewer per tick, processing ALL tracked entities in a batch.
+DynamicViewDistanceManager is ticked from the server tick loop.
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
 --- a/net/minecraft/server/MinecraftServer.java
@@ -30,77 +31,66 @@ diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/Mi
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
-@@ -1228,6 +1228,16 @@
-                 this.updatePlayer(player);
+@@ -1056,6 +1056,44 @@
+         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
+         for (int i = 0, len = totalEntities = trackerEntities.size(); i < len; ++i) { // Folia - region threading
+             final Entity entity = trackerEntitiesRaw[i];
+             final ChunkMap.TrackedEntity tracker = ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity();
+             if (tracker == null) {
+                 continue;
              }
- 
-+            // Mili start - Rust batch entity culling
-+            if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled && !this.seenBy.isEmpty()) {
-+                java.util.List<ServerPlayer> viewerList = new java.util.ArrayList<>(this.seenBy.size());
-+                for (ServerPlayerConnection conn : this.seenBy) {
-+                    viewerList.add(conn.getPlayer());
++            // Mili start - batch entity culling: collect entities for batch processing
++            if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled
++                && !tracker.seenBy.isEmpty()
++                && entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
++                // Check if entity should be force-visible
++                if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck) {
++                    for (final ServerPlayerConnection conn : tracker.seenBy) {
++                        ServerPlayer viewer = conn.getPlayer();
++                        mili$batchCullMap.computeIfAbsent(viewer, k -> new java.util.ArrayList<>()).add(entity);
++                    }
++                } else {
++                    cullable.setCulled(false);
 +                }
-+                this.mili$cullEntities(viewerList);
 +            }
-+            // Mili end - Rust batch entity culling
-+
-             if (lastChunkUpdate != currChunkUpdate || lastTrackedChunk != chunk) {
-                 // need to purge any players possible not in the chunk list
-                 for (final ServerPlayerConnection conn : new java.util.ArrayList<>(this.seenBy)) {
-@@ -1427,5 +1437,53 @@
-                 this.updatePlayer(serverPlayer);
++            // Mili end - batch entity culling
+             ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$tick(nearbyPlayers.getChunk(entity.chunkPosition())); // Folia - region threading
+             if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$hasPlayers()
+                 || ((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)entity).moonrise$getChunkStatus().isOrAfter(FullChunkStatus.ENTITY_TICKING)) {
+                 tracker.serverEntity.sendChanges();
              }
          }
-+
-+        // Mili start - Rust batch entity culling integration
-+        public void mili$cullEntities(java.util.List<ServerPlayer> viewers) {
-+            if (viewers.isEmpty() || !fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled) {
-+                return;
-+            }
-+            if (!(this.entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable)) {
-+                return;
-+            }
-+            if (cullable.isForcedVisible() || this.entity.isCurrentlyGlowing()) {
-+                cullable.setCulled(false);
-+                return;
-+            }
-+            if (this.entity.getType().skipRaytracningCheck) {
-+                cullable.setCulled(false);
-+                return;
-+            }
-+            // Use Rust native bulk culling if available
-+            if (fun.bm.mili.rust.EntityCullHelper.isNativeAvailable()) {
-+                java.util.List<Entity> entityList = java.util.Collections.singletonList(this.entity);
-+                for (ServerPlayer viewer : viewers) {
-+                    byte[] results = fun.bm.mili.rust.EntityCullHelper.cullEntitiesNative(
-+                        viewer, entityList,
-+                        fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance,
-+                        fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit
-+                    );
-+                    if (results != null && results.length > 0) {
-+                        boolean culled = results[0] == 1 || results[0] == 4;
-+                        cullable.setCulled(culled);
-+                    }
++        // Mili start - batch entity culling: one JNI call per viewer
++        if (!mili$batchCullMap.isEmpty()) {
++            double reachSq = (double) fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance
++                * fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance;
++            double hitboxLimit = fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.hitboxLimit;
++            for (java.util.Map.Entry<ServerPlayer, java.util.List<Entity>> entry : mili$batchCullMap.entrySet()) {
++                ServerPlayer viewer = entry.getKey();
++                java.util.List<Entity> entityList = entry.getValue();
++                byte[] results = fun.bm.mili.rust.EntityCullHelper.cullEntitiesBatch(
++                    viewer, entityList, reachSq, hitboxLimit, null
++                );
++                if (results != null) {
++                    fun.bm.mili.rust.EntityCullHelper.applyCullingResults(entityList, results);
 +                }
-+            } else {
-+                // Java fallback: simple distance-based culling
-+                boolean anyVisible = false;
-+                for (ServerPlayer viewer : viewers) {
-+                    double dx = this.entity.getX() - viewer.getX();
-+                    double dz = this.entity.getZ() - viewer.getZ();
-+                    double distSq = dx * dx + dz * dz;
-+                    double reach = fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.tracingDistance;
-+                    if (distSq <= reach * reach) {
-+                        anyVisible = true;
-+                        break;
-+                    }
-+                }
-+                cullable.setCulled(!anyVisible);
 +            }
++            mili$batchCullMap.clear();
 +        }
-+        // Mili end - Rust batch entity culling integration
++        // Mili end - batch entity culling
+         profiler.addCounter(ca.spottedleaf.leafprofiler.LProfilerRegistry.TRACKED_ENTITY_COUNTS, (long)totalEntities); // Folia - profiler
+         } finally { profiler.stopTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ENTITY_TRACKER_TICK); } // Folia - profiler
      }
- }
+@@ -1048,6 +1088,9 @@
+     private void newTrackerTick() {
+         // Folia start - profiler
+         final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle profiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler();
++        // Mili start - batch entity culling buffer
++        final java.util.Map<ServerPlayer, java.util.List<Entity>> mili$batchCullMap = new it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap<>();
++        // Mili end - batch entity culling buffer
+         final int totalEntities;
+         profiler.startTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ENTITY_TRACKER_TICK); try { // Folia - profiler
+         // Folia end - profiler
 diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
 --- a/net/minecraft/server/level/ServerEntity.java
 +++ b/net/minecraft/server/level/ServerEntity.java

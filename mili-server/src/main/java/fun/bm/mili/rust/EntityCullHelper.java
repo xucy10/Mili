@@ -6,143 +6,136 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 
 /**
  * Helper for batch entity culling using the Rust native optimizer.
  * <p>
- * This class provides a bridge between Minecraft's entity tracking system
- * and the Rust bulk culling implementation. If the Rust native library
- * is not available, it falls back to Java-side culling logic.
- * <p>
- * Design: one JNI call per frame, processing all entities in a batch.
+ * Design: one JNI call per tick, processing ALL entities for ALL viewers in a batch.
+ * Uses DirectByteBuffer for zero-copy data transfer to Rust.
+ * No reflection — calls RustBridge directly.
  */
 public final class EntityCullHelper {
 
     private EntityCullHelper() {}
 
-    private static final String RUST_BRIDGE_CLASS = "fun.bm.mili.rust.RustBridge";
-    private static final Method BULK_CULL_METHOD = findBulkCullMethod();
-    private static final Method BUILD_ENTITY_DATA_METHOD = findBuildEntityDataMethod();
+    /** Entity stride: 8 floats per entity [minX, minY, minZ, maxX, maxY, maxZ, posX, posZ] */
+    private static final int ENTITY_STRIDE = 8;
+    /** Frustum planes: 6 planes x 4 floats = 24 floats */
+    private static final int PLANES_FLOATS = 24;
 
-    private static Method findBulkCullMethod() {
-        try {
-            Class<?> bridge = Class.forName(RUST_BRIDGE_CLASS);
-            return bridge.getMethod("bulkCullEntities",
-                double[].class, int.class,
-                double.class, double.class, double.class,
-                double.class, double.class,
-                double.class, double.class, double.class,
-                double.class);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
-            return null;
-        }
-    }
-
-    private static Method findBuildEntityDataMethod() {
-        try {
-            Class<?> bridge = Class.forName(RUST_BRIDGE_CLASS);
-            return bridge.getMethod("buildEntityData",
-                double[].class, double[].class, double[].class,
-                double[].class, double[].class, double[].class,
-                double[].class, double[].class);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
-            return null;
-        }
-    }
+    /** Cached direct buffers — grown as needed, reused across ticks */
+    private static ByteBuffer entityBuffer = null;
+    private static ByteBuffer planesBuffer = null;
 
     /**
-     * Check if the Rust bulk culling native method is available.
+     * Check if the Rust native library is loaded and available.
      */
     public static boolean isNativeAvailable() {
-        return BULK_CULL_METHOD != null && BUILD_ENTITY_DATA_METHOD != null;
+        return RustBridge.isLoaded();
     }
 
     /**
-     * Batch cull entities for a player using Rust native code.
+     * Batch cull entities for a single viewer using Rust native code (zero-copy).
      *
-     * @param player the viewer
-     * @param entities list of entities to check
-     * @param reach visibility reach distance
-     * @param hitboxLimit max AABB dimension before skipping
-     * @return array of culling results, or null if native is unavailable
+     * @param viewer       the viewer player
+     * @param entities     list of entities to check
+     * @param reachSq      squared reach distance
+     * @param hitboxLimit  max AABB dimension before skipping
+     * @param frustumPlanes 24 floats: 6 planes x [nx, ny, nz, d], or null to build from camera
+     * @return byte array where result[i] is: 0=visible, 2=too_far, 3=too_big, 4=behind; or null on failure
      */
-    public static byte[] cullEntitiesNative(
-            Player player,
+    public static byte[] cullEntitiesBatch(
+            Player viewer,
             List<Entity> entities,
-            double reach,
-            double hitboxLimit
+            double reachSq,
+            double hitboxLimit,
+            float[] frustumPlanes
     ) {
-        if (!isNativeAvailable() || entities.isEmpty()) {
+        if (!RustBridge.isLoaded() || entities.isEmpty()) {
             return null;
         }
 
         int n = entities.size();
-        double[] minX = new double[n];
-        double[] minY = new double[n];
-        double[] minZ = new double[n];
-        double[] maxX = new double[n];
-        double[] maxY = new double[n];
-        double[] maxZ = new double[n];
-        double[] posX = new double[n];
-        double[] posZ = new double[n];
+        int requiredBytes = n * ENTITY_STRIDE * 4; // floats -> bytes
 
+        // Ensure entity buffer is large enough and direct
+        if (entityBuffer == null || entityBuffer.capacity() < requiredBytes) {
+            entityBuffer = ByteBuffer.allocateDirect(requiredBytes).order(ByteOrder.nativeOrder());
+        }
+
+        // Pack entity data into direct buffer
+        entityBuffer.clear();
+        entityBuffer.limit(requiredBytes);
+        java.nio.FloatBuffer floatView = entityBuffer.asFloatBuffer();
         for (int i = 0; i < n; i++) {
             Entity e = entities.get(i);
             AABB box = e.getBoundingBox();
-            minX[i] = box.minX;
-            minY[i] = box.minY;
-            minZ[i] = box.minZ;
-            maxX[i] = box.maxX;
-            maxY[i] = box.maxY;
-            maxZ[i] = box.maxZ;
-            posX[i] = e.getX();
-            posZ[i] = e.getZ();
+            floatView.put((float) box.minX);
+            floatView.put((float) box.minY);
+            floatView.put((float) box.minZ);
+            floatView.put((float) box.maxX);
+            floatView.put((float) box.maxY);
+            floatView.put((float) box.maxZ);
+            floatView.put((float) e.getX());
+            floatView.put((float) e.getZ());
         }
 
-        Vec3 eye = player.getEyePosition(1.0f);
-        Vec3 look = player.getLookAngle();
+        // Ensure planes buffer
+        if (planesBuffer == null || planesBuffer.capacity() < PLANES_FLOATS * 4) {
+            planesBuffer = ByteBuffer.allocateDirect(PLANES_FLOATS * 4).order(ByteOrder.nativeOrder());
+        }
+        planesBuffer.clear();
+        java.nio.FloatBuffer planesView = planesBuffer.asFloatBuffer();
+        if (frustumPlanes != null && frustumPlanes.length >= PLANES_FLOATS) {
+            planesView.put(frustumPlanes, 0, PLANES_FLOATS);
+        } else {
+            // Build frustum from camera
+            Vec3 eye = viewer.getEyePosition(1.0f);
+            Vec3 look = viewer.getLookAngle();
+            Vec3 up = viewer.getUpVector(1.0f);
+            float[] pos = {(float) eye.x, (float) eye.y, (float) eye.z};
+            float[] fwd = {(float) look.x, (float) look.y, (float) look.z};
+            float[] upArr = {(float) up.x, (float) up.y, (float) up.z};
+            float[] built = RustBridge.buildFrustumFromCamera(
+                Math.toRadians(70.0), 16.0 / 9.0, 0.05, 1000.0,
+                pos, fwd, upArr
+            );
+            if (built != null && built.length >= PLANES_FLOATS) {
+                planesView.put(built, 0, PLANES_FLOATS);
+            }
+        }
 
-        // FOV cosine: default Minecraft FOV is 70 degrees
-        double fovCos = Math.cos(Math.toRadians(70.0 / 2.0));
+        Vec3 eye = viewer.getEyePosition(1.0f);
 
         try {
-            double[] entityData = (double[]) BUILD_ENTITY_DATA_METHOD.invoke(null,
-                minX, minY, minZ, maxX, maxY, maxZ, posX, posZ);
-
-            return (byte[]) BULK_CULL_METHOD.invoke(null,
-                entityData, n,
+            return RustBridge.batchCullEntitiesDirect(
+                entityBuffer, n,
                 eye.x, eye.y, eye.z,
-                reach, hitboxLimit,
-                look.x, look.y, look.z,
-                fovCos);
-        } catch (ReflectiveOperationException e) {
+                reachSq, hitboxLimit,
+                planesBuffer
+            );
+        } catch (UnsatisfiedLinkError e) {
             return null;
         }
     }
 
     /**
-     * Apply culling results to entities.
+     * Apply culling results to entities via Cullable interface.
      *
-     * @param entities list of entities (same order as passed to cullEntitiesNative)
-     * @param results culling results from cullEntitiesNative
-     * @param cullableClass the Cullable interface class
-     * @param setCulledMethod the setCulled method
+     * @param entities list of entities (same order as passed to cullEntitiesBatch)
+     * @param results  culling results from cullEntitiesBatch
      */
-    public static void applyCullingResults(
-            List<Entity> entities,
-            byte[] results,
-            Class<?> cullableClass,
-            Method setCulledMethod
-    ) {
+    public static void applyCullingResults(List<Entity> entities, byte[] results) {
         if (results == null || results.length != entities.size()) {
             return;
         }
 
         for (int i = 0; i < entities.size(); i++) {
             Entity entity = entities.get(i);
-            if (!cullableClass.isInstance(entity)) {
+            if (!(entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable)) {
                 continue;
             }
 
@@ -161,58 +154,7 @@ public final class EntityCullHelper {
                     culled = true;
                     break;
             }
-
-            try {
-                setCulledMethod.invoke(entity, culled);
-            } catch (ReflectiveOperationException ignored) {
-            }
+            cullable.setCulled(culled);
         }
-    }
-
-    /**
-     * Java fallback for single-entity culling checks.
-     * Mirrors the logic in Rust for consistency.
-     */
-    public static boolean shouldCullEntity(
-            Entity entity,
-            Vec3 viewerPos,
-            Vec3 cameraForward,
-            double reachSq,
-            double hitboxLimit
-    ) {
-        AABB box = entity.getBoundingBox();
-
-        // Distance check
-        double dx = entity.getX() - viewerPos.x;
-        double dz = entity.getZ() - viewerPos.z;
-        if (dx * dx + dz * dz > reachSq) {
-            return false; // Too far — don't cull, just don't raytrace
-        }
-
-        // Hitbox size check
-        if (box.getXsize() > hitboxLimit || box.getYsize() > hitboxLimit || box.getZsize() > hitboxLimit) {
-            return false; // Too big — don't cull
-        }
-
-        // Frustum check (simplified)
-        double centerX = (box.minX + box.maxX) * 0.5;
-        double centerY = (box.minY + box.maxY) * 0.5;
-        double centerZ = (box.minZ + box.maxZ) * 0.5;
-
-        double toX = centerX - viewerPos.x;
-        double toY = centerY - viewerPos.y;
-        double toZ = centerZ - viewerPos.z;
-
-        double lenSq = toX * toX + toY * toY + toZ * toZ;
-        if (lenSq > 0) {
-            double len = Math.sqrt(lenSq);
-            double dot = (toX * cameraForward.x + toY * cameraForward.y + toZ * cameraForward.z) / len;
-            double fovCos = Math.cos(Math.toRadians(70.0 / 2.0));
-            if (dot < fovCos) {
-                return true; // Behind camera
-            }
-        }
-
-        return false; // Potentially visible — needs raycast
     }
 }

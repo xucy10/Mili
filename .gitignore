@@ -21,3 +21,4 @@ run_build.bat
 run_build.ps1
 # Hyacinthusclip JAR (downloaded during CI build)
 libs/
+mili-rust/src/rust/target/

@@ -1,12 +1,15 @@
+use jni::objects::{JByteBuffer, JClass, JString};
+use jni::sys::{jboolean, jbyteArray, jdouble, jfloatArray, jint, jsize, jstring};
 /// JNI bridge — exposes Rust optimization functions to Java via JNI.
 ///
-/// Design: **bulk processing only** for hot paths. Java collects per-frame data
-/// into flat arrays, Rust processes everything in one call, returns results.
+/// Design: **bulk processing only** for hot paths. Java collects per-tick data
+/// into flat arrays or DirectByteBuffers, Rust processes everything in one call.
+///
+/// Zero-copy path: Java passes a DirectByteBuffer; Rust reads via
+/// GetDirectBufferAddress — no array copy across the JNI boundary.
 use jni::JNIEnv;
-use jni::objects::{JClass, JString, JByteArray, JDoubleArray};
-use jni::sys::{jboolean, jdouble, jint, jlong, jbyteArray, jdoubleArray, jsize};
 
-use crate::{config, entity_cull, frustum, lighting, mesh, occlusion, protocol, scheduler, util, parse_number_list};
+use crate::{config, entity_cull, frustum};
 
 // ============================================================================
 // Native init
@@ -16,415 +19,201 @@ use crate::{config, entity_cull, frustum, lighting, mesh, occlusion, protocol, s
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_nativeInit(_env: JNIEnv, _class: JClass) {}
 
 // ============================================================================
-// Protocol optimization
+// Entity culling — zero-copy via DirectByteBuffer
 // ============================================================================
 
 #[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_optimizePacketBatch(mut env: JNIEnv, _: JClass, input: JString) -> jlong {
-    let s: String = match env.get_string(&input) { Ok(s) => s.into(), Err(_) => return 0 };
-    let sizes = parse_number_list(&s);
-    protocol::optimize_packet_batch(&sizes) as jlong
-}
-
-// ============================================================================
-// Scheduler
-// ============================================================================
-
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_runLightweightTasks(_: JNIEnv, _: JClass, jobs: jint, work: jint) -> jlong {
-    let result = scheduler::run_lightweight_tasks(jobs as usize, work as usize);
-    result.rsplit(':').next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0) as jlong
-}
-
-// ============================================================================
-// Bitmap operations
-// ============================================================================
-
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapFromHex(mut env: JNIEnv, _: JClass, hex: JString) -> jlong {
-    let s: String = match env.get_string(&hex) { Ok(s) => s.into(), Err(_) => return 0 };
-    match util::Bitmap::from_hex(&s) { Ok(bm) => Box::into_raw(Box::new(bm)) as jlong, Err(_) => 0 }
-}
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapFree(_: JNIEnv, _: JClass, ptr: jlong) { if ptr != 0 { unsafe { drop(Box::from_raw(ptr as *mut util::Bitmap)) } } }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapSet(_: JNIEnv, _: JClass, ptr: jlong, idx: jint) { if ptr != 0 { unsafe { &mut *(ptr as *mut util::Bitmap) }.set(idx as usize) } }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapGet(_: JNIEnv, _: JClass, ptr: jlong, idx: jint) -> jboolean { if ptr == 0 { 0 } else { unsafe { &*(ptr as *const util::Bitmap) }.get(idx as usize) as jboolean } }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapCount(_: JNIEnv, _: JClass, ptr: jlong) -> jint { if ptr == 0 { 0 } else { unsafe { &*(ptr as *const util::Bitmap) }.count() as jint } }
-#[no_mangle] pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bitmapToHex(env: JNIEnv, _: JClass, ptr: jlong) -> jni::sys::jstring {
-    if ptr == 0 { return env.new_string("").unwrap().into_raw(); }
-    env.new_string(unsafe { &*(ptr as *const util::Bitmap) }.to_hex()).unwrap().into_raw()
-}
-
-// ============================================================================
-// BULK Entity Culling — fast path for entity visibility
-// ============================================================================
-
-/// Batch cull entities using flat f32 arrays.
-///
-/// `entity_data`: flat array of [minX, minY, minZ, maxX, maxY, maxZ, posX, posZ] × N (f32)
-/// Returns: byte array where each byte is a result flag (0=visible, 1=culled, 2=too_far, 3=too_big, 4=behind)
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullEntities(
-    mut env: JNIEnv,
-    _class: JClass,
-    entity_data: jdoubleArray,
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntitiesDirect(
+    env: JNIEnv,
+    _: JClass,
+    entity_buffer: JByteBuffer,
     num_entities: jint,
     viewer_x: jdouble,
     viewer_y: jdouble,
     viewer_z: jdouble,
-    reach: jdouble,
+    reach_sq: jdouble,
     hitbox_limit: jdouble,
-    camera_fwd_x: jdouble,
-    camera_fwd_y: jdouble,
-    camera_fwd_z: jdouble,
-    fov_cos: jdouble,
+    planes_buffer: JByteBuffer,
 ) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(entity_data) };
-    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
+    let entity_addr = match env.get_direct_buffer_address(&entity_buffer) {
+        Ok(addr) => addr as *const f32,
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let expected_len = (num_entities as usize) * entity_cull::ENTITY_STRIDE;
-    if data.len() < expected_len {
-        return std::ptr::null_mut();
-    }
+    let planes_addr = match env.get_direct_buffer_address(&planes_buffer) {
+        Ok(addr) => addr as *const f32,
+        Err(_) => return std::ptr::null_mut(),
+    };
 
-    // Convert f64 array to f32 slice for processing
-    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
-    let results = entity_cull::batch_cull_entities(
-        &f32_data,
+    let planes_slice = unsafe { std::slice::from_raw_parts(planes_addr, 24) };
+    let mut planes = [[0.0f32; 4]; 6];
+    for i in 0..6 {
+        planes[i] = [
+            planes_slice[i * 4],
+            planes_slice[i * 4 + 1],
+            planes_slice[i * 4 + 2],
+            planes_slice[i * 4 + 3],
+        ];
+    }
+    let frustum = frustum::Frustum { planes };
+
+    let results = entity_cull::batch_cull_entities_zero_copy(
+        entity_addr,
         num_entities as usize,
-        viewer_x, viewer_y, viewer_z,
-        reach * reach,
+        viewer_x,
+        viewer_y,
+        viewer_z,
+        reach_sq,
         hitbox_limit as f32,
-        camera_fwd_x as f32,
-        camera_fwd_y as f32,
-        camera_fwd_z as f32,
-        fov_cos as f32,
+        &frustum,
     );
 
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
+    let len = results.len() as jsize;
+    let byte_array = match env.new_byte_array(len) {
+        Ok(arr) => arr,
         Err(_) => return std::ptr::null_mut(),
     };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
+    let results_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let _ = env.set_byte_array_region(&byte_array, 0, &results_bytes);
+    byte_array.into_raw()
 }
 
 // ============================================================================
-// BULK Occlusion Culling — one JNI call per frame
+// Entity culling — array fallback (non-zero-copy)
 // ============================================================================
 
 #[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkOcclusionCull(
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
     mut env: JNIEnv,
-    _class: JClass,
-    aabb_data: jdoubleArray,
-    reach: jint,
-    expansion: jdouble,
+    _: JClass,
+    entities: jni::objects::JFloatArray,
+    num_entities: jint,
+    viewer_x: jdouble,
+    viewer_y: jdouble,
+    viewer_z: jdouble,
+    reach_sq: jdouble,
+    hitbox_limit: jdouble,
+    planes_arr: jni::objects::JFloatArray,
 ) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(aabb_data) };
-    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let len = data.len();
-    if len % 9 != 0 { return std::ptr::null_mut(); }
-    let num_entities = len / 9;
-    let slice = unsafe { std::slice::from_raw_parts(data.as_ptr(), len) };
-    let results = occlusion::bulk_occlusion_cull(slice, num_entities, reach, expansion);
+    let entity_data: Vec<f32> =
+        match unsafe { env.get_array_elements(&entities, jni::objects::ReleaseMode::CopyBack) } {
+            Ok(slice) => slice.iter().copied().collect(),
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    // Convert Vec<u8> to Java byte[]
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
-}
+    let planes_data: Vec<f32> =
+        match unsafe { env.get_array_elements(&planes_arr, jni::objects::ReleaseMode::CopyBack) } {
+            Ok(slice) => slice.iter().copied().collect(),
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-/// Bulk DDA ray stepping for N rays through a shared voxel cache.
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkStepRay(
-    mut env: JNIEnv,
-    _class: JClass,
-    ray_data: jdoubleArray,
-    camera_x: jint, camera_y: jint, camera_z: jint,
-    reach: jint,
-    voxel_cache: jbyteArray,
-    cache_size: jint,
-) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(ray_data) };
-    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let len = data.len();
-    if len % 6 != 0 { return std::ptr::null_mut(); }
-    let num_rays = len / 6;
-
-    let jba = unsafe { JByteArray::from_raw(voxel_cache) };
-    let cache = match unsafe { env.get_array_elements(&jba, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(c) => c,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let slice = unsafe { std::slice::from_raw_parts(data.as_ptr(), len) };
-    let cache_slice = unsafe { std::slice::from_raw_parts(cache.as_ptr() as *const u8, cache.len()) };
-    let camera = [camera_x, camera_y, camera_z];
-
-    let results = occlusion::bulk_step_ray(slice, num_rays, camera, reach, cache_slice, cache_size as usize);
-
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
-}
-
-// ============================================================================
-// BULK Mesh / Frustum Culling — chunk section visibility
-// ============================================================================
-
-/// Batch cull chunk sections using frustum planes.
-///
-/// `section_data`: flat array of [minX, minY, minZ, maxX, maxY, maxZ] × N (f32 as double)
-/// `frustum_planes`: 24 doubles (6 planes × 4 components)
-/// Returns: byte array where 1 = visible, 0 = culled
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullChunkSections(
-    mut env: JNIEnv,
-    _class: JClass,
-    section_data: jdoubleArray,
-    frustum_planes: jdoubleArray,
-) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(section_data) };
-    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
-    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(p) => p,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    if planes_arr.len() < 24 {
+    if planes_data.len() < 24 {
         return std::ptr::null_mut();
     }
 
     let mut planes = [[0.0f32; 4]; 6];
     for i in 0..6 {
-        for j in 0..4 {
-            planes[i][j] = planes_arr[i * 4 + j] as f32;
-        }
+        planes[i] = [
+            planes_data[i * 4],
+            planes_data[i * 4 + 1],
+            planes_data[i * 4 + 2],
+            planes_data[i * 4 + 3],
+        ];
     }
-
-    let len = data.len();
-    if len % 6 != 0 { return std::ptr::null_mut(); }
-    let num_sections = len / 6;
-
-    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
-    let results = mesh::batch_cull_chunk_sections(&f32_data, num_sections, &planes);
-
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
-}
-
-/// Batch cull spheres using frustum.
-///
-/// `centers`: flat array of [x, y, z] × N (double)
-/// `radii`: array of radii (double)
-/// `frustum_planes`: 24 doubles (6 planes × 4 components)
-/// Returns: byte array where 1 = visible, 0 = culled
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullSpheres(
-    mut env: JNIEnv,
-    _class: JClass,
-    centers: jdoubleArray,
-    radii: jdoubleArray,
-    frustum_planes: jdoubleArray,
-) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(centers) };
-    let center_data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let jr = unsafe { JDoubleArray::from_raw(radii) };
-    let radii_data = match unsafe { env.get_array_elements(&jr, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
-    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(p) => p,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    if planes_arr.len() < 24 || center_data.len() % 3 != 0 {
-        return std::ptr::null_mut();
-    }
-
-    let num_spheres = center_data.len() / 3;
-    if radii_data.len() < num_spheres {
-        return std::ptr::null_mut();
-    }
-
-    let mut planes = [[0.0f32; 4]; 6];
-    for i in 0..6 {
-        for j in 0..4 {
-            planes[i][j] = planes_arr[i * 4 + j] as f32;
-        }
-    }
-
-    let f32_centers: Vec<f32> = center_data.iter().map(|&v| v as f32).collect();
-    let f32_radii: Vec<f32> = radii_data.iter().map(|&v| v as f32).collect();
     let frustum = frustum::Frustum { planes };
 
-    let results = frustum::batch_cull_spheres(&f32_centers, &f32_radii, num_spheres, &frustum);
+    let results = entity_cull::batch_cull_entities(
+        &entity_data,
+        num_entities as usize,
+        viewer_x,
+        viewer_y,
+        viewer_z,
+        reach_sq,
+        hitbox_limit as f32,
+        &frustum,
+    );
 
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
+    let len = results.len() as jsize;
+    let byte_array = match env.new_byte_array(len) {
+        Ok(arr) => arr,
         Err(_) => return std::ptr::null_mut(),
     };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
+    let results_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
+    let _ = env.set_byte_array_region(&byte_array, 0, &results_bytes);
+    byte_array.into_raw()
 }
 
-/// Batch cull AABBs using frustum.
-///
-/// `aabbs`: flat array of [minX, minY, minZ, maxX, maxY, maxZ] × N (double)
-/// `frustum_planes`: 24 doubles (6 planes × 4 components)
-/// Returns: byte array where 1 = visible, 0 = culled
+// ============================================================================
+// Frustum — build from camera params
+// ============================================================================
+
 #[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkCullAABBs(
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_buildFrustumFromCamera(
     mut env: JNIEnv,
-    _class: JClass,
-    aabbs: jdoubleArray,
-    frustum_planes: jdoubleArray,
-) -> jbyteArray {
-    let jda = unsafe { JDoubleArray::from_raw(aabbs) };
-    let data = match unsafe { env.get_array_elements(&jda, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
+    _: JClass,
+    fov_y: jdouble,
+    aspect: jdouble,
+    near: jdouble,
+    far: jdouble,
+    pos_arr: jni::objects::JFloatArray,
+    fwd_arr: jni::objects::JFloatArray,
+    up_arr: jni::objects::JFloatArray,
+) -> jfloatArray {
+    let pos: Vec<f32> =
+        match unsafe { env.get_array_elements(&pos_arr, jni::objects::ReleaseMode::CopyBack) } {
+            Ok(s) => s.iter().copied().collect(),
+            Err(_) => return std::ptr::null_mut(),
+        };
+    let fwd: Vec<f32> =
+        match unsafe { env.get_array_elements(&fwd_arr, jni::objects::ReleaseMode::CopyBack) } {
+            Ok(s) => s.iter().copied().collect(),
+            Err(_) => return std::ptr::null_mut(),
+        };
+    let up: Vec<f32> =
+        match unsafe { env.get_array_elements(&up_arr, jni::objects::ReleaseMode::CopyBack) } {
+            Ok(s) => s.iter().copied().collect(),
+            Err(_) => return std::ptr::null_mut(),
+        };
 
-    let jfp = unsafe { JDoubleArray::from_raw(frustum_planes) };
-    let planes_arr = match unsafe { env.get_array_elements(&jfp, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(p) => p,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    if planes_arr.len() < 24 || data.len() % 6 != 0 {
+    if pos.len() < 3 || fwd.len() < 3 || up.len() < 3 {
         return std::ptr::null_mut();
     }
 
-    let num_aabbs = data.len() / 6;
+    let frustum = frustum::frustum_from_camera(
+        fov_y as f32,
+        aspect as f32,
+        near as f32,
+        far as f32,
+        [pos[0], pos[1], pos[2]],
+        [fwd[0], fwd[1], fwd[2]],
+        [up[0], up[1], up[2]],
+    );
 
-    let mut planes = [[0.0f32; 4]; 6];
-    for i in 0..6 {
-        for j in 0..4 {
-            planes[i][j] = planes_arr[i * 4 + j] as f32;
-        }
-    }
-
-    let f32_data: Vec<f32> = data.iter().map(|&v| v as f32).collect();
-    let frustum = frustum::Frustum { planes };
-
-    let results = frustum::batch_cull_aabbs(&f32_data, num_aabbs, &frustum);
-
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
+    let flat: Vec<f32> = frustum
+        .planes
+        .iter()
+        .flat_map(|p| p.iter())
+        .copied()
+        .collect();
+    let len = flat.len() as jsize;
+    let float_array = match env.new_float_array(len) {
+        Ok(arr) => arr,
         Err(_) => return std::ptr::null_mut(),
     };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
+    let _ = env.set_float_array_region(&float_array, 0, &flat);
+    float_array.into_raw()
 }
 
 // ============================================================================
-// BULK Lighting — light level computation
+// Config — TOML load/save
 // ============================================================================
 
-/// Compute light levels from packed light data.
-///
-/// `packedLights`: byte array where each byte is (sky << 4) | block
-/// Returns: byte array with max(sky, block) per block
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_bulkComputeLightLevels(
-    mut env: JNIEnv,
-    _class: JClass,
-    packed_lights: jbyteArray,
-) -> jbyteArray {
-    let jba = unsafe { JByteArray::from_raw(packed_lights) };
-    let data = match unsafe { env.get_array_elements(&jba, jni::objects::ReleaseMode::NoCopyBack) } {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let slice = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len()) };
-    let results = lighting::compute_light_levels_par(slice);
-
-    let result_bytes: Vec<i8> = results.iter().map(|&b| b as i8).collect();
-    let result_array = match env.new_byte_array(result_bytes.len() as jsize) {
-        Ok(a) => a,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let _ = env.set_byte_array_region(&result_array, 0, &result_bytes);
-    result_array.into_raw()
-}
-
-/// Generate a lightmap texture.
-///
-/// `gamma`: gamma correction value (double)
-/// `skyBrightness`: sky brightness factor 0.0-1.0 (double)
-/// Returns: int array of 256 RGBA values
-#[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_generateLightmap(
-    mut env: JNIEnv,
-    _class: JClass,
-    gamma: jdouble,
-    sky_brightness: jdouble,
-) -> jni::sys::jintArray {
-    let lightmap = lighting::generate_lightmap(gamma as f32, sky_brightness as f32);
-    let mut result: Vec<i32> = lightmap.iter().map(|&[r, g, b, a]| {
-        ((a as i32) << 24) | ((r as i32) << 16) | ((g as i32) << 8) | (b as i32)
-    }).collect();
-
-    let result_array = match env.new_int_array(result.len() as jsize) {
-        Ok(a) => a,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let _ = env.set_int_array_region(&result_array, 0, &result);
-    result_array.into_raw()
-}
-
-// ============================================================================
-// Config Engine — TOML parse/serialize with comment preservation
-// ============================================================================
-
-/// Load a TOML file and return a flattened JSON string.
-///
-/// JSON format: `{"section.key": value, "__comment__:section.key": "comment", ...}`
-/// Returns empty string on failure.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configLoad(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
-) -> jni::sys::jstring {
+) -> jstring {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return env.new_string("").unwrap().into_raw(),
@@ -436,9 +225,6 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configLoad(
     }
 }
 
-/// Save a flattened JSON map to a TOML file (full rewrite, preserves comments from JSON).
-///
-/// Returns `true` on success.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSave(
     mut env: JNIEnv,
@@ -462,9 +248,6 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSave(
     }
 }
 
-/// Save a flattened JSON map to a TOML file (merge mode, preserves existing comments).
-///
-/// Returns `true` on success.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSaveMerge(
     mut env: JNIEnv,
@@ -488,7 +271,6 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSaveMerge(
     }
 }
 
-/// Check if a key exists in a TOML file.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configContains(
     mut env: JNIEnv,
@@ -512,16 +294,13 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configContains(
     }
 }
 
-/// Get a value from a TOML file as a JSON string.
-///
-/// Returns "null" if the key doesn't exist.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configGetValue(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     key: JString,
-) -> jni::sys::jstring {
+) -> jstring {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return env.new_string("null").unwrap().into_raw(),
@@ -531,13 +310,10 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configGetValue(
         Err(_) => return env.new_string("null").unwrap().into_raw(),
     };
 
-    let result = config::get_value(&path_str, &key_str);
-    env.new_string(&result).unwrap().into_raw()
+    let val = config::get_value(&path_str, &key_str);
+    env.new_string(&val).unwrap().into_raw()
 }
 
-/// Remove a key from a TOML file.
-///
-/// Returns `true` if the key was removed.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configRemove(
     mut env: JNIEnv,
@@ -561,9 +337,6 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configRemove(
     }
 }
 
-/// Clear all entries from a TOML file.
-///
-/// Returns `true` on success.
 #[no_mangle]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configClear(
     mut env: JNIEnv,

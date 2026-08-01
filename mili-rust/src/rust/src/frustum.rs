@@ -28,52 +28,28 @@ impl Frustum {
         let mut planes = [[0.0f32; 4]; 6];
 
         // Left plane: row 3 + row 0
-        planes[PLANE_LEFT] = normalize_plane([
-            m[3] + m[0],
-            m[7] + m[4],
-            m[11] + m[8],
-            m[15] + m[12],
-        ]);
+        planes[PLANE_LEFT] =
+            normalize_plane([m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]]);
 
         // Right plane: row 3 - row 0
-        planes[PLANE_RIGHT] = normalize_plane([
-            m[3] - m[0],
-            m[7] - m[4],
-            m[11] - m[8],
-            m[15] - m[12],
-        ]);
+        planes[PLANE_RIGHT] =
+            normalize_plane([m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]]);
 
         // Bottom plane: row 3 + row 1
-        planes[PLANE_BOTTOM] = normalize_plane([
-            m[3] + m[1],
-            m[7] + m[5],
-            m[11] + m[9],
-            m[15] + m[13],
-        ]);
+        planes[PLANE_BOTTOM] =
+            normalize_plane([m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]]);
 
         // Top plane: row 3 - row 1
-        planes[PLANE_TOP] = normalize_plane([
-            m[3] - m[1],
-            m[7] - m[5],
-            m[11] - m[9],
-            m[15] - m[13],
-        ]);
+        planes[PLANE_TOP] =
+            normalize_plane([m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]]);
 
         // Near plane: row 3 + row 2
-        planes[PLANE_NEAR] = normalize_plane([
-            m[3] + m[2],
-            m[7] + m[6],
-            m[11] + m[10],
-            m[15] + m[14],
-        ]);
+        planes[PLANE_NEAR] =
+            normalize_plane([m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]]);
 
         // Far plane: row 3 - row 2
-        planes[PLANE_FAR] = normalize_plane([
-            m[3] - m[2],
-            m[7] - m[6],
-            m[11] - m[10],
-            m[15] - m[14],
-        ]);
+        planes[PLANE_FAR] =
+            normalize_plane([m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]]);
 
         Frustum { planes }
     }
@@ -96,7 +72,15 @@ impl Frustum {
     /// that is most opposite to the plane normal. If that corner is outside,
     /// the entire AABB is outside.
     #[inline(always)]
-    pub fn test_aabb(&self, min_x: f32, min_y: f32, min_z: f32, max_x: f32, max_y: f32, max_z: f32) -> bool {
+    pub fn test_aabb(
+        &self,
+        min_x: f32,
+        min_y: f32,
+        min_z: f32,
+        max_x: f32,
+        max_y: f32,
+        max_z: f32,
+    ) -> bool {
         for plane in &self.planes {
             let px = if plane[0] > 0.0 { min_x } else { max_x };
             let py = if plane[1] > 0.0 { min_y } else { max_y };
@@ -127,7 +111,12 @@ impl Frustum {
 fn normalize_plane(plane: [f32; 4]) -> [f32; 4] {
     let len = (plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]).sqrt();
     if len > 0.0 {
-        [plane[0] / len, plane[1] / len, plane[2] / len, plane[3] / len]
+        [
+            plane[0] / len,
+            plane[1] / len,
+            plane[2] / len,
+            plane[3] / len,
+        ]
     } else {
         plane
     }
@@ -155,7 +144,12 @@ pub fn batch_cull_spheres(
         let mut results = vec![0u8; num_spheres];
         for i in 0..num_spheres {
             let base = i * 3;
-            results[i] = frustum.test_sphere(centers[base], centers[base + 1], centers[base + 2], radii[i]) as u8;
+            results[i] = frustum.test_sphere(
+                centers[base],
+                centers[base + 1],
+                centers[base + 2],
+                radii[i],
+            ) as u8;
         }
         return results;
     }
@@ -164,7 +158,12 @@ pub fn batch_cull_spheres(
         .into_par_iter()
         .map(|i| {
             let base = i * 3;
-            frustum.test_sphere(centers[base], centers[base + 1], centers[base + 2], radii[i]) as u8
+            frustum.test_sphere(
+                centers[base],
+                centers[base + 1],
+                centers[base + 2],
+                radii[i],
+            ) as u8
         })
         .collect()
 }
@@ -176,11 +175,7 @@ pub fn batch_cull_spheres(
 /// * `num_aabbs` — number of AABBs
 ///
 /// Returns Vec<u8> where 1 = visible, 0 = culled.
-pub fn batch_cull_aabbs(
-    aabbs: &[f32],
-    num_aabbs: usize,
-    frustum: &Frustum,
-) -> Vec<u8> {
+pub fn batch_cull_aabbs(aabbs: &[f32], num_aabbs: usize, frustum: &Frustum) -> Vec<u8> {
     if num_aabbs == 0 {
         return Vec::new();
     }
@@ -293,21 +288,57 @@ pub fn frustum_from_camera(
         camera_pos[2] + camera_fwd[2] * far,
     ];
 
-    // Build planes from 3 points each
+    // Far plane corners
+    let fh = far * tan_v;
+    let fw = fh * aspect;
+    let ftl = [
+        fc[0] + camera_up[0] * fh - right[0] * fw,
+        fc[1] + camera_up[1] * fh - right[1] * fw,
+        fc[2] + camera_up[2] * fh - right[2] * fw,
+    ];
+    let ftr = [
+        fc[0] + camera_up[0] * fh + right[0] * fw,
+        fc[1] + camera_up[1] * fh + right[1] * fw,
+        fc[2] + camera_up[2] * fh + right[2] * fw,
+    ];
+    let fbl = [
+        fc[0] - camera_up[0] * fh - right[0] * fw,
+        fc[1] - camera_up[1] * fh - right[1] * fw,
+        fc[2] - camera_up[2] * fh - right[2] * fw,
+    ];
+
+    // Build planes from 3 points each — all points must lie ON the plane
     let mut planes = [[0.0f32; 4]; 6];
 
-    // Near plane
-    planes[PLANE_NEAR] = plane_from_points(camera_pos, ntl, ntr);
-    // Far plane
-    planes[PLANE_FAR] = plane_from_points(fc, nbr, nbl);
-    // Left plane
+    // Near plane: 3 near-plane corners
+    planes[PLANE_NEAR] = plane_from_points(ntl, ntr, nbl);
+    // Far plane: 3 far-plane corners
+    planes[PLANE_FAR] = plane_from_points(ftl, ftr, fbl);
+    // Left plane: camera_pos + 2 near corners on left edge
     planes[PLANE_LEFT] = plane_from_points(camera_pos, nbl, ntl);
-    // Right plane
+    // Right plane: camera_pos + 2 near corners on right edge
     planes[PLANE_RIGHT] = plane_from_points(camera_pos, ntr, nbr);
-    // Top plane
-    planes[PLANE_TOP] = plane_from_points(camera_pos, ntl, nbl);
-    // Bottom plane
-    planes[PLANE_BOTTOM] = plane_from_points(camera_pos, nbr, ntr);
+    // Top plane: camera_pos + 2 near corners on top edge
+    planes[PLANE_TOP] = plane_from_points(camera_pos, ntl, ntr);
+    // Bottom plane: camera_pos + 2 near corners on bottom edge
+    planes[PLANE_BOTTOM] = plane_from_points(camera_pos, nbr, nbl);
+
+    // Ensure all plane normals point inward (positive half-space = inside).
+    // Use frustum center as the known interior point.
+    let center = [
+        camera_pos[0] + camera_fwd[0] * (near + far) * 0.5,
+        camera_pos[1] + camera_fwd[1] * (near + far) * 0.5,
+        camera_pos[2] + camera_fwd[2] * (near + far) * 0.5,
+    ];
+    for plane in &mut planes {
+        let dot = plane[0] * center[0] + plane[1] * center[1] + plane[2] * center[2] + plane[3];
+        if dot < 0.0 {
+            plane[0] = -plane[0];
+            plane[1] = -plane[1];
+            plane[2] = -plane[2];
+            plane[3] = -plane[3];
+        }
+    }
 
     Frustum { planes }
 }
@@ -342,10 +373,7 @@ mod tests {
     fn test_frustum_from_matrix() {
         // Simple orthographic matrix
         let m = [
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
         ];
         let frustum = Frustum::from_matrix(&m);
         // Origin should be inside
@@ -356,11 +384,11 @@ mod tests {
     fn test_sphere_culling() {
         let frustum = Frustum {
             planes: [
-                [1.0, 0.0, 0.0, 0.0],  // x >= 0
+                [1.0, 0.0, 0.0, 0.0],   // x >= 0
                 [-1.0, 0.0, 0.0, 10.0], // x <= 10
-                [0.0, 1.0, 0.0, 0.0],  // y >= 0
+                [0.0, 1.0, 0.0, 0.0],   // y >= 0
                 [0.0, -1.0, 0.0, 10.0], // y <= 10
-                [0.0, 0.0, 1.0, 0.0],  // z >= 0
+                [0.0, 0.0, 1.0, 0.0],   // z >= 0
                 [0.0, 0.0, -1.0, 10.0], // z <= 10
             ],
         };
@@ -392,10 +420,7 @@ mod tests {
 
     #[test]
     fn test_batch_cull_spheres() {
-        let centers = vec![
-            5.0, 5.0, 5.0,
-            -5.0, 5.0, 5.0,
-        ];
+        let centers = vec![5.0, 5.0, 5.0, -5.0, 5.0, 5.0];
         let radii = vec![1.0, 1.0];
         let frustum = Frustum {
             planes: [
@@ -417,7 +442,7 @@ mod tests {
     fn test_frustum_from_camera() {
         let frustum = frustum_from_camera(
             std::f32::consts::PI / 4.0, // 45 degree FOV
-            16.0 / 9.0, // aspect ratio
+            16.0 / 9.0,                 // aspect ratio
             0.1,
             1000.0,
             [0.0, 0.0, 0.0],

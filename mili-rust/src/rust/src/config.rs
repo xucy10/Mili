@@ -57,7 +57,10 @@ fn flatten_table(table: &toml_edit::Table, prefix: String, map: &mut Map<String,
     if !prefix.is_empty() {
         let comment = extract_table_comment(table);
         if !comment.is_empty() {
-            map.insert(format!("{}{}", COMMENT_PREFIX, prefix), Value::String(comment));
+            map.insert(
+                format!("{}{}", COMMENT_PREFIX, prefix),
+                Value::String(comment),
+            );
         }
     }
 
@@ -173,7 +176,9 @@ fn toml_value_to_json(value: &toml_edit::Value) -> Option<Value> {
     if value.is_str() {
         Some(Value::String(value.as_str().unwrap_or("").to_string()))
     } else if value.is_integer() {
-        Some(Value::Number(serde_json::Number::from(value.as_integer().unwrap_or(0))))
+        Some(Value::Number(serde_json::Number::from(
+            value.as_integer().unwrap_or(0),
+        )))
     } else if value.is_float() {
         let f = value.as_float().unwrap_or(0.0);
         serde_json::Number::from_f64(f).map(Value::Number)
@@ -181,10 +186,7 @@ fn toml_value_to_json(value: &toml_edit::Value) -> Option<Value> {
         Some(Value::Bool(value.as_bool().unwrap_or(false)))
     } else if value.is_array() {
         let arr = value.as_array().unwrap();
-        let json_arr: Vec<Value> = arr
-            .iter()
-            .filter_map(|v| toml_value_to_json(v))
-            .collect();
+        let json_arr: Vec<Value> = arr.iter().filter_map(|v| toml_value_to_json(v)).collect();
         Some(Value::Array(json_arr))
     } else if value.is_inline_table() {
         let tbl = value.as_inline_table().unwrap();
@@ -281,7 +283,8 @@ impl ConfigNode {
                 // Update existing entry
                 self.children[pos].1 = ConfigEntry::Value(value, comment.clone());
             } else {
-                self.children.push((key, ConfigEntry::Value(value, comment.clone())));
+                self.children
+                    .push((key, ConfigEntry::Value(value, comment.clone())));
             }
             return;
         }
@@ -519,11 +522,7 @@ fn set_value_in_document(
 }
 
 /// Set a comment at a dot-separated path in a TOML document.
-fn set_comment_in_document(
-    doc: &mut toml_edit::DocumentMut,
-    path: &str,
-    comment: &str,
-) {
+fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment: &str) {
     let parts: Vec<&str> = path.split('.').collect();
     if parts.is_empty() {
         return;
@@ -733,13 +732,19 @@ update_interval = 15
         let parsed: Value = serde_json::from_str(&json).expect("Failed to parse JSON");
         let map = parsed.as_object().expect("Expected JSON object");
 
-        assert_eq!(map.get("optimizations.simd_enabled"), Some(&Value::Bool(true)));
+        assert_eq!(
+            map.get("optimizations.simd_enabled"),
+            Some(&Value::Bool(true))
+        );
         assert_eq!(
             map.get("optimizations.thread_count"),
             Some(&Value::Number(serde_json::Number::from(4)))
         );
         assert_eq!(map.get("fixes.collision_fix"), Some(&Value::Bool(true)));
-        assert_eq!(map.get("function.tpsbar.enabled"), Some(&Value::Bool(false)));
+        assert_eq!(
+            map.get("function.tpsbar.enabled"),
+            Some(&Value::Bool(false))
+        );
         assert_eq!(
             map.get("function.tpsbar.format"),
             Some(&Value::String("TPS: <tps>".to_string()))
@@ -790,8 +795,14 @@ update_interval = 15
         // Build a JSON map
         let mut map = Map::new();
         map.insert("section.enabled".to_string(), Value::Bool(true));
-        map.insert("section.count".to_string(), Value::Number(serde_json::Number::from(42)));
-        map.insert("section.name".to_string(), Value::String("test".to_string()));
+        map.insert(
+            "section.count".to_string(),
+            Value::Number(serde_json::Number::from(42)),
+        );
+        map.insert(
+            "section.name".to_string(),
+            Value::String("test".to_string()),
+        );
         map.insert(
             format!("{}section.enabled", COMMENT_PREFIX),
             Value::String("Enable feature".to_string()),
@@ -843,17 +854,29 @@ name = "Mili"
 
         // Merge: update port, add new key, keep comments
         let mut map = Map::new();
-        map.insert("server.port".to_string(), Value::Number(serde_json::Number::from(19132)));
-        map.insert("server.max_players".to_string(), Value::Number(serde_json::Number::from(100)));
+        map.insert(
+            "server.port".to_string(),
+            Value::Number(serde_json::Number::from(19132)),
+        );
+        map.insert(
+            "server.max_players".to_string(),
+            Value::Number(serde_json::Number::from(100)),
+        );
         let json = serde_json::to_string(&Value::Object(map)).unwrap();
 
         assert!(save_config_merge(tmp.to_str().unwrap(), &json));
 
         // Read back and verify comments are preserved
         let content = std::fs::read_to_string(&tmp).unwrap();
-        assert!(content.contains("# Port number"), "Comment should be preserved");
+        assert!(
+            content.contains("# Port number"),
+            "Comment should be preserved"
+        );
         assert!(content.contains("port = 19132"), "Value should be updated");
-        assert!(content.contains("max_players = 100"), "New key should be added");
+        assert!(
+            content.contains("max_players = 100"),
+            "New key should be added"
+        );
 
         // Clean up
         let _ = std::fs::remove_file(&tmp);
@@ -864,8 +887,14 @@ name = "Mili"
         let tmp = std::env::temp_dir().join("mili_config_test_contains.toml");
         std::fs::write(&tmp, SAMPLE_TOML).unwrap();
 
-        assert!(contains_key(tmp.to_str().unwrap(), "optimizations.simd_enabled"));
-        assert!(contains_key(tmp.to_str().unwrap(), "function.tpsbar.format"));
+        assert!(contains_key(
+            tmp.to_str().unwrap(),
+            "optimizations.simd_enabled"
+        ));
+        assert!(contains_key(
+            tmp.to_str().unwrap(),
+            "function.tpsbar.format"
+        ));
         assert!(!contains_key(tmp.to_str().unwrap(), "nonexistent.key"));
 
         let _ = std::fs::remove_file(&tmp);
@@ -893,9 +922,18 @@ name = "Mili"
         let tmp = std::env::temp_dir().join("mili_config_test_remove.toml");
         std::fs::write(&tmp, SAMPLE_TOML).unwrap();
 
-        assert!(remove_key(tmp.to_str().unwrap(), "optimizations.simd_enabled"));
-        assert!(!contains_key(tmp.to_str().unwrap(), "optimizations.simd_enabled"));
-        assert!(contains_key(tmp.to_str().unwrap(), "optimizations.thread_count"));
+        assert!(remove_key(
+            tmp.to_str().unwrap(),
+            "optimizations.simd_enabled"
+        ));
+        assert!(!contains_key(
+            tmp.to_str().unwrap(),
+            "optimizations.simd_enabled"
+        ));
+        assert!(contains_key(
+            tmp.to_str().unwrap(),
+            "optimizations.thread_count"
+        ));
 
         let _ = std::fs::remove_file(&tmp);
     }
