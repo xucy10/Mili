@@ -1,5 +1,3 @@
-<div align="center">
-  <img src="./public/image/lophine/lophine3.png" alt="Mili Logo" width="300">
 
   # Mili（米粒）
 
