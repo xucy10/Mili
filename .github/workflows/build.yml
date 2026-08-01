@@ -72,7 +72,7 @@ jobs:
 
       - name: Configure Git User Details
         run: |
-          git config --global user.email "xucy@Mili.com"
+          git config --global user.email "282142033+xucy10@users.noreply.github.com"
           git config --global user.name "Mili CI"
           git config --global advice.mergeConflict false
           git config --global init.defaultBranch main
@@ -82,10 +82,10 @@ jobs:
           echo "=== Pre-clean state ==="
           rm -rf mili-server/build mili-api/build
           rm -rf mili-server/src/minecraft
-          find . -type d -name "taskCache" -path "*/paperweight/*" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf .gradle/caches/paperweight
           rm -rf .gradle/configuration-cache
           echo "=== Post-clean state ==="
-          echo "Preserving .gradle/caches/paperweight for paperweight git upstream integrity"
+          echo "Cleaned paperweight cache to ensure fresh upstream checkout"
 
       - name: Download Hyacinthusclip
         run: |
