@@ -27,6 +27,7 @@ Minecraft（原版）
 ```
 
 > Mili 原为 Lophine/Luminol 的衍生分支，现已迁移为直接基于 Folia，将 Luminol 的优化源码内联合并。
+> Luminol已在与canvas的争吵中删库，因canvas在抄袭Luminol的代码时未署名（甚至一个有bug的补丁他们在移除署名后就直接复制粘贴到canvas上）
 
 ---
 
@@ -257,9 +258,9 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 | Folia（直接上游） | https://github.com/PaperMC/Folia |
 | Paper | https://github.com/PaperMC/Paper |
 | LeavesMC（大量特性来源） | https://github.com/LeavesMC/Leaves |
-| Lophine（原直接上游） | https://github.com/LuminolMC/Lophine |
-| Luminol | https://github.com/LuminolMC/Luminol |
-| Hyacinthusweight 补丁系统 | https://github.com/LuminolMC/Hyacinthusweight |
+| Lophine（原直接上游） | https://github.com/LuminolMC/Lophine | ``` 由原开发者继续开发，在github搜索即可 ```
+| Luminol | https://github.com/LuminolMC/Luminol | ``` 已删库 ```
+| Hyacinthusweight 补丁系统 | https://github.com/LuminolMC/Hyacinthusweight | ``` 已删库 ```
 
 ---
 
