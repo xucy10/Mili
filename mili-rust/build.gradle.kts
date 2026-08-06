@@ -13,35 +13,18 @@ dependencies {
 
 // --- Cargo cross-compile for Rust JNI library (all platforms) ---
 
-// Target triples for cross-compilation
-val rustTargets = listOf(
-    "x86_64-pc-windows-gnu",   // Windows x86_64
-    "x86_64-unknown-linux-gnu", // Linux x86_64
-    "aarch64-unknown-linux-gnu",// Linux aarch64
-    "aarch64-apple-darwin",     // macOS aarch64 (Apple Silicon)
-    "x86_64-apple-darwin"       // macOS x86_64
-)
-
-// Map target triple to (libPrefix, libExt, stagedFileName)
-data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
-
-val nativeTargets = listOf(
-    NativeTarget("x86_64-pc-windows-gnu", "", "dll", "mili_optimizer.dll"),
-    NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
-    NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
-    NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
-    NativeTarget("x86_64-apple-darwin", "lib", "dylib", "libmili_optimizer_x86_64.dylib")
-)
-
-val cargoTargetDir = layout.buildDirectory.dir("cargo-target").get().asFile
-val rustBuildDir = layout.buildDirectory.dir("rust").get().asFile
-
-// Add Rust targets via rustup (best-effort, continues if it fails)
-val addRustTargets = tasks.register("addRustTargets") {
+tasks.register("addRustTargets") {
     group = "build"
     description = "Adds Rust cross-compilation targets via rustup"
     doLast {
-        for (target in rustTargets) {
+        val targets = listOf(
+            "x86_64-pc-windows-gnu",
+            "x86_64-unknown-linux-gnu",
+            "aarch64-unknown-linux-gnu",
+            "aarch64-apple-darwin",
+            "x86_64-apple-darwin"
+        )
+        for (target in targets) {
             val proc = ProcessBuilder("rustup", "target", "add", target).apply {
                 redirectErrorStream(true)
                 directory(layout.projectDirectory.dir("src/rust").asFile)
@@ -57,39 +40,85 @@ val addRustTargets = tasks.register("addRustTargets") {
     }
 }
 
-// Cross-compile for each target using cargo-zigbuild (falls back to cargo on failure)
-val cargoBuildAll = tasks.register("buildRustBinariesAll") {
+tasks.register("buildRustBinariesAll") {
     group = "build"
     description = "Cross-compiles Rust JNI library for all platforms"
-    dependsOn(addRustTargets)
+    dependsOn("addRustTargets")
 
-    inputs.files(fileTree(layout.projectDirectory.dir("src/rust")) { include("**/*") })
+    val rustSrcDir = layout.projectDirectory.dir("src/rust").asFile
+    val cargoTargetDir = layout.buildDirectory.dir("cargo-target").get().asFile
+
+    inputs.files(fileTree(rustSrcDir) { include("**/*") })
     outputs.dir(cargoTargetDir)
 
     doLast {
+        data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
+
+        val nativeTargets = listOf(
+            NativeTarget("x86_64-pc-windows-gnu", "", "dll", "mili_optimizer.dll"),
+            NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
+            NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
+            NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
+            NativeTarget("x86_64-apple-darwin", "lib", "dylib", "libmili_optimizer_x86_64.dylib")
+        )
+
         // Detect available cargo subcommand: prefer zigbuild, fall back to build
         val useZigbuild = try {
             val probe = ProcessBuilder("cargo", "zigbuild", "--version").apply {
                 redirectErrorStream(true)
-                directory(layout.projectDirectory.dir("src/rust").asFile)
+                directory(rustSrcDir)
             }.start()
             probe.inputStream.bufferedReader().readText()
             probe.waitFor() == 0
         } catch (e: Exception) {
             false
         }
+
+        // If cargo-zigbuild not on PATH, try to find it in ~/.cargo/bin
+        var cargoCmd = "cargo"
         val subcommand = if (useZigbuild) "zigbuild" else "build"
+        if (!useZigbuild) {
+            // Check common cargo bin locations
+            val homeDir = System.getProperty("user.home")
+            val cargoBin = File(homeDir, ".cargo/bin/cargo-zigbuild")
+            if (cargoBin.exists() && cargoBin.canExecute()) {
+                logger.lifecycle("Found cargo-zigbuild at ${cargoBin.absolutePath}")
+                // Use cargo with explicit zigbuild subcommand - cargo finds installed extensions
+            }
+            // Also check if PATH has cargo bin
+            val pathEnv = System.getenv("PATH") ?: ""
+            if (!pathEnv.contains(".cargo/bin")) {
+                val cargoBinDir = File(homeDir, ".cargo/bin")
+                if (cargoBinDir.isDirectory) {
+                    // Prepend cargo bin to PATH for subsequent processes
+                    val newPath = cargoBinDir.absolutePath + File.pathSeparator + pathEnv
+                    // We can't easily modify the process environment for all subsequent calls,
+                    // but we can set it per-process
+                }
+            }
+        }
+
         logger.lifecycle("Using cargo $subcommand for cross-compilation (zigbuild available: $useZigbuild)")
 
         for (nt in nativeTargets) {
             logger.lifecycle("Building Rust target: ${nt.target}")
-            val proc = ProcessBuilder(
-                "cargo", subcommand, "--release", "--lib", "--target", nt.target
-            ).apply {
+            val pb = ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
                 redirectErrorStream(true)
-                directory(layout.projectDirectory.dir("src/rust").asFile)
+                directory(rustSrcDir)
                 environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
-            }.start()
+            }
+
+            // Ensure ~/.cargo/bin is in PATH for cargo subcommands
+            val homeDir = System.getProperty("user.home")
+            val cargoBinDir = File(homeDir, ".cargo/bin")
+            if (cargoBinDir.isDirectory) {
+                val currentPath = pb.environment().get("PATH") ?: ""
+                if (!currentPath.contains(cargoBinDir.absolutePath)) {
+                    pb.environment()["PATH"] = cargoBinDir.absolutePath + File.pathSeparator + currentPath
+                }
+            }
+
+            val proc = pb.start()
             val output = proc.inputStream.bufferedReader().readText()
             val exitCode = proc.waitFor()
             if (exitCode != 0) {
@@ -101,15 +130,27 @@ val cargoBuildAll = tasks.register("buildRustBinariesAll") {
     }
 }
 
-val stageRustBinary = tasks.register("stageRustBinary") {
+tasks.register("stageRustBinary") {
     group = "build"
     description = "Stages all Rust JNI libraries into build directory"
+    dependsOn("buildRustBinariesAll")
 
-    dependsOn(cargoBuildAll)
+    val cargoTargetDir = layout.buildDirectory.dir("cargo-target").get().asFile
+    val rustBuildDir = layout.buildDirectory.dir("rust").get().asFile
 
     outputs.dir(rustBuildDir)
 
     doLast {
+        data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
+
+        val nativeTargets = listOf(
+            NativeTarget("x86_64-pc-windows-gnu", "", "dll", "mili_optimizer.dll"),
+            NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
+            NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
+            NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
+            NativeTarget("x86_64-apple-darwin", "lib", "dylib", "libmili_optimizer_x86_64.dylib")
+        )
+
         rustBuildDir.mkdirs()
 
         for (nt in nativeTargets) {
@@ -146,10 +187,8 @@ val stageRustBinary = tasks.register("stageRustBinary") {
 }
 
 tasks.named<Jar>("jar") {
-    dependsOn(stageRustBinary)
-    // Include compiled Java classes
+    dependsOn("stageRustBinary")
     from(sourceSets.main.get().output)
-    // Include all Rust binaries in the jar alongside compiled Java classes
     from(layout.buildDirectory.dir("rust")) {
         into("rust")
         includeEmptyDirs = false
@@ -157,5 +196,5 @@ tasks.named<Jar>("jar") {
 }
 
 tasks.named("processResources") {
-    dependsOn(stageRustBinary)
+    dependsOn("stageRustBinary")
 }

@@ -58,14 +58,16 @@ jobs:
           version: 0.13.0
 
       - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild --locked
+        run: |
+          cargo install cargo-zigbuild --locked
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Verify Toolchain
         run: |
           rustc --version
           cargo --version
           zig version
-          cargo zigbuild --version || true
+          cargo zigbuild --version || echo "WARN: cargo-zigbuild not found on PATH"
           rustup target list --installed
 
       # 核心改动：优化 Gradle 缓存配置
@@ -150,7 +152,7 @@ jobs:
           echo "Total CIS source files: ${COUNT}"
 
       - name: Build Rust Optimizer
-        run: ./gradlew :mili-rust:stageRustBinary
+        run: ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
 
       - name: Verify Rust Optimizer Binary
         run: |
