@@ -258,9 +258,9 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 | Folia（直接上游） | https://github.com/PaperMC/Folia |
 | Paper | https://github.com/PaperMC/Paper |
 | LeavesMC（大量特性来源） | https://github.com/LeavesMC/Leaves |
-| Lophine（原直接上游） | https://github.com/LuminolMC/Lophine | 由原开发者继续开发，在github搜索即可 
-| Luminol | https://github.com/LuminolMC/Luminol | 已删库 
-| Hyacinthusweight 补丁系统 | https://github.com/LuminolMC/Hyacinthusweight | 已删库 
+| Lophine（原直接上游） | https://github.com/LuminolMC/Lophine 由原开发者继续开发，在github搜索即可 |
+| Luminol | https://github.com/LuminolMC/Luminol 已删库 |
+| Hyacinthusweight 补丁系统 | https://github.com/LuminolMC/Hyacinthusweight 已删库 | 
 
 ---
 
