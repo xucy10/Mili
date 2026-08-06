@@ -10,11 +10,11 @@ on:
   workflow_dispatch:
     inputs:
       force-release:
-        description: "Force disable release if you enter 2, force release if you enter 1, default release if not released else skip release"
+        description: "Force release control"
         required: false
         default: ""
       force-push:
-        description: "Force disable push to repo if you enter 2, force push to repo if you enter 1, default push if not released else skip push repo"
+        description: "Force push control"
         required: false
         default: ""
       comments:
@@ -28,13 +28,152 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
+  build-and-cross:
     runs-on: ubuntu-latest
-    environment: default
-    timeout-minutes: 60
+    timeout-minutes: 120
+    env:
+      # Add the Rust targets you want to produce on this runner
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,aarch64-apple-darwin,x86_64-apple-darwin
     steps:
-      - name: Checkout Git Repository
+      - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Set up Rust toolchain (add all targets; linkers installed later)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install system cross toolchains and build deps (mingw, aarch64, lld, clang)
+        run: |
+          sudo apt-get update
+          # mingw for Windows linking
+          sudo apt-get install -y mingw-w64
+          # cross gcc for aarch64 linux
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          # linkers/clang/lld
+          sudo apt-get install -y clang lld build-essential pkg-config curl git
+          # (optional) additional tools
+          sudo apt-get install -y libssl-dev zlib1g-dev
+
+      - name: Install cargo-zigbuild and add cargo bin to PATH
+        run: |
+          cargo install cargo-zigbuild --locked || true
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Optionally install osxcross (for macOS cross-compilation)
+        # This step will be a no-op if you haven't set the OSX_SDK_BASE64 secret.
+        run: |
+          set -eux
+          # Expect a base64-encoded tar.xz of a MacOSX*.sdk (e.g. MacOSX12.6.sdk.tar.xz)
+          if [ -z "${{ secrets.OSX_SDK_BASE64 }}" ]; then
+            echo "No OSX_SDK_BASE64 secret provided; skipping osxcross install. To cross-build macOS, add SDK as secret OSX_SDK_BASE64."
+            exit 0
+          fi
+
+          # Prepare osxcross
+          sudo apt-get install -y cmake nasm
+          git clone https://github.com/tpoechtrager/osxcross /opt/osxcross
+          mkdir -p /opt/osxcross/tarballs
+          # Decode SDK tarball secret into tar.xz and move into tarballs folder.
+          echo "${{ secrets.OSX_SDK_BASE64 }}" | base64 -d > /tmp/OSX_SDK.tar.xz
+          mv /tmp/OSX_SDK.tar.xz /opt/osxcross/tarballs/
+          cd /opt/osxcross
+          # install dependencies (script may be no-op on some runners)
+          ./tools/get_dependencies.sh || true
+          # Build osxcross toolchain (UNATTENDED avoids interactive prompts)
+          UNATTENDED=1 SDK_VERSION=MacOSX ./build.sh || ( echo "osxcross build failed"; exit 1 )
+          # add osxcross toolchain to PATH
+          echo "/opt/osxcross/target/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Verify toolchain and linkers
+        run: |
+          rustc --version
+          cargo --version
+          zig version || true
+          # cargo-zigbuild may be installed; if not, warn but continue
+          if command -v cargo-zigbuild >/dev/null 2>&1; then
+            cargo-zigbuild --version || true
+          else
+            echo "WARN: cargo-zigbuild not available - Gradle may fallback to cargo native build"
+          fi
+          # check mingw and aarch64 GCC
+          which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
+          which aarch64-linux-gnu-gcc || echo "aarch64 cross-gcc not found in PATH"
+          # check osxcross clang if installed
+          if [ -d /opt/osxcross ]; then
+            which o64-clang || which o64-clang-12 || echo "osxcross clang not found"
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Configure Git User Details
+        run: |
+          git config --global user.email "282142033+xucy10@users.noreply.github.com"
+          git config --global user.name "Mili CI"
+          git config --global advice.mergeConflict false
+          git config --global init.defaultBranch main
+
+      - name: Clean build artifacts
+        run: |
+          rm -rf mili-server/build mili-api/build
+          rm -rf mili-server/src/minecraft
+          rm -rf .gradle/caches/paperweight
+          rm -rf .gradle/configuration-cache
+
+      - name: Build Rust Optimizer (cross targets)
+        # We rely on the Gradle task :mili-rust:stageRustBinary to detect cargo-zigbuild and zig.
+        # Gradle plugin should prefer 'cargo zigbuild' if available; otherwise we set environment
+        # variables so linkers are found.
+        env:
+          # tell cargo/cross/gradle which targets to attempt
+          RUST_TARGETS: ${{ env.RUST_TARGETS }}
+          # If osxcross installed, set SDKROOT like this; gradle/cargo build steps may pick it up.
+          OSX_SDKROOT: /opt/osxcross/target/SDK/MacOSX.sdk || true
+        run: |
+          set -eux
+          # make sure PATH contains mingw and osxcross toolchain binaries (if present)
+          export PATH="$PATH:$HOME/.cargo/bin:/opt/osxcross/target/bin"
+          # Optional: set CC for cross targets so cargo picks the right compiler
+          export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc || true
+          export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc || true
+          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+          # If using cargo-zigbuild, cargo-zigbuild will use zig as linker if set up.
+          ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
+
+      - name: Verify Rust Optimizer Binary
+        run: |
+          if [ -f "mili-rust/build/rust/mili_optimizer.so" ]; then
+            echo "Rust optimizer binary exists"
+            ls -la mili-rust/build/rust || true
+          else
+            echo "Rust optimizer binary missing; list build output"
+            ls -la mili-rust/build || true
+            exit 1
+          fi
+
+      # continue with the rest of your original pipeline (paperclip build etc.)
+      - name: Build Paperclip Jar
+        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
