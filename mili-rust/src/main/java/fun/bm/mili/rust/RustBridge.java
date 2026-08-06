@@ -28,8 +28,8 @@ public final class RustBridge {
         String os = System.getProperty("os.name").toLowerCase();
         String lib;
         if (os.contains("win")) lib = "mili_optimizer.dll";
-        else if (os.contains("mac")) lib = "libmili_optimizer.dylib";
-        else lib = "libmili_optimizer.so";
+        else if (os.contains("mac")) lib = "mili_optimizer.dylib";
+        else lib = "mili_optimizer.so";
         try {
             Path tmp = Files.createTempDirectory("mili-rust-");
             tmp.toFile().deleteOnExit();
