@@ -26,20 +26,47 @@ public final class RustBridge {
     public static synchronized void load() {
         if (loaded) return;
         String os = System.getProperty("os.name").toLowerCase();
-        String lib;
-        if (os.contains("win")) lib = "mili_optimizer.dll";
-        else if (os.contains("mac")) lib = "libmili_optimizer.dylib";
-        else lib = "libmili_optimizer.so";
+        String arch = System.getProperty("os.arch").toLowerCase();
+        // Build candidate list: primary name first, then fallbacks
+        java.util.List<String> candidates = new java.util.ArrayList<>();
+        if (os.contains("win")) {
+            candidates.add("mili_optimizer.dll");
+        } else if (os.contains("mac")) {
+            if (arch.contains("aarch64") || arch.contains("arm64")) {
+                candidates.add("libmili_optimizer.dylib");
+            } else {
+                candidates.add("libmili_optimizer_x86_64.dylib");
+                candidates.add("libmili_optimizer.dylib");
+            }
+        } else {
+            // Linux
+            if (arch.contains("aarch64") || arch.contains("arm64")) {
+                candidates.add("libmili_optimizer_aarch64.so");
+            } else {
+                candidates.add("libmili_optimizer.so");
+            }
+        }
         try {
             Path tmp = Files.createTempDirectory("mili-rust-");
             tmp.toFile().deleteOnExit();
-            Path dst = tmp.resolve(lib);
-            try (InputStream is = RustBridge.class.getResourceAsStream("/rust/" + lib)) {
-                if (is == null) throw new UnsatisfiedLinkError("Native library not found: /rust/" + lib);
-                Files.copy(is, dst, StandardCopyOption.REPLACE_EXISTING);
+            UnsatisfiedLinkError lastError = null;
+            for (String lib : candidates) {
+                try (InputStream is = RustBridge.class.getResourceAsStream("/rust/" + lib)) {
+                    if (is == null) continue;
+                    Path dst = tmp.resolve(lib);
+                    Files.copy(is, dst, StandardCopyOption.REPLACE_EXISTING);
+                    System.load(dst.toAbsolutePath().toString());
+                    loaded = true;
+                    return;
+                } catch (UnsatisfiedLinkError e) {
+                    lastError = e;
+                }
             }
-            System.load(dst.toAbsolutePath().toString());
-            loaded = true;
+            throw new UnsatisfiedLinkError(
+                "Native library not found for os=" + os + " arch=" + arch +
+                " (tried: " + String.join(", ", candidates) + ")" +
+                (lastError != null ? ". Last error: " + lastError.getMessage() : "")
+            );
         } catch (IOException e) {
             throw new UnsatisfiedLinkError("Failed to extract native library: " + e.getMessage());
         }

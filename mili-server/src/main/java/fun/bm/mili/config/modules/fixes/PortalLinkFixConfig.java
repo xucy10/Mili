@@ -1,5 +1,6 @@
 package fun.bm.mili.config.modules.fixes;
 
+import fun.bm.mili.command.PortalCommand;
 import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.portal.PortalLinkListener;
 import fun.bm.mili.portal.PortalLinkManager;
@@ -33,6 +34,9 @@ public class PortalLinkFixConfig implements IConfigModule {
     @DoNotLoad
     private static PortalLinkListener listener = null;
 
+    @DoNotLoad
+    private static PortalCommand portalCommand = null;
+
     @Override
     public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         PortalLinkManager.setEnabled(enabled);
@@ -43,6 +47,10 @@ public class PortalLinkFixConfig implements IConfigModule {
             listener = new PortalLinkListener();
             listener.register();
         }
+        if (portalCommand == null) {
+            portalCommand = new PortalCommand();
+        }
+        portalCommand.register();
     }
 
     @Override
@@ -51,6 +59,9 @@ public class PortalLinkFixConfig implements IConfigModule {
         if (listener != null) {
             listener.unregister();
             listener = null;
+        }
+        if (portalCommand != null) {
+            portalCommand.unregister();
         }
     }
 }
