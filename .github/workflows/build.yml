@@ -156,13 +156,14 @@ jobs:
 
       - name: Verify Rust Optimizer Binary
         run: |
-          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/mili_optimizer.dylib" ]; then
+            if [ -f "mili-rust/build/rust/mili_optimizer.so" ]; then
             echo "Rust optimizer binary exists"
             ls -la mili-rust/build/rust
-          else
+            else
             echo "Rust optimizer binary missing"
+            ls -la mili-rust/build/ || echo "mili-rust/build directory does not exist"
             exit 1
-          fi
+            fi
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
