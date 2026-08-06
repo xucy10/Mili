@@ -1,107 +1,93 @@
 package fun.bm.mili.command;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import fun.bm.mili.utils.PlayerHeatmap;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.command.CommandContext;
+import org.leavesmc.leaves.command.RootNode;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
-public class HeatmapCommand implements CommandExecutor, TabCompleter {
+public class HeatmapCommand extends RootNode {
+    private static final String PERM_BASE = "mili.admin.heatmap";
 
-    private static final List<String> SUBCOMMANDS = List.of("reset", "export");
-
-    public void register() {
-        org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "heatmap",
-                new Command("heatmap") {
-                    @Override
-                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel,
-                                           @NotNull String[] args) {
-                        return onCommand(sender, this, commandLabel, args);
-                    }
-
-                    @Override
-                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
-                        return onTabComplete(sender, this, alias, args);
-                    }
-                });
-    }
-
-    public void unregister() {
+    public HeatmapCommand() {
+        super("heatmap", PERM_BASE);
+        children(
+                new HeatmapResetCommand(),
+                new HeatmapExportCommand()
+        );
     }
 
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("mili.admin.heatmap")) return List.of();
-        if (args.length == 1) {
-            String partial = args[0].toLowerCase();
-            return SUBCOMMANDS.stream().filter(s -> s.startsWith(partial)).toList();
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("export")) {
-            String partial = args[1].toLowerCase();
-            return Bukkit.getWorlds().stream().map(World::getName)
-                    .filter(n -> n.toLowerCase().startsWith(partial)).toList();
-        }
-        return List.of();
-    }
-
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, String[] args) {
-        if (!sender.hasPermission("mili.admin.heatmap")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
-            return true;
-        }
-
-        if (args.length == 0) {
-            sendStats(sender);
-            return true;
-        }
-
-        switch (args[0].toLowerCase()) {
-            case "reset" -> {
-                PlayerHeatmap.reset();
-                sender.sendMessage(ChatColor.GREEN + "Heatmap data reset.");
-            }
-            case "export" -> {
-                if (args.length < 2) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /heatmap export <world>");
-                    return true;
-                }
-                try {
-                    PlayerHeatmap.exportToFile(args[1]);
-                    sender.sendMessage(ChatColor.GREEN + "Heatmap exported for world: " + args[1]);
-                } catch (IOException e) {
-                    sender.sendMessage(ChatColor.RED + "Export failed: " + e.getMessage());
-                }
-            }
-            default -> sendStats(sender);
-        }
+    protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+        sendStats(context.getSender());
         return true;
     }
 
-    private void sendStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "=== " + ChatColor.WHITE + "Player Activity Heatmap" +
-                ChatColor.GOLD + " ===");
-        sender.sendMessage("");
-
+    private static void sendStats(CommandSender sender) {
+        sender.sendMessage(Component.text("=== Player Activity Heatmap ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.empty());
         Map<String, Object> stats = PlayerHeatmap.getStats();
         if (stats.isEmpty()) {
-            sender.sendMessage(ChatColor.GRAY + "  No data collected yet.");
+            sender.sendMessage(Component.text("  No data collected yet.", NamedTextColor.GRAY));
             return;
         }
-
         for (Map.Entry<String, Object> entry : stats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
+            sender.sendMessage(Component.text("  " + entry.getKey() + ": ", NamedTextColor.GRAY)
+                    .append(Component.text(String.valueOf(entry.getValue()), NamedTextColor.WHITE)));
+        }
+    }
+
+    private static class HeatmapResetCommand extends org.leavesmc.leaves.command.LiteralNode {
+        HeatmapResetCommand() {
+            super("reset");
+        }
+
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            PlayerHeatmap.reset();
+            context.getSender().sendMessage(Component.text("Heatmap data reset.", NamedTextColor.GREEN));
+            return true;
+        }
+    }
+
+    private static class HeatmapExportCommand extends org.leavesmc.leaves.command.LiteralNode {
+        HeatmapExportCommand() {
+            super("export");
+        }
+
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            CommandSender sender = context.getSender();
+            String worldName = context.getStringOrDefault("world", null);
+            if (worldName == null) {
+                sender.sendMessage(Component.text("Usage: /heatmap export <world>", NamedTextColor.RED));
+                return true;
+            }
+            try {
+                PlayerHeatmap.exportToFile(worldName);
+                sender.sendMessage(Component.text("Heatmap exported for world: " + worldName, NamedTextColor.GREEN));
+            } catch (IOException e) {
+                sender.sendMessage(Component.text("Export failed: " + e.getMessage(), NamedTextColor.RED));
+            }
+            return true;
         }
     }
 }

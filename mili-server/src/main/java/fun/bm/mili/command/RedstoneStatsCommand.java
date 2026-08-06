@@ -1,70 +1,57 @@
 package fun.bm.mili.command;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import fun.bm.mili.utils.RedstoneStats;
-import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.command.CommandContext;
+import org.leavesmc.leaves.command.RootNode;
 
-import java.util.List;
 import java.util.Map;
 
-public class RedstoneStatsCommand implements CommandExecutor, TabCompleter {
+public class RedstoneStatsCommand extends RootNode {
+    private static final String PERM_BASE = "mili.admin.redstone-stats";
 
-    public void register() {
-        org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "redstone-stats",
-                new Command("redstone-stats") {
-                    @Override
-                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel,
-                                           @NotNull String[] args) {
-                        return onCommand(sender, this, commandLabel, args);
-                    }
-
-                    @Override
-                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
-                        return onTabComplete(sender, this, alias, args);
-                    }
-                });
-    }
-
-    public void unregister() {
+    public RedstoneStatsCommand() {
+        super("redstone-stats", PERM_BASE);
+        children(new ResetCommand());
     }
 
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("mili.admin.redstone-stats")) return List.of();
-        if (args.length == 1 && "reset".startsWith(args[0].toLowerCase())) {
-            return List.of("reset");
-        }
-        return List.of();
+    public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+        return source.getSender().hasPermission(PERM_BASE);
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, String[] args) {
-        if (!sender.hasPermission("mili.admin.redstone-stats")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
-            return true;
-        }
-
-        if (args.length == 1 && args[0].equalsIgnoreCase("reset")) {
-            RedstoneStats.reset();
-            sender.sendMessage(ChatColor.GREEN + "Redstone statistics reset.");
-            return true;
-        }
-
-        sender.sendMessage(ChatColor.GOLD + "=== " + ChatColor.WHITE + "Redstone Statistics" +
-                ChatColor.GOLD + " ===");
-        sender.sendMessage("");
-
+    protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+        CommandSender sender = context.getSender();
+        sender.sendMessage(Component.text("=== Redstone Statistics ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.empty());
         Map<String, Object> stats = RedstoneStats.getStats();
         for (Map.Entry<String, Object> entry : stats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
+            sender.sendMessage(Component.text("  " + entry.getKey() + ": ", NamedTextColor.GRAY)
+                    .append(Component.text(String.valueOf(entry.getValue()), NamedTextColor.WHITE)));
+        }
+        return true;
+    }
+
+    private static class ResetCommand extends org.leavesmc.leaves.command.LiteralNode {
+        ResetCommand() {
+            super("reset");
         }
 
-        return true;
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            RedstoneStats.reset();
+            context.getSender().sendMessage(Component.text("Redstone statistics reset.", NamedTextColor.GREEN));
+            return true;
+        }
     }
 }

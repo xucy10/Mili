@@ -26,7 +26,6 @@ public final class RustBridge {
     public static synchronized void load() {
         if (loaded) return;
         String os = System.getProperty("os.name").toLowerCase();
-<<<<<<< HEAD
         String arch = System.getProperty("os.arch").toLowerCase();
         // Build candidate list: primary name first, then fallbacks
         java.util.List<String> candidates = new java.util.ArrayList<>();
@@ -47,12 +46,6 @@ public final class RustBridge {
                 candidates.add("libmili_optimizer.so");
             }
         }
-=======
-        String lib;
-        if (os.contains("win")) lib = "mili_optimizer.dll";
-        else if (os.contains("mac")) lib = "mili_optimizer.dylib";
-        else lib = "mili_optimizer.so";
->>>>>>> 97bb8460f37b539dce1af5fc1581fab08ee0e246
         try {
             Path tmp = Files.createTempDirectory("mili-rust-");
             tmp.toFile().deleteOnExit();

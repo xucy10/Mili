@@ -1,124 +1,129 @@
 package fun.bm.mili.command;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import fun.bm.mili.config.modules.function.AutoBackupConfig;
 import fun.bm.mili.utils.AutoBackupManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.command.CommandContext;
+import org.leavesmc.leaves.command.RootNode;
 
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
-public class BackupCommand implements CommandExecutor, TabCompleter {
+public class BackupCommand extends RootNode {
+    private static final String PERM_BASE = "mili.admin.backup";
 
-    private static final List<String> SUBCOMMANDS = List.of("now", "status", "reload");
-
-    public void register() {
-        org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "backup",
-                new Command("backup") {
-                    @Override
-                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel,
-                                           @NotNull String[] args) {
-                        return onCommand(sender, this, commandLabel, args);
-                    }
-
-                    @Override
-                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
-                        return onTabComplete(sender, this, alias, args);
-                    }
-                });
-    }
-
-    public void unregister() {
+    public BackupCommand() {
+        super("backup", PERM_BASE);
+        children(
+                new BackupNowCommand(),
+                new BackupStatusCommand(),
+                new BackupReloadCommand()
+        );
     }
 
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("mili.admin.backup")) return List.of();
-        if (args.length == 1) {
-            String partial = args[0].toLowerCase();
-            return SUBCOMMANDS.stream().filter(s -> s.startsWith(partial)).toList();
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("now")) {
-            String partial = args[1].toLowerCase();
-            return Bukkit.getWorlds().stream().map(World::getName)
-                    .filter(n -> n.toLowerCase().startsWith(partial)).toList();
-        }
-        return List.of();
-    }
-
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, String[] args) {
-        if (!sender.hasPermission("mili.admin.backup")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
-            return true;
-        }
-
-        if (args.length == 0) {
-            sendHelp(sender);
-            return true;
-        }
-
-        switch (args[0].toLowerCase()) {
-            case "now" -> {
-                String worldName = args.length >= 2 ? args[1] : null;
-                if (worldName != null) {
-                    World w = Bukkit.getWorld(worldName);
-                    if (w == null) {
-                        sender.sendMessage(ChatColor.RED + "World not found: " + worldName);
-                        return true;
-                    }
-                    sender.sendMessage(ChatColor.YELLOW + "Backing up world: " + w.getName() + "...");
-                } else {
-                    sender.sendMessage(ChatColor.YELLOW + "Backing up all worlds...");
-                }
-                AutoBackupManager.backupNow(worldName).thenAccept(success -> {
-                    sender.sendMessage(success
-                            ? ChatColor.GREEN + "Backup completed! " + AutoBackupManager.getLastBackupResult()
-                            : ChatColor.RED + "Backup failed! " + AutoBackupManager.getLastBackupResult());
-                });
-            }
-            case "status" -> sendStatus(sender);
-            case "reload" -> {
-                AutoBackupManager.stop();
-                if (AutoBackupConfig.enabled) {
-                    AutoBackupManager.start();
-                }
-                sender.sendMessage(ChatColor.GREEN + "Backup system reloaded. Enabled: " +
-                        AutoBackupConfig.enabled + ", Interval: " + AutoBackupConfig.intervalMinutes + " min");
-            }
-            default -> sendHelp(sender);
-        }
+    protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+        sendHelp(context.getSender());
         return true;
     }
 
-    private void sendHelp(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "=== Mili Backup ===");
-        sender.sendMessage(ChatColor.GRAY + "  /backup now " + ChatColor.WHITE + "- 备份所有世界");
-        sender.sendMessage(ChatColor.GRAY + "  /backup now <世界名> " + ChatColor.WHITE + "- 备份指定世界");
-        sender.sendMessage(ChatColor.GRAY + "  /backup status " + ChatColor.WHITE + "- 查看备份系统状态");
-        sender.sendMessage(ChatColor.GRAY + "  /backup reload " + ChatColor.WHITE + "- 重载备份配置");
+    public static void sendHelp(CommandSender sender) {
+        sender.sendMessage(Component.text("=== Mili Backup ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("  /backup now [world] ", NamedTextColor.GRAY)
+                .append(Component.text("- Backup all or specified world", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("  /backup status ", NamedTextColor.GRAY)
+                .append(Component.text("- View backup system status", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("  /backup reload ", NamedTextColor.GRAY)
+                .append(Component.text("- Reload backup config", NamedTextColor.WHITE)));
     }
 
-    private void sendStatus(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "=== " + ChatColor.WHITE + "Auto Backup Status" +
-                ChatColor.GOLD + " ===");
-        sender.sendMessage(ChatColor.GRAY + "  Enabled: " + ChatColor.WHITE + AutoBackupConfig.enabled);
-        sender.sendMessage(ChatColor.GRAY + "  Running: " + ChatColor.WHITE + AutoBackupManager.isRunning());
-        sender.sendMessage(ChatColor.GRAY + "  Interval: " + ChatColor.WHITE + AutoBackupConfig.intervalMinutes + " min");
-        sender.sendMessage(ChatColor.GRAY + "  Max Backups: " + ChatColor.WHITE + AutoBackupConfig.maxBackups);
-        sender.sendMessage(ChatColor.GRAY + "  Last Backup: " + ChatColor.WHITE +
-                (AutoBackupManager.getLastBackupTime() > 0
-                        ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                        .format(new java.util.Date(AutoBackupManager.getLastBackupTime()))
-                        : "Never"));
-        sender.sendMessage(ChatColor.GRAY + "  Last Result: " + ChatColor.WHITE +
-                AutoBackupManager.getLastBackupResult());
+    private static class BackupNowCommand extends org.leavesmc.leaves.command.LiteralNode {
+        BackupNowCommand() {
+            super("now");
+        }
+
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            CommandSender sender = context.getSender();
+            String worldName = context.getStringOrDefault("world", null);
+            if (worldName != null) {
+                World w = Bukkit.getWorld(worldName);
+                if (w == null) {
+                    sender.sendMessage(Component.text("World not found: " + worldName, NamedTextColor.RED));
+                    return true;
+                }
+                sender.sendMessage(Component.text("Backing up world: " + w.getName() + "...", NamedTextColor.YELLOW));
+            } else {
+                sender.sendMessage(Component.text("Backing up all worlds...", NamedTextColor.YELLOW));
+            }
+            AutoBackupManager.backupNow(worldName).thenAccept(success ->
+                    sender.sendMessage(success
+                            ? Component.text("Backup completed! " + AutoBackupManager.getLastBackupResult(), NamedTextColor.GREEN)
+                            : Component.text("Backup failed! " + AutoBackupManager.getLastBackupResult(), NamedTextColor.RED))
+            );
+            return true;
+        }
+    }
+
+    private static class BackupStatusCommand extends org.leavesmc.leaves.command.LiteralNode {
+        BackupStatusCommand() {
+            super("status");
+        }
+
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            CommandSender sender = context.getSender();
+            sender.sendMessage(Component.text("=== Auto Backup Status ===", NamedTextColor.GOLD));
+            sender.sendMessage(Component.text("  Enabled: ", NamedTextColor.GRAY).append(Component.text(AutoBackupConfig.enabled, NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("  Running: ", NamedTextColor.GRAY).append(Component.text(AutoBackupManager.isRunning(), NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("  Interval: ", NamedTextColor.GRAY).append(Component.text(AutoBackupConfig.intervalMinutes + " min", NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("  Max Backups: ", NamedTextColor.GRAY).append(Component.text(AutoBackupConfig.maxBackups, NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("  Last Backup: ", NamedTextColor.GRAY).append(Component.text(
+                    AutoBackupManager.getLastBackupTime() > 0
+                            ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(AutoBackupManager.getLastBackupTime()))
+                            : "Never", NamedTextColor.WHITE)));
+            sender.sendMessage(Component.text("  Last Result: ", NamedTextColor.GRAY).append(Component.text(AutoBackupManager.getLastBackupResult(), NamedTextColor.WHITE)));
+            return true;
+        }
+    }
+
+    private static class BackupReloadCommand extends org.leavesmc.leaves.command.LiteralNode {
+        BackupReloadCommand() {
+            super("reload");
+        }
+
+        @Override
+        public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+            return source.getSender().hasPermission(PERM_BASE);
+        }
+
+        @Override
+        protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+            CommandSender sender = context.getSender();
+            AutoBackupManager.stop();
+            if (AutoBackupConfig.enabled) {
+                AutoBackupManager.start();
+            }
+            sender.sendMessage(Component.text("Backup system reloaded. Enabled: " +
+                    AutoBackupConfig.enabled + ", Interval: " + AutoBackupConfig.intervalMinutes + " min", NamedTextColor.GREEN));
+            return true;
+        }
     }
 }

@@ -1,120 +1,72 @@
 package fun.bm.mili.command;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import fun.bm.mili.chunk.MiliChunkSystem;
 import fun.bm.mili.utils.*;
-import org.bukkit.ChatColor;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.command.CommandContext;
+import org.leavesmc.leaves.command.RootNode;
 
-import java.util.List;
 import java.util.Map;
 
-public class MiliPerfCommand implements CommandExecutor, TabCompleter {
+public class MiliPerfCommand extends RootNode {
+    private static final String PERM_BASE = "mili.admin.perf";
 
-    public void register() {
-        org.bukkit.Bukkit.getServer().getCommandMap().register("mili", "miperf",
-                new Command("miperf") {
-                    @Override
-                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel,
-                                           @NotNull String[] args) {
-                        return onCommand(sender, this, commandLabel, args);
-                    }
-
-                    @Override
-                    public @NotNull java.util.List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
-                        return onTabComplete(sender, this, alias, args);
-                    }
-                });
-    }
-
-    public void unregister() {
+    public MiliPerfCommand() {
+        super("miperf", PERM_BASE);
     }
 
     @Override
-    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("mili.admin.perf")) return List.of();
-        return List.of();
+    public boolean requires(@NotNull io.papermc.paper.command.brigadier.CommandSourceStack source) {
+        return source.getSender().hasPermission(PERM_BASE);
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, String[] args) {
-        if (!sender.hasPermission("mili.admin.perf")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
-            return true;
-        }
-
-        sender.sendMessage(ChatColor.GOLD + "=== " + ChatColor.WHITE + "Mili Performance Monitor" +
-                ChatColor.GOLD + " ===");
-        sender.sendMessage("");
+    protected boolean execute(@NotNull CommandContext context) throws CommandSyntaxException {
+        CommandSender sender = context.getSender();
+        sender.sendMessage(Component.text("=== Mili Performance Monitor ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.empty());
 
         sendRegionStats(sender);
-        sender.sendMessage("");
+        sender.sendMessage(Component.empty());
         sendChunkStats(sender);
-        sender.sendMessage("");
+        sender.sendMessage(Component.empty());
         sendMemoryStats(sender);
-        sender.sendMessage("");
+        sender.sendMessage(Component.empty());
         sendCrossRegionStats(sender);
-        sender.sendMessage("");
+        sender.sendMessage(Component.empty());
         sendOptimizationStats(sender);
-        sender.sendMessage("");
+        sender.sendMessage(Component.empty());
         sendFeatureStats(sender);
-
         return true;
     }
 
-    private void sendRegionStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Region System --");
-
-        Map<String, Object> regionStats = RegionBalancer.getStats();
-        for (Map.Entry<String, Object> entry : regionStats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
-        }
-
-        Map<String, Object> smartStats = SmartRegionManager.getStats();
-        for (Map.Entry<String, Object> entry : smartStats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  [Smart] " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
-        }
+    private static void sendRegionStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Region System --", NamedTextColor.YELLOW));
+        printStats(sender, "", RegionBalancer.getStats());
+        printStats(sender, "[Smart] ", SmartRegionManager.getStats());
     }
 
-    private void sendChunkStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Chunk System --");
-
-        Map<String, Object> chunkStats = MiliChunkSystem.getStats();
-        for (Map.Entry<String, Object> entry : chunkStats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
-        }
+    private static void sendChunkStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Chunk System --", NamedTextColor.YELLOW));
+        printStats(sender, "", MiliChunkSystem.getStats());
     }
 
-    private void sendMemoryStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Memory System --");
-
-        Map<String, Object> memStats = MemoryOptimizer.getStats();
-        for (Map.Entry<String, Object> entry : memStats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
-        }
+    private static void sendMemoryStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Memory System --", NamedTextColor.YELLOW));
+        printStats(sender, "", MemoryOptimizer.getStats());
     }
 
-    private void sendCrossRegionStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Cross-Region Communication --");
-
-        Map<String, Object> crStats = CrossRegionHelper.getStats();
-        for (Map.Entry<String, Object> entry : crStats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "  " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
-        }
+    private static void sendCrossRegionStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Cross-Region Communication --", NamedTextColor.YELLOW));
+        printStats(sender, "", CrossRegionHelper.getStats());
     }
 
-    private void sendOptimizationStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Optimizations --");
-
+    private static void sendOptimizationStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Optimizations --", NamedTextColor.YELLOW));
         printStats(sender, "Entity Dirty", EntityDirtyTracker.getStats());
         printStats(sender, "Dynamic VD", DynamicViewDistanceManager.getStats());
         printStats(sender, "Cross-Dim Teleport", CrossDimensionTeleportQueue.getStats());
@@ -128,9 +80,8 @@ public class MiliPerfCommand implements CommandExecutor, TabCompleter {
         printStats(sender, "TechMC", TechnicalMCOptimizer.getStats());
     }
 
-    private void sendFeatureStats(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "-- Features --");
-
+    private static void sendFeatureStats(CommandSender sender) {
+        sender.sendMessage(Component.text("-- Features --", NamedTextColor.YELLOW));
         printStats(sender, "Redstone Stats", RedstoneStats.getStats());
         printStats(sender, "Player Heatmap", PlayerHeatmap.getStats());
         printStats(sender, "Auto Backup", Map.of(
@@ -139,12 +90,19 @@ public class MiliPerfCommand implements CommandExecutor, TabCompleter {
         printStats(sender, "Structure Proj", StructureProjectionManager.getStats());
     }
 
-    private void printStats(CommandSender sender, String prefix, Map<String, Object> stats) {
+    private static void printStats(CommandSender sender, String prefix, Map<String, Object> stats) {
         if (stats.isEmpty()) return;
-        sender.sendMessage(ChatColor.AQUA + "  [" + prefix + "]");
-        for (Map.Entry<String, Object> entry : stats.entrySet()) {
-            sender.sendMessage(ChatColor.GRAY + "    " + entry.getKey() + ": " +
-                    ChatColor.WHITE + entry.getValue());
+        if (!prefix.isEmpty()) {
+            sender.sendMessage(Component.text("  [" + prefix + "]", NamedTextColor.AQUA));
+            for (Map.Entry<String, Object> entry : stats.entrySet()) {
+                sender.sendMessage(Component.text("    " + entry.getKey() + ": ", NamedTextColor.GRAY)
+                        .append(Component.text(String.valueOf(entry.getValue()), NamedTextColor.WHITE)));
+            }
+        } else {
+            for (Map.Entry<String, Object> entry : stats.entrySet()) {
+                sender.sendMessage(Component.text("  " + entry.getKey() + ": ", NamedTextColor.GRAY)
+                        .append(Component.text(String.valueOf(entry.getValue()), NamedTextColor.WHITE)));
+            }
         }
     }
 }
