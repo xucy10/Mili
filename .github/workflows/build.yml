@@ -332,7 +332,7 @@ jobs:
           generateReleaseNotes: true
           prerelease: ${{ env.pre }}
           makeLatest: ${{ env.make_latest }}
-          token: ${{ secrets.GITHUB_TOKEN }}    steps:
+          token: ${{ secrets.GITHUB_TOKEN }}  
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
