@@ -1262,7 +1262,7 @@ jobs:
 
       # continue with the rest of your original pipeline (paperclip build etc.)
       - name: Build Paperclip Jar
-        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}        uses: actions/checkout@v7
+        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}       
         with:
           fetch-depth: 0
 
