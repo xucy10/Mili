@@ -429,7 +429,7 @@ jobs:
           artifacts: ${{ env.jar_dir }}
           generateReleaseNotes: true
           prerelease: ${{ env.pre }}
-          makeLatest: ${{ env.make_latest }}    steps:
+          makeLatest: ${{ env.make_latest }}    
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
