@@ -124,25 +124,38 @@ jobs:
 
       - name: Build Rust Optimizer (cross targets)
         env:
-          RUST_TARGETS: ${{ env.RUST_TARGETS }}
-          OSX_SDKROOT: /opt/osxcross/target/SDK/MacOSX.sdk
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
           set -eux
-          export PATH="$PATH:$HOME/.cargo/bin:/opt/osxcross/target/bin"
+          export PATH="$PATH:$HOME/.cargo/bin"
           export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
           export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
-          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
           ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
 
       - name: Verify Rust Optimizer Binary
         run: |
-          if [ -f "mili-rust/build/rust/mili_optimizer.so" ]; then
+          echo "=== Listing staged output ==="
+          ls -la mili-rust/build/rust/ 2>/dev/null || true
+          echo "=== Listing cargo-target ==="
+          find mili-rust/build/cargo-target -name "*.so" -o -name "*.dll" 2>/dev/null || true
+          
+          # Gradle 插件可能 stage 到 build/rust/ 也可能没 stage，直接从 cargo-target 兜底复制
+          mkdir -p mili-rust/build/rust
+          for f in mili-rust/build/cargo-target/*/release/libmili_optimizer.so \
+                   mili-rust/build/cargo-target/*/release/mili_optimizer.so; do
+            if [ -f "$f" ]; then
+              cp "$f" mili-rust/build/rust/mili_optimizer.so
+              echo "Copied $f -> mili-rust/build/rust/mili_optimizer.so"
+              break
+            fi
+          done
+          
+          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/libmili_optimizer.so" ]; then
             echo "Rust optimizer binary exists"
-            ls -la mili-rust/build/rust || true
+            ls -la mili-rust/build/rust/
           else
-            echo "Rust optimizer binary missing; list build output"
-            ls -la mili-rust/build || true
+            echo "Rust optimizer binary missing"
             exit 1
           fi
 
