@@ -240,19 +240,6 @@ jobs:
             fi
           done
 
-      - name: Verify CIS Source Files
-        run: |
-          CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
-          COUNT=0
-          for f in "$CIS_DIR"/*.java "$CIS_DIR"/border/*.java "$CIS_DIR"/group/*.java; do
-            if [ -f "$f" ]; then
-              LINES=$(wc -l < "$f")
-              echo "  CIS: $(basename $f) (${LINES} lines)"
-              COUNT=$((COUNT + 1))
-            fi
-          done
-          echo "Total CIS source files: ${COUNT}"
-
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
