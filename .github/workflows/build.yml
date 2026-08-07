@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,aarch64-apple-darwin,x86_64-apple-darwin
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -85,7 +85,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,aarch64-apple-darwin,x86_64-apple-darwin
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -105,24 +105,6 @@ jobs:
           cargo install cargo-zigbuild --locked
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Optionally install osxcross
-        shell: bash
-        run: |
-          set -eux
-          if [ -z "${{ secrets.OSX_SDK_BASE64 }}" ]; then
-            echo "No OSX_SDK_BASE64 secret provided; skipping osxcross install."
-            exit 0
-          fi
-          sudo apt-get install -y cmake nasm
-          git clone https://github.com/tpoechtrager/osxcross /opt/osxcross
-          mkdir -p /opt/osxcross/tarballs
-          echo "${{ secrets.OSX_SDK_BASE64 }}" | base64 -d > /tmp/OSX_SDK.tar.xz
-          mv /tmp/OSX_SDK.tar.xz /opt/osxcross/tarballs/
-          cd /opt/osxcross
-          ./tools/get_dependencies.sh || true
-          UNATTENDED=1 SDK_VERSION=MacOSX ./build.sh || { echo "osxcross build failed"; exit 1; }
-          echo "/opt/osxcross/target/bin" >> $GITHUB_PATH
-
       - name: Verify toolchain and linkers
         run: |
           rustc --version
@@ -135,9 +117,6 @@ jobs:
           fi
           which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
           which aarch64-linux-gnu-gcc || echo "aarch64 cross-gcc not found in PATH"
-          if [ -d /opt/osxcross ]; then
-            which o64-clang || which o64-clang-12 || echo "osxcross clang not found"
-          fi
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -172,7 +151,7 @@ jobs:
           echo "=== Listing staged output ==="
           ls -la mili-rust/build/rust/ 2>/dev/null || true
           echo "=== Listing cargo-target ==="
-          find mili-rust/build/cargo-target -name "*.so" -o -name "*.dll" 2>/dev/null || true
+          find mili-rust/build/cargo-target -type f \( -name "*.so" -o -name "*.dll" \) 2>/dev/null || true
           
           # Gradle 插件可能 stage 到 build/rust/ 也可能没 stage，直接从 cargo-target 兜底复制
           mkdir -p mili-rust/build/rust
@@ -185,7 +164,8 @@ jobs:
             fi
           done
           
-          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/libmili_optimizer.so" ]; then
+          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/libmili_optimizer.so" ] || \
+             [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/libmili_optimizer.dll" ]; then
             echo "Rust optimizer binary exists"
             ls -la mili-rust/build/rust/
           else
@@ -209,6 +189,10 @@ jobs:
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
           echo "Downloading hyacinthusclip v${CLIP_VERSION}"
           curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          if [ ! -s libs/hyacinthusclip.jar ]; then
+            echo "ERROR: Failed to download hyacinthusclip jar"
+            exit 1
+          fi
           ls -la libs/hyacinthusclip.jar
 
       - name: Apply All Patches
@@ -239,6 +223,19 @@ jobs:
               echo "WARN: $f not found"
             fi
           done
+
+      - name: Verify CIS Source Files
+        run: |
+          CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
+          COUNT=0
+          for f in "$CIS_DIR"/*.java "$CIS_DIR"/border/*.java "$CIS_DIR"/group/*.java; do
+            if [ -f "$f" ]; then
+              LINES=$(wc -l < "$f")
+              echo "  CIS: $(basename $f) (${LINES} lines)"
+              COUNT=$((COUNT + 1))
+            fi
+          done
+          echo "Total CIS source files: ${COUNT}"
 
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
@@ -273,7 +270,7 @@ jobs:
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.project_id_b }} CI Artifacts
+          name: ${{ env.project_id_b || 'Mili' }} CI Artifacts
           path: mili-server/build/libs/*-paperclip-*-mojmap.jar
           if-no-files-found: error
           retention-days: 14
@@ -316,7 +313,7 @@ jobs:
           fi
 
       - name: Create Release - Pre Process
-        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == '2')) || inputs.force-r[...]
+        if: ( github.event_name != 'pull_request' && env.unexpect != 'true' && env.flag_release == 'true' && env.release_exists != 'true' && inputs.force-release != '2' ) || inputs.force-release == '1'
         run: |
           if [ "${{ inputs.comments }}" == "" ]; then
             echo "No comments provided"
@@ -333,7 +330,7 @@ jobs:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&s[...]
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat)
             This release is automatically compiled by GitHub Actions
             ### Branch Info
             > ${{ github.ref_name }}
@@ -352,7 +349,7 @@ jobs:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&s[...]
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat)
             This release is automatically compiled by GitHub Actions
             ### Comments
             > ${{ inputs.comments }}
