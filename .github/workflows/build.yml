@@ -46,20 +46,15 @@ jobs:
         run: |
           set -eux
 
-          # 1) 先安全反注册所有子模块，否则直接删 .git/modules 会丢失句柄
           git submodule deinit -f --all || true
 
-          # 2) 清理可能损坏的子模块元数据
           rm -rf .git/modules || true
 
-          # 3) 重新注册并同步子模块 URL
           git submodule init
           git submodule sync --recursive
 
-          # 4) 强制拉取子模块
           git submodule update --init --recursive --force
 
-          # 5) 对每个子模块：非浅克隆则补全历史，并清理工作区
           git submodule foreach --recursive '
             echo "=== Submodule: $name ==="
             if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
@@ -71,11 +66,9 @@ jobs:
             git clean -fdx || true
           '
 
-          # 6) 清理 paperweight 上游缓存，让 Gradle 重新克隆
           rm -rf .gradle/caches/paperweight || true
           rm -rf .gradle/caches/paperweight/upstreams || true
 
-          # Debug outputs
           git status --porcelain --untracked-files=all || true
           ls -la .gradle/caches || true
 
