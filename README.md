@@ -1,5 +1,5 @@
 
-  # Mili（米粒）
+  # Mili（米粒） 
 
   **基于 Folia 的高性能 Minecraft 服务端核心，融合 Rust 原生加速与深度生电兼容**
 
