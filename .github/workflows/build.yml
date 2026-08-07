@@ -42,6 +42,40 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Repair submodules & paperweight cache (prevent corrupted upstreams)
+        run: |
+          set -eux
+
+          # sync submodule URLs/config
+          git submodule sync --recursive || true
+
+          # remove possibly stale .git/modules metadata which can leave dangling state
+          rm -rf .git/modules || true
+
+          # ensure submodules are initialized and force-update them
+          git submodule update --init --recursive --force
+
+          # For each submodule, try to convert shallow clones to full fetches and clean working copy
+          git submodule foreach --recursive '
+            echo "=== Submodule: $name ==="
+            # If this submodule is shallow try to unshallow; otherwise fetch all tags/branches
+            if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+              git fetch --unshallow --tags || git fetch --all --tags || true
+            else
+              git fetch --all --tags || true
+            fi
+            git reset --hard || true
+            git clean -fdx || true
+          '
+
+          # Remove possibly corrupted paperweight upstream caches so Gradle/paperweight will re-clone cleanly
+          rm -rf .gradle/caches/paperweight || true
+          rm -rf .gradle/caches/paperweight/upstreams || true
+
+          # Debug outputs
+          git status --porcelain --untracked-files=all || true
+          ls -la .gradle/caches || true
+
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
@@ -295,7 +329,7 @@ jobs:
           fi
 
       - name: Create Release - Pre Process
-        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == '2')) || inputs.force-release == '1'
+        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == '2')) || inputs.force-r[...]
         run: |
           if [ "${{ inputs.comments }}" == "" ]; then
             echo "No comments provided"
@@ -312,7 +346,7 @@ jobs:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/xucy10/${{ env.project_id }}/releases/download/${{ env.tag }}/${{ env.jar }})
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&s[...]
             This release is automatically compiled by GitHub Actions
             ### Branch Info
             > ${{ github.ref_name }}
@@ -331,7 +365,7 @@ jobs:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/xucy10/${{ env.project_id }}/releases/download/${{ env.tag }}/${{ env.jar }})
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&s[...]
             This release is automatically compiled by GitHub Actions
             ### Comments
             > ${{ inputs.comments }}
