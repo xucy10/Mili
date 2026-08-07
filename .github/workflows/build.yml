@@ -46,19 +46,22 @@ jobs:
         run: |
           set -eux
 
-          # sync submodule URLs/config
-          git submodule sync --recursive || true
+          # 1) 先安全反注册所有子模块，否则直接删 .git/modules 会丢失句柄
+          git submodule deinit -f --all || true
 
-          # remove possibly stale .git/modules metadata which can leave dangling state
+          # 2) 清理可能损坏的子模块元数据
           rm -rf .git/modules || true
 
-          # ensure submodules are initialized and force-update them
+          # 3) 重新注册并同步子模块 URL
+          git submodule init
+          git submodule sync --recursive
+
+          # 4) 强制拉取子模块
           git submodule update --init --recursive --force
 
-          # For each submodule, try to convert shallow clones to full fetches and clean working copy
+          # 5) 对每个子模块：非浅克隆则补全历史，并清理工作区
           git submodule foreach --recursive '
             echo "=== Submodule: $name ==="
-            # If this submodule is shallow try to unshallow; otherwise fetch all tags/branches
             if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
               git fetch --unshallow --tags || git fetch --all --tags || true
             else
@@ -68,7 +71,7 @@ jobs:
             git clean -fdx || true
           '
 
-          # Remove possibly corrupted paperweight upstream caches so Gradle/paperweight will re-clone cleanly
+          # 6) 清理 paperweight 上游缓存，让 Gradle 重新克隆
           rm -rf .gradle/caches/paperweight || true
           rm -rf .gradle/caches/paperweight/upstreams || true
 
@@ -153,7 +156,6 @@ jobs:
           echo "=== Listing cargo-target ==="
           find mili-rust/build/cargo-target -type f \( -name "*.so" -o -name "*.dll" \) 2>/dev/null || true
           
-          # Gradle 插件可能 stage 到 build/rust/ 也可能没 stage，直接从 cargo-target 兜底复制
           mkdir -p mili-rust/build/rust
           for f in mili-rust/build/cargo-target/*/release/libmili_optimizer.so \
                    mili-rust/build/cargo-target/*/release/mili_optimizer.so; do
