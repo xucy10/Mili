@@ -264,6 +264,10 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 
 ---
 
+## 社区
+
+[Discord](https://discord.com/invite/BSa67dbvVf)
+
 ## 感谢
 
 感谢所有贡献者与赞助方对项目的持续支持。若项目对您有帮助，请在 GitHub 上给我们一个 star
