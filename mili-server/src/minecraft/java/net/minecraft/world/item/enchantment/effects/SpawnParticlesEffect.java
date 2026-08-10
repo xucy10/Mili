@@ -1,0 +1,145 @@
+package net.minecraft.world.item.enchantment.effects;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.util.RandomSource;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.util.valueproviders.ConstantFloat;
+import net.minecraft.util.valueproviders.FloatProvider;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.enchantment.EnchantedItemInUse;
+import net.minecraft.world.phys.Vec3;
+
+public record SpawnParticlesEffect(
+    ParticleOptions particle,
+    SpawnParticlesEffect.PositionSource horizontalPosition,
+    SpawnParticlesEffect.PositionSource verticalPosition,
+    SpawnParticlesEffect.VelocitySource horizontalVelocity,
+    SpawnParticlesEffect.VelocitySource verticalVelocity,
+    FloatProvider speed
+) implements EnchantmentEntityEffect {
+    public static final MapCodec<SpawnParticlesEffect> CODEC = RecordCodecBuilder.mapCodec(
+        instance -> instance.group(
+                ParticleTypes.CODEC.fieldOf("particle").forGetter(SpawnParticlesEffect::particle),
+                SpawnParticlesEffect.PositionSource.CODEC.fieldOf("horizontal_position").forGetter(SpawnParticlesEffect::horizontalPosition),
+                SpawnParticlesEffect.PositionSource.CODEC.fieldOf("vertical_position").forGetter(SpawnParticlesEffect::verticalPosition),
+                SpawnParticlesEffect.VelocitySource.CODEC.fieldOf("horizontal_velocity").forGetter(SpawnParticlesEffect::horizontalVelocity),
+                SpawnParticlesEffect.VelocitySource.CODEC.fieldOf("vertical_velocity").forGetter(SpawnParticlesEffect::verticalVelocity),
+                FloatProvider.CODEC.optionalFieldOf("speed", ConstantFloat.ZERO).forGetter(SpawnParticlesEffect::speed)
+            )
+            .apply(instance, SpawnParticlesEffect::new)
+    );
+
+    public static SpawnParticlesEffect.PositionSource offsetFromEntityPosition(float offset) {
+        return new SpawnParticlesEffect.PositionSource(SpawnParticlesEffect.PositionSourceType.ENTITY_POSITION, offset, 1.0F);
+    }
+
+    public static SpawnParticlesEffect.PositionSource inBoundingBox() {
+        return new SpawnParticlesEffect.PositionSource(SpawnParticlesEffect.PositionSourceType.BOUNDING_BOX, 0.0F, 1.0F);
+    }
+
+    public static SpawnParticlesEffect.VelocitySource movementScaled(float movementScale) {
+        return new SpawnParticlesEffect.VelocitySource(movementScale, ConstantFloat.ZERO);
+    }
+
+    public static SpawnParticlesEffect.VelocitySource fixedVelocity(FloatProvider velocity) {
+        return new SpawnParticlesEffect.VelocitySource(0.0F, velocity);
+    }
+
+    @Override
+    public void apply(ServerLevel level, int enchantmentLevel, EnchantedItemInUse item, Entity entity, Vec3 origin) {
+        RandomSource random = entity.getRandom();
+        Vec3 knownMovement = entity.getKnownMovement();
+        float bbWidth = entity.getBbWidth();
+        float bbHeight = entity.getBbHeight();
+        // Paper start - Hide soul speed particles for vanished players
+        level.sendParticlesSource(
+            entity,
+            this.particle,
+            false,
+            false,
+        // Paper end - Hide soul speed particles for vanished players
+            this.horizontalPosition.getCoordinate(origin.x(), origin.x(), bbWidth, random),
+            this.verticalPosition.getCoordinate(origin.y(), origin.y() + bbHeight / 2.0F, bbHeight, random),
+            this.horizontalPosition.getCoordinate(origin.z(), origin.z(), bbWidth, random),
+            0,
+            this.horizontalVelocity.getVelocity(knownMovement.x(), random),
+            this.verticalVelocity.getVelocity(knownMovement.y(), random),
+            this.horizontalVelocity.getVelocity(knownMovement.z(), random),
+            this.speed.sample(random)
+        );
+    }
+
+    @Override
+    public MapCodec<SpawnParticlesEffect> codec() {
+        return CODEC;
+    }
+
+    public record PositionSource(SpawnParticlesEffect.PositionSourceType type, float offset, float scale) {
+        public static final MapCodec<SpawnParticlesEffect.PositionSource> CODEC = RecordCodecBuilder.<SpawnParticlesEffect.PositionSource>mapCodec(
+                instance -> instance.group(
+                        SpawnParticlesEffect.PositionSourceType.CODEC.fieldOf("type").forGetter(SpawnParticlesEffect.PositionSource::type),
+                        Codec.FLOAT.optionalFieldOf("offset", 0.0F).forGetter(SpawnParticlesEffect.PositionSource::offset),
+                        ExtraCodecs.POSITIVE_FLOAT.optionalFieldOf("scale", 1.0F).forGetter(SpawnParticlesEffect.PositionSource::scale)
+                    )
+                    .apply(instance, SpawnParticlesEffect.PositionSource::new)
+            )
+            .validate(
+                sourceType -> sourceType.type() == SpawnParticlesEffect.PositionSourceType.ENTITY_POSITION && sourceType.scale() != 1.0F
+                    ? DataResult.error(() -> "Cannot scale an entity position coordinate source")
+                    : DataResult.success(sourceType)
+            );
+
+        public double getCoordinate(double position, double center, float size, RandomSource random) {
+            return this.type.getCoordinate(position, center, size * this.scale, random) + this.offset;
+        }
+    }
+
+    public static enum PositionSourceType implements StringRepresentable {
+        ENTITY_POSITION("entity_position", (position, center, size, random) -> position),
+        BOUNDING_BOX("in_bounding_box", (position, center, size, random) -> center + (random.nextDouble() - 0.5) * size);
+
+        public static final Codec<SpawnParticlesEffect.PositionSourceType> CODEC = StringRepresentable.fromEnum(SpawnParticlesEffect.PositionSourceType::values);
+        private final String id;
+        private final SpawnParticlesEffect.PositionSourceType.CoordinateSource source;
+
+        private PositionSourceType(final String id, final SpawnParticlesEffect.PositionSourceType.CoordinateSource source) {
+            this.id = id;
+            this.source = source;
+        }
+
+        public double getCoordinate(double position, double center, float size, RandomSource random) {
+            return this.source.getCoordinate(position, center, size, random);
+        }
+
+        @Override
+        public String getSerializedName() {
+            return this.id;
+        }
+
+        @FunctionalInterface
+        interface CoordinateSource {
+            double getCoordinate(double position, double center, float size, RandomSource random);
+        }
+    }
+
+    public record VelocitySource(float movementScale, FloatProvider base) {
+        public static final MapCodec<SpawnParticlesEffect.VelocitySource> CODEC = RecordCodecBuilder.mapCodec(
+            instance -> instance.group(
+                    Codec.FLOAT.optionalFieldOf("movement_scale", 0.0F).forGetter(SpawnParticlesEffect.VelocitySource::movementScale),
+                    FloatProvider.CODEC.optionalFieldOf("base", ConstantFloat.ZERO).forGetter(SpawnParticlesEffect.VelocitySource::base)
+                )
+                .apply(instance, SpawnParticlesEffect.VelocitySource::new)
+        );
+
+        public double getVelocity(double scale, RandomSource random) {
+            return scale * this.movementScale + this.base.sample(random);
+        }
+    }
+}

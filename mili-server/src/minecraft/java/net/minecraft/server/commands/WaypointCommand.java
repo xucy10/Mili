@@ -1,0 +1,174 @@
+package net.minecraft.server.commands;
+
+import com.mojang.brigadier.CommandDispatcher;
+import java.util.HexFormat;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.ColorArgument;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.HexColorArgument;
+import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.WaypointArgument;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentUtils;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ARGB;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.waypoints.Waypoint;
+import net.minecraft.world.waypoints.WaypointStyleAsset;
+import net.minecraft.world.waypoints.WaypointStyleAssets;
+import net.minecraft.world.waypoints.WaypointTransmitter;
+
+public class WaypointCommand {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
+        dispatcher.register(
+            Commands.literal("waypoint")
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(Commands.literal("list").executes(commandContext -> listWaypoints(commandContext.getSource())))
+                .then(
+                    Commands.literal("modify")
+                        .then(
+                            Commands.argument("waypoint", EntityArgument.entity())
+                                .then(
+                                    Commands.literal("color")
+                                        .then(
+                                            Commands.argument("color", ColorArgument.color())
+                                                .executes(
+                                                    context -> setWaypointColor(
+                                                        context.getSource(),
+                                                        WaypointArgument.getWaypoint(context, "waypoint"),
+                                                        ColorArgument.getColor(context, "color")
+                                                    )
+                                                )
+                                        )
+                                        .then(
+                                            Commands.literal("hex")
+                                                .then(
+                                                    Commands.argument("color", HexColorArgument.hexColor())
+                                                        .executes(
+                                                            context -> setWaypointColor(
+                                                                context.getSource(),
+                                                                WaypointArgument.getWaypoint(context, "waypoint"),
+                                                                HexColorArgument.getHexColor(context, "color")
+                                                            )
+                                                        )
+                                                )
+                                        )
+                                        .then(
+                                            Commands.literal("reset")
+                                                .executes(context -> resetWaypointColor(context.getSource(), WaypointArgument.getWaypoint(context, "waypoint")))
+                                        )
+                                )
+                                .then(
+                                    Commands.literal("style")
+                                        .then(
+                                            Commands.literal("reset")
+                                                .executes(
+                                                    context -> setWaypointStyle(
+                                                        context.getSource(), WaypointArgument.getWaypoint(context, "waypoint"), WaypointStyleAssets.DEFAULT
+                                                    )
+                                                )
+                                        )
+                                        .then(
+                                            Commands.literal("set")
+                                                .then(
+                                                    Commands.argument("style", IdentifierArgument.id())
+                                                        .executes(
+                                                            context -> setWaypointStyle(
+                                                                context.getSource(),
+                                                                WaypointArgument.getWaypoint(context, "waypoint"),
+                                                                ResourceKey.create(WaypointStyleAssets.ROOT_ID, IdentifierArgument.getId(context, "style"))
+                                                            )
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+        );
+    }
+
+    private static int setWaypointStyle(CommandSourceStack source, WaypointTransmitter waypoint, ResourceKey<WaypointStyleAsset> style) {
+        mutateIcon(source, waypoint, icon -> icon.style = style);
+        source.sendSuccess(() -> Component.translatable("commands.waypoint.modify.style"), false);
+        return 0;
+    }
+
+    private static int setWaypointColor(CommandSourceStack source, WaypointTransmitter waypoint, ChatFormatting color) {
+        mutateIcon(source, waypoint, icon -> icon.color = Optional.of(color.getColor()));
+        source.sendSuccess(() -> Component.translatable("commands.waypoint.modify.color", Component.literal(color.getName()).withStyle(color)), false);
+        return 0;
+    }
+
+    private static int setWaypointColor(CommandSourceStack source, WaypointTransmitter waypoint, Integer color) {
+        mutateIcon(source, waypoint, icon -> icon.color = Optional.of(color));
+        source.sendSuccess(
+            () -> Component.translatable(
+                "commands.waypoint.modify.color", Component.literal(HexFormat.of().withUpperCase().toHexDigits(ARGB.color(0, color), 6)).withColor(color)
+            ),
+            false
+        );
+        return 0;
+    }
+
+    private static int resetWaypointColor(CommandSourceStack source, WaypointTransmitter waypoint) {
+        mutateIcon(source, waypoint, icon -> icon.color = Optional.empty());
+        source.sendSuccess(() -> Component.translatable("commands.waypoint.modify.color.reset"), false);
+        return 0;
+    }
+
+    private static int listWaypoints(CommandSourceStack source) {
+        ServerLevel level = source.getLevel();
+        Set<WaypointTransmitter> set = level.getWaypointManager().transmitters();
+        String string = level.dimension().identifier().toString();
+        if (set.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("commands.waypoint.list.empty", string), false);
+            return 0;
+        } else {
+            Component component = ComponentUtils.formatList(
+                set.stream()
+                    .map(
+                        waypointTransmitter -> {
+                            if (waypointTransmitter instanceof LivingEntity livingEntity) {
+                                BlockPos blockPos = livingEntity.blockPosition();
+                                return livingEntity.getFeedbackDisplayName()
+                                    .copy()
+                                    .withStyle(
+                                        style -> style.withClickEvent(
+                                                new ClickEvent.SuggestCommand(
+                                                    "/execute in " + string + " run tp @s " + blockPos.getX() + " " + blockPos.getY() + " " + blockPos.getZ()
+                                                )
+                                            )
+                                            .withHoverEvent(new HoverEvent.ShowText(Component.translatable("chat.coordinates.tooltip")))
+                                            .withColor(waypointTransmitter.waypointIcon().color.orElse(-1))
+                                    );
+                            } else {
+                                return Component.literal(waypointTransmitter.toString());
+                            }
+                        }
+                    )
+                    .toList(),
+                Function.identity()
+            );
+            source.sendSuccess(() -> Component.translatable("commands.waypoint.list.success", set.size(), string, component), false);
+            return set.size();
+        }
+    }
+
+    private static void mutateIcon(CommandSourceStack source, WaypointTransmitter waypoint, Consumer<Waypoint.Icon> mutator) {
+        ServerLevel level = (waypoint instanceof LivingEntity livingEntity) ? (net.minecraft.server.level.ServerLevel) livingEntity.level() : source.getLevel(); // Paper - MC-300685 use level of waypoint if it's a living entity for broadcast
+        level.getWaypointManager().untrackWaypoint(waypoint);
+        mutator.accept(waypoint.waypointIcon());
+        level.getWaypointManager().trackWaypoint(waypoint);
+    }
+}

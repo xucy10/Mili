@@ -1,0 +1,120 @@
+package net.minecraft.server.commands;
+
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+
+public class RideCommand {
+    private static final DynamicCommandExceptionType ERROR_NOT_RIDING = new DynamicCommandExceptionType(
+        target -> Component.translatableEscape("commands.ride.not_riding", target)
+    );
+    private static final Dynamic2CommandExceptionType ERROR_ALREADY_RIDING = new Dynamic2CommandExceptionType(
+        (target, vehicle) -> Component.translatableEscape("commands.ride.already_riding", target, vehicle)
+    );
+    private static final Dynamic2CommandExceptionType ERROR_MOUNT_FAILED = new Dynamic2CommandExceptionType(
+        (target, vehicle) -> Component.translatableEscape("commands.ride.mount.failure.generic", target, vehicle)
+    );
+    private static final SimpleCommandExceptionType ERROR_MOUNTING_PLAYER = new SimpleCommandExceptionType(
+        Component.translatable("commands.ride.mount.failure.cant_ride_players")
+    );
+    private static final SimpleCommandExceptionType ERROR_MOUNTING_LOOP = new SimpleCommandExceptionType(
+        Component.translatable("commands.ride.mount.failure.loop")
+    );
+    private static final SimpleCommandExceptionType ERROR_WRONG_DIMENSION = new SimpleCommandExceptionType(
+        Component.translatable("commands.ride.mount.failure.wrong_dimension")
+    );
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(
+            Commands.literal("ride")
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(
+                    Commands.argument("target", EntityArgument.entity())
+                        .then(
+                            Commands.literal("mount")
+                                .then(
+                                    Commands.argument("vehicle", EntityArgument.entity())
+                                        .executes(
+                                            commandContext -> mount(
+                                                commandContext.getSource(),
+                                                EntityArgument.getEntity(commandContext, "target"),
+                                                EntityArgument.getEntity(commandContext, "vehicle")
+                                            )
+                                        )
+                                )
+                        )
+                        .then(Commands.literal("dismount").executes(context -> dismount(context.getSource(), EntityArgument.getEntity(context, "target"))))
+                )
+        );
+    }
+
+    // Folia start - region threading
+    private static void sendMessage(CommandSourceStack src, CommandSyntaxException ex) {
+        src.sendFailure((Component)ex.getRawMessage());
+    }
+    // Folia end - region threading
+
+    private static int mount(CommandSourceStack source, Entity targetOld, Entity vehicleOld) throws CommandSyntaxException {  // Folia - region threading
+        // Folia start - region threading
+        targetOld.getBukkitEntity().taskScheduler.schedule((Entity target) -> {
+            try {
+                Entity vehicle = vehicleOld.getBukkitEntity().getHandleRaw();
+                if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(vehicle)) {
+                    source.sendFailure(Component.literal("Cannot mount entities cross-region"));
+                    return;
+                }
+                // Folia end - region threading
+        Entity vehicle1 = target.getVehicle();
+        if (vehicle1 != null) {
+            throw ERROR_ALREADY_RIDING.create(target.getDisplayName(), vehicle1.getDisplayName());
+        } else if (vehicle.getType() == EntityType.PLAYER && !io.papermc.paper.configuration.GlobalConfiguration.get().commands.rideCommandAllowPlayerAsVehicle) { // Paper - allow player as vehicle
+            throw ERROR_MOUNTING_PLAYER.create();
+        } else if (target.getSelfAndPassengers().anyMatch(entity -> entity == vehicle)) {
+            throw ERROR_MOUNTING_LOOP.create();
+        } else if (target.level() != vehicle.level()) {
+            throw ERROR_WRONG_DIMENSION.create();
+        } else if (!target.startRiding(vehicle, true, true)) {
+            throw ERROR_MOUNT_FAILED.create(target.getDisplayName(), vehicle.getDisplayName());
+        } else {
+            source.sendSuccess(() -> Component.translatable("commands.ride.mount.success", target.getDisplayName(), vehicle.getDisplayName()), true);
+            return; // Folia - region threading
+        }
+        // Folia start - region threading
+            } catch (CommandSyntaxException ex) {
+                sendMessage(source, ex);
+            }
+        }, null, 1L);
+        return 0;
+        // Folia end - region threading
+    }
+
+    private static int dismount(CommandSourceStack source, Entity targetOld) throws CommandSyntaxException { // Folia - region threading
+        // Folia start - region threading
+        targetOld.getBukkitEntity().taskScheduler.schedule((Entity target) -> {
+            try {
+                // Folia end - region threading
+        Entity vehicle = target.getVehicle();
+        if (vehicle == null) {
+            throw ERROR_NOT_RIDING.create(target.getDisplayName());
+        } else {
+            target.stopRiding();
+            source.sendSuccess(() -> Component.translatable("commands.ride.dismount.success", target.getDisplayName(), vehicle.getDisplayName()), true);
+            return; // Folia - region threading
+        }
+        // Folia start - region threading
+            } catch (CommandSyntaxException ex) {
+                sendMessage(source, ex);
+            }
+        }, null, 1L);
+        return 0;
+        // Folia end - region threading
+    }
+}
