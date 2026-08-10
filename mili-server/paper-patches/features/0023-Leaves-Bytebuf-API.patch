@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili CI <xucy@Mili.com>
+Date: Mon, 10 Aug 2026 23:22:54 +0800
+Subject: [PATCH] Leaves: Bytebuf API
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 06766a9058595aeee25e8fd3e3d01aeec2a55116..bc99d8f564d8df744311fa1faf9f7d85328e0a9c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -422,6 +422,8 @@ public final class CraftServer implements Server {
+ 
+         CraftRegistry.setMinecraftRegistry(console.registryAccess());
+ 
++        org.leavesmc.leaves.bytebuf.internal.InternalBytebufHandler.init(); // Leaves - Bytebuf API
++
+         if (!Main.useConsole) {
+             this.getLogger().info("Console input is disabled due to --noconsole command argument");
+         }
+@@ -3122,4 +3124,11 @@ public final class CraftServer implements Server {
+         return photographerManager;
+     }
+     // Leaves end - replay mod api
++
++    // Leaves start - Bytebuf API
++    @Override
++    public org.leavesmc.leaves.bytebuf.BytebufAllocator getBytebufAllocator() {
++        return org.leavesmc.leaves.bytebuf.internal.InternalBytebufHandler.allocator();
++    }
++    // Leaves end - Bytebuf API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 2f59107642d43719159872d5df37107d8a1a5b97..c8ff85d3e7b47995427592dc4510e722e05a5b5f 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -3424,4 +3424,16 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+         return this.getHandle().getNearbyChunkHot();
+     }
+     // KioCG end
++
++    // Leaves start - Bytebuf API
++    @Override
++    public void send(org.leavesmc.leaves.bytebuf.PacketType packetType, org.leavesmc.leaves.bytebuf.Bytebuf bytebuf) {
++        org.leavesmc.leaves.bytebuf.internal.InternalBytebufHandler.sendPacket(this, packetType, bytebuf);
++    }
++
++    @Override
++    public Object getChannel() {
++        return this.getHandle().connection.connection.channel;
++    }
++    // Leaves end - Bytebuf API
+ }
