@@ -7,8 +7,8 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 
 @ConfigClassInfo(category = EnumConfigCategory.OPTIMIZATIONS, name = "network-optimizer")
 public class NetworkOptimizerConfig implements IConfigModule {
-    @ConfigInfo(name = "enabled", comments = "启用网络优化器")
-    public static boolean enabled = true;
+    @ConfigInfo(name = "enabled", comments = "启用网络优化器（默认禁用以保留原版网络行为）")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "packet-compression-level", comments = "包压缩级别 (1-22, 越高压缩率越大但更慢)")
     public static int packetCompressionLevel = 3;

@@ -13,13 +13,13 @@ import java.util.Set;
 @ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "syncmatica", directory = {"protocol"})
 public class SyncmaticaProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            Enable Syncmatica protocol support""")
+            启用 Syncmatica 协议支持""")
     public static boolean enabled = false;
     @ConfigInfo(name = "useQuota", comments = """
-            Is there a limit on the size of projection files?""")
+            是否限制投影文件大小？""")
     public static boolean useQuota = false;
     @ConfigInfo(name = "quota-Limit", comments = """
-            Maximum Projection File Size (in bytes)""")
+            投影文件最大大小（字节）""")
     public static int quotaLimit = 40000000;
 
     public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> e) {

@@ -478,7 +478,24 @@ fn set_value_in_document(
             if let Some(c) = comment {
                 if let Some(item) = doc.get_mut(key) {
                     if let toml_edit::Item::Value(v) = item {
-                        v.decor_mut().set_suffix(format!(" # {}", c));
+                        apply_comment_to_value(v, c);
+                    }
+                }
+                // For multi-line comments, also set the key's leaf decor prefix
+                // so the comment appears above the key=value line
+                if c.contains('\n') {
+                    if let Some(mut k) = doc.key_mut(key) {
+                        let mut prefix_str = String::new();
+                        for line in c.lines() {
+                            prefix_str.push_str(&format!("# {}\n", line));
+                        }
+                        k.leaf_decor_mut().set_prefix(prefix_str);
+                    }
+                    // Clear the value suffix since we put it on the key
+                    if let Some(item) = doc.get_mut(key) {
+                        if let toml_edit::Item::Value(v) = item {
+                            v.decor_mut().set_suffix("");
+                        }
                     }
                 }
             }
@@ -500,7 +517,23 @@ fn set_value_in_document(
                 if let Some(c) = comment {
                     if let Some(item) = current.get_mut(*part) {
                         if let toml_edit::Item::Value(v) = item {
-                            v.decor_mut().set_suffix(format!(" # {}", c));
+                            apply_comment_to_value(v, c);
+                        }
+                    }
+                    // For multi-line comments, set the key's leaf decor prefix
+                    if c.contains('\n') {
+                        if let Some(mut k) = current.key_mut(*part) {
+                            let mut prefix_str = String::new();
+                            for line in c.lines() {
+                                prefix_str.push_str(&format!("# {}\n", line));
+                            }
+                            k.leaf_decor_mut().set_prefix(prefix_str);
+                        }
+                        // Clear the value suffix since we put it on the key
+                        if let Some(item) = current.get_mut(*part) {
+                            if let toml_edit::Item::Value(v) = item {
+                                v.decor_mut().set_suffix("");
+                            }
                         }
                     }
                 }
@@ -532,7 +565,21 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
         // Root-level key comment
         if let Some(item) = doc.get_mut(parts[0]) {
             if let toml_edit::Item::Value(v) = item {
-                v.decor_mut().set_suffix(format!(" # {}", comment));
+                apply_comment_to_value(v, comment);
+            }
+        }
+        // For multi-line comments on values, use key's leaf decor prefix
+        if comment.contains('\n') {
+            if let Some(mut k) = doc.key_mut(parts[0]) {
+                let mut prefix_str = String::new();
+                for line in comment.lines() {
+                    prefix_str.push_str(&format!("# {}\n", line));
+                }
+                k.leaf_decor_mut().set_prefix(prefix_str);
+                // Clear value suffix
+                if let Some(toml_edit::Item::Value(v)) = doc.get_mut(parts[0]) {
+                    v.decor_mut().set_suffix("");
+                }
             }
         }
         return;
@@ -542,8 +589,27 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
     let mut current = doc.as_table_mut();
     for (i, part) in parts.iter().enumerate() {
         if i == parts.len() - 1 {
-            if let Some(toml_edit::Item::Table(t)) = current.get_mut(*part) {
-                t.decor_mut().set_prefix(format!("# {}\n", comment));
+            match current.get_mut(*part) {
+                Some(toml_edit::Item::Table(t)) => {
+                    apply_comment_to_table(t, comment);
+                }
+                Some(toml_edit::Item::Value(v)) => {
+                    apply_comment_to_value(v, comment);
+                    // For multi-line comments on values, use key's leaf decor prefix
+                    if comment.contains('\n') {
+                        if let Some(mut k) = current.key_mut(*part) {
+                            let mut prefix_str = String::new();
+                            for line in comment.lines() {
+                                prefix_str.push_str(&format!("# {}\n", line));
+                            }
+                            k.leaf_decor_mut().set_prefix(prefix_str);
+                        }
+                        if let Some(toml_edit::Item::Value(v)) = current.get_mut(*part) {
+                            v.decor_mut().set_suffix("");
+                        }
+                    }
+                }
+                _ => {}
             }
             return;
         }
@@ -552,6 +618,26 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
             _ => return,
         };
     }
+}
+
+/// Apply a comment to a value.
+/// Single-line comments use suffix (inline, same line as value).
+/// Multi-line comments are NOT handled here — they require key's leaf_decor prefix,
+/// which is done by the caller (`set_value_in_document`).
+fn apply_comment_to_value(v: &mut toml_edit::Value, comment: &str) {
+    if !comment.contains('\n') {
+        v.decor_mut().set_suffix(format!(" # {}", comment));
+    }
+    // Multi-line comments: do nothing here; caller handles via key prefix
+}
+
+/// Apply a comment to a table header, using prefix for multi-line comments.
+fn apply_comment_to_table(t: &mut toml_edit::Table, comment: &str) {
+    let mut prefix_str = String::new();
+    for line in comment.lines() {
+        prefix_str.push_str(&format!("# {}\n", line));
+    }
+    t.decor_mut().set_prefix(prefix_str);
 }
 
 /// Convert a JSON value to a `toml_edit::Value`.
@@ -1006,5 +1092,110 @@ list = ["red", "green", "blue"]
         assert_eq!(arr.len(), 3);
         assert_eq!(arr[0], Value::String("red".to_string()));
         assert_eq!(arr[2], Value::String("blue".to_string()));
+    }
+
+    #[test]
+    fn test_multiline_comment_save_and_reload() {
+        let tmp = std::env::temp_dir().join("mili_config_test_multiline.toml");
+
+        // Build a JSON map with multi-line comment
+        let mut map = Map::new();
+        map.insert("carpet.enabled".to_string(), Value::Bool(true));
+        map.insert(
+            format!("{}carpet.enabled", COMMENT_PREFIX),
+            Value::String(
+                "启用 Carpet 兼容功能。\n如果你想使用来自 Carpet 修改器的部分功能，\n你需要启用此项。".to_string(),
+            ),
+        );
+        map.insert(
+            "carpet.max_fps".to_string(),
+            Value::Number(serde_json::Number::from(120)),
+        );
+        map.insert(
+            format!("{}carpet.max_fps", COMMENT_PREFIX),
+            Value::String("Single line comment".to_string()),
+        );
+
+        let json = serde_json::to_string(&Value::Object(map)).unwrap();
+        assert!(save_config_merge(tmp.to_str().unwrap(), &json));
+
+        // Read and print the generated TOML
+        let content = std::fs::read_to_string(&tmp).unwrap();
+        println!("Generated TOML:\n{}", content);
+
+        // Verify the TOML is valid by reloading
+        let reloaded = load_config(tmp.to_str().unwrap());
+        assert!(
+            reloaded.is_some(),
+            "Failed to reload TOML — file is invalid!"
+        );
+
+        let reloaded_json: Value = serde_json::from_str(&reloaded.unwrap()).unwrap();
+        let m = reloaded_json.as_object().unwrap();
+
+        // Verify values survived the round-trip
+        assert_eq!(m.get("carpet.enabled"), Some(&Value::Bool(true)));
+        assert_eq!(
+            m.get("carpet.max_fps"),
+            Some(&Value::Number(serde_json::Number::from(120)))
+        );
+
+        // Verify comments survived
+        let enabled_comment = m
+            .get(&format!("{}carpet.enabled", COMMENT_PREFIX))
+            .expect("Missing comment for carpet.enabled");
+        assert!(enabled_comment.as_str().unwrap().contains("启用 Carpet"));
+
+        let fps_comment = m
+            .get(&format!("{}carpet.max_fps", COMMENT_PREFIX))
+            .expect("Missing comment for carpet.max_fps");
+        assert!(fps_comment.as_str().unwrap().contains("Single line"));
+
+        // Print the generated TOML for visual inspection
+        println!("=== Generated TOML ===\n{}=== End ===", content);
+
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn test_multiline_comment_chinese() {
+        let tmp = std::env::temp_dir().join("mili_config_test_multiline_zh.toml");
+
+        // Write initial file with multi-line Chinese comments
+        let initial = r#"# 启用此功能
+# 第二行注释
+[server]
+# 端口号
+# 请确保不被占用
+port = 25565
+"#;
+        std::fs::write(&tmp, initial).unwrap();
+
+        // Merge: update port value, comment is multi-line
+        let mut map = Map::new();
+        map.insert(
+            "server.port".to_string(),
+            Value::Number(serde_json::Number::from(19132)),
+        );
+        map.insert(
+            format!("{}server.port", COMMENT_PREFIX),
+            Value::String("端口号\n请确保不被占用".to_string()),
+        );
+        let json = serde_json::to_string(&Value::Object(map)).unwrap();
+
+        assert!(save_config_merge(tmp.to_str().unwrap(), &json));
+
+        // Read back
+        let content = std::fs::read_to_string(&tmp).unwrap();
+        println!("Generated TOML (Chinese):\n{}", content);
+
+        // Verify valid
+        let reloaded = load_config(tmp.to_str().unwrap());
+        assert!(
+            reloaded.is_some(),
+            "Chinese multi-line comment produced invalid TOML!"
+        );
+
+        let _ = std::fs::remove_file(&tmp);
     }
 }

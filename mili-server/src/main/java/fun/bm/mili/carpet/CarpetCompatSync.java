@@ -13,17 +13,17 @@ import fun.bm.mili.config.modules.function.LanguageConfig;
 import fun.bm.mili.config.modules.function.WoolHopperCounterConfig;
 import fun.bm.mili.protocol.CarpetLoggerProtocol;
 import me.earthme.luminol.config.modules.optimizations.OptimizedDragonRespawnConfig;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.crafting.RecipeManager;
 import org.leavesmc.leaves.bot.ServerBot;
 import org.leavesmc.leaves.protocol.CarpetServerProtocol;
 
 import java.util.List;
 
-// WARNING: THIS FILE NEED TO FULLY REWRITTEN
 public final class CarpetCompatSync {
     private static boolean init = false;
 
     public static void apply() {
-        if (init) return;
         if (CoreConfig.enabled) {
             applyGeneralRules();
             applyFakePlayerRules();
@@ -31,7 +31,24 @@ public final class CarpetCompatSync {
         }
         CarpetLoggerProtocol.refreshConfiguredDefaults(!init);
         registerProtocolRules();
+
+        // After initial load or reload, re-inject compat recipes so that
+        // toggling betterCraftableBoneBlock / betterCraftableDispenser takes effect
+        // without requiring a full server restart.
+        reinjectCompatRecipes();
+
         init = true;
+    }
+
+    private static void reinjectCompatRecipes() {
+        MinecraftServer server = MinecraftServer.getServer();
+        if (server == null) return;
+        try {
+            RecipeManager recipeManager = server.getRecipeManager();
+            recipeManager.reinjectCompatRecipes();
+        } catch (Exception e) {
+            // Silently ignore — recipe re-injection is best-effort
+        }
     }
 
     private static void applyGeneralRules() {

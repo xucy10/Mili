@@ -25,6 +25,7 @@ public class ConfigManager {
     public static void initConfigs() {
         configfiles.put("luminol", ConfigsInstance.of("luminol", "me.earthme.luminol.config.modules"));
         configfiles.put("mili", ConfigsInstance.of("mili", "fun.bm.mili.config.modules"));
+        configfiles.put("carpet", ConfigsInstance.of("carpet", "fun.bm.mili.carpet.config.modules"));
         preLoad();
     }
 

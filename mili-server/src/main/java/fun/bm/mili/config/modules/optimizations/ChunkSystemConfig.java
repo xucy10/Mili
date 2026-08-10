@@ -2,7 +2,8 @@ package fun.bm.mili.config.modules.optimizations;
 
 public class ChunkSystemConfig {
 
-    public static boolean enabled = true;
+    // Mili 修复：默认禁用以保留生电服务器的原版区块加载行为
+    public static boolean enabled = false;
     public static int asyncThreads = 2;
     public static int maxAsyncQueueSize = 500;
     public static int maxAsyncOpsPerCycle = 20;
@@ -10,7 +11,7 @@ public class ChunkSystemConfig {
     public static int maxLoadedChunks = 800;
     public static double unloadSafetyMargin = 0.85;
     public static int hotChunkRadius = 6;
-    public static boolean dynamicViewDistance = true;
+    public static boolean dynamicViewDistance = false; // Mili 修复：禁用以防止区块卸载
     public static int minViewDistance = 4;
     public static int maxViewDistance = 16;
     public static double vdDecreaseThreshold = 50.0;

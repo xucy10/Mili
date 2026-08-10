@@ -6,7 +6,6 @@ build
 /run
 **/bin/
 *.class
-
 /lophine-server/build.gradle.kts
 /lophine-api/build.gradle.kts
 /lophine-server/src/minecraft
@@ -17,8 +16,5 @@ build
 
 .idea/
 .vscode/
-run_build.bat
-run_build.ps1
-# Hyacinthusclip JAR (downloaded during CI build)
 libs/
-mili-rust/src/rust/target/
+mili-rust/src/rust/target

@@ -8,6 +8,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 @ConfigClassInfo(category = EnumConfigCategory.FIXES, name = "update-suppression-crash-fix")
 public class UpdateSuppressionCrashFixConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            是否阻止由更新抑制引起的崩溃？""")
-    public static boolean enabled = true;
+            是否阻止由更新抑制引起的崩溃？
+            注意：默认禁用以保留原版更新抑制行为（生电玩家依赖此特性）""")
+    public static boolean enabled = false;
 }

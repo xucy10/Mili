@@ -9,8 +9,9 @@ import me.earthme.luminol.enums.EnumConfigCategory;
 public class TechnicalMCOptimizerConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
             启用生电优化器
-            针对刷线机、地毯机、铁轨系统、珍珠炮、天基屠龙炮等大型红石机器进行优化""")
-    public static boolean enabled = true;
+            针对刷线机、地毯机、铁轨系统、珍珠炮、天基屠龙炮等大型红石机器进行优化
+            注意：默认禁用以保留原版生电特性，启用前请确认不影响你的机器""")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "hopper-tick-rate", comments = """
             漏斗tick频率优化

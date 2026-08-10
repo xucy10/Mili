@@ -16,8 +16,8 @@ import java.util.List;
         包括智能补货、活动检测和 TPS 感知缩放。
         """)
 public class VillagerOptimizerConfig implements ConfigModule {
-    @ConfigInfo(name = "enabled", comments = "启用高级村民 AI 优化")
-    public static boolean enabled = true;
+    @ConfigInfo(name = "enabled", comments = "启用高级村民 AI 优化（默认禁用以保留原版生电特性）")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "check_interval", comments = "检查村民活动状态的间隔（游戏刻）")
     public static int checkInterval = 150;

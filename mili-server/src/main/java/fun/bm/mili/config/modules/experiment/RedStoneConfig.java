@@ -8,8 +8,8 @@ import me.earthme.luminol.config.flags.TransformedConfig;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
 /*
- * This is a config module for redstone in experimental level
- * If we think configs from here is stable for future, we will move them to function module directory
+ * 这是实验性级别的红石配置模块
+ * 如果我们认为此处的配置在将来足够稳定，会将它们移动到 function 模块目录
  */
 @ConfigClassInfo(category = EnumConfigCategory.EXPERIMENT, name = "redstone")
 public class RedStoneConfig implements IConfigModule {

@@ -13,8 +13,8 @@ public class RegionBalancerConfig implements IConfigModule {
             启用自适应区域 tick 平衡器。
             使用固定大小的线程池和基于区域负载的优先级调度替换每个区域的专用线程。
             优点：减少上下文切换，提高 CPU 利用率，稳定 TPS。
-            """)
-    public static boolean enabled = true;
+            注意：默认禁用以保留原版 tick 时序精确性，启用前请确认不影响跨区域红石机器""")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "thread-pool-size", comments = """
             区域 tick 的工作线程数量。

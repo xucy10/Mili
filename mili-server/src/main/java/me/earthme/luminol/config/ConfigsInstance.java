@@ -38,6 +38,7 @@ public class ConfigsInstance {
     private final Map<String, Object> stagedConfigMap = new HashMap<>();
     private final Map<String, Object> defaultvalueMap = new HashMap<>();
     private final Map<String, String[]> suggestionsMap = new HashMap<>();
+    private final List<Runnable> pendingBeforeFinalLoad = new ArrayList<>();
 
     // Constants and state flags
     public boolean alreadyInit = false;
@@ -79,12 +80,15 @@ public class ConfigsInstance {
     // ========================================================================
 
     /**
-     * Setup the configuration latch by registering the command
+     * Setup the configuration latch by registering the command.
+     * Only registers on first load; subsequent reloads reuse the existing command.
      */
     public void setupLatch() {
-        ConfigCommand command = new ConfigCommand(name, commandName, this);
-        command.register();
-        alreadyInit = true;
+        if (!alreadyInit) {
+            ConfigCommand command = new ConfigCommand(name, commandName, this);
+            command.register();
+            alreadyInit = true;
+        }
     }
 
     /**
@@ -101,8 +105,18 @@ public class ConfigsInstance {
         RegionizedServer.ensureGlobalTickThread("Reload " + baseConfigFile.getName() + " off global region thread!");
         runUnloadTasks();
         dropAllInstanced();
+        pendingBeforeFinalLoad.clear();
         try {
             preLoadConfig(keepComments);
+            // Run beforeFinalLoad callbacks (on region thread, since reload is sync)
+            for (Runnable r : pendingBeforeFinalLoad) {
+                try {
+                    r.run();
+                } catch (Exception e) {
+                    logger.error("Failed to run beforeFinalLoad callback in {}", name, e);
+                }
+            }
+            pendingBeforeFinalLoad.clear();
             finalizeLoadConfig();
         } catch (Exception e) {
             logger.error("Fail to load config file of {}.", name, e);
@@ -113,13 +127,27 @@ public class ConfigsInstance {
      * Reload configuration asynchronously
      */
     public @NotNull CompletableFuture<Void> reloadAsync(boolean keepComments) {
-        return CompletableFuture.runAsync(() -> reload(keepComments), task -> RegionizedServer.getInstance().addTask(() -> {
+        return CompletableFuture.runAsync(() -> {
+            RegionizedServer.ensureGlobalTickThread("Reload " + baseConfigFile.getName() + " off global region thread!");
+            runUnloadTasks();
+            dropAllInstanced();
+            pendingBeforeFinalLoad.clear();
             try {
-                task.run();
+                preLoadConfig(keepComments);
+                // Run beforeFinalLoad callbacks (on region thread, since reload is sync)
+                for (Runnable r : pendingBeforeFinalLoad) {
+                    try {
+                        r.run();
+                    } catch (Exception e) {
+                        logger.error("Failed to run beforeFinalLoad callback in {}", name, e);
+                    }
+                }
+                pendingBeforeFinalLoad.clear();
+                finalizeLoadConfig();
             } catch (Exception e) {
-                logger.error("Fail to reload config of {}", name, e);
+                logger.error("Fail to load config file of {}.", name, e);
             }
-        }));
+        }, task -> RegionizedServer.getInstance().addTask(task));
     }
 
     /**
@@ -134,7 +162,11 @@ public class ConfigsInstance {
      */
     public void runUnloadTasks() {
         for (IConfigModule module : allInstanced.keySet()) {
-            module.onUnloaded(configFileInstance);
+            try {
+                module.onUnloaded(configFileInstance);
+            } catch (Exception e) {
+                logger.error("Failed to call onUnloaded for module in {}", name, e);
+            }
         }
     }
 
@@ -143,7 +175,11 @@ public class ConfigsInstance {
      */
     public void finalizeLoadConfig() {
         for (Map.Entry<IConfigModule, Set<Exception>> entry : allInstanced.entrySet()) {
-            entry.getKey().onLoaded(configFileInstance, entry.getValue());
+            try {
+                entry.getKey().onLoaded(configFileInstance, entry.getValue());
+            } catch (Exception e) {
+                logger.error("Failed to call onLoaded for module in {}", name, e);
+            }
         }
         setupLatch();
     }
@@ -334,7 +370,9 @@ public class ConfigsInstance {
         }
 
         // handle tasks need processed before config finalized
+        // Register both with ConfigManager (for initial load) and locally (for reload)
         ConfigManager.registerRunnableBeforeFinalLoad(singleConfigModule::beforeFinalLoad);
+        pendingBeforeFinalLoad.add(singleConfigModule::beforeFinalLoad);
     }
 
     /**

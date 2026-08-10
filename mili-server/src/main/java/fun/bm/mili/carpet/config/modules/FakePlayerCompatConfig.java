@@ -1,64 +1,76 @@
 package fun.bm.mili.carpet.config.modules;
 
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Set;
 
 @ConfigClassInfo(
         category = EnumConfigCategory.ROOT,
         name = "fakeplayer",
         directory = {"carpet"},
         comments = """
-                Carpet fakeplayer compatibility mapped onto Mili fakeplayers.
-                commandPlayer is currently backed by Mili's /bot command surface."""
+                Carpet 假人兼容，映射到 Mili 假人系统。
+                commandPlayer 目前由 Mili 的 /bot 命令接口支持。"""
 )
 public class FakePlayerCompatConfig implements IConfigModule {
     @ConfigInfo(name = "commandBot", comments = """
-            Enable Mili's /bot command.""")
+            启用 Mili 的 /bot 命令。""")
     public static boolean commandBot = false;
 
     @ConfigInfo(name = "commandPlayer", comments = """
-            Map Carpet's commandPlayer rule to the same fakeplayer command surface used by /bot.""")
+            将 Carpet 的 commandPlayer 规则映射到 /bot 所使用的假人命令接口。""")
     public static boolean commandPlayer = false;
 
     @ConfigInfo(name = "fakePlayerResident", comments = """
-            Keep fakeplayers resident across unload and restart.""")
+            使假人在区块卸载和服务器重启后保持驻留。""")
     public static boolean fakePlayerResident = false;
 
     @ConfigInfo(name = "openFakePlayerInventory", comments = """
-            Allow opening fakeplayer inventories.""")
+            允许打开假人的物品栏。""")
     public static boolean openFakePlayerInventory = false;
 
     @ConfigInfo(name = "fakePlayerTicksLikeRealPlayer", comments = """
-            Tick fakeplayers in the network phase to better match real player timing.""")
+            在网络阶段 tick 假人，以更好地匹配真实玩家的时序。""")
     public static boolean fakePlayerTicksLikeRealPlayer = false;
 
     @ConfigInfo(name = "fakePlayerDefaultSurvivalMode", comments = """
-            Force newly created fakeplayers to start in survival instead of the server default gamemode.""")
+            强制新创建的假人以生存模式而非服务器默认游戏模式启动。""")
     public static boolean fakePlayerDefaultSurvivalMode = false;
 
     @ConfigInfo(name = "fakePlayerInteractLikeClient", comments = """
-            Make fakeplayer entity interaction follow client-side fallback behavior more closely.""")
+            使假人的实体交互更贴近客户端侧的回退行为。""")
     public static boolean fakePlayerInteractLikeClient = false;
 
     @ConfigInfo(name = "fakePlayerAutoReplaceTool", comments = """
-            Toggle automatic tool replacement for fakeplayers.""")
+            切换假人的自动工具替换功能。""")
     public static boolean fakePlayerAutoReplaceTool = false;
 
     @ConfigInfo(name = "fakePlayerAutoReplenishment", comments = """
-            Toggle automatic stack replenishment for fakeplayers.""")
+            切换假人的自动补货功能。""")
     public static boolean fakePlayerAutoReplenishment = false;
 
     @ConfigInfo(name = "fakePlayerAutoReplenishmentFormShulkerBox", comments = """
-            Let fakeplayer replenishment pull matching items out of shulker boxes in the inventory.""")
+            让假人补货时从物品栏中的潜影盒中取出匹配的物品。""")
     public static boolean fakePlayerAutoReplenishmentFormShulkerBox = false;
 
     @ConfigInfo(name = "fakePlayerAutoFish", comments = """
-            Let fakeplayers holding a fishing rod automatically cast and reel it in.""")
+            让手持钓鱼竿的假人自动抛竿和收竿。""")
     public static boolean fakePlayerAutoFish = false;
 
     @ConfigInfo(name = "fakePlayerReloadAction", comments = """
-            Persist queued fakeplayer actions across save and reload.""")
+            在保存和重载之间持久化假人的排队操作。""")
     public static boolean fakePlayerReloadAction = false;
+
+    @Override
+    public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
+    }
+
+    @Override
+    public void onUnloaded(TomlConfigData configInstance) {
+    }
 }

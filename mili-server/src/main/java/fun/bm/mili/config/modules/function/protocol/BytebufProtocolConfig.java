@@ -5,9 +5,9 @@ import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
-@ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "jade", directory = {"protocol"})
-public class JadeProtocolConfig implements IConfigModule {
+@ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "bytebuf", directory = {"protocol"})
+public class BytebufProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            启用 Jade 协议支持""")
-    public static boolean enabled = false;
+            启用 bytebuf API 用于自定义数据包处理""")
+    public static boolean enabled = true;
 }

@@ -5,13 +5,9 @@ import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
 
-import java.util.Random;
-
-@ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "xaero-map", directory = {"protocol"})
-public class XaeroMapProtocolConfig implements IConfigModule {
+@ConfigClassInfo(category = EnumConfigCategory.FUNCTION, name = "chat-image", directory = {"protocol"})
+public class ChatImageProtocolConfig implements IConfigModule {
     @ConfigInfo(name = "enabled", comments = """
-            启用 Xaero 世界地图协议支持""")
+            启用聊天图片协议""")
     public static boolean enabled = false;
-    @ConfigInfo(name = "xaeroMapServerID")
-    public static int xaeroMapServerID = new Random().nextInt();
 }

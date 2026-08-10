@@ -19,8 +19,8 @@ import java.util.Set;
         支持手动绑定和自动追踪。
         """)
 public class PortalLinkFixConfig implements IConfigModule {
-    @ConfigInfo(name = "enabled", comments = "启用传送门链接修复")
-    public static boolean enabled = true;
+    @ConfigInfo(name = "enabled", comments = "启用传送门链接修复（默认禁用以保留原版传送门行为）")
+    public static boolean enabled = false;
 
     @ConfigInfo(name = "strict-matching", comments = "严格匹配模式：只允许链接到已注册的传送门对")
     public static boolean strictMatching = false;
