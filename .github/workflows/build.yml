@@ -10,11 +10,11 @@ on:
   workflow_dispatch:
     inputs:
       force-release:
-        description: "Force disable release if you enter 2, force release if you enter 1, default release if not released else skip release"
+        description: "Force release control"
         required: false
         default: ""
       force-push:
-        description: "Force disable push to repo if you enter 2, force push to repo if you enter 1, default push if not released else skip push repo"
+        description: "Force push control"
         required: false
         default: ""
       comments:
@@ -22,64 +22,97 @@ on:
         required: false
         default: ""
 
-permissions: write-all
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
+  build-and-cross:
     runs-on: ubuntu-latest
-    environment: default
-    timeout-minutes: 60
+    timeout-minutes: 120
+    env:
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
     steps:
-      - name: Checkout Git Repository
+      - name: Checkout repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          submodules: recursive
 
-      - name: Set Up JDK
+      - name: Repair submodules & paperweight cache (prevent corrupted upstreams)
+        run: |
+          set -eux
+
+          git submodule deinit -f --all || true
+
+          rm -rf .git/modules || true
+
+          git submodule init
+          git submodule sync --recursive
+
+          git submodule update --init --recursive --force
+
+          git submodule foreach --recursive '
+            echo "=== Submodule: $name ==="
+            if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+              git fetch --unshallow --tags || git fetch --all --tags || true
+            else
+              git fetch --all --tags || true
+            fi
+            git reset --hard || true
+            git clean -fdx || true
+          '
+
+          rm -rf .gradle/caches/paperweight || true
+          rm -rf .gradle/caches/paperweight/upstreams || true
+
+          git status --porcelain --untracked-files=all || true
+          ls -la .gradle/caches || true
+
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 21
 
-      - name: Set Up Rust
-        uses: actions-rs/toolchain@v1
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,aarch64-apple-darwin,x86_64-apple-darwin
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
 
-      - name: Install Zig for Cross-Compilation
+      - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.13.0
+
+      - name: Install system cross toolchains and build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y clang lld build-essential pkg-config curl git
+          sudo apt-get install -y libssl-dev zlib1g-dev
 
       - name: Install cargo-zigbuild
         run: |
           cargo install cargo-zigbuild --locked
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Verify Toolchain
+      - name: Verify toolchain and linkers
         run: |
           rustc --version
           cargo --version
           zig version
-          cargo zigbuild --version || echo "WARN: cargo-zigbuild not found on PATH"
-          rustup target list --installed
-
-      # 核心改动：优化 Gradle 缓存配置
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
-          gradle-home-cache-cleanup: true
-          cache-exclude: |
-            **/paperweight/**
-            **/caches/paperweight/**
+          if command -v cargo-zigbuild >/dev/null 2>&1; then
+            cargo-zigbuild --version
+          else
+            echo "WARN: cargo-zigbuild not available"
+          fi
+          which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
+          which aarch64-linux-gnu-gcc || echo "aarch64 cross-gcc not found in PATH"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -93,13 +126,57 @@ jobs:
 
       - name: Clean build artifacts
         run: |
-          echo "=== Pre-clean state ==="
           rm -rf mili-server/build mili-api/build
           rm -rf mili-server/src/minecraft
           rm -rf .gradle/caches/paperweight
           rm -rf .gradle/configuration-cache
-          echo "=== Post-clean state ==="
-          echo "Cleaned paperweight cache to ensure fresh upstream checkout"
+
+      - name: Build Rust Optimizer (cross targets)
+        env:
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          set -eux
+          export PATH="$PATH:$HOME/.cargo/bin"
+          export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
+          export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+          ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
+
+      - name: Verify Rust Optimizer Binary
+        run: |
+          echo "=== Listing staged output ==="
+          ls -la mili-rust/build/rust/ 2>/dev/null || true
+          echo "=== Listing cargo-target ==="
+          find mili-rust/build/cargo-target -type f \( -name "*.so" -o -name "*.dll" \) 2>/dev/null || true
+          
+          mkdir -p mili-rust/build/rust
+          for f in mili-rust/build/cargo-target/*/release/libmili_optimizer.so \
+                   mili-rust/build/cargo-target/*/release/mili_optimizer.so; do
+            if [ -f "$f" ]; then
+              cp "$f" mili-rust/build/rust/mili_optimizer.so
+              echo "Copied $f -> mili-rust/build/rust/mili_optimizer.so"
+              break
+            fi
+          done
+          
+          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/libmili_optimizer.so" ] || \
+             [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/libmili_optimizer.dll" ]; then
+            echo "Rust optimizer binary exists"
+            ls -la mili-rust/build/rust/
+          else
+            echo "Rust optimizer binary missing"
+            exit 1
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
+          gradle-home-cache-cleanup: true
+          cache-exclude: |
+            **/paperweight/**
+            **/caches/paperweight/**
 
       - name: Download Hyacinthusclip
         run: |
@@ -107,6 +184,10 @@ jobs:
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
           echo "Downloading hyacinthusclip v${CLIP_VERSION}"
           curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          if [ ! -s libs/hyacinthusclip.jar ]; then
+            echo "ERROR: Failed to download hyacinthusclip jar"
+            exit 1
+          fi
           ls -la libs/hyacinthusclip.jar
 
       - name: Apply All Patches
@@ -151,18 +232,6 @@ jobs:
           done
           echo "Total CIS source files: ${COUNT}"
 
-      - name: Build Rust Optimizer
-        run: ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
-
-      - name: Verify Rust Optimizer Binary
-        run: |
-          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/mili_optimizer.dylib" ]; then
-            echo "Rust optimizer binary exists"
-            ls -la mili-rust/build/rust
-          else
-            echo "Rust optimizer binary missing"
-            exit 1
-          fi
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
@@ -172,7 +241,7 @@ jobs:
           echo "=== CIS Smoke Test ==="
           if ls "$JAR_PATH"/*-paperclip-*-mojmap.jar 1>/dev/null 2>&1; then
             JAR=$(ls "$JAR_PATH"/*-paperclip-*-mojmap.jar | head -1)
-            JAR_SIZE=$(stat --format=%s "$JAR" 2>/dev/null || stat -f%z "$JAR" 2>/dev/null)
+            JAR_SIZE=$(stat -c%s "$JAR" 2>/dev/null || stat --format=%s "$JAR" 2>/dev/null || echo "unknown")
             echo "OK: JAR built — $JAR (${JAR_SIZE} bytes)"
             echo ""
             echo "=== Available Feature Flags (config-driven) ==="
@@ -180,11 +249,6 @@ jobs:
             echo "  Kaiiju Throttler:  MiliEntityLimitsConfig.enabled"
             echo "  Async Pathfinding: ChunkIndependentConfig.enabled"
             echo ""
-            echo "=== To generate lifecycle hooks (if needed) ==="
-            echo "  1. ./gradlew applyAllPatches"
-            echo "  2. Edit mili-server/src/minecraft/ (RegionizedServer.java)"
-            echo "  3. ./gradlew :mili-server:rebuildPatches"
-            echo "  4. Commit generated patches"
           else
             echo "WARN: No paperclip JAR found at $JAR_PATH"
           fi
@@ -199,9 +263,9 @@ jobs:
           fi
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.project_id_b }} CI Artifacts
+          name: ${{ env.project_id_b || 'Mili' }} CI Artifacts
           path: mili-server/build/libs/*-paperclip-*-mojmap.jar
           if-no-files-found: error
           retention-days: 14
@@ -238,15 +302,13 @@ jobs:
         if: github.event_name != 'pull_request' && env.flag_release == 'true'
         run: |
           if [[ "$GITHUB_REF_NAME" == ver/* ]] || [[ "$GITHUB_REF_NAME" == exp/* ]] || [[ "$GITHUB_REF_NAME" == dev/* ]] || [[ "$GITHUB_REF_NAME" == master ]]; then
-            echo "Branch is in expected prefixes"
             echo "unexpect=false" >> $GITHUB_ENV
           else
-            echo "Branch is NOT in expected prefixes"
             echo "unexpect=true" >> $GITHUB_ENV
           fi
 
       - name: Create Release - Pre Process
-        if: ( github.event_name != 'pull_request' && !( env.unexpect == 'true' ) && env.flag_release == 'true' && env.release_exists != 'true' && !(inputs.force-release == '2')) || inputs.force-release == '1'
+        if: ( github.event_name != 'pull_request' && env.unexpect != 'true' && env.flag_release == 'true' && env.release_exists != 'true' && inputs.force-release != '2' ) || inputs.force-release == '1'
         run: |
           if [ "${{ inputs.comments }}" == "" ]; then
             echo "No comments provided"
@@ -257,13 +319,13 @@ jobs:
           fi
 
       - name: Create Release - No Comment
-        if: env.flag_comment == 'false'
+        if: env.flag_comment == 'false' && github.event_name != 'pull_request'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/xucy10/${{ env.project_id }}/releases/download/${{ env.tag }}/${{ env.jar }})
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat)
             This release is automatically compiled by GitHub Actions
             ### Branch Info
             > ${{ github.ref_name }}
@@ -276,13 +338,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release - With Comment
-        if: env.flag_comment == 'true'
+        if: env.flag_comment == 'true' && github.event_name != 'pull_request'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.tag }}
           name: ${{ env.project_id_b }} ${{ env.mcversion }} - ${{ env.commit_id }}${{ env.release_count }}
           body: |
-            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat-square)](https://github.com/xucy10/${{ env.project_id }}/releases/download/${{ env.tag }}/${{ env.jar }})
+            📦Version: `${{ env.mcversion }}` | Commit ${{ env.commit_id }} [![download](https://img.shields.io/github/downloads/LuminolMC/${{ env.project_id }}/${{ env.tag }}/total?color=red&style=flat)
             This release is automatically compiled by GitHub Actions
             ### Comments
             > ${{ inputs.comments }}
@@ -294,3 +356,4 @@ jobs:
           generateReleaseNotes: true
           prerelease: ${{ env.pre }}
           makeLatest: ${{ env.make_latest }}
+          token: ${{ secrets.GITHUB_TOKEN }}

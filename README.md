@@ -1,5 +1,5 @@
 
-  # Mili（米粒）
+  # Mili（米粒） 
 
   **基于 Folia 的高性能 Minecraft 服务端核心，融合 Rust 原生加速与深度生电兼容**
 
@@ -27,7 +27,7 @@ Minecraft（原版）
 ```
 
 > Mili 原为 Lophine/Luminol 的衍生分支，现已迁移为直接基于 Folia，将 Luminol 的优化源码内联合并。
-> Luminol已在与canvas的争吵中删库，因canvas在抄袭Luminol的代码时未署名（甚至一个有bug的补丁他们在移除署名后就直接复制粘贴到canvas上）
+> Luminol已在与canvas争议中删库
 
 ---
 
@@ -263,6 +263,10 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 | Hyacinthusweight 补丁系统 | https://github.com/LuminolMC/Hyacinthusweight 已删库 | 
 
 ---
+
+## 社区
+
+[Discord](https://discord.com/invite/BSa67dbvVf)
 
 ## 感谢
 
