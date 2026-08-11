@@ -57,7 +57,7 @@ Minecraft（原版）
 
 ### 红石与生电兼容
 
-从 Leaves 移植并适配 Folia 的红石/生电修复：
+从 Leaves/Lophine 移植并适配 Folia 的红石/生电修复：
 
 - **更新抑制（Update Suppression）**：捕获 `UpdateSuppressionException` 防止服务端崩溃，保留掉落物，不回滚已放置方块
 - **红石忽略向上更新**：恢复 1.20.1/1.19 的红石粉/中继器/比较器行为
@@ -266,6 +266,7 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 
 ## 社区
 
+欢迎各位
 [Discord](https://discord.com/invite/BSa67dbvVf)
 
 ## 感谢
