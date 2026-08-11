@@ -215,7 +215,7 @@ dependencies {
     implementation("one.pkg.velocity_rc:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT ReastLib
         isTransitive = false
     }
-    implementation("io.netty:netty-codec-haproxy:4.2.7.Final") // Add support for proxy protocol
+    implementation("io.netty:netty-codec-haproxy:4.2.16.Final") // Add support for proxy protocol
     implementation("org.apache.logging.log4j:log4j-iostreams:2.24.1")
     implementation("org.ow2.asm:asm-commons:9.8")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
