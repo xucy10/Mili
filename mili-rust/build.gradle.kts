@@ -3,8 +3,8 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 dependencies {
@@ -18,7 +18,7 @@ tasks.register("addRustTargets") {
     description = "Adds Rust cross-compilation targets via rustup"
     doLast {
         val targets = listOf(
-            "x86_64-pc-windows-gnu",
+            "x86_64-pc-windows-msvc",
             "x86_64-unknown-linux-gnu",
             "aarch64-unknown-linux-gnu",
             "aarch64-apple-darwin",
@@ -55,7 +55,7 @@ tasks.register("buildRustBinariesAll") {
         data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
 
         val nativeTargets = listOf(
-            NativeTarget("x86_64-pc-windows-gnu", "", "dll", "mili_optimizer.dll"),
+            NativeTarget("x86_64-pc-windows-msvc", "", "dll", "mili_optimizer.dll"),
             NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
             NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
             NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
@@ -102,10 +102,33 @@ tasks.register("buildRustBinariesAll") {
 
         for (nt in nativeTargets) {
             logger.lifecycle("Building Rust target: ${nt.target}")
-            val pb = ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
-                redirectErrorStream(true)
-                directory(rustSrcDir)
-                environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
+            
+            val isWindows = System.getProperty("os.name").lowercase().contains("win")
+            val isMsvcTarget = nt.target.contains("windows-msvc")
+            
+            val pb = if (isWindows && isMsvcTarget) {
+                // Use vcvarsall.bat to set up MSVC environment for windows-msvc target
+                val vcvarsall = File("C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat")
+                if (vcvarsall.exists()) {
+                    val cmd = "call \"${vcvarsall.absolutePath}\" x64 >nul 2>&1 && $cargoCmd $subcommand --release --lib --target ${nt.target}"
+                    ProcessBuilder("cmd", "/c", cmd).apply {
+                        redirectErrorStream(true)
+                        directory(rustSrcDir)
+                        environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
+                    }
+                } else {
+                    ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
+                        redirectErrorStream(true)
+                        directory(rustSrcDir)
+                        environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
+                    }
+                }
+            } else {
+                ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
+                    redirectErrorStream(true)
+                    directory(rustSrcDir)
+                    environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
+                }
             }
 
             // Ensure ~/.cargo/bin is in PATH for cargo subcommands
@@ -144,7 +167,7 @@ tasks.register("stageRustBinary") {
         data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
 
         val nativeTargets = listOf(
-            NativeTarget("x86_64-pc-windows-gnu", "", "dll", "mili_optimizer.dll"),
+            NativeTarget("x86_64-pc-windows-msvc", "", "dll", "mili_optimizer.dll"),
             NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
             NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
             NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
