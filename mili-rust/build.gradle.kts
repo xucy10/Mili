@@ -13,17 +13,44 @@ dependencies {
 
 // --- Cargo cross-compile for Rust JNI library (all platforms) ---
 
+// Resolve the target list: prefer the RUST_TARGETS env var, otherwise pick sane defaults per host OS
+// (MSVC/macOS targets cannot be cross-compiled from a Linux runner)
+fun rustTargets(): List<String> {
+    val env = System.getenv("RUST_TARGETS")
+    if (!env.isNullOrBlank()) {
+        return env.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    }
+    val host = System.getProperty("os.name").lowercase()
+    return when {
+        host.contains("win") -> listOf("x86_64-pc-windows-msvc")
+        host.contains("mac") -> listOf("aarch64-apple-darwin", "x86_64-apple-darwin")
+        else -> listOf("x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu")
+    }
+}
+
+// cdylib output file name and staged name for a given target
+fun rustLibNames(target: String): Pair<String, String> {
+    val built = when {
+        target.contains("windows") -> "mili_optimizer.dll"
+        target.contains("darwin") -> "libmili_optimizer.dylib"
+        else -> "libmili_optimizer.so"
+    }
+    val staged = when {
+        target.contains("windows") -> "mili_optimizer.dll"
+        target == "aarch64-unknown-linux-gnu" -> "libmili_optimizer_aarch64.so"
+        target.contains("linux") -> "libmili_optimizer.so"
+        target == "aarch64-apple-darwin" -> "libmili_optimizer.dylib"
+        target.contains("darwin") -> "libmili_optimizer_x86_64.dylib"
+        else -> "libmili_optimizer_${target}.so"
+    }
+    return built to staged
+}
+
 tasks.register("addRustTargets") {
     group = "build"
     description = "Adds Rust cross-compilation targets via rustup"
     doLast {
-        val targets = listOf(
-            "x86_64-pc-windows-msvc",
-            "x86_64-unknown-linux-gnu",
-            "aarch64-unknown-linux-gnu",
-            "aarch64-apple-darwin",
-            "x86_64-apple-darwin"
-        )
+        val targets = rustTargets()
         for (target in targets) {
             val proc = ProcessBuilder("rustup", "target", "add", target).apply {
                 redirectErrorStream(true)
@@ -52,15 +79,7 @@ tasks.register("buildRustBinariesAll") {
     outputs.dir(cargoTargetDir)
 
     doLast {
-        data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
-
-        val nativeTargets = listOf(
-            NativeTarget("x86_64-pc-windows-msvc", "", "dll", "mili_optimizer.dll"),
-            NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
-            NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
-            NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
-            NativeTarget("x86_64-apple-darwin", "lib", "dylib", "libmili_optimizer_x86_64.dylib")
-        )
+        val nativeTargets = rustTargets()
 
         // Detect available cargo subcommand: prefer zigbuild, fall back to build
         val useZigbuild = try {
@@ -100,31 +119,31 @@ tasks.register("buildRustBinariesAll") {
 
         logger.lifecycle("Using cargo $subcommand for cross-compilation (zigbuild available: $useZigbuild)")
 
-        for (nt in nativeTargets) {
-            logger.lifecycle("Building Rust target: ${nt.target}")
-            
+        for (target in nativeTargets) {
+            logger.lifecycle("Building Rust target: $target")
+
             val isWindows = System.getProperty("os.name").lowercase().contains("win")
-            val isMsvcTarget = nt.target.contains("windows-msvc")
-            
+            val isMsvcTarget = target.contains("windows-msvc")
+
             val pb = if (isWindows && isMsvcTarget) {
                 // Use vcvarsall.bat to set up MSVC environment for windows-msvc target
                 val vcvarsall = File("C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat")
                 if (vcvarsall.exists()) {
-                    val cmd = "call \"${vcvarsall.absolutePath}\" x64 >nul 2>&1 && $cargoCmd $subcommand --release --lib --target ${nt.target}"
+                    val cmd = "call \"${vcvarsall.absolutePath}\" x64 >nul 2>&1 && $cargoCmd $subcommand --release --lib --target $target"
                     ProcessBuilder("cmd", "/c", cmd).apply {
                         redirectErrorStream(true)
                         directory(rustSrcDir)
                         environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
                     }
                 } else {
-                    ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
+                    ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", target).apply {
                         redirectErrorStream(true)
                         directory(rustSrcDir)
                         environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
                     }
                 }
             } else {
-                ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", nt.target).apply {
+                ProcessBuilder(cargoCmd, subcommand, "--release", "--lib", "--target", target).apply {
                     redirectErrorStream(true)
                     directory(rustSrcDir)
                     environment()["CARGO_TARGET_DIR"] = cargoTargetDir.absolutePath
@@ -145,9 +164,9 @@ tasks.register("buildRustBinariesAll") {
             val output = proc.inputStream.bufferedReader().readText()
             val exitCode = proc.waitFor()
             if (exitCode != 0) {
-                logger.warn("Cargo $subcommand failed for ${nt.target} (skipping):\n$output")
+                logger.warn("Cargo $subcommand failed for $target (skipping):\n$output")
             } else {
-                logger.lifecycle("Cargo $subcommand succeeded for ${nt.target}")
+                logger.lifecycle("Cargo $subcommand succeeded for $target")
             }
         }
     }
@@ -164,25 +183,16 @@ tasks.register("stageRustBinary") {
     outputs.dir(rustBuildDir)
 
     doLast {
-        data class NativeTarget(val target: String, val libPrefix: String, val libExt: String, val stagedName: String)
-
-        val nativeTargets = listOf(
-            NativeTarget("x86_64-pc-windows-msvc", "", "dll", "mili_optimizer.dll"),
-            NativeTarget("x86_64-unknown-linux-gnu", "lib", "so", "libmili_optimizer.so"),
-            NativeTarget("aarch64-unknown-linux-gnu", "lib", "so", "libmili_optimizer_aarch64.so"),
-            NativeTarget("aarch64-apple-darwin", "lib", "dylib", "libmili_optimizer.dylib"),
-            NativeTarget("x86_64-apple-darwin", "lib", "dylib", "libmili_optimizer_x86_64.dylib")
-        )
-
         rustBuildDir.mkdirs()
 
-        for (nt in nativeTargets) {
-            val builtLib = File(cargoTargetDir, "${nt.target}/release/${nt.libPrefix}mili_optimizer.${nt.libExt}")
+        for (target in rustTargets()) {
+            val (builtName, stagedName) = rustLibNames(target)
+            val builtLib = File(cargoTargetDir, "$target/release/$builtName")
             if (builtLib.exists()) {
-                builtLib.copyTo(File(rustBuildDir, nt.stagedName), overwrite = true)
-                logger.lifecycle("Staged: ${nt.stagedName} (${builtLib.length()} bytes) from ${nt.target}")
+                builtLib.copyTo(File(rustBuildDir, stagedName), overwrite = true)
+                logger.lifecycle("Staged: $stagedName (${builtLib.length()} bytes) from $target")
             } else {
-                logger.warn("Native library not found for ${nt.target}: ${builtLib.absolutePath}")
+                logger.warn("Native library not found for $target: ${builtLib.absolutePath}")
             }
         }
 
