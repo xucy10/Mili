@@ -78,6 +78,18 @@ jobs:
           distribution: zulu
           java-version: 21
 
+      - name: Download Hyacinthusclip
+        run: |
+          mkdir -p libs
+          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
+          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          if [ ! -s libs/hyacinthusclip.jar ]; then
+            echo "ERROR: Failed to download hyacinthusclip jar"
+            exit 1
+          fi
+          ls -la libs/hyacinthusclip.jar
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -177,18 +189,6 @@ jobs:
           cache-exclude: |
             **/paperweight/**
             **/caches/paperweight/**
-
-      - name: Download Hyacinthusclip
-        run: |
-          mkdir -p libs
-          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
-          if [ ! -s libs/hyacinthusclip.jar ]; then
-            echo "ERROR: Failed to download hyacinthusclip jar"
-            exit 1
-          fi
-          ls -la libs/hyacinthusclip.jar
 
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
