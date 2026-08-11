@@ -1,34 +1,31 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: MrHua269 <wangxyper@163.com>
-Date: Sun, 12 Jan 2025 12:27:17 +0800
+Date: Tue, 11 Aug 2026 19:51:49 +0800
 Subject: [PATCH] Pufferfish: Reduce chunk loading & lookups
 
-Co-authored by: Paul Sauve <paul@technove.co>
-As part of: Pufferfish (https://github.com/pufferfish-gg/Pufferfish/blob/04bc249f9eee6157338b6884113b6fa3192bf59b/patches/server/0014-Reduce-chunk-loading-lookups.patch)
-Licensed under: GPL-3.0 (https://github.com/pufferfish-gg/Pufferfish/blob/04bc249f9eee6157338b6884113b6fa3192bf59b/PATCH-LICENSE)
 
 diff --git a/net/minecraft/world/entity/monster/EnderMan.java b/net/minecraft/world/entity/monster/EnderMan.java
-index 6516cccada06a9a7d3d743929712970fe0a2b8c8..f7c0c1c75ba02c2d70ff2b67e437c0813458ee3d 100644
+index 9b4ae8afda1f2202761cb49bc4f1181ce4eb55d5..82e1472fb39122dadef700b63cc784be71fd7a69 100644
 --- a/net/minecraft/world/entity/monster/EnderMan.java
 +++ b/net/minecraft/world/entity/monster/EnderMan.java
-@@ -300,11 +300,18 @@ public class EnderMan extends Monster implements NeutralMob {
-     private boolean teleport(double x, double y, double z) {
-         BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos(x, y, z);
+@@ -298,11 +298,18 @@ public class EnderMan extends Monster implements NeutralMob {
+     private boolean teleport(final double x, final double y, final double z) {
+         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
  
--        while (mutableBlockPos.getY() > this.level().getMinY() && !this.level().getBlockState(mutableBlockPos).blocksMotion()) {
+-        while (pos.getY() > this.level().getMinY() && !this.level().getBlockState(pos).blocksMotion()) {
 +        // Pufferfish start - single chunk lookup
-+        net.minecraft.world.level.chunk.LevelChunk chunk = this.level().getChunkIfLoaded(mutableBlockPos);
++        net.minecraft.world.level.chunk.LevelChunk chunk = this.level().getChunkIfLoaded(pos);
 +        if (chunk == null) {
 +            return false;
 +        }
 +        // Pufferfish end
-+        while (mutableBlockPos.getY() > this.level().getMinY() && !chunk.getBlockState(mutableBlockPos).blocksMotion()) { // Pufferfish
++        while (pos.getY() > this.level().getMinY() && !chunk.getBlockState(pos).blocksMotion()) { // Pufferfish
 +
-             mutableBlockPos.move(Direction.DOWN);
+             pos.move(Direction.DOWN);
          }
  
--        BlockState blockState = this.level().getBlockState(mutableBlockPos);
-+        BlockState blockState = chunk.getBlockState(mutableBlockPos); // Pufferfish
-         boolean flag = blockState.blocksMotion();
-         boolean isWater = blockState.getFluidState().is(FluidTags.WATER);
-         if (flag && !isWater) {
+-        BlockState blockState = this.level().getBlockState(pos);
++        BlockState blockState = chunk.getBlockState(pos); // Pufferfish
+         boolean couldStandOn = blockState.blocksMotion();
+         boolean isWet = blockState.getFluidState().is(FluidTags.WATER);
+         if (couldStandOn && !isWet) {

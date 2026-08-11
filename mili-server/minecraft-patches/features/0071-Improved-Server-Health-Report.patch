@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Bacteriawa <A3167717663@hotmail.com>
-Date: Tue, 14 Oct 2025 00:28:47 +0800
+Date: Tue, 11 Aug 2026 20:32:23 +0800
 Subject: [PATCH] Improved Server Health Report
 
 
 diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9a847dab9 100644
+index aa860cfe9de616f185163fe74e0f4f49bd13a805..74e2b09b0e0927ab556630c4ccb2ea985de23d5c 100644
 --- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 +++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-@@ -28,6 +28,14 @@ import java.util.ArrayList;
+@@ -29,6 +29,14 @@ import java.util.ArrayList;
  import java.util.Arrays;
  import java.util.List;
  import java.util.Locale;
@@ -23,7 +23,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
  
  public final class CommandServerHealth extends Command {
  
-@@ -44,7 +52,7 @@ public final class CommandServerHealth extends Command {
+@@ -45,7 +53,7 @@ public final class CommandServerHealth extends Command {
      private static final TextColor HEADER = TextColor.color(79, 164, 240);
      private static final TextColor PRIMARY = TextColor.color(48, 145, 237);
      private static final TextColor SECONDARY = TextColor.color(104, 177, 240);
@@ -32,7 +32,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
      private static final TextColor LIST = TextColor.color(33, 97, 188);
  
      public CommandServerHealth() {
-@@ -57,30 +65,32 @@ public final class CommandServerHealth extends Command {
+@@ -58,30 +66,32 @@ public final class CommandServerHealth extends Command {
      private static Component formatRegionInfo(final String prefix, final double util, final double mspt, final double tps,
                                                final boolean newline) {
          return Component.text()
@@ -81,7 +81,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
          if (region == null) {
              sender.sendMessage(Component.text("You are not in a region currently", NamedTextColor.RED));
              return true;
-@@ -104,25 +114,17 @@ public final class CommandServerHealth extends Command {
+@@ -105,25 +115,17 @@ public final class CommandServerHealth extends Command {
          final double tps1m = report1m.tpsData().segmentAll().average();
          final double mspt1m = report1m.timePerTickData().segmentAll().average() / 1.0E6;
  
@@ -116,7 +116,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
  
          sender.sendMessage(line);
  
-@@ -143,7 +145,7 @@ public final class CommandServerHealth extends Command {
+@@ -144,7 +146,7 @@ public final class CommandServerHealth extends Command {
          }
  
          final List<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>> regions =
@@ -125,7 +125,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
  
          for (final World bukkitWorld : Bukkit.getWorlds()) {
              final ServerLevel world = ((CraftWorld)bukkitWorld).getHandle();
-@@ -162,6 +164,18 @@ public final class CommandServerHealth extends Command {
+@@ -163,6 +165,18 @@ public final class CommandServerHealth extends Command {
          final long currTime = System.nanoTime();
          final TickData.TickReportData globalTickReport = RegionizedServer.getGlobalTickData().getTickReport15s(currTime);
  
@@ -144,7 +144,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
          for (final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region : regions) {
              final TickData.TickReportData report = region.getData().getRegionSchedulingHandle().getTickReport15s(currTime);
              tpsByRegion.add(report == null ? 20.0 : report.tpsData().segmentAll().average());
-@@ -173,31 +187,27 @@ public final class CommandServerHealth extends Command {
+@@ -174,31 +188,27 @@ public final class CommandServerHealth extends Command {
          final double loadRate = ca.spottedleaf.moonrise.patches.chunk_system.scheduling.task.ChunkFullTask.loadRate(currTime);
  
          totalUtil += globalTickReport.utilisation();
@@ -178,7 +178,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
              regionsBelowThreshold.add(new ObjectObjectImmutablePair<>(regions.get(i), report));
          }
  
-@@ -206,11 +216,18 @@ public final class CommandServerHealth extends Command {
+@@ -207,11 +217,18 @@ public final class CommandServerHealth extends Command {
              final TickData.TickReportData report2 = p2.right();
              final double util1 = report1 == null ? 0.0 : report1.utilisation();
              final double util2 = report2 == null ? 0.0 : report2.utilisation();
@@ -199,7 +199,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
          final TextComponent.Builder lowestRegionsBuilder = Component.text();
  
          if (sender instanceof Player) {
-@@ -218,23 +235,18 @@ public final class CommandServerHealth extends Command {
+@@ -219,23 +236,18 @@ public final class CommandServerHealth extends Command {
          }
          for (int i = 0, len = Math.min(lowestRegionsCount, regionsBelowThreshold.size()); i < len; ++i) {
              final ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, TickData.TickReportData>
@@ -225,10 +225,10 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -            }
 +            if (chunkCenter == null) continue;
 +
-             final int centerBlockX = ((chunkCenter.x << 4) | 7);
-             final int centerBlockZ = ((chunkCenter.z << 4) | 7);
+             final int centerBlockX = ((chunkCenter.x() << 4) | 7);
+             final int centerBlockZ = ((chunkCenter.z() << 4) | 7);
              final double util = report.utilisation();
-@@ -242,75 +254,102 @@ public final class CommandServerHealth extends Command {
+@@ -243,75 +255,102 @@ public final class CommandServerHealth extends Command {
              final double mspt = report.timePerTickData().segmentAll().average() / 1.0E6;
  
              final int yLoc = 80;
@@ -252,7 +252,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -                .append(formatRegionStats(region.getData().getRegionStats(), (i + 1) != len))
 -                .build()
 -
--                .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
+-                .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, Payload.string("/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5")))
 -                .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
 +            final Component line = Component.text()
 +                    .append(Component.text(" - ", LIST, TextDecoration.BOLD))
@@ -274,7 +274,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 +                    .append(formatRegionStats(region.getData().getRegionStats(), (i + 1) != len))
 +                    .build()
 +
-+                    .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
++                    .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, Payload.string("/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5")))
 +                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
  
              lowestRegionsBuilder.append(line);
@@ -394,7 +394,7 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
          );
  
          return true;
-@@ -360,4 +399,21 @@ public final class CommandServerHealth extends Command {
+@@ -361,4 +400,21 @@ public final class CommandServerHealth extends Command {
          }
          return new ArrayList<>();
      }

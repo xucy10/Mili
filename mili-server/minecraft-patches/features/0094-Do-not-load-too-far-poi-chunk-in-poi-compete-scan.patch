@@ -1,12 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: MrHua269 <mrhua269@gmail.com>
-Date: Sat, 28 Feb 2026 22:05:40 +0800
+Date: Tue, 11 Aug 2026 21:02:48 +0800
 Subject: [PATCH] Do not load too far poi chunk in poi compete scan
 
-Beeeeeeeeeeeeeeee
 
 diff --git a/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java b/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java
-index a7552764bec1c9e5a69117fd0be604d1b9cfccfe..938042a643cddc08177e9fe1ea041df74159cd84 100644
+index 53131c1b8d5562f9a1b45dfab4fdbdd37b655139..0e9c19a820aefa802d6df134b21f5128a5e8d656 100644
 --- a/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java
 +++ b/net/minecraft/world/entity/ai/behavior/PoiCompetitorScan.java
 @@ -24,8 +24,18 @@ public class PoiCompetitorScan {
@@ -14,9 +13,9 @@ index a7552764bec1c9e5a69117fd0be604d1b9cfccfe..938042a643cddc08177e9fe1ea041df7
                          }
                          // Folia end - region threading
 -                        level.getPoiManager()
--                            .getType(globalPos.pos())
+-                            .getType(pos.pos())
 +                        // Luminol start - POI fixes
-+                        var blockPosOfJobSite = globalPos.pos();
++                        var blockPosOfJobSite = pos.pos();
 +                        var sectionPosOfJobSite = net.minecraft.core.SectionPos.asLong(blockPosOfJobSite);
 +                        var poiManager = level.getPoiManager();
 +                        // we don't care if we should clear the memory of JOB_SITE
@@ -26,7 +25,7 @@ index a7552764bec1c9e5a69117fd0be604d1b9cfccfe..938042a643cddc08177e9fe1ea041df7
 +                        poiChunk.flatMap(poiSection -> poiSection.getType(blockPosOfJobSite))
 +                        // Luminol end - POI fixes
 +                        /*level.getPoiManager() // Luminol - POI fixes
-+                            .getType(globalPos.pos())*/ // Luminol - POI fixes
++                            .getType(pos.pos())*/ // Luminol - POI fixes
                              .ifPresent(
                                  // Paper start - Improve performance of PoiCompetitorScan by unrolling stream
                                  // The previous logic used Stream#reduce to simulate a form of single-iteration bubble sort

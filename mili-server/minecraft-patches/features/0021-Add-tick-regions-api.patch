@@ -5,7 +5,7 @@ Subject: [PATCH] Add tick regions api
 
 
 diff --git a/io/papermc/paper/threadedregions/ThreadedRegionizer.java b/io/papermc/paper/threadedregions/ThreadedRegionizer.java
-index 604385af903845d966382ad0a4168798e4ed4a0e..45aa5484b1cdb317ed55f1b001dbfe13a720b2a7 100644
+index 3449918b5001bb39c541ce1168eac4acf9144e1f..a346b96500ae859e9469c80e2ff6b39c4d3d0b52 100644
 --- a/io/papermc/paper/threadedregions/ThreadedRegionizer.java
 +++ b/io/papermc/paper/threadedregions/ThreadedRegionizer.java
 @@ -43,6 +43,7 @@ public final class ThreadedRegionizer<R extends ThreadedRegionizer.ThreadedRegio
@@ -42,7 +42,7 @@ index 604385af903845d966382ad0a4168798e4ed4a0e..45aa5484b1cdb317ed55f1b001dbfe13
          }
  
 diff --git a/io/papermc/paper/threadedregions/TickRegions.java b/io/papermc/paper/threadedregions/TickRegions.java
-index b75293fea5dc029374c1c03361e859f0ddb58e83..02c004bc7f9a0203523ce4b27cd766d6bdc478c0 100644
+index a6ab9cb01f4f49f5f44b6ed324fa6d51139aabb6..97c514673a454b752ab86b944fd143725ca8090d 100644
 --- a/io/papermc/paper/threadedregions/TickRegions.java
 +++ b/io/papermc/paper/threadedregions/TickRegions.java
 @@ -156,6 +156,7 @@ public final class TickRegions implements ThreadedRegionizer.RegionCallbacks<Tic

@@ -1,66 +1,51 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy10 <someonm20141923@outlook.com>
-Date: Tue, 21 Jul 2026 13:48:01 +0800
+Date: Tue, 11 Aug 2026 21:11:38 +0800
 Subject: [PATCH] Leaves-Do-not-reset-placed-block-on-exception-Do-not
 
 
 diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
-index a5d3caab2072b2c9bf8fdcbdb7c52c2dee16cfaf..4bb36d2965785fadf628a9bfac4fa2aa305aaf65 100644
+index 0f4ac8eeb8f5f866b22a81f255f7169754437bfc..70e7752bd383c712065735324e661f6c1c885537 100644
 --- a/net/minecraft/world/item/BlockItem.java
 +++ b/net/minecraft/world/item/BlockItem.java
-@@ -77,20 +77,22 @@ public class BlockItem extends Item {
-                     BlockState blockState = level.getBlockState(clickedPos);
-                     if (blockState.is(placementState.getBlock())) {
-                         blockState = this.updateBlockStateFromTag(clickedPos, level, itemInHand, blockState);
-+                        // Leaves start - we do not need this
-                         // Paper start - Reset placed block on exception
--                        try {
-+                        // try {
-                         this.updateCustomBlockEntityTag(clickedPos, level, player, itemInHand, blockState);
-                         updateBlockEntityComponents(level, clickedPos, itemInHand);
--                        } catch (Exception ex) {
--                            ((org.bukkit.craftbukkit.block.CraftBlockState) oldBukkitState).revertPlace();
--                            if (player instanceof ServerPlayer serverPlayer) {
--                                org.apache.logging.log4j.LogManager.getLogger().error("Player {} tried placing invalid block", player.getScoreboardName(), ex);
--                                serverPlayer.getBukkitEntity().kickPlayer("Packet processing error");
--                                return InteractionResult.FAIL;
--                            }
--                            throw ex; // Rethrow exception if not placed by a player
--                        }
-+                        // } catch (Exception ex) {
-+                        //     ((org.bukkit.craftbukkit.block.CraftBlockState) oldBukkitState).revertPlace();
-+                        //     if (player instanceof ServerPlayer serverPlayer) {
-+                        //         org.apache.logging.log4j.LogManager.getLogger().error("Player {} tried placing invalid block", player.getScoreboardName(), ex);
-+                        //         serverPlayer.getBukkitEntity().kickPlayer("Packet processing error");
-+                        //         return InteractionResult.FAIL;
-+                        //     }
-+                        //     throw ex; // Rethrow exception if not placed by a player
-+                        // }
-                         // Paper end - Reset placed block on exception
-+                        // Leaves end - we dot not need this
-                         blockState.getBlock().setPlacedBy(level, clickedPos, blockState, player, itemInHand);
-                         // CraftBukkit start
-                         if (bukkitState != null) {
+@@ -77,21 +77,8 @@ public class BlockItem extends Item {
+         java.util.function.UnaryOperator<InteractionResult.PaperSuccessContext> context = c -> c.placedBlockAt(pos.immutable()); // Paper - track placed block position from block item
+         if (placedState.is(placementState.getBlock())) {
+             placedState = this.updateBlockStateFromTag(pos, level, itemStack, placedState);
+-            // Paper start - Reset placed block on exception
+-            try {
+-                boolean updatedBlockEntity = this.updateCustomBlockEntityTag(pos, level, player, itemStack, placedState);
+-                context = context.andThen(c -> c.updatedBlockEntity(updatedBlockEntity))::apply; // track whether the block entity got updated or not
+-                updateBlockEntityComponents(level, pos, itemStack);
+-            } catch (Exception ex) {
+-                ((org.bukkit.craftbukkit.block.CraftBlockState) previousState).revertPlace(false);
+-                if (player instanceof ServerPlayer serverPlayer) {
+-                    net.minecraft.server.MinecraftServer.LOGGER.warn("Player {} tried placing invalid block", player.getScoreboardName(), ex);
+-                    serverPlayer.connection.disconnect(net.minecraft.network.chat.Component.literal("Packet processing error"), org.bukkit.event.player.PlayerKickEvent.Cause.ILLEGAL_ACTION);
+-                    return InteractionResult.FAIL;
+-                }
+-                throw ex; // Rethrow exception if not placed by a player
+-            }
+-            // Paper end - Reset placed block on exception
++            this.updateCustomBlockEntityTag(pos, level, player, itemStack, placedState);
++            updateBlockEntityComponents(level, pos, itemStack);
+             placedState.getBlock().setPlacedBy(level, pos, placedState, player, itemStack);
+             // CraftBukkit start - special case for handling block placement with water lilies, frog spawn and snow buckets
+             if (player != null && (this instanceof PlaceOnWaterBlockItem || this instanceof SolidBucketItem)) {
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index c8575dc3c0dbac32cb28aca3fb664f2f7cc583ff..4b9fa3937920cf450b245a0d902396fa56c6ade5 100644
+index dde4785e4f8b5376f2a7a6557eb7246f074d321d..3e666d5ce616bdba1ddad42fd61ce43d7983a819 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
-@@ -1005,12 +1005,14 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+@@ -1009,12 +1009,6 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
  
-                         profilerFiller.pop();
-                     } catch (Throwable var5) {
-+                        // Leaves start - do not prevent here
-                         // Paper start - Prevent block entity and entity crashes
--                        final String msg = String.format("BlockEntity threw exception at %s:%s,%s,%s", LevelChunk.this.getLevel().getWorld().getName(), this.getPos().getX(), this.getPos().getY(), this.getPos().getZ());
--                        net.minecraft.server.MinecraftServer.LOGGER.error(msg, var5);
--                        net.minecraft.world.level.chunk.LevelChunk.this.level.getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, var5))); // Paper - ServerExceptionEvent
+                         profiler.pop();
+                     } catch (Throwable t) {
+-                        // Paper start - Prevent block entity and entity crashes
+-                        final String msg = String.format("BlockEntity threw exception at %s:%s,%s,%s", io.papermc.paper.util.MCUtil.getLevelName(LevelChunk.this.getLevel()), this.getPos().getX(), this.getPos().getY(), this.getPos().getZ());
+-                        LevelChunk.LOGGER.error(msg, t);
+-                        LevelChunk.this.level.getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, t))); // Paper - ServerExceptionEvent
 -                        LevelChunk.this.removeBlockEntity(this.getPos());
-+                        // final String msg = String.format("BlockEntity threw exception at %s:%s,%s,%s", LevelChunk.this.getLevel().getWorld().getName(), this.getPos().getX(), this.getPos().getY(), this.getPos().getZ());
-+                        // net.minecraft.server.MinecraftServer.LOGGER.error(msg, var5);
-+                        // net.minecraft.world.level.chunk.LevelChunk.this.level.getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, var5))); // Paper - ServerExceptionEvent
-+                        // LevelChunk.this.removeBlockEntity(this.getPos());
-                         // Paper end - Prevent block entity and entity crashes
-+                        // Leaves end - do not prevent here
+-                        // Paper end - Prevent block entity and entity crashes
                      }
                  }
              }

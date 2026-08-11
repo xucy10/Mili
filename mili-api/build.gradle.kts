@@ -107,20 +107,26 @@ sourceSets {
             srcDir(generatedDir)
             srcDir(file("../paper-api/src/main/java"))
             srcDir(file("../folia-api/src/main/java"))
+            srcDir(file("../luminol-api/src/main/java"))
+            srcDir(file("src/main/java"))
         }
         resources {
             srcDir(file("../paper-api/src/main/resources"))
             srcDir(file("../folia-api/src/main/resources"))
+            srcDir(file("../luminol-api/src/main/resources"))
+            srcDir(file("src/main/resources"))
         }
     }
     test {
         java {
             srcDir(file("../paper-api/src/test/java"))
             srcDir(file("../folia-api/src/test/java"))
+            srcDir(file("../luminol-api/src/test/java"))
         }
         resources {
             srcDir(file("../paper-api/src/test/resources"))
             srcDir(file("../folia-api/src/test/resources"))
+            srcDir(file("../luminol-api/src/test/resources"))
         }
     }
 }

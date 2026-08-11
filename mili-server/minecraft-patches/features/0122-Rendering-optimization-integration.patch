@@ -1,25 +1,17 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mili <mili@bm.fun>
-Date: Fri, 31 Jul 2026 21:30:00 +0800
+Date: Tue, 11 Aug 2026 22:08:19 +0800
 Subject: [PATCH] Rendering optimization integration
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
 
-Integrate Rust native batch entity culling into the server entity tracking
-system. Entity implements Cullable interface, ServerEntity.sendChanges()
-skips culled entities. Batch culling is done at the newTrackerTick level —
-one JNI call per viewer per tick, processing ALL tracked entities in a batch.
-DynamicViewDistanceManager is ticked from the server tick loop.
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 19a2099793c8af3b6c35cc9fa740005fe8669d70..2f9562ee737fb53a6aa3f9f5fbef949e4bf89244 100644
+index 377c5c5d51f23c9b20660fa2c5194a74ddac45b3..8214d0684d1eca4f94db4cbc87b9662a2eacbd80 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1770,6 +1770,15 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1777,6 +1777,15 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
          }
          //KioCG end
-         this.tickChildren(hasTimeLeft, region); // Folia - region threading
+         this.tickChildren(haveTime, region); // Folia - region threading
 +        // Mili start - dynamic view distance manager tick
 +        if (region != null && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % 20 == 0) {
 +            try {
@@ -33,10 +25,10 @@ index 19a2099793c8af3b6c35cc9fa740005fe8669d70..2f9562ee737fb53a6aa3f9f5fbef949e
          if (region != null && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % 20 == 0){
              final java.util.Iterator<net.minecraft.world.level.chunk.LevelChunk> chunkIterator = chunks.unsafeIterator();
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index 1c1bd726572c53228467a743ba26a2a4c6c9c1d1..8595a720fc9a790db9a5a896b9c2cd3eb3e46672 100644
+index 90b9b88b3cac82e1624df889e708448de6bf45e9..11acddb0b76b8ce2ccee638d9d501bd33c4e0982 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
-@@ -1049,6 +1049,9 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+@@ -1068,6 +1068,9 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
      private void newTrackerTick() {
          // Folia start - profiler
          final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle profiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler();
@@ -46,30 +38,31 @@ index 1c1bd726572c53228467a743ba26a2a4c6c9c1d1..8595a720fc9a790db9a5a896b9c2cd3e
          final int totalEntities;
          profiler.startTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ENTITY_TRACKER_TICK); try { // Folia - profiler
          // Folia end - profiler
-@@ -1064,12 +1067,45 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
-             if (tracker == null) {
-                 continue;
-             }
-+            // Mili start - batch entity culling: collect entities for batch processing
-+            if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled
-+                && !tracker.seenBy.isEmpty()
-+                && entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
-+                // Check if entity should be force-visible
-+                if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck) {
-+                    for (final ServerPlayerConnection conn : tracker.seenBy) {
-+                        ServerPlayer viewer = conn.getPlayer();
-+                        mili$batchCullMap.computeIfAbsent(viewer, k -> new java.util.ArrayList<>()).add(entity);
+@@ -1084,6 +1087,21 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                 if (tracker == null) {
+                     continue;
+                 }
++                // Mili start - batch entity culling: collect entities for batch processing
++                if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled
++                    && !tracker.seenBy.isEmpty()
++                    && entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
++                    // Check if entity should be force-visible
++                    if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck) {
++                        for (final ServerPlayerConnection conn : tracker.seenBy) {
++                            ServerPlayer viewer = conn.getPlayer();
++                            mili$batchCullMap.computeIfAbsent(viewer, k -> new java.util.ArrayList<>()).add(entity);
++                        }
++                    } else {
++                        cullable.setCulled(false);
 +                    }
-+                } else {
-+                    cullable.setCulled(false);
 +                }
-+            }
-+            // Mili end - batch entity culling
-             ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$tick(nearbyPlayers.getChunk(entity.chunkPosition())); // Folia - region threading
-             if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$hasPlayers()
-                 || ((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)entity).moonrise$getChunkStatus().isOrAfter(FullChunkStatus.ENTITY_TICKING)) {
-                 tracker.serverEntity.sendChanges();
-             }
++                // Mili end - batch entity culling
+                 ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$tick(nearbyPlayers.getChunk(entity.chunkPosition())); // Folia - region threading
+                 if (((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerTrackedEntity)tracker).moonrise$hasPlayers()
+                     || ((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)entity).moonrise$getChunkStatus().isOrAfter(FullChunkStatus.ENTITY_TICKING)) {
+@@ -1093,6 +1111,24 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+         } finally {
+             worldData.iteratingTrackerEntities = false; // Folia - region threading
          }
 +        // Mili start - batch entity culling: one JNI call per viewer
 +        if (!mili$batchCullMap.isEmpty()) {
@@ -93,10 +86,10 @@ index 1c1bd726572c53228467a743ba26a2a4c6c9c1d1..8595a720fc9a790db9a5a896b9c2cd3e
          } finally { profiler.stopTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ENTITY_TRACKER_TICK); } // Folia - profiler
      }
 diff --git a/net/minecraft/server/level/ServerEntity.java b/net/minecraft/server/level/ServerEntity.java
-index c55061bf85f81de7515f4425eb35a3eca35ae777..bc5ca92e6ea10f73a37017b542fe82586c96f2ce 100644
+index 717704c661c2fecf3c70d0de749fcac6f76f9361..7649edaa9252d431d8aa5771213c262477225f7b 100644
 --- a/net/minecraft/server/level/ServerEntity.java
 +++ b/net/minecraft/server/level/ServerEntity.java
-@@ -95,6 +95,12 @@ public class ServerEntity {
+@@ -97,6 +97,12 @@ public class ServerEntity {
      // Paper end - fix desync when a player is added to the tracker
  
      public void sendChanges() {
@@ -110,21 +103,21 @@ index c55061bf85f81de7515f4425eb35a3eca35ae777..bc5ca92e6ea10f73a37017b542fe8258
          if (((ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity)this.entity).moonrise$isHardColliding()) {
              this.teleportDelay = 9999;
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 750baf1f0316a16f64ca07e9433b38a19fa6ad41..33e81472eef813e7ea5cbeab811ac92d5ba84f4b 100644
+index b2a9a92815d27e93fb7b183cdc00e261ea9a2af9..171c929677bfb0906a811ad9346c02a87204758f 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -152,7 +152,7 @@ import org.jetbrains.annotations.Contract;
- import org.jspecify.annotations.Nullable;
- import org.slf4j.Logger;
- 
--public abstract class Entity implements SyncedDataHolder, DebugValueSource, Nameable, ItemOwner, SlotProvider, EntityAccess, ScoreHolder, DataComponentGetter, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity { // Paper - rewrite chunk system // Paper - optimise entity tracker
-+public abstract class Entity implements SyncedDataHolder, DebugValueSource, Nameable, ItemOwner, SlotProvider, EntityAccess, ScoreHolder, DataComponentGetter, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity, dev.tr7zw.entityculling.versionless.access.Cullable { // Paper - rewrite chunk system // Paper - optimise entity tracker // Mili - entity culling
+@@ -164,7 +164,7 @@ public abstract class Entity
+     ItemOwner,
+     SlotProvider,
+     DebugValueSource,
+-    TypedInstance<EntityType<?>>, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity { // Paper - rewrite chunk system // Paper - optimise entity tracker
++    TypedInstance<EntityType<?>>, ca.spottedleaf.moonrise.patches.chunk_system.entity.ChunkSystemEntity, ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity, dev.tr7zw.entityculling.versionless.access.Cullable { // Paper - rewrite chunk system // Paper - optimise entity tracker // Mili - entity culling
      // CraftBukkit start
      private static final int CURRENT_LEVEL = 2;
      static boolean isLevelAtLeast(ValueInput input, int level) {
-@@ -6451,5 +6451,41 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -6563,5 +6563,41 @@ public abstract class Entity
      }
-     // Paper end - Expose entity id counter
+     // Paper end
  
 +    // Mili start - entity culling
 +    private boolean mili_cullTimeout = false;

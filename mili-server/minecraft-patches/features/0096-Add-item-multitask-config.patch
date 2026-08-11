@@ -1,30 +1,27 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Libalpm64 <Levamara@proton.me>
-Date: Wed, 4 Mar 2026 00:00:00 +0000
+Date: Tue, 11 Aug 2026 21:06:18 +0800
 Subject: [PATCH] Add item multitask config
 
-Allows players to use items while moving or switching hotbar slots. This
-is for Anarchy servers or Crystal PVP servers this allows them to pvp
-without stopping the item mid animation.
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 8843559f8400e60e3494089846e7d25a5940bfbc..90e044ab3476d91819dddf14054d4626358da363 100644
+index a87e40c76156ae66a3fb9c7dee2e2461337b15f7..108cd2eddbcada496708c99755052b018c576558 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -2137,7 +2137,11 @@ public class ServerGamePacketListenerImpl
-                         int maxY = this.player.level().getMaxY();
-                         if (blockPos.getY() <= maxY) {
-                             if (this.awaitingPositionFromClient == null && (serverLevel.mayInteract(this.player, blockPos) || (serverLevel.paperConfig().spawn.allowUsingSignsInsideSpawnProtection && serverLevel.getBlockState(blockPos).getBlock() instanceof net.minecraft.world.level.block.SignBlock))) { // Paper - Allow using signs inside spawn protection
+@@ -2189,7 +2189,11 @@ public class ServerGamePacketListenerImpl
+                                 this.player.sendSpawnProtectionMessage(pos);
+                             } else if (this.awaitingPositionFromClient == null && (level.mayInteract(this.player, pos) || passthroughSignInteraction)) {
+                                 // Paper end - Allow using signs inside spawn protection
 -                                this.player.stopUsingItem(); // CraftBukkit - SPIGOT-4706
 +                                // Luminol start - Add item multitask config
 +                                if (!me.earthme.luminol.config.modules.fixes.ItemMultitaskConfig.enabled) {
 +                                    this.player.stopUsingItem(); // CraftBukkit - SPIGOT-4706
 +                                }
 +                                // Luminol end
-                                 InteractionResult interactionResult = this.player.gameMode.useItemOn(this.player, serverLevel, itemInHand, hand, hitResult);
+                                 InteractionResult interactionResult = this.player.gameMode.useItemOn(this.player, level, itemStack, hand, blockHit);
                                  if (interactionResult.consumesAction()) {
-                                     CriteriaTriggers.ANY_BLOCK_USE.trigger(this.player, hitResult.getBlockPos(), itemInHand.copy());
-@@ -2344,9 +2348,13 @@ public class ServerGamePacketListenerImpl
+                                     CriteriaTriggers.ANY_BLOCK_USE.trigger(this.player, blockHit.getBlockPos(), itemStack);
+@@ -2388,9 +2392,13 @@ public class ServerGamePacketListenerImpl
                  return;
              }
              // CraftBukkit end

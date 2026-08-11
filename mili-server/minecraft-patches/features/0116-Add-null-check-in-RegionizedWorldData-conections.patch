@@ -1,15 +1,15 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy10 <someonm20141923@outlook.com>
-Date: Tue, 21 Jul 2026 13:48:01 +0800
+Date: Tue, 11 Aug 2026 21:17:30 +0800
 Subject: [PATCH] Add-null-check-in-RegionizedWorldData-conections
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index 4a59842f80833456c6f2f793cbb1a662e3259347..8f30174a300f8f0c8f748b370be518dac507e4a6 100644
+index 5286be4a57de92674d7944c07389d8cd907d44fe..84230c6bb51d96ee49419d966872862e2093c4fb 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -241,14 +241,17 @@ public final class RegionizedWorldData {
-                 regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift)).itemEntityMovementTrackerMap.put(key, tracker);
+@@ -237,14 +237,17 @@ public final class RegionizedWorldData {
+                 regionToData.get(CoordinateUtils.getChunkKey(pos.x() >> chunkToRegionShift, pos.z() >> chunkToRegionShift)).itemEntityMovementTrackerMap.put(key, tracker);
              }
              // Luminol end
 +            Set<Connection> cons = new java.util.HashSet<>(from.connections.size()); // Mili - save all connections we have processed in connection process
@@ -20,27 +20,27 @@ index 4a59842f80833456c6f2f793cbb1a662e3259347..8f30174a300f8f0c8f748b370be518da
                  final ChunkPos pos = player.chunkPosition();
                  // Note: It is impossible for an entity in the world to _not_ be in an entity chunk, which means
                  // the chunk holder must _exist_, and so the region section exists.
-                 regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift))
+                 regionToData.get(CoordinateUtils.getChunkKey(pos.x() >> chunkToRegionShift, pos.z() >> chunkToRegionShift))
                      .connections.add(conn);
 +                cons.add(conn); // Mili - save all connections we have processed in connection process
              }
              // entities
              for (final ServerPlayer player : from.localPlayers) {
-@@ -259,6 +262,13 @@ public final class RegionizedWorldData {
+@@ -255,6 +258,13 @@ public final class RegionizedWorldData {
                  into.localPlayers.add(player);
                  player.getBukkitEntity().updateRegion(into);
                  into.nearbyPlayers.addPlayer(player);
 +                // Mili start - we need to process the connection if player's connection is not processed, if connection.player is null, next tick will clean up it
 +                final Connection conn = player.connection.connection;
 +                if (!cons.contains(conn)) {
-+                    regionToData.get(CoordinateUtils.getChunkKey(pos.x >> chunkToRegionShift, pos.z >> chunkToRegionShift))
++                    regionToData.get(CoordinateUtils.getChunkKey(pos.x() >> chunkToRegionShift, pos.z() >> chunkToRegionShift))
 +                            .connections.add(conn);
 +                }
 +                // Mili end
              }
              for (final Entity entity : from.allEntities) {
                  final ChunkPos pos = entity.chunkPosition();
-@@ -624,6 +634,7 @@ public final class RegionizedWorldData {
+@@ -615,6 +625,7 @@ public final class RegionizedWorldData {
      private static void cleanUpConnection(final Connection conn) {
          // note: ALL connections HERE have a player
          final ServerPlayer player = conn.getPlayer();

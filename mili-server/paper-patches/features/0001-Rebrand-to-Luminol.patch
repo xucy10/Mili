@@ -32,7 +32,7 @@ index 08745a35b1ce8cc56d970472088de3cd17b9e43a..fcdfd4f6de5e1c2d5e80c7f3d8cb0b33
                  metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
                      Map<String, Map<String, Integer>> map = new HashMap<>();
 diff --git a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
-index 4d2936f6818c38e2844cba78ffad339e93ff29ab..a5f2e4454258886536251288c3694f58386c7420 100644
+index 30815c8970b1f1c88a3c7bb5fd36efd915f1687d..5dc8e9065ea1f3eeea73fcd049c1f9818f5d25d8 100644
 --- a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
 +++ b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
 @@ -40,8 +40,8 @@ public class PaperVersionFetcher implements VersionFetcher {
@@ -89,7 +89,7 @@ index 10a0be7a4db1a51579d113d279af7a9effe7f438..4ada790812957657d580cb748077c496
  
      @Override
 diff --git a/src/main/java/org/spigotmc/WatchdogThread.java b/src/main/java/org/spigotmc/WatchdogThread.java
-index 1ae6be6da9834168ac93c56007d63ec096f11762..1c1befaaa9dc670d930212d753603df63e824ff7 100644
+index 5607f4cc8ca2f620461eb5e97d01d9db0d6b2303..1f8eba1a93d6844bc2e1ddf8c1e261fbf7caa925 100644
 --- a/src/main/java/org/spigotmc/WatchdogThread.java
 +++ b/src/main/java/org/spigotmc/WatchdogThread.java
 @@ -80,9 +80,10 @@ public class WatchdogThread extends ca.spottedleaf.moonrise.common.util.TickThre

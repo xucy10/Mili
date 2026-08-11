@@ -1,15 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Sat, 3 Jan 2026 10:42:39 +0800
+Date: Tue, 11 Aug 2026 20:39:15 +0800
 Subject: [PATCH] Sync dragon part when teleportation or firstly created
 
-A simple fix of https://github.com/PaperMC/Folia/issues/371
 
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
-index b31b55f00e2ce1bd6c1011fe852bd1dbb37de524..75c36cbf86e56d4993169688a13f22ccef555d92 100644
+index aa53138b3670a8337b639472a6ab5ce46702ff76..ed27b73e787782f328906b2a061feeca25d42a24 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
-@@ -97,6 +97,7 @@ public final class ServerEntityLookup extends EntityLookup {
+@@ -93,6 +93,7 @@ public final class ServerEntityLookup extends EntityLookup {
          if (entity instanceof ThrownEnderpearl enderpearl) {
              this.addEnderPearl(CoordinateUtils.getChunkKey(enderpearl.chunkPosition()), enderpearl.getId()); // Folia - region threading
          }
@@ -18,10 +17,10 @@ index b31b55f00e2ce1bd6c1011fe852bd1dbb37de524..75c36cbf86e56d4993169688a13f22cc
      }
  
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 6498027d1da0dbaad6f8f01f8e648357cf3d8d0b..2cf51d52538cbcce3cfc61e6f565b5cfef824f2c 100644
+index cffd09a1adacc0cfa6db52ca1be58e1dda78e4d3..12e42d688d95145311c8e3cd14ace9bd70083afd 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -4368,6 +4368,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -4460,6 +4460,7 @@ public abstract class Entity
          Entity copy = this.getType().create(destination, EntitySpawnReason.DIMENSION_TRAVEL);
          copy.restoreFrom(this);
          copy.transform(pos, yaw, pitch, velocity);
@@ -30,14 +29,14 @@ index 6498027d1da0dbaad6f8f01f8e648357cf3d8d0b..2cf51d52538cbcce3cfc61e6f565b5cf
          // vanilla code used to call remove _after_ copying, and some stuff is required to be after copy - so add hook here
          // for example, clearing of inventory after switching dimensions
 diff --git a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
-index 1daf8f52148043339f723aaebdf6135763dd805b..09c794e68e6197d507cbe0b95aee822bac3ea4b6 100644
+index ab921ab4b4cc860abd77744f2bd201013e136e51..fd85816ec78c99f45c740ebf8052ff41f4859ed6 100644
 --- a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
 +++ b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
-@@ -999,4 +999,12 @@ public class EnderDragon extends Mob implements Enemy {
-         return flag ? i : 0;
+@@ -1011,4 +1011,12 @@ public class EnderDragon extends Mob implements Enemy {
+         return 500;
      }
-     // CraftBukkit end
-+    
+     // Paper end - init expToDrop for already dying spawned dragon
++
 +    // Luminol start - Sync dragon part when teleportation or firstly created
 +    public void syncDragonPartsAfterTeleportTransform() {
 +        for (EnderDragonPart part : this.subEntities) {

@@ -1,23 +1,20 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: MrHua269 <mrhua269@gmail.com>
-Date: Sat, 8 Mar 2025 21:20:11 +0800
+Date: Tue, 11 Aug 2026 19:41:35 +0800
 Subject: [PATCH] Leaf: Replace brain maps with optimized collection
 
-Co-authored by: HaHaWTH <102713261+HaHaWTH@users.noreply.github.com>
-As part of: Leaf (https://github.com/Winds-Studio/Leaf/blob/7f3e240bbe0970683c40279a7a65f0fde47503b6/leaf-server/minecraft-patches/features/0070-Replace-brain-maps-with-optimized-collection.patch)
-Licensed under: MIT (https://github.com/Winds-Studio/Leaf/blob/7f3e240bbe0970683c40279a7a65f0fde47503b6/licenses/MIT.txt)
 
 diff --git a/net/minecraft/world/entity/ai/Brain.java b/net/minecraft/world/entity/ai/Brain.java
-index c83dee968b441d9d1b0b0ad89b2ae584f2b2503a..8b7db9a2d4e383c9ae4521ecf66b0452ed3850d3 100644
+index 2a3ae7bc52880ba089f1632f3b3de877666d4a09..236c793d2655e67bb2f900e6b4481b529e6493a0 100644
 --- a/net/minecraft/world/entity/ai/Brain.java
 +++ b/net/minecraft/world/entity/ai/Brain.java
-@@ -47,14 +47,14 @@ public class Brain<E extends LivingEntity> {
-     static final Logger LOGGER = LogUtils.getLogger();
-     private final Supplier<Codec<Brain<E>>> codec;
+@@ -37,14 +37,14 @@ import org.jspecify.annotations.Nullable;
+ 
+ public class Brain<E extends LivingEntity> {
      private static final int SCHEDULE_UPDATE_DELAY = 20;
--    private final Map<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> memories = Maps.newHashMap();
+-    private final Map<MemoryModuleType<?>, MemorySlot<?>> memories = Maps.newHashMap();
 -    private final Map<SensorType<? extends Sensor<? super E>>, Sensor<? super E>> sensors = Maps.newLinkedHashMap();
-+    private final Map<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> memories = new it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap<>(); // Leaf - Replace brain maps with optimized collection
++    private final Map<MemoryModuleType<?>, MemorySlot<?>> memories = new it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap<>(); // Leaf - Replace brain maps with optimized collection
 +    private final Map<SensorType<? extends Sensor<? super E>>, Sensor<? super E>> sensors = new it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap<>(); // Leaf - Replace brain maps with optimized collection
      private final Map<Integer, Map<Activity, Set<BehaviorControl<? super E>>>> availableBehaviorsByPriority = Maps.newTreeMap();
      private @Nullable EnvironmentAttribute<Activity> schedule;

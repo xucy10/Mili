@@ -1,17 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Thu, 18 Dec 2025 22:50:24 +0800
+Date: Tue, 11 Aug 2026 19:48:57 +0800
 Subject: [PATCH] Kaiiju: Vanilla end portal teleportation
 
-Co-authored by: Sofiane H. Djerbi <46628754+kugge@users.noreply.github.com>
-As part of: Kaiiju (https://github.com/KaiijuMC/Kaiiju/blob/c2b7aec8f7b418a39a2ec408e6411e6f752379da/patches/server/0024-Vanilla-end-portal-teleportation.patch)
-Licensed under: GPL-3.0 (https://github.com/KaiijuMC/Kaiiju/blob/c2b7aec8f7b418a39a2ec408e6411e6f752379da/LICENSE)
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 624974d9d267226efe7d03690b71c9dbc381481e..4c8ad47a93ccdfca306d17dc6f113857676b57af 100644
+index a7e9d60da8a4f7babbd8bdcdaea9b19eae2320d0..8f3b139665c265efdb2e8fde86a6ec3604da743d 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -4555,14 +4555,18 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -4647,15 +4647,19 @@ public abstract class Entity
                          targetPos, 16, // load 16 blocks to be safe from block physics
                          ca.spottedleaf.concurrentutil.util.Priority.HIGH,
                          (chunks) -> {
@@ -28,13 +25,14 @@ index 624974d9d267226efe7d03690b71c9dbc381481e..4c8ad47a93ccdfca306d17dc6f113857
                              portalInfoCompletable.complete(
                                  new net.minecraft.world.level.portal.TeleportTransition(
 -                                    destination, Vec3.atBottomCenterOf(targetPos.below()), Vec3.ZERO, Direction.WEST.toYRot(), 0.0f,
--                                    Relative.union(Relative.DELTA, Set.of(Relative.X_ROT)),
 +                                    destination, finalPos, this.getDeltaMovement(), Direction.WEST.toYRot(), 0.0f, // Kaiiju - Vanilla end teleportation
+                                     false, false,
+-                                    Relative.union(Relative.DELTA, Set.of(Relative.X_ROT)),
 +                                    /*Relative.union(Relative.DELTA, Set.of(Relative.X_ROT))*/Set.of(), // Kaiiju - Vanilla end teleportation
                                      TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET),
-                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-                                 )
-@@ -4588,11 +4592,15 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL,
+                                     TeleportTransition.PassengerTeleportationMode.POSITION_RIDER
+@@ -4682,11 +4686,15 @@ public abstract class Entity
                          ca.spottedleaf.concurrentutil.util.Priority.HIGH,
                          (chunks) -> {
                              BlockPos adjustedSpawn = destination.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
@@ -49,10 +47,10 @@ index 624974d9d267226efe7d03690b71c9dbc381481e..4c8ad47a93ccdfca306d17dc6f113857
                                  new net.minecraft.world.level.portal.TeleportTransition(
 -                                    destination, Vec3.atBottomCenterOf(adjustedSpawn), Vec3.ZERO, 0.0f, 0.0f,
 +                                    destination, finalPos, this.getDeltaMovement(), 0.0f, 0.0f, // Kaiiju - Vanilla end teleportation
+                                     false, false,
                                      Relative.union(Relative.DELTA, Relative.ROTATION),
                                      TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET),
-                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
-@@ -4789,6 +4797,10 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -4885,6 +4893,10 @@ public abstract class Entity
              return false;
          }
          // Luminol end
@@ -63,7 +61,7 @@ index 624974d9d267226efe7d03690b71c9dbc381481e..4c8ad47a93ccdfca306d17dc6f113857
  
          Vec3 initialPosition = this.position();
          ChunkPos initialPositionChunk = new ChunkPos(
-@@ -4853,9 +4865,14 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -4949,9 +4961,14 @@ public abstract class Entity
                          info.postTeleportTransition().onTransition(teleported);
                      }
  

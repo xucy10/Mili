@@ -1,17 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Sat, 3 Jan 2026 15:48:03 +0800
+Date: Tue, 11 Aug 2026 20:50:31 +0800
 Subject: [PATCH] Leaf: Skip negligible planar movement multiplication
 
-A part of Leaf(https://github.com/Winds-Studio/Leaf/blob/dev/1.21.9/leaf-server/minecraft-patches/features/0079-Skip-negligible-planar-movement-multiplication.patch)
-
-Original license: https://github.com/Winds-Studio/Leaf/blob/dev/1.21.9/LICENSE.md
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 8cc8cf26d4e805b71d09403cf80719cc685d3e3b..040c0f8d26554ba583ecf370e2df3690d8f48dd6 100644
+index 78d3ba511a31307b9b38c84b0eb51846afa47f89..2e238d1acee0d7189df5ff5949835978105d54bf 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -1282,8 +1282,18 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
+@@ -1299,8 +1299,18 @@ public abstract class Entity
                      }
                  }
  
@@ -28,6 +25,6 @@ index 8cc8cf26d4e805b71d09403cf80719cc685d3e3b..040c0f8d26554ba583ecf370e2df3690
 +                    }
 +                }
 +                // Gale end - skip negligible planar movement multiplication
-                 profilerFiller.pop();
+                 profiler.pop();
              }
          }

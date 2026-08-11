@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Fri, 27 Feb 2026 12:22:06 +0800
+Date: Tue, 11 Aug 2026 21:02:47 +0800
 Subject: [PATCH] Portal rate limiter
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index b7ea25cf471efd50880bfb6b169b603e4cb76bb9..111fd492351601a22cd29391bc4e3602709adb54 100644
+index 1bdc1ec035ff2431bf7b6a18da00eee3dffc7890..f092ab76afd97760ca65f335e93cb33ab9385bdf 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -75,6 +75,10 @@ public final class RegionizedWorldData {
+@@ -79,6 +79,10 @@ public final class RegionizedWorldData {
      public static final RegionizedData.RegioniserCallback<RegionizedWorldData> REGION_CALLBACK = new RegionizedData.RegioniserCallback<>() {
          @Override
          public void merge(final RegionizedWorldData from, final RegionizedWorldData into, final long fromTickOffset) {
@@ -19,7 +19,7 @@ index b7ea25cf471efd50880bfb6b169b603e4cb76bb9..111fd492351601a22cd29391bc4e3602
              // Luminol start - Lithium sleeping block entity
              // lithium listeners
              final long fromRedstoneTimeOffsetForLithiumTracker = into.redstoneTime - from.redstoneTime;
-@@ -200,6 +204,12 @@ public final class RegionizedWorldData {
+@@ -196,6 +200,12 @@ public final class RegionizedWorldData {
          public void split(final RegionizedWorldData from, final int chunkToRegionShift,
                            final Long2ReferenceOpenHashMap<RegionizedWorldData> regionToData,
                            final ReferenceOpenHashSet<RegionizedWorldData> dataSet) {
@@ -32,7 +32,7 @@ index b7ea25cf471efd50880bfb6b169b603e4cb76bb9..111fd492351601a22cd29391bc4e3602
              // Luminol start - Lithium sleeping block entity
              // lithium entity movement listeners
              for (var entry : from.containerEntityMovementTrackerMap.entrySet()) {
-@@ -526,6 +536,35 @@ public final class RegionizedWorldData {
+@@ -517,6 +527,35 @@ public final class RegionizedWorldData {
      public final Map<Long, ChunkSectionInventoryEntityTracker> containerEntityMovementTrackerMap = new it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap<>();
      public final Map<Long, ChunkSectionItemEntityMovementTracker> itemEntityMovementTrackerMap = new it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap<>();
      // Luminol end
@@ -69,22 +69,22 @@ index b7ea25cf471efd50880bfb6b169b603e4cb76bb9..111fd492351601a22cd29391bc4e3602
      public final TickRegions.TickRegionData regionData;
  
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 4be383909addfebc0ca3b007d4ef2ec30ed445f7..8ce5cdda24d63b33b39e32f9712fafa3917f27c5 100644
+index 4e5ee35bcc7a9d9dc188982951fcac64975820bf..9bbc8a6cd0178dd48951d8f44e4d2db97e8360e2 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1958,6 +1958,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
-             // CraftBukkit end */
- 
-             profilerFiller.push("tick");
+@@ -1975,6 +1975,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             //net.minecraft.world.level.block.entity.HopperBlockEntity.skipHopperEvents = level.paperConfig().hopper.disableMoveEvent || org.bukkit.event.inventory.InventoryMoveItemEvent.getHandlerList().getRegisteredListeners().length == 0; // Paper - Perf: Optimize Hoppers // Folia - region threading
+             profiler.push(() -> level + " " + level.dimension().identifier());
+             profiler.push("tick");
 +            // Luminol start - Portal rate limiter
 +            regionizedWorldData.portalRateThrottler.begin();
 +            // Luminol end
  
              try {
-                 profiler.startTimer(serverLevel.tickTimerId); try { // Folia - profiler
-@@ -1972,6 +1975,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
-             profilerFiller.pop();
-             profilerFiller.pop();
+                 foliaProfiler.startTimer(level.tickTimerId); try { // Folia - profiler
+@@ -1989,6 +1992,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             profiler.pop();
+             profiler.pop();
              regionizedWorldData.explosionDensityCache.clear(); // Paper - Optimize explosions // Folia - region threading
 +            // Luminol start - Portal rate limiter
 +            regionizedWorldData.portalRateThrottler.done();
@@ -93,10 +93,10 @@ index 4be383909addfebc0ca3b007d4ef2ec30ed445f7..8ce5cdda24d63b33b39e32f9712fafa3
          //this.isIteratingOverLevels = false; // Paper - Throw exception on world create while being ticked // Folia - region threading
  
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index d0b5bc9da450d881534abdbd8ff786e1fbc7d418..b0546cb4af7291013399e67d98bced98a5fffc0f 100644
+index 3a46fb1665f84a11df59b51a2b1b75db149eb2c0..5e8137060d8c73d19bb1b6323dce0ae0de7046a2 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1461,7 +1461,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1514,7 +1514,14 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(entity)) {
                      return;
                  }
@@ -111,7 +111,7 @@ index d0b5bc9da450d881534abdbd8ff786e1fbc7d418..b0546cb4af7291013399e67d98bced98
                      return;
                  }
              } else if (!(entity instanceof Player) && entity.teleportTickType == 1) { // Luminol - portal teleport only
-@@ -1469,7 +1476,14 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1522,7 +1529,14 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(entity)) {
                      return;
                  }
@@ -126,7 +126,7 @@ index d0b5bc9da450d881534abdbd8ff786e1fbc7d418..b0546cb4af7291013399e67d98bced98
                      return;
                  }
              } else {
-@@ -1479,8 +1493,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1532,8 +1546,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
              // removed from region while ticking
              return;
          }
@@ -142,17 +142,17 @@ index d0b5bc9da450d881534abdbd8ff786e1fbc7d418..b0546cb4af7291013399e67d98bced98
              return;
          }
          }
-@@ -1527,8 +1548,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1580,8 +1601,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  // removed from region while ticking
                  return;
              }
 +            // Luminol start - Portal rate limiter
-+            var worldData = passengerEntity.level().getCurrentWorldData();
-+            if (passengerEntity.portalProcess != null && worldData.isPortalTeleportationOutOfRate()) {
++            var worldData = entity.level().getCurrentWorldData();
++            if (entity.portalProcess != null && worldData.isPortalTeleportationOutOfRate()) {
 +                return;
 +            }
 +            // Luminol end
-             if (passengerEntity.handlePortal()) {
+             if (entity.handlePortal()) {
                  // portalled
 +                worldData.portalRateThrottler.increase(); // Luminol - Portal rate limiter
                  return;

@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Sat, 26 Apr 2025 21:47:45 +0800
+Date: Tue, 11 Aug 2026 19:55:57 +0800
 Subject: [PATCH] Correct player respawn place
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 189d7bf556283ac007bce1a1b2562d6352adeea7..94144dcf5f5a41f44be0f93de14a60e2124e91b7 100644
+index f4eccd8a8f296e768b61ad5c0a1439a9fde189b5..72636d20a1770fe79daa722d9f0df048e269fef2 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -505,8 +505,10 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -513,8 +513,10 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          double amountX = selectMaxX - selectMinX;
          double amountZ = selectMaxZ - selectMinZ;
  
@@ -21,13 +21,12 @@ index 189d7bf556283ac007bce1a1b2562d6352adeea7..94144dcf5f5a41f44be0f93de14a60e2
  
          return new BlockPos(selectX, 0, selectZ);
      }
-@@ -517,10 +519,21 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -525,10 +527,20 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      }
  
      private static BlockPos findSpawnAround(ServerLevel world, BlockPos selected) {
 +        // Luminol start - Correct player respawn place
-+        BlockPos inChunk;
-+        inChunk = PlayerSpawnFinder.getOverworldRespawnPos(world, selected.getX(), selected.getZ());
++        BlockPos inChunk = PlayerSpawnFinder.getLevelRespawnPos(world, selected.getX(), selected.getZ());
 +        if (inChunk != null) {
 +            AABB checkVolume = PlayerSpawnFinder.PLAYER_DIMENSIONS.makeBoundingBox((double)inChunk.getX() + 0.5, (double)inChunk.getY(), (double)inChunk.getZ() + 0.5);
 +
@@ -39,8 +38,8 @@ index 189d7bf556283ac007bce1a1b2562d6352adeea7..94144dcf5f5a41f44be0f93de14a60e2
          // try hard to find, so that we don't attempt another chunk load
          for (int dz = -SPAWN_RADIUS_SELECTION_SEARCH; dz <= SPAWN_RADIUS_SELECTION_SEARCH; ++dz) {
              for (int dx = -SPAWN_RADIUS_SELECTION_SEARCH; dx <= SPAWN_RADIUS_SELECTION_SEARCH; ++dx) {
--                BlockPos inChunk = PlayerSpawnFinder.getOverworldRespawnPos(world, selected.getX() + dx, selected.getZ() + dz);
-+                inChunk = PlayerSpawnFinder.getOverworldRespawnPos(world, selected.getX() + dx, selected.getZ() + dz);
+-                BlockPos inChunk = PlayerSpawnFinder.getLevelRespawnPos(world, selected.getX() + dx, selected.getZ() + dz);
++                inChunk = PlayerSpawnFinder.getLevelRespawnPos(world, selected.getX() + dx, selected.getZ() + dz); // Luminol - Correct player respawn place
                  if (inChunk == null) {
                      continue;
                  }

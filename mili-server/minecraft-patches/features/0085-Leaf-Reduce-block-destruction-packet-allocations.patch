@@ -1,20 +1,17 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Sat, 3 Jan 2026 15:50:18 +0800
+Date: Tue, 11 Aug 2026 20:51:42 +0800
 Subject: [PATCH] Leaf: Reduce block destruction packet allocations
 
-A part of Leaf(https://github.com/Winds-Studio/Leaf/blob/dev/1.21.9/leaf-server/minecraft-patches/features/0065-Reduce-block-destruction-packet-allocations.patch)
-
-Original license: https://github.com/Winds-Studio/Leaf/blob/dev/1.21.9/LICENSE.md
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 2ac8988091550ced69176fb1fb38bb5e3f56c927..2c140e4b5c818cbaedcdd3110794e30dd94dd8b4 100644
+index bdd978f54743a543cf8be94a05d928f82716ff6f..dd33558742af12a8142d6bae3215db58eb486c0d 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1851,6 +1851,15 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -1883,6 +1883,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
  
      @Override
-     public void destroyBlockProgress(int breakerId, BlockPos pos, int progress) {
+     public void destroyBlockProgress(final int id, final BlockPos blockPos, final int progress) {
 +        // Gale start - SportPaper - reduce block destruction packet allocations
 +        var players = this.server.getPlayerList().getPlayers();
 +
@@ -22,26 +19,26 @@ index 2ac8988091550ced69176fb1fb38bb5e3f56c927..2c140e4b5c818cbaedcdd3110794e30d
 +            return;
 +        }
 +
-+        ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(breakerId, pos, progress);
++        ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(id, blockPos, progress);
 +        // Gale end - SportPaper - reduce block destruction packet allocations
          // CraftBukkit start
          Player breakerPlayer = null;
-         Entity entity = this.getEntity(breakerId);
-@@ -1867,7 +1876,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+         Entity entity = this.getEntity(id);
+@@ -1899,7 +1908,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  .callEvent();
          }
          // Paper end - Add BlockBreakProgressUpdateEvent
--        for (ServerPlayer serverPlayer : this.server.getPlayerList().getPlayers()) {
-+        for (ServerPlayer serverPlayer : players) { // Gale - SportPaper - reduce block destruction packet allocations
-             if (serverPlayer.level() == this && serverPlayer.getId() != breakerId) {
-                 double d = pos.getX() - serverPlayer.getX();
-                 double d1 = pos.getY() - serverPlayer.getY();
-@@ -1878,7 +1887,7 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
-                 }
-                 // CraftBukkit end
-                 if (d * d + d1 * d1 + d2 * d2 < 1024.0) {
--                    serverPlayer.connection.send(new ClientboundBlockDestructionPacket(breakerId, pos, progress));
-+                    serverPlayer.connection.send(packet); // Gale - SportPaper - reduce block destruction packet allocations
+-        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
++        for (ServerPlayer player : players) { // Gale - SportPaper - reduce block destruction packet allocations
+             if (player.level() == this && player.getId() != id) {
+                 double xd = blockPos.getX() - player.getX();
+                 double yd = blockPos.getY() - player.getY();
+@@ -1910,7 +1919,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+                         continue;
+                     }
+                     // CraftBukkit end
+-                    player.connection.send(new ClientboundBlockDestructionPacket(id, blockPos, progress));
++                    player.connection.send(packet); // Gale - SportPaper - reduce block destruction packet allocations
                  }
              }
          }

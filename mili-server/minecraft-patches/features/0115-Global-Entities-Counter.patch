@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy10 <someonm20141923@outlook.com>
-Date: Tue, 21 Jul 2026 13:48:01 +0800
+Date: Tue, 11 Aug 2026 21:15:04 +0800
 Subject: [PATCH] Global-Entities-Counter
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index b7ccdf5bf40603b929f768570ed232a6b27c0e9b..4a59842f80833456c6f2f793cbb1a662e3259347 100644
+index d3394076bb780947af59c07c2cbe512b32038ac9..5286be4a57de92674d7944c07389d8cd907d44fe 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -566,6 +566,9 @@ public final class RegionizedWorldData {
+@@ -557,6 +557,9 @@ public final class RegionizedWorldData {
      }
      // Luminol end
  
@@ -18,7 +18,7 @@ index b7ccdf5bf40603b929f768570ed232a6b27c0e9b..4a59842f80833456c6f2f793cbb1a662
      public final TickRegions.TickRegionData regionData;
  
      public RegionizedWorldData(final ServerLevel world, final TickRegions.TickRegionData regionData) {
-@@ -578,6 +581,13 @@ public final class RegionizedWorldData {
+@@ -569,6 +572,13 @@ public final class RegionizedWorldData {
          this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);
          this.regionData = regionData;
  
@@ -33,12 +33,12 @@ index b7ccdf5bf40603b929f768570ed232a6b27c0e9b..4a59842f80833456c6f2f793cbb1a662
          this.updateTickData();
      }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..a58f785cbe4b5c18026f2e850f00448eb0307a0f 100644
+index 414c21345879f589fb61130180d0ca606e37a454..e837b367c87b51ed0cc48ca525cba75038e9f574 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
-@@ -506,6 +506,23 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
-         this.chunkMap.tick(hasTimeLeft);
-         profilerFiller.pop();
+@@ -511,6 +511,23 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+         this.chunkMap.tick(haveTime);
+         profiler.pop();
          this.clearCache();
 +        // Mili start - Global Entities Counter
 +        if (fun.bm.mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
@@ -60,46 +60,46 @@ index f4c9c551fc39bae38e283ccbbc3cd116f0536a64..a58f785cbe4b5c18026f2e850f00448e
      }
  
      private void tickChunks() {
-@@ -570,7 +587,13 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -575,7 +592,13 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
              }
-             spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, regionizedWorldData.getLoadedEntities(), this::getFullChunk, null, true); // Folia - region threading - note: function only cares about loaded entities, doesn't need all
+             spawnCookie = NaturalSpawner.createState(chunkCount, regionizedWorldData.getLoadedEntities(), this::getFullChunk, null, true); // Folia - region threading - note: function only cares about loaded entities, doesn't need all
          } else {
 +            // Mili start - Global Entities Counter
 +            if (fun.bm.mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
-+                spawnState = fun.bm.mili.utils.EntitiesCounterUtil.runRemainingTasks(level, regionizedWorldData.getLoadedEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
++                spawnCookie = fun.bm.mili.utils.EntitiesCounterUtil.runRemainingTasks(level, regionizedWorldData.getLoadedEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false);
 +            } else {
-             spawnState = NaturalSpawner.createState(naturalSpawnChunkCount, regionizedWorldData.getLoadedEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false); // Folia - region threading - note: function only cares about loaded entities, doesn't need all
+             spawnCookie = NaturalSpawner.createState(chunkCount, regionizedWorldData.getLoadedEntities(), this::getFullChunk, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false); // Folia - region threading - note: function only cares about loaded entities, doesn't need all
 +            }
 +            // Mili end - Global Entities Counter
          }
          } finally { foliaProfiler.stopTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.MOB_SPAWN_ENTITY_COUNT); } // Folia - profiler
          // Paper end - Optional per player mob spawns
-@@ -578,7 +601,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
-         boolean flag = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
-         int i = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
-         List<MobCategory> filteredSpawningCategories;
--        if (flag && (this.spawnEnemies || this.spawnFriendlies)) { // Paper
-+        if (spawnState != null && flag && (this.spawnEnemies || this.spawnFriendlies)) { // Paper // Mili - Global Entities Counter
+@@ -583,7 +606,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+         boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
+         int tickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
+         List<MobCategory> spawningCategories;
+-        if (doMobSpawning && (this.spawnEnemies || this.spawnFriendlies)) { // Paper
++        if (spawnCookie != null && doMobSpawning && (this.spawnEnemies || this.spawnFriendlies)) { // Paper // Mili - Global Entities Counter
              // Paper start - PlayerNaturallySpawnCreaturesEvent
-             for (ServerPlayer entityPlayer : this.level.getLocalPlayers()) { // Folia - region threading
-                 int chunkRange = Math.min(level.spigotConfig.mobSpawnRange, entityPlayer.getBukkitEntity().getViewDistance());
-@@ -636,7 +659,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+             for (ServerPlayer player : this.level.getLocalPlayers()) { // Folia - region threading
+                 int chunkRange = Math.min(level.spigotConfig.mobSpawnRange, player.getBukkitEntity().getViewDistance());
+@@ -643,7 +666,7 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
              this.level.tickThunder(chunk);
          }
  
--        if (!spawnCategories.isEmpty()) {
-+        if (spawnState != null && !spawnCategories.isEmpty()) { // Mili - Global Entities Counter
-             if (this.level.getWorldBorder().isWithinBounds(pos)) { // Paper - rewrite chunk system
-                 NaturalSpawner.spawnForChunk(this.level, chunk, spawnState, spawnCategories);
+-        if (!spawningCategories.isEmpty()) {
++        if (spawnCookie != null && !spawningCategories.isEmpty()) { // Mili - Global Entities Counter
+             if (this.level.getWorldBorder().isWithinBounds(chunkPos)) { // Paper - rewrite chunk system
+                 NaturalSpawner.spawnForChunk(this.level, chunk, spawnCookie, spawningCategories);
              }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index bf3b43c4db72a12879f938ac3850b2b7be7d219b..39419f1631fd6b49a661a006a8771a06810bd508 100644
+index 8f742e14781e34b30d5d44b602e730031b24e594..508b58584d77aed0ddfc26e53dfa4198999575e4 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -765,6 +765,22 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -817,6 +817,22 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
      }
  
-     public void tick(BooleanSupplier hasTimeLeft, io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
+     public void tick(BooleanSupplier haveTime, final io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
 +        // Mili start - Global Entities Counter
 +        if (fun.bm.mili.config.modules.experiment.GlobalEntitiesCounter.enabled) {
 +            io.papermc.paper.threadedregions.RegionizedWorldData data = this.getCurrentWorldData();
@@ -117,13 +117,13 @@ index bf3b43c4db72a12879f938ac3850b2b7be7d219b..39419f1631fd6b49a661a006a8771a06
 +        }
 +        // Mili end - Cross Region Helper
          final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = this.getCurrentWorldData(); // Folia - regionised ticking
-         final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle profiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
-         ProfilerFiller profilerFiller = Profiler.get();
+         final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle foliaProfiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
+         ProfilerFiller profiler = Profiler.get();
 diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
-index c6985d2a9d1093943d754d77089bd4c3d5baf3ee..e6bb89efe4a54ba66d462774ceb236bae9005ee6 100644
+index 67e367f5dd4ecd706cd019a13c5e07e15a211573..1bf2cc3409ded38b65e6d2caafa481f6b442ac24 100644
 --- a/net/minecraft/world/entity/Mob.java
 +++ b/net/minecraft/world/entity/Mob.java
-@@ -806,6 +806,44 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
+@@ -826,6 +826,44 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
                  }
              }
          } else {
@@ -169,24 +169,24 @@ index c6985d2a9d1093943d754d77089bd4c3d5baf3ee..e6bb89efe4a54ba66d462774ceb236ba
          }
      }
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
-index 91f0fbd75bc93355dc872390d91af83c76dc1dce..c5c14f787a74578d514ac909fcd673521ca1dc49 100644
+index 8ca7d39933152cf335e38663700f3931baca5d49..e6488a0b6429f22bb6789e85867cde398e3456ae 100644
 --- a/net/minecraft/world/level/NaturalSpawner.java
 +++ b/net/minecraft/world/level/NaturalSpawner.java
-@@ -116,7 +116,7 @@ public final class NaturalSpawner {
-         return new NaturalSpawner.SpawnState(spawnableChunkCount, map, potentialCalculator, calculator);
+@@ -121,7 +121,7 @@ public final class NaturalSpawner {
+         return new NaturalSpawner.SpawnState(spawnableChunkCount, mobCounts, spawnPotential, localMobCapCalculator);
      }
  
--    static Biome getRoughBiome(BlockPos pos, ChunkAccess chunk) {
-+    public static Biome getRoughBiome(BlockPos pos, ChunkAccess chunk) { // Mili - protected -> public
+-    private static Biome getRoughBiome(final BlockPos pos, final ChunkAccess chunk) {
++    public static Biome getRoughBiome(final BlockPos pos, final ChunkAccess chunk) { // Mili - private -> public
          return chunk.getNoiseBiome(QuartPos.fromBlock(pos.getX()), QuartPos.fromBlock(pos.getY()), QuartPos.fromBlock(pos.getZ())).value();
      }
  
-@@ -585,7 +585,7 @@ public final class NaturalSpawner {
+@@ -629,7 +629,7 @@ public final class NaturalSpawner {
          private @Nullable EntityType<?> lastCheckedType;
          private double lastCharge;
  
--        SpawnState(
-+        public SpawnState( // Mili - protected -> public
-             int spawnableChunkCount,
-             Object2IntOpenHashMap<MobCategory> mobCategoryCounts,
-             PotentialCalculator spawnPotential,
+-        private SpawnState(
++        public SpawnState( // Mili - private -> public
+             final int spawnableChunkCount,
+             final Object2IntOpenHashMap<MobCategory> mobCategoryCounts,
+             final PotentialCalculator spawnPotential,

@@ -1,21 +1,21 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Helvetica Volubi <suisuroru@blue-millennium.fun>
-Date: Wed, 18 Jun 2025 23:46:20 +0800
+Date: Tue, 11 Aug 2026 20:05:26 +0800
 Subject: [PATCH] Temporarily fix teleport yam and pitch
 
 
 diff --git a/net/minecraft/server/commands/TeleportCommand.java b/net/minecraft/server/commands/TeleportCommand.java
-index f15a9f15066a40c05a6e5ada16b01dd437deae85..969c6bbb4c06d37e224e8ea6288bf5b27ebfc954 100644
+index 13d7965fd4f99f0848b080349df41f8b1c31a19b..df120b5a36e2bc35f7f5654e33a263178f37b6fe 100644
 --- a/net/minecraft/server/commands/TeleportCommand.java
 +++ b/net/minecraft/server/commands/TeleportCommand.java
-@@ -256,8 +256,8 @@ public class TeleportCommand {
-             if (true) {
-                 ServerLevel worldFinal = level;
-                 Vec3 posFinal = new Vec3(x, y, z);
--                Float yawFinal = Float.valueOf(f2);
--                Float pitchFinal = Float.valueOf(f3);
-+                Float yawFinal = Float.valueOf(f2 + target.getYRot()); // Luminol - fix teleport yaw issue
-+                Float pitchFinal = Float.valueOf(f3 + target.getXRot()); // Luminol - fix teleport pitch issue
-                 target.getBukkitEntity().taskScheduler.schedule((Entity nmsEntity) -> {
-                     nmsEntity.stopRiding();
-                     nmsEntity.teleportAsync(
+@@ -248,8 +248,8 @@ public class TeleportCommand {
+         // Folia start - region threading
+         if (true) {
+             Vec3 posFinal = new Vec3(x, y, z);
+-            Float yawFinal = Float.valueOf(newYRot);
+-            Float pitchFinal = Float.valueOf(newXRot);
++            Float yawFinal = Float.valueOf(newYRot + victim.getYRot()); // Luminol - fix teleport yaw issue
++            Float pitchFinal = Float.valueOf(newXRot + victim.getXRot()); // Luminol - fix teleport pitch issue
+             victim.getBukkitEntity().taskScheduler.schedule((Entity nmsEntity) -> {
+                 nmsEntity.stopRiding();
+                 nmsEntity.teleportAsync(

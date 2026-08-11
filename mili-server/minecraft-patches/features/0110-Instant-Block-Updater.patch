@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy10 <someonm20141923@outlook.com>
-Date: Tue, 21 Jul 2026 13:47:59 +0800
+Date: Tue, 11 Aug 2026 21:11:34 +0800
 Subject: [PATCH] Instant-Block-Updater
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index 111fd492351601a22cd29391bc4e3602709adb54..b7ccdf5bf40603b929f768570ed232a6b27c0e9b 100644
+index 012e1a154407bd2e80324f110e4573be2102b114..d3394076bb780947af59c07c2cbe512b32038ac9 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -484,7 +484,7 @@ public final class RegionizedWorldData {
+@@ -475,7 +475,7 @@ public final class RegionizedWorldData {
      public long lastMidTickExecuteFailure;
      // From Level
      public boolean populating;
@@ -17,7 +17,7 @@ index 111fd492351601a22cd29391bc4e3602709adb54..b7ccdf5bf40603b929f768570ed232a6
      public boolean captureBlockStates = false;
      public boolean captureTreeGeneration = false;
      public final Map<BlockPos, CraftBlockState> capturedBlockStates = new java.util.LinkedHashMap<>(); // Paper
-@@ -572,7 +572,7 @@ public final class RegionizedWorldData {
+@@ -563,7 +563,7 @@ public final class RegionizedWorldData {
          this.world = world;
          this.blockLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, true);
          this.fluidLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, false);
@@ -27,13 +27,13 @@ index 111fd492351601a22cd29391bc4e3602709adb54..b7ccdf5bf40603b929f768570ed232a6
          this.wireHandler = new alternate.current.wire.WireHandler(world);
          this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 86b624da1e7abf84debe422a14b79a263a41a627..bf3b43c4db72a12879f938ac3850b2b7be7d219b 100644
+index b2bea0d22ad49099583e1a1231f4edabfcdc2fc8..8f742e14781e34b30d5d44b602e730031b24e594 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -927,12 +927,16 @@ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLe
+@@ -980,12 +980,16 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
          // Paper - rewrite chunk system
-         profilerFiller.pop();
-         profilerFiller.push("debugSynchronizers");
+         profiler.pop();
+         profiler.push("debugSynchronizers");
 +        // Mili start - instant neighbor updates
 +        if (regionizedWorldData.neighborUpdater instanceof net.minecraft.world.level.redstone.CollectingNeighborUpdater neighborUpdater) {
          if (this.debugSynchronizers.hasAnySubscriberFor(DebugSubscriptions.NEIGHBOR_UPDATES)) {
@@ -49,4 +49,4 @@ index 86b624da1e7abf84debe422a14b79a263a41a627..bf3b43c4db72a12879f938ac3850b2b7
 +        // Mili end - instant neighbor updates
  
          this.debugSynchronizers.tick(this.server.debugSubscribers());
-         profilerFiller.pop();
+         profiler.pop();

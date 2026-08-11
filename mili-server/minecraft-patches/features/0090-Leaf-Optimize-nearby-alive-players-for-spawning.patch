@@ -1,14 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrhua269 <mrhua269@gmail.com>
-Date: Sat, 14 Feb 2026 20:41:13 +0800
+Date: Tue, 11 Aug 2026 20:59:00 +0800
 Subject: [PATCH] Leaf Optimize nearby alive players for spawning
 
-A part of Leaf(https://github.com/Winds-Studio/Leaf/blob/5a68630dcd96391a253dcb0a063c05d71b676824/leaf-server/minecraft-patches/features/0161-Optimize-nearby-alive-players-for-spawning.patch)
-
-Original license: MIT(https://github.com/Winds-Studio/Leaf/blob/5a68630dcd96391a253dcb0a063c05d71b676824/licenses/MIT.txt && https://github.com/Winds-Studio/Leaf/blob/5a68630dcd96391a253dcb0a063c05d71b676824/LICENSE.md)
 
 diff --git a/net/minecraft/world/entity/EntitySelector.java b/net/minecraft/world/entity/EntitySelector.java
-index b9ca072041f5fec0010017877a2821cd650023c5..b165a6e90611dda5e7e77f0b18ff3f3ae09655f7 100644
+index a3c13e421768f5e1a703b5b1167fa1c912b6f126..7a49d8bc63a343ce4daa1220d799b5fa3dc2dd59 100644
 --- a/net/minecraft/world/entity/EntitySelector.java
 +++ b/net/minecraft/world/entity/EntitySelector.java
 @@ -30,7 +30,7 @@ public final class EntitySelector {
@@ -21,33 +18,33 @@ index b9ca072041f5fec0010017877a2821cd650023c5..b165a6e90611dda5e7e77f0b18ff3f3a
      // Paper end - Affects Spawning API
  
 diff --git a/net/minecraft/world/entity/monster/zombie/Zombie.java b/net/minecraft/world/entity/monster/zombie/Zombie.java
-index 98e2fb1c290de40e62484bbce71cad98da16343a..7a9394d4555464312418964f1a7a5d2581496774 100644
+index 143e7f5cd55ff37bec1150e2f1beb98287770503..534cd524406052af7d78dc1e1d8772cf0c0318ea 100644
 --- a/net/minecraft/world/entity/monster/zombie/Zombie.java
 +++ b/net/minecraft/world/entity/monster/zombie/Zombie.java
-@@ -335,7 +335,7 @@ public class Zombie extends Monster {
-                     if (SpawnPlacements.isSpawnPositionOk(type, level, blockPos)
-                         && SpawnPlacements.checkSpawnRules(type, level, EntitySpawnReason.REINFORCEMENT, blockPos, level.random)) {
-                         zombie.setPos(i1, i2, i3);
--                        if (!level.hasNearbyAlivePlayerThatAffectsSpawning(i1, i2, i3, 7.0) // Paper - affects spawning api
-+                        if (!level.hasNearbyAlivePlayerThatAffectsSpawningForZombie(i1, i2, i3, 7.0) // Paper - affects spawning api // Leaf - Optimize nearby alive players for spawning
-                             && level.isUnobstructed(zombie)
-                             && level.noCollision(zombie)
-                             && (zombie.canSpawnInLiquids() || !level.containsAnyLiquid(zombie.getBoundingBox()))) {
+@@ -354,7 +354,7 @@ public class Zombie extends Monster {
+                 if (SpawnPlacements.isSpawnPositionOk(type, level, spawnPos)
+                     && SpawnPlacements.checkSpawnRules(type, level, EntitySpawnReason.REINFORCEMENT, spawnPos, level.getRandom())) {
+                     reinforcement.setPos(xt, yt, zt);
+-                    if (!level.hasNearbyAlivePlayerThatAffectsSpawning(xt, yt, zt, 7.0) // Paper - affects spawning api
++                    if (!level.hasNearbyAlivePlayerThatAffectsSpawningForZombie(xt, yt, zt, 7.0) // Paper - affects spawning api // Leaf - Optimize nearby alive players for spawning
+                         && level.isUnobstructed(reinforcement)
+                         && level.noCollision(reinforcement)
+                         && (reinforcement.canSpawnInLiquids() || !level.containsAnyLiquid(reinforcement.getBoundingBox()))) {
 diff --git a/net/minecraft/world/level/BaseSpawner.java b/net/minecraft/world/level/BaseSpawner.java
-index ff9dd4aedc91d151f1955e2e9bed1c597341964c..03fb3da5c122fb20220444ab2b7ff923c9fb9ddb 100644
+index 2f89a9145902e514089924462003709f256ac3f4..ac86befb121bb035077001ef5c72eb418600ccb9 100644
 --- a/net/minecraft/world/level/BaseSpawner.java
 +++ b/net/minecraft/world/level/BaseSpawner.java
-@@ -60,7 +60,7 @@ public abstract class BaseSpawner {
+@@ -66,7 +66,7 @@ public abstract class BaseSpawner {
      }
  
-     public boolean isNearPlayer(Level level, BlockPos pos) {
+     public boolean isNearPlayer(final Level level, final BlockPos pos) {
 -        return level.hasNearbyAlivePlayerThatAffectsSpawning(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, this.requiredPlayerRange); // Paper - Affects Spawning API
 +        return level.hasNearbyAlivePlayerThatAffectsSpawningForSpawner(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, this.requiredPlayerRange); // Paper - Affects Spawning API // Leaf - Optimize nearby alive players for spawning
      }
  
-     public void clientTick(Level level, BlockPos pos) {
+     public void clientTick(final Level level, final BlockPos pos) {
 diff --git a/net/minecraft/world/level/EntityGetter.java b/net/minecraft/world/level/EntityGetter.java
-index eb8225a050cb9e3400c18423b6b65e6d5d61e344..a6d900752dab925b85816237a0550867852d908b 100644
+index f3f26db1c7fe6879dedeee470f25a226b32299ef..336e691396c623d9a989569ecb8d2e0cbd7b6774 100644
 --- a/net/minecraft/world/level/EntityGetter.java
 +++ b/net/minecraft/world/level/EntityGetter.java
 @@ -118,6 +118,89 @@ public interface EntityGetter extends ca.spottedleaf.moonrise.patches.chunk_syst
@@ -138,5 +135,5 @@ index eb8225a050cb9e3400c18423b6b65e6d5d61e344..a6d900752dab925b85816237a0550867
 +    // Leaf end - Optimize nearby alive players for spawning
 +
      // Paper start - Affects Spawning API
-     default @Nullable Player findNearbyPlayer(Entity entity, double maxDistance, @Nullable Predicate<Entity> predicate) {
-         return this.getNearestPlayer(entity.getX(), entity.getY(), entity.getZ(), maxDistance, predicate);
+     default @Nullable Player findNearbyPlayer(Entity entity, double range, @Nullable Predicate<Entity> predicate) {
+         return this.getNearestPlayer(entity.getX(), entity.getY(), entity.getZ(), range, predicate);
