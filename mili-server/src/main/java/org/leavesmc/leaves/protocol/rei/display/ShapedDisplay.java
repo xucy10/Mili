@@ -26,7 +26,6 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
-import org.bukkit.craftbukkit.CraftRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.protocol.rei.ingredient.EntryIngredient;
 
@@ -57,7 +56,7 @@ public class ShapedDisplay extends CraftingDisplay {
     public ShapedDisplay(@NotNull RecipeHolder<ShapedRecipe> recipeHolder) {
         super(
                 ofIngredient(recipeHolder.value()),
-                List.of(EntryIngredient.of(recipeHolder.value().assemble(CraftingInput.EMPTY, CraftRegistry.getMinecraftRegistry()))),
+                List.of(EntryIngredient.of(recipeHolder.value().assemble(CraftingInput.EMPTY))), // Leaves - Paper 26.1: assemble no longer takes RegistryAccess
                 recipeHolder.id().identifier()
         );
         this.width = recipeHolder.value().getWidth();

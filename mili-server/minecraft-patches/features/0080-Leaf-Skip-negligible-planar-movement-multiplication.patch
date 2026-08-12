@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:50:31 +0800
+Subject: [PATCH] Leaf: Skip negligible planar movement multiplication
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 78d3ba511a31307b9b38c84b0eb51846afa47f89..2e238d1acee0d7189df5ff5949835978105d54bf 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -1299,8 +1299,18 @@ public abstract class Entity
+                     }
+                 }
+ 
++                // Gale start - skip negligible planar movement multiplication
++                Vec3 oldDeltaMovement = this.getDeltaMovement();
++
++                if (oldDeltaMovement.x < -1e-6 || oldDeltaMovement.x > 1e-6 || oldDeltaMovement.z < -1e-6 || oldDeltaMovement.z > 1e-6) {
++                    // Gale end - skip negligible planar movement multiplication
+                 float blockSpeedFactor = this.getBlockSpeedFactor();
+-                this.setDeltaMovement(this.getDeltaMovement().multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
++                    // Gale start - skip negligible planar movement multiplication
++                    if (blockSpeedFactor < 1 - 1e-6 || blockSpeedFactor > 1 + 1e-6) {
++                        this.setDeltaMovement(oldDeltaMovement.multiply(blockSpeedFactor, 1.0, blockSpeedFactor));
++                    }
++                }
++                // Gale end - skip negligible planar movement multiplication
+                 profiler.pop();
+             }
+         }

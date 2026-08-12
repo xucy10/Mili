@@ -122,6 +122,7 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
+        java { srcDir("../mili-rust/src/main/java") } // Mili - Rust bridge (TomlConfigData, RustBridge)
     }
     test {
         java { srcDir("../paper-server/src/test/java") }

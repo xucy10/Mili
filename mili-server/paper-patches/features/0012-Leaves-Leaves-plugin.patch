@@ -68,10 +68,10 @@ index 9c49bb7fb8c3ca4b62e73dcfca2669971defb181..b5fc7668d03cf314a8421e72e782da0c
          for (final Component component : formatProviders(spigotPlugins)) {
              sender.sendMessage(component);
 diff --git a/src/main/java/io/papermc/paper/plugin/PluginInitializerManager.java b/src/main/java/io/papermc/paper/plugin/PluginInitializerManager.java
-index 3200aef1ba5d079fc3790841c826b4cf3951f2cf..440104ac53a8445ee6f729028209ae1366c3fa38 100644
+index 5741a60faba70da485053599c9370f0e27e868f4..f3b7e21e4289812482cfbfa0bda6d9b75d7fa115 100644
 --- a/src/main/java/io/papermc/paper/plugin/PluginInitializerManager.java
 +++ b/src/main/java/io/papermc/paper/plugin/PluginInitializerManager.java
-@@ -121,19 +121,30 @@ public class PluginInitializerManager {
+@@ -112,19 +112,30 @@ public class PluginInitializerManager {
          java.util.List<Path> dirs = ((java.util.List<File>) optionSet.valuesOf("add-plugin-dir")).stream().map(File::toPath).toList();
          dirs.forEach(pluginDir -> io.papermc.paper.plugin.util.EntrypointUtil.registerProvidersFromSource(io.papermc.paper.plugin.provider.source.DirectoryProviderSource.INSTANCE_NO_CREATE, pluginDir));
  
@@ -243,22 +243,3 @@ index 26422904751647a061397ce978bba752149003cd..884ed63dab16acca83fe8f421762f256
          this.providers.add(provider);
      }
  
-diff --git a/src/main/java/io/papermc/paper/pluginremap/PluginRemapper.java b/src/main/java/io/papermc/paper/pluginremap/PluginRemapper.java
-index fbad4a2242aa1ab910b2e2ae4cce973ff63fda84..89d4fa952d072dd6e071dc9eef51f4050f7e750e 100644
---- a/src/main/java/io/papermc/paper/pluginremap/PluginRemapper.java
-+++ b/src/main/java/io/papermc/paper/pluginremap/PluginRemapper.java
-@@ -337,7 +337,13 @@ public final class PluginRemapper {
-                     }
-                     index.skip(inputFile);
-                     return CompletableFuture.completedFuture(inputFile);
--                }
-+                } else if (ns == null && Files.exists(fs.getPath(PluginFileType.LEAVES_PLUGIN_JSON))) { // Leaves start - leaves plugin
-+                    if (DEBUG_LOGGING) {
-+                        LOGGER.info("Plugin '{}' is a Leaves plugin with no namespace specified.", inputFile);
-+                    }
-+                    index.skip(inputFile);
-+                    return CompletableFuture.completedFuture(inputFile);
-+                } // Leaves end - leaves plugin
-             }
-         } catch (final IOException ex) {
-             return CompletableFuture.failedFuture(new RuntimeException("Failed to open plugin jar " + inputFile, ex));

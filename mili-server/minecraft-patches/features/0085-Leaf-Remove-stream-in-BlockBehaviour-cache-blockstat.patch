@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:56:07 +0800
+Subject: [PATCH] Leaf: Remove stream in BlockBehaviour cache blockstate
+
+
+diff --git a/net/minecraft/world/level/block/state/BlockBehaviour.java b/net/minecraft/world/level/block/state/BlockBehaviour.java
+index 7358c75802a37e84e30b1b94a046251d2547a388..fe32d738d0d66bce268184e5514f07b42e5c5f97 100644
+--- a/net/minecraft/world/level/block/state/BlockBehaviour.java
++++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
+@@ -1063,7 +1063,7 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
+             private static final Direction[] DIRECTIONS = Direction.values();
+             private static final int SUPPORT_TYPE_COUNT = SupportType.values().length;
+             public final VoxelShape collisionShape;
+-            public final boolean largeCollisionShape;
++            public boolean largeCollisionShape; // Luminol - make mutable
+             private final boolean[] faceSturdy;
+             public final boolean isCollisionShapeFullBlock;
+ 
+@@ -1080,8 +1080,14 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
+                     );
+                 }
+ 
+-                this.largeCollisionShape = Arrays.stream(Direction.Axis.values())
+-                    .anyMatch(axis -> this.collisionShape.min(axis) < 0.0 || this.collisionShape.max(axis) > 1.0);
++                // Leaf start - Remove stream in BlockBehaviour cache blockstate
++                for (Direction.Axis axis : Direction.Axis.values()) {
++                    if (this.collisionShape.min(axis) < 0.0 || this.collisionShape.max(axis) > 1.0) {
++                        this.largeCollisionShape = true;
++                        break;
++                    }
++                }
++                // Leaf end - Remove stream in BlockBehaviour cache blockstate
+                 this.faceSturdy = new boolean[DIRECTIONS.length * SUPPORT_TYPE_COUNT];
+ 
+                 for (Direction direction : DIRECTIONS) {

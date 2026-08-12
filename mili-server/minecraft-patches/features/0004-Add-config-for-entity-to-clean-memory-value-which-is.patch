@@ -1,35 +1,35 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: MrHua269 <mrhua269@gmail.com>
-Date: Sat, 8 Mar 2025 09:56:15 +0800
+Date: Tue, 11 Aug 2026 18:56:13 +0800
 Subject: [PATCH] Add config for entity to clean memory value which is not
  belong to current tickregion
 
-Folia does not fully get the entity AI patched correctly, like some memories in entity's brain is still exists when switched dimension or teleported to the new tickregion, which entity is still accessing in the next tick then it will trigger the async catcher, which lead the entity go disappear and throw an exception in the console.In this patch, if this function is turned on, the server will clean the memory that doesn't belong to the entity's tickregion before ticking any behaviors, which can simply fix that.
 
 diff --git a/net/minecraft/world/entity/ai/Brain.java b/net/minecraft/world/entity/ai/Brain.java
-index 11432097b02ddc8c8a2c0e29e9a5bd03c82dd1d4..c83dee968b441d9d1b0b0ad89b2ae584f2b2503a 100644
+index e097bc1268b4050e3948413c52dea69950858458..2a3ae7bc52880ba089f1632f3b3de877666d4a09 100644
 --- a/net/minecraft/world/entity/ai/Brain.java
 +++ b/net/minecraft/world/entity/ai/Brain.java
-@@ -405,7 +405,7 @@ public class Brain<E extends LivingEntity> {
+@@ -383,7 +383,7 @@ public class Brain<E extends LivingEntity> {
      }
  
-     public void tick(ServerLevel level, E entity) {
+     public void tick(final ServerLevel level, final E body) {
 -        this.forgetOutdatedMemories();
-+        this.forgetOutdatedMemories(entity); // Luminol - Add config to force clean entity memory that don't belong to current tick region
-         this.tickSensors(level, entity);
-         this.startEachNonRunningBehavior(level, entity);
-         this.tickEachRunningBehavior(level, entity);
-@@ -417,10 +417,31 @@ public class Brain<E extends LivingEntity> {
++        this.forgetOutdatedMemories(body); // Luminol - Add config to force clean entity memory that don't belong to current tick region
+         this.tickSensors(level, body);
+         this.startEachNonRunningBehavior(level, body);
+         this.tickEachRunningBehavior(level, body);
+@@ -395,8 +395,33 @@ public class Brain<E extends LivingEntity> {
          }
      }
  
 -    private void forgetOutdatedMemories() {
-+    private void forgetOutdatedMemories(E owner) { // Luminol - Add config to force clean entity memory that don't belong to current tick region
-         for (Entry<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> entry : this.memories.entrySet()) {
-             if (entry.getValue().isPresent()) {
-                 ExpirableValue<?> expirableValue = (ExpirableValue<?>)entry.getValue().get();
+-        this.memories.values().forEach(MemorySlot::tick);
++    private void forgetOutdatedMemories(final E owner) { // Luminol - Add config to force clean entity memory that don't belong to current tick region
++        for (Entry<MemoryModuleType<?>, MemorySlot<?>> entry : this.memories.entrySet()) {
++            MemorySlot<?> slot = entry.getValue();
++            if (slot.hasValue()) {
 +                // Luminol start - Add config to force clean entity memory that don't belong to current tick region
-+                final Object value = expirableValue.getValue();
++                final Object value = slot.value();
 +                final net.minecraft.world.level.Level ownerLevel = owner.level();
 +
 +                // type: entity
@@ -48,7 +48,9 @@ index 11432097b02ddc8c8a2c0e29e9a5bd03c82dd1d4..c83dee968b441d9d1b0b0ad89b2ae584
 +                    }
 +                }
 +                // Luminol end
-+
-                 if (expirableValue.hasExpired()) {
-                     this.eraseMemory(entry.getKey());
-                 }
++            }
++            slot.tick();
++        }
+     }
+ 
+     public void stopAll(final ServerLevel level, final E body) {

@@ -1,0 +1,21 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:10:45 +0800
+Subject: [PATCH] Prevent tamable animals check can teleport in an
+ unloadedchunk
+
+
+diff --git a/net/minecraft/world/entity/TamableAnimal.java b/net/minecraft/world/entity/TamableAnimal.java
+index 95ba821a895c7ea8fffcbf1df2e7b3c174463d9e..b0a01673224522552672b7c8c9aa219108e8010f 100644
+--- a/net/minecraft/world/entity/TamableAnimal.java
++++ b/net/minecraft/world/entity/TamableAnimal.java
+@@ -318,7 +318,8 @@ public abstract class TamableAnimal extends Animal implements OwnableEntity {
+             return false;
+         }
+ 
+-        BlockState blockStateBelow = this.level().getBlockState(pos.below());
++        BlockState blockStateBelow = this.level().getBlockStateIfLoaded(pos.below()); // Luminol - Prevent tamable animals check can teleport in an unloaded chunk
++        if (blockStateBelow == null) return false;  // Luminol - Prevent tamable animals check can teleport in an unloaded chunk
+         if (!this.canFlyToOwner() && blockStateBelow.getBlock() instanceof LeavesBlock) {
+             return false;
+         }

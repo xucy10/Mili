@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:49:04 +0800
+Subject: [PATCH] Leaf: For collision check has physics before same vehicle
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index a0f295d7fdab6a811543a0cc03aee51ef9d36d33..78d3ba511a31307b9b38c84b0eb51846afa47f89 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -2438,8 +2438,8 @@ public abstract class Entity
+     }
+ 
+     public void push(final Entity entity) {
++        if (!entity.noPhysics && !this.noPhysics) { // Gale - Akarin - collision physics check before vehicle check
+         if (!this.isPassengerOfSameVehicle(entity)) {
+-            if (!entity.noPhysics && !this.noPhysics) {
+                 if (this.level.paperConfig().collisions.onlyPlayersCollide && !(entity instanceof ServerPlayer || this instanceof ServerPlayer)) return; // Paper - Collision option for requiring a player participant
+                 double xa = entity.getX() - this.getX();
+                 double za = entity.getZ() - this.getZ();

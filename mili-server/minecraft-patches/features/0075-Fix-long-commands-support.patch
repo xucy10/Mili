@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Helvetica Volubi <suisuroru@blue-millennium.fun>
+Date: Tue, 11 Aug 2026 20:41:59 +0800
+Subject: [PATCH] Fix long commands support
+
+
+diff --git a/net/minecraft/network/protocol/game/ServerboundChatCommandPacket.java b/net/minecraft/network/protocol/game/ServerboundChatCommandPacket.java
+index 491af2413a4e793a121fec368259ff8211ed031e..042cb4792b0084f143608f05dd08da133a31e435 100644
+--- a/net/minecraft/network/protocol/game/ServerboundChatCommandPacket.java
++++ b/net/minecraft/network/protocol/game/ServerboundChatCommandPacket.java
+@@ -12,7 +12,7 @@ public record ServerboundChatCommandPacket(String command) implements Packet<Ser
+     );
+ 
+     private ServerboundChatCommandPacket(final FriendlyByteBuf input) {
+-        this(input.readUtf(MAX_CHAT_PACKET_INPUT_SIZE)); // Paper - limit chat command inputs
++        this(me.earthme.luminol.config.modules.fixes.LongCommandSupportConfig.enabled ? input.readUtf() : input.readUtf(MAX_CHAT_PACKET_INPUT_SIZE)); // Paper - limit chat command inputs // Luminol - add support for long command inputs
+     }
+ 
+     private void write(final FriendlyByteBuf output) {

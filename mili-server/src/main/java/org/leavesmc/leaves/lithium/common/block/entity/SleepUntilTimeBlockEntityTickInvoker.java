@@ -19,7 +19,6 @@ package org.leavesmc.leaves.lithium.common.block.entity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.TickingBlockEntity;
 import org.jetbrains.annotations.NotNull;
 
@@ -60,7 +59,7 @@ public class SleepUntilTimeBlockEntityTickInvoker implements TickingBlockEntity 
     @NotNull
     public String getType() {
         //noinspection ConstantConditions
-        return BlockEntityType.getKey(this.sleepingBlockEntity.getType()).toString();
+        return net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(this.sleepingBlockEntity.getType()).toString();
     }
 
     @Override

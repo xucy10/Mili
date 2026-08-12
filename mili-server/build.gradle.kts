@@ -126,6 +126,7 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
+        java { srcDir("../mili-rust/src/main/java") } // Mili - Rust bridge (TomlConfigData, RustBridge)
         java { srcDir("src/main/java") }
         resources { srcDir("src/main/resources") }
     }
@@ -162,6 +163,7 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 
 dependencies {
     implementation(project(":mili-api")) // Mili
+    runtimeOnly(project(":mili-rust")) // Mili - package Rust native libraries (rust/*.dll|so|dylib) into the final jar
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("io.netty:netty-all:4.2.15.Final") // used for io_uring
@@ -291,6 +293,12 @@ tasks.named<JavaCompile>(log4jPlugins.compileJavaTaskName) {
 // Bump compile tasks to 1GB memory to avoid OOMs
 tasks.withType<JavaCompile>().configureEach {
     options.forkOptions.memoryMaximumSize = "1G"
+}
+
+// Mili - multiple resource source sets (paper-server/folia-server/mili) may contain
+// files with the same name (e.g. mili.properties); let the later source set win
+tasks.withType<ProcessResources>().configureEach {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {

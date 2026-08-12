@@ -41,9 +41,10 @@ import net.minecraft.network.protocol.game.*;
 import net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.RegistryLayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.packs.repository.KnownPack;
 import net.minecraft.tags.TagNetworkSerialization;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.flag.FeatureFlags;
 import org.jetbrains.annotations.NotNull;
@@ -94,6 +95,11 @@ public class Recorder extends Connection {
         this.channel = new LocalChannel();
     }
 
+    public void bind(ServerGamePacketListenerImpl listener) {
+        this.packetListener = listener;
+    }
+
+
     public void start() {
         startTime = System.currentTimeMillis();
 
@@ -103,7 +109,7 @@ public class Recorder extends Connection {
         metaData.mcversion = SharedConstants.getCurrentVersion().name();
 
         // TODO start event
-        this.savePacket(new ClientboundLoginFinishedPacket(photographer.getGameProfile()), ConnectionProtocol.LOGIN);
+        this.savePacket(new ClientboundLoginFinishedPacket(photographer.getGameProfile(), photographer.getUUID()), ConnectionProtocol.LOGIN);
         this.startConfiguration();
 
         savePacket(ClientboundPlayerPositionPacket.of(photographer.getId(), PositionMoveRotation.of(photographer), Collections.emptySet()));
@@ -194,7 +200,7 @@ public class Recorder extends Connection {
                 return;
             }
             case ClientboundAddEntityPacket packet1 -> {
-                if (packet1.getType() == EntityType.PLAYER) {
+                if (packet1.getType() == EntityTypes.PLAYER) {
                     synchronized (metaData) {
                         metaData.players.add(packet1.getUUID());
                     }
@@ -212,7 +218,15 @@ public class Recorder extends Connection {
         }
 
         if (recorderOption.forceDayTime != -1 && packet instanceof ClientboundSetTimePacket packet1) {
-            packet = new ClientboundSetTimePacket(packet1.dayTime(), recorderOption.forceDayTime, false);
+            // Leaves - Paper 26.1: SetTimePacket is now (gameTime, Map<Holder<WorldClock>, ClockNetworkState>).
+            // Replace each world clock with a frozen state at forceDayTime.
+            packet = new ClientboundSetTimePacket(
+                    packet1.gameTime(),
+                    net.minecraft.util.Util.mapValues(
+                            packet1.clockUpdates(),
+                            state -> new net.minecraft.world.clock.ClockNetworkState(recorderOption.forceDayTime, 0.0F, 0.0F)
+                    )
+            );
         }
 
         if (recorderOption.forceWeather != null && packet instanceof ClientboundGameEventPacket packet1) {

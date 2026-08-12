@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy <xucy0609@gmail.com>
+Date: Wed, 12 Aug 2026 12:41:55 +0800
+Subject: [PATCH] Fix compilation for MC 26.2 API migration
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 9cd7da734c2f308047dd500985dcbf3778d38f12..58c496d4ff0d110b395ea0db63bfe2814eb7ba40 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -400,7 +400,7 @@ public final class CraftServer implements Server {
+     public CraftServer(DedicatedServer console, PlayerList playerList) {
+         this.console = console;
+         this.playerList = (DedicatedPlayerList) playerList;
+-        this.playerView = MCUtil.transformUnmodifiable(playerList.realPlayers(), ServerPlayer::getBukkitEntity); // Leaves - replay api
++        this.playerView = MCUtil.transformUnmodifiable(playerList.realPlayers, ServerPlayer::getBukkitEntity); // Leaves - replay api
+         this.serverVersion = io.papermc.paper.ServerBuildInfo.buildInfo().asString(io.papermc.paper.ServerBuildInfo.StringRepresentation.VERSION_SIMPLE); // Paper - improve version
+         this.structureManager = new CraftStructureManager(console.getStructureManager(), console.registryAccess());
+         this.serverTickManager = new CraftServerTickManager(console.tickRateManager());
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+index d7ce463a9922ab6713e77f5e845724629bbc87b1..743ffd0abea3de467107b36864a814564de037f2 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+@@ -1152,7 +1152,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+     }
+ 
+     private void updateWaypoint() {
+-        me.earthme.luminol.utils.FoliaServerWaypointManager manager = ((ServerLevel) getHandle().level()).getWaypointManager(); // Luminol - Restore waypoints
++        me.earthme.luminol.utils.FoliaServerWaypointManager manager = (me.earthme.luminol.utils.FoliaServerWaypointManager) ((ServerLevel) getHandle().level()).getWaypointManager(); // Luminol - Restore waypoints
+         manager.untrackWaypoint(getHandle());
+         manager.trackWaypoint(getHandle());
+     }
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/LazyPlayerSet.java b/src/main/java/org/bukkit/craftbukkit/util/LazyPlayerSet.java
+index 9b5f976e91b193218f91ae737f08c84522ae5652..83af50de50a03e164d572f3c3466b6d0b42ed138 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/LazyPlayerSet.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/LazyPlayerSet.java
+@@ -23,7 +23,7 @@ public class LazyPlayerSet extends LazyHashSet<Player> {
+     }
+ 
+     public static Set<Player> makePlayerSet(final MinecraftServer server) {
+-        List<ServerPlayer> players = server.getPlayerList().realPlayers(); // Leaves - only real players
++        List<ServerPlayer> players = server.getPlayerList().realPlayers; // Leaves - only real players
+         Set<Player> reference = new HashSet<>(players.size());
+         for (ServerPlayer player : players) {
+             reference.add(player.getBukkitEntity());

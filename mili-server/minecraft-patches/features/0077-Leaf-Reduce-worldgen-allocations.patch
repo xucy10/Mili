@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:46:19 +0800
+Subject: [PATCH] Leaf: Reduce worldgen allocations
+
+
+diff --git a/net/minecraft/world/level/levelgen/NoiseChunk.java b/net/minecraft/world/level/levelgen/NoiseChunk.java
+index 117c3e33d49b92ca0807c576237fe135e40c524d..80f5abcf1a22199db51cc52599f4ab031d4e9ddd 100644
+--- a/net/minecraft/world/level/levelgen/NoiseChunk.java
++++ b/net/minecraft/world/level/levelgen/NoiseChunk.java
+@@ -373,7 +373,17 @@ public class NoiseChunk implements DensityFunction.FunctionContext, DensityFunct
+     }
+ 
+     protected DensityFunction wrap(final DensityFunction function) {
+-        return this.wrapped.computeIfAbsent(function, this::wrapNew);
++        // Leaf start - Reduce worldgen allocations
++        // Avoid lambda allocation
++        DensityFunction func = this.wrapped.get(function);
++
++        if (func == null) {
++            func = this.wrapNew(function);
++            this.wrapped.put(function, func);
++        }
++
++        return func;
++        // Leaf end - Reduce worldgen allocations
+     }
+ 
+     private DensityFunction wrapNew(final DensityFunction function) {
+diff --git a/net/minecraft/world/level/levelgen/SurfaceRules.java b/net/minecraft/world/level/levelgen/SurfaceRules.java
+index 7a3b0da821352b228ca2cd1d8a288238715a377d..af12c14d58dfa94f4d60d5096a9b2a8f3e9173c4 100644
+--- a/net/minecraft/world/level/levelgen/SurfaceRules.java
++++ b/net/minecraft/world/level/levelgen/SurfaceRules.java
+@@ -666,8 +666,13 @@ public class SurfaceRules {
+     private record SequenceRule(List<SurfaceRules.SurfaceRule> rules) implements SurfaceRules.SurfaceRule {
+         @Override
+         public @Nullable BlockState tryApply(final int blockX, final int blockY, final int blockZ) {
+-            for (SurfaceRules.SurfaceRule rule : this.rules) {
+-                BlockState state = rule.tryApply(blockX, blockY, blockZ);
++            // Leaf start - Reduce worldgen allocations
++            // Avoid iterator allocation
++            int size = this.rules.size();
++            //noinspection ForLoopReplaceableByForEach
++            for (int i = 0; i < size; i++) {
++                BlockState state = this.rules.get(i).tryApply(blockX, blockY, blockZ);
++                // Leaf end - Reduce worldgen allocations
+                 if (state != null) {
+                     return state;
+                 }
+diff --git a/net/minecraft/world/level/levelgen/material/MaterialRuleList.java b/net/minecraft/world/level/levelgen/material/MaterialRuleList.java
+index 2be3314197ffdaf3f25ea211c997db15a450915b..b3ea867bf19d58df863102e8152b58363c495e15 100644
+--- a/net/minecraft/world/level/levelgen/material/MaterialRuleList.java
++++ b/net/minecraft/world/level/levelgen/material/MaterialRuleList.java
+@@ -8,13 +8,17 @@ import org.jspecify.annotations.Nullable;
+ public record MaterialRuleList(NoiseChunk.BlockStateFiller[] materialRuleList) implements NoiseChunk.BlockStateFiller {
+     @Override
+     public @Nullable BlockState calculate(final DensityFunction.FunctionContext context) {
+-        for (NoiseChunk.BlockStateFiller rule : this.materialRuleList) {
+-            BlockState state = rule.calculate(context);
+-            if (state != null) {
+-                return state;
+-            }
++        // Leaf start - Reduce worldgen allocations
++        // Avoid iterator allocation
++        BlockState state = null;
++        int length = this.materialRuleList.length;
++
++        for (int i = 0; state == null && i < length; i++) {
++            NoiseChunk.BlockStateFiller rule = this.materialRuleList[i];
++            state = rule.calculate(context);
+         }
+ 
+-        return null;
++        return state;
++        // Leaf end - Reduce worldgen allocations
+     }
+ }

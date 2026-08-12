@@ -27,12 +27,13 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.bot.ServerBot;
+import org.leavesmc.leaves.entity.bot.actions.CraftBotAction;
 import org.leavesmc.leaves.entity.bot.actions.CraftUseItemToAction;
 
 public class ServerUseItemToAction extends AbstractUseBotAction<ServerUseItemToAction> {
 
     public ServerUseItemToAction() {
-        super("use_to", ServerUseItemToAction::new);
+        super("use_to", null);
     }
 
     @Override
@@ -53,7 +54,7 @@ public class ServerUseItemToAction extends AbstractUseBotAction<ServerUseItemToA
 
         Vec3 vec3 = hitResult.getLocation().subtract(entity.getX(), entity.getY(), entity.getZ());
         bot.updateItemInHand(hand);
-        InteractionResult interactionResult = entity.interactAt(bot, vec3, hand);
+        InteractionResult interactionResult = entity.interact(bot, hand, vec3);
         if (FakePlayerCompatConfig.fakePlayerInteractLikeClient
                 && entity instanceof ArmorStand stand
                 && !stand.isMarker()
@@ -62,7 +63,7 @@ public class ServerUseItemToAction extends AbstractUseBotAction<ServerUseItemToA
             interactionResult = InteractionResult.PASS;
         }
         if (!interactionResult.consumesAction()) {
-            interactionResult = bot.interactOn(hitResult.getEntity(), hand);
+            interactionResult = bot.interactOn(hitResult.getEntity(), hand, vec3);
         }
 
         if (shouldSwing(interactionResult)) {
@@ -73,8 +74,7 @@ public class ServerUseItemToAction extends AbstractUseBotAction<ServerUseItemToA
     }
 
     @Override
-    public Object asCraft() {
+    public CraftBotAction<?, ServerUseItemToAction> asCraft() {
         return new CraftUseItemToAction(this);
     }
 }
-
