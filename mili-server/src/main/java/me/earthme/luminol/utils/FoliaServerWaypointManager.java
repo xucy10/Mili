@@ -15,10 +15,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class FoliaServerWaypointManager implements WaypointManager<@NotNull WaypointTransmitter> {
+public class FoliaServerWaypointManager extends net.minecraft.server.waypoints.ServerWaypointManager {
     private final Set<WaypointTransmitter> waypoints = ConcurrentHashMap.newKeySet();
     private final Set<ServerPlayer> trackingPlayers = ConcurrentHashMap.newKeySet();
     private final Map<ServerPlayer, Map<WaypointTransmitter, WaypointTransmitter.Connection>> connections = new ConcurrentHashMap<>();
+
+    public FoliaServerWaypointManager(net.minecraft.server.level.ServerLevel serverLevel) {
+        super(serverLevel);
+    }
 
     public void breakAllConnections() {
         throw new UnsupportedOperationException("Unused");

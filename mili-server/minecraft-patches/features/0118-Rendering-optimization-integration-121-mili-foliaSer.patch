@@ -133,7 +133,7 @@ index 010180899d69d0457dcc9feee4f1c062c5354995..e8c02d10901514da1fb2019218a7cc2d
              bridge.removeChannel(channel);
          }
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index ad2d550a68aa1462233eabb122741739ff68f92d..ed2f87ac50f8c1157b9b5eec8100c84481d84d82 100644
+index b41d4e94b39af29b0f064e4d8660f780caf400ee..8554bb449cad4f85629862c21350846f2fc4b62b 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 @@ -3260,7 +3260,7 @@ public class ServerGamePacketListenerImpl

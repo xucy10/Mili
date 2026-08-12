@@ -20,7 +20,6 @@ package org.leavesmc.leaves.protocol.servux.litematics.placement;
 import com.google.common.collect.ImmutableMap;
 import fun.bm.mili.config.modules.function.protocol.ServuxProtocolConfig;
 import io.papermc.paper.threadedregions.RegionizedServer;
-import me.earthme.luminol.utils.NullPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.minecraft.core.BlockBox;
@@ -36,13 +35,17 @@ import net.minecraft.world.phys.AABB;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 import org.leavesmc.leaves.protocol.servux.ServuxProtocol;
 import org.leavesmc.leaves.protocol.servux.litematics.LitematicaSchematic;
 import org.leavesmc.leaves.protocol.servux.litematics.selection.Box;
 import org.leavesmc.leaves.protocol.servux.litematics.utils.*;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -62,26 +65,44 @@ public class SchematicPlacement {
     }
 
     public static SchematicPlacement createFromNbt(CompoundTag tags) {
+        if (!tags.contains("Schematics")) {
+            throw new IllegalArgumentException("Missing Schematics tag");
+        }
+        BlockPos origin = NbtUtils.readBlockPosFromArrayTag(tags, "Origin");
+        if (origin == null) {
+            throw new IllegalArgumentException("Missing or invalid Origin tag");
+        }
         SchematicPlacement placement = new SchematicPlacement(
                 LitematicaSchematic.readFromNBT(tags.getCompoundOrEmpty("Schematics")),
-                NbtUtils.readBlockPosFromArrayTag(tags, "Origin"),
+                origin,
                 tags.getStringOr("Name", "")
         );
-        placement.mirror = Mirror.values()[tags.getIntOr("Mirror", 0)];
-        placement.rotation = Rotation.values()[tags.getIntOr("Rotation", 0)];
+        placement.mirror = enumByOrdinal(Mirror.values(), tags.getIntOr("Mirror", 0), "Mirror");
+        placement.rotation = enumByOrdinal(Rotation.values(), tags.getIntOr("Rotation", 0), "Rotation");
         for (String name : tags.getCompoundOrEmpty("SubRegions").keySet()) {
             CompoundTag compound = tags.getCompoundOrEmpty("SubRegions").getCompoundOrEmpty(name);
+            BlockPos pos = NbtUtils.readBlockPosFromArrayTag(compound, "Pos");
+            if (pos == null) {
+                throw new IllegalArgumentException("Missing or invalid Pos tag for sub-region " + name);
+            }
             var sub = new SubRegionPlacement(
                     compound.getStringOr("Name", "?"),
-                    NbtUtils.readBlockPosFromArrayTag(compound, "Pos"),
-                    Rotation.values()[compound.getIntOr("Rotation", 0)],
-                    Mirror.values()[compound.getIntOr("Mirror", 0)],
+                    pos,
+                    enumByOrdinal(Rotation.values(), compound.getIntOr("Rotation", 0), "SubRegions." + name + ".Rotation"),
+                    enumByOrdinal(Mirror.values(), compound.getIntOr("Mirror", 0), "SubRegions." + name + ".Mirror"),
                     compound.getBooleanOr("Enabled", true),
                     compound.getBooleanOr("IgnoreEntities", false)
             );
             placement.relativeSubRegionPlacements.put(name, sub);
         }
         return placement;
+    }
+
+    private static <T> T enumByOrdinal(T[] values, int ordinal, String tagName) {
+        if (ordinal < 0 || ordinal >= values.length) {
+            throw new IllegalArgumentException("Invalid " + tagName + " ordinal: " + ordinal);
+        }
+        return values[ordinal];
     }
 
     public static IntBoundingBox getBoundsWithinChunkForBox(Box box, int chunkX, int chunkZ) {
@@ -302,11 +323,17 @@ public class SchematicPlacement {
         AtomicInteger count_full = new AtomicInteger();
         AtomicInteger count = new AtomicInteger();
 
-        streamChunkPos(Objects.requireNonNull(enclosingBox.toVanilla())).forEach(chunkPos -> {
+        BlockBox vanillaBox = enclosingBox.toVanilla();
+        if (vanillaBox == null) {
+            ServuxProtocol.LOGGER.error("receiver a null vanilla enclosing box");
+            return;
+        }
+
+        streamChunkPos(vanillaBox).forEach(chunkPos -> {
                     RegionizedServer.getInstance().taskQueue.queueTickTaskQueue(
                             serverWorld,
-                            chunkPos.x,
-                            chunkPos.z,
+                            chunkPos.x(),
+                            chunkPos.z(),
                             () -> {
                                 SchematicPlacingUtils.placeToWorldWithinChunk(serverWorld, chunkPos, this, replaceBehavior, false);
                                 count.getAndIncrement();
@@ -315,13 +342,13 @@ public class SchematicPlacement {
                 }
         );
 
-        final NullPlugin nullPlugin = new NullPlugin();
+        final MinecraftInternalPlugin nullPlugin = MinecraftInternalPlugin.INSTANCE;
         scheduleTask(nullPlugin, serverWorld, count, count_full, player, timeStart, ServuxProtocolConfig.maxDelay);
     }
 
     private void scheduleTask(Plugin plugin, ServerLevel serverWorld, AtomicInteger count1, AtomicInteger count2, ServerPlayer player, long timeStart, int retryCount) {
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin,
-                (unused) -> {
+                (_) -> {
                     if (count1.get() >= count2.get()) {
                         long timeElapsed = System.currentTimeMillis() - timeStart;
                         player.getBukkitEntity().sendActionBar(
@@ -341,4 +368,3 @@ public class SchematicPlacement {
                 }, 1);
     }
 }
-

@@ -233,14 +233,14 @@ jobs:
           echo "Total CIS source files: ${COUNT}"
 
       - name: Build Paperclip Jar
-        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
+        run: ./gradlew :mili-server:createPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
       - name: Post-Build CIS Smoke Test
         run: |
           JAR_PATH="mili-server/build/libs"
           echo "=== CIS Smoke Test ==="
-          if ls "$JAR_PATH"/*-paperclip-*-mojmap.jar 1>/dev/null 2>&1; then
-            JAR=$(ls "$JAR_PATH"/*-paperclip-*-mojmap.jar | head -1)
+          if ls "$JAR_PATH"/*-paperclip-*.jar 1>/dev/null 2>&1; then
+            JAR=$(ls "$JAR_PATH"/*-paperclip-*.jar | head -1)
             JAR_SIZE=$(stat -c%s "$JAR" 2>/dev/null || stat --format=%s "$JAR" 2>/dev/null || echo "unknown")
             echo "OK: JAR built — $JAR (${JAR_SIZE} bytes)"
             echo ""
@@ -266,7 +266,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.project_id_b || 'Mili' }} CI Artifacts
-          path: mili-server/build/libs/*-paperclip-*-mojmap.jar
+          path: mili-server/build/libs/*-paperclip-*.jar
           if-no-files-found: error
           retention-days: 14
           compression-level: 9

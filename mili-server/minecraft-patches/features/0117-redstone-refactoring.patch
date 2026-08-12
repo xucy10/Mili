@@ -5,18 +5,10 @@ Subject: [PATCH] redstone refactoring
 
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index c794b993e0ebd5b98b90f5727e387d6353c02703..ad2d550a68aa1462233eabb122741739ff68f92d 100644
+index c794b993e0ebd5b98b90f5727e387d6353c02703..b41d4e94b39af29b0f064e4d8660f780caf400ee 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -1826,6 +1826,7 @@ public class ServerGamePacketListenerImpl
-         if (this.isSingleplayerOwner()) {
-             return false;
-         }
-+        */ // Luminol - Fully remove EntityTeleportEvent and PlayerTeleportEvent
- 
-         if (this.player.isChangingDimension()) {
-             return false;
-@@ -1937,7 +1938,7 @@ public class ServerGamePacketListenerImpl
+@@ -1937,7 +1937,7 @@ public class ServerGamePacketListenerImpl
              final io.papermc.paper.entity.TeleportFlag.Relative flag = org.bukkit.craftbukkit.entity.CraftEntity.deltaRelativeToAPI(relativeArgument);
              if (flag != null) relativeFlags.add(flag);
          }
@@ -25,8 +17,11 @@ index c794b993e0ebd5b98b90f5727e387d6353c02703..ad2d550a68aa1462233eabb122741739
          // Paper end - Teleport API
          this.cserver.getPluginManager().callEvent(event);
  
-@@ -1948,7 +1949,7 @@ public class ServerGamePacketListenerImpl
+@@ -1946,9 +1946,10 @@ public class ServerGamePacketListenerImpl
+             to = event.isCancelled() ? event.getFrom() : event.getTo();
+             destination = new PositionMoveRotation(CraftLocation.toVec3(to), Vec3.ZERO, to.getYaw(), to.getPitch());
          }
++        */ // Luminol - Fully remove EntityTeleportEvent and PlayerTeleportEvent
  
          this.internalTeleport(destination, relatives);
 -        return !event.isCancelled(); // CraftBukkit - Return event status

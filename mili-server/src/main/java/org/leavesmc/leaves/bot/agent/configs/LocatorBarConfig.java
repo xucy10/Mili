@@ -53,7 +53,7 @@ public class LocatorBarConfig extends AbstractBotConfig<Boolean, LocatorBarConfi
         }
         if (this.bot != null) {
             this.value = value;
-            FoliaServerWaypointManager manager = this.bot.level().getWaypointManager(); // Mili - waypoint for adapt of luminol ver
+            FoliaServerWaypointManager manager = (FoliaServerWaypointManager) ((net.minecraft.server.level.ServerLevel) this.bot.level()).getWaypointManager(); // Mili - waypoint for adapt of luminol ver
             if (value) {
                 manager.trackWaypoint(this.bot);
             } else {
