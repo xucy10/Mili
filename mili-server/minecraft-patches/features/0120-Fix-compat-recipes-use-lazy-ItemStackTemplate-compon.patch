@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy <xucy0609@gmail.com>
+Date: Wed, 12 Aug 2026 16:05:39 +0800
+Subject: [PATCH] Fix compat recipes: use lazy ItemStackTemplate (components
+ not bound during apply)
+
+
+diff --git a/net/minecraft/world/item/crafting/RecipeManager.java b/net/minecraft/world/item/crafting/RecipeManager.java
+index 3c040e6688414c5b4b0ad93f04795a341375ba04..6802a75fe51d04ef3c5949c14d3b09161dc9881b 100644
+--- a/net/minecraft/world/item/crafting/RecipeManager.java
++++ b/net/minecraft/world/item/crafting/RecipeManager.java
+@@ -127,7 +127,7 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
+                 new Recipe.CommonInfo(true),
+                 new CraftingRecipe.CraftingBookInfo(CraftingBookCategory.BUILDING, "carpet_ams_better_bone_block"),
+                 ShapedRecipePattern.of(Map.of('#', Ingredient.of(net.minecraft.world.item.Items.BONE)), "###", "###", "###"),
+-                net.minecraft.world.item.ItemStackTemplate.fromStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BONE_BLOCK, 3))
++                new net.minecraft.world.item.ItemStackTemplate(net.minecraft.world.item.Items.BONE_BLOCK, 3) // Mili - lazy template, ItemStack components are not bound during apply()
+             )
+         );
+     }
+@@ -144,7 +144,7 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
+                     "SDX",
+                     " SX"
+                 ),
+-                net.minecraft.world.item.ItemStackTemplate.fromStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DISPENSER))
++                new net.minecraft.world.item.ItemStackTemplate(net.minecraft.world.item.Items.DISPENSER) // Mili - lazy template, ItemStack components are not bound during apply()
+             )
+         );
+     }
+@@ -155,7 +155,7 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
+             new ShapelessRecipe(
+                 new Recipe.CommonInfo(true),
+                 new CraftingRecipe.CraftingBookInfo(CraftingBookCategory.REDSTONE, "carpet_ams_better_dispenser"),
+-                net.minecraft.world.item.ItemStackTemplate.fromStack(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DISPENSER)),
++                new net.minecraft.world.item.ItemStackTemplate(net.minecraft.world.item.Items.DISPENSER), // Mili - lazy template, ItemStack components are not bound during apply()
+                 List.of(Ingredient.of(net.minecraft.world.item.Items.BOW), Ingredient.of(net.minecraft.world.item.Items.DROPPER))
+             )
+         );
