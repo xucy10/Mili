@@ -1,0 +1,116 @@
+--- /dev/null
++++ b/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java.rej
+@@ -1,0 +_,113 @@
++diff a/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java	(rejected hunks)
++@@ -342,54 +342,71 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
++         BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
++         int cellWidth = noiseChunk.cellWidth();
++         int cellHeight = noiseChunk.cellHeight();
++-        int i = 16 / cellWidth;
++-        int i1 = 16 / cellWidth;
++-
++-        for (int i2 = 0; i2 < i; i2++) {
++-            noiseChunk.advanceCellX(i2);
++-
++-            for (int i3 = 0; i3 < i1; i3++) {
++-                int i4 = chunk.getSectionsCount() - 1;
++-                LevelChunkSection section = chunk.getSection(i4);
++-
++-                for (int i5 = cellCountY - 1; i5 >= 0; i5--) {
++-                    noiseChunk.selectCellYZ(i5, i3);
++-
++-                    for (int i6 = cellHeight - 1; i6 >= 0; i6--) {
++-                        int i7 = (minCellY + i5) * cellHeight + i6;
++-                        int i8 = i7 & 15;
++-                        int sectionIndex = chunk.getSectionIndex(i7);
++-                        if (i4 != sectionIndex) {
++-                            i4 = sectionIndex;
++-                            section = chunk.getSection(sectionIndex);
+++        int cellsX = 16 / cellWidth;
+++        int cellsZ = 16 / cellWidth;
+++
+++        // Mili optimize: cache settings to avoid repeated .value() calls in the inner loop
+++        BlockState defaultBlock = this.settings.value().defaultBlock();
+++        boolean voidTerrain = SharedConstants.debugVoidTerrain(chunk.getPos());
+++        boolean scheduleFluidUpdates = aquifer.shouldScheduleFluidUpdate();
+++        // Mili optimize: precompute reciprocals to avoid repeated division in the inner loop
+++        double invCellWidth = 1.0 / cellWidth;
+++        double invCellHeight = 1.0 / cellHeight;
+++        // Mili optimize: cache debug flag to avoid method call overhead when not debugging
+++        boolean debugAquifers = SharedConstants.DEBUG_AQUIFERS;
+++
+++        for (int cellX = 0; cellX < cellsX; cellX++) {
+++            noiseChunk.advanceCellX(cellX);
+++            int cellBaseX = minBlockX + cellX * cellWidth;
+++
+++            for (int cellZ = 0; cellZ < cellsZ; cellZ++) {
+++                int sectionIndex = chunk.getSectionsCount() - 1;
+++                LevelChunkSection section = chunk.getSection(sectionIndex);
+++                int cellBaseZ = minBlockZ + cellZ * cellWidth;
+++
+++                for (int cellY = cellCountY - 1; cellY >= 0; cellY--) {
+++                    noiseChunk.selectCellYZ(cellY, cellZ);
+++                    int cellBaseY = (minCellY + cellY) * cellHeight;
+++
+++                    for (int blockY = cellHeight - 1; blockY >= 0; blockY--) {
+++                        int absoluteY = cellBaseY + blockY;
+++                        int localY = absoluteY & 15;
+++                        int newSectionIndex = chunk.getSectionIndex(absoluteY);
+++                        if (sectionIndex != newSectionIndex) {
+++                            sectionIndex = newSectionIndex;
+++                            section = chunk.getSection(newSectionIndex);
++                         }
++ 
++-                        double d = (double)i6 / cellHeight;
++-                        noiseChunk.updateForY(i7, d);
+++                        double yFraction = blockY * invCellHeight;
+++                        noiseChunk.updateForY(absoluteY, yFraction);
++ 
++-                        for (int i9 = 0; i9 < cellWidth; i9++) {
++-                            int i10 = minBlockX + i2 * cellWidth + i9;
++-                            int i11 = i10 & 15;
++-                            double d1 = (double)i9 / cellWidth;
++-                            noiseChunk.updateForX(i10, d1);
+++                        for (int blockX = 0; blockX < cellWidth; blockX++) {
+++                            int worldX = cellBaseX + blockX;
+++                            int localX = worldX & 15;
+++                            double xFraction = blockX * invCellWidth;
+++                            noiseChunk.updateForX(worldX, xFraction);
++ 
++-                            for (int i12 = 0; i12 < cellWidth; i12++) {
++-                                int i13 = minBlockZ + i3 * cellWidth + i12;
++-                                int i14 = i13 & 15;
++-                                double d2 = (double)i12 / cellWidth;
++-                                noiseChunk.updateForZ(i13, d2);
+++                            for (int blockZ = 0; blockZ < cellWidth; blockZ++) {
+++                                int worldZ = cellBaseZ + blockZ;
+++                                int localZ = worldZ & 15;
+++                                double zFraction = blockZ * invCellWidth;
+++                                noiseChunk.updateForZ(worldZ, zFraction);
++                                 BlockState interpolatedState = noiseChunk.getInterpolatedState();
++                                 if (interpolatedState == null) {
++-                                    interpolatedState = this.settings.value().defaultBlock();
+++                                    interpolatedState = defaultBlock;
++                                 }
++ 
++-                                interpolatedState = this.debugPreliminarySurfaceLevel(noiseChunk, i10, i7, i13, interpolatedState);
++-                                if (interpolatedState != AIR && !SharedConstants.debugVoidTerrain(chunk.getPos())) {
++-                                    section.setBlockState(i11, i8, i14, interpolatedState, false);
++-                                    heightmapUnprimed.update(i11, i7, i14, interpolatedState);
++-                                    heightmapUnprimed1.update(i11, i7, i14, interpolatedState);
++-                                    if (aquifer.shouldScheduleFluidUpdate() && !interpolatedState.getFluidState().isEmpty()) {
++-                                        mutableBlockPos.set(i10, i7, i13);
+++                                // Mili optimize: guard debug path to avoid method call when not debugging
+++                                if (debugAquifers) {
+++                                    interpolatedState = this.debugPreliminarySurfaceLevel(noiseChunk, worldX, absoluteY, worldZ, interpolatedState);
+++                                }
+++
+++                                if (interpolatedState != AIR && !voidTerrain) {
+++                                    section.setBlockState(localX, localY, localZ, interpolatedState, false);
+++                                    heightmapUnprimed.update(localX, absoluteY, localZ, interpolatedState);
+++                                    heightmapUnprimed1.update(localX, absoluteY, localZ, interpolatedState);
+++                                    if (scheduleFluidUpdates && !interpolatedState.getFluidState().isEmpty()) {
+++                                        mutableBlockPos.set(worldX, absoluteY, worldZ);
++                                         chunk.markPosForPostprocessing(mutableBlockPos);
++                                     }
++                                 }

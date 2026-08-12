@@ -1,0 +1,16 @@
+--- /dev/null
++++ b/net/minecraft/world/effect/BadOmenMobEffect.java.rej
+@@ -1,0 +_,13 @@
++diff a/net/minecraft/world/effect/BadOmenMobEffect.java b/net/minecraft/world/effect/BadOmenMobEffect.java	(rejected hunks)
++@@ -22,6 +22,11 @@ class BadOmenMobEffect extends MobEffect {
++             && !serverPlayer.isSpectator()
++             && level.getDifficulty() != Difficulty.PEACEFUL
++             && level.isVillage(serverPlayer.blockPosition())) {
+++            // Leaves start - Revert raid changes
+++            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
+++                return level.getRaids().createOrExtendRaid(serverPlayer, serverPlayer.blockPosition()) == null;
+++            }
+++            // Leaves end - Revert raid changes
++             Raid raidAt = level.getRaidAt(serverPlayer.blockPosition());
++             if (raidAt == null || raidAt.getRaidOmenLevel() < raidAt.getMaxRaidOmenLevel()) {
++                 serverPlayer.addEffect(new MobEffectInstance(MobEffects.RAID_OMEN, 600, amplifier));

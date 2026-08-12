@@ -1,0 +1,16 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/vehicle/minecart/AbstractMinecartContainer.java.rej
+@@ -1,0 +_,13 @@
++diff a/net/minecraft/world/entity/vehicle/minecart/AbstractMinecartContainer.java b/net/minecraft/world/entity/vehicle/minecart/AbstractMinecartContainer.java	(rejected hunks)
++@@ -65,6 +65,11 @@ public abstract class AbstractMinecartContainer extends AbstractMinecart impleme
++ 
++     @Override
++     public void setChanged() {
+++        // Leaves start - pca
+++        if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++            org.leavesmc.leaves.protocol.PcaSyncProtocol.syncEntityToClient(this);
+++        }
+++        // Leaves end - pca
++     }
++ 
++     @Override

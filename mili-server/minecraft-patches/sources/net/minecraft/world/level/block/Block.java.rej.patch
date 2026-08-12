@@ -1,0 +1,18 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/Block.java.rej
+@@ -1,0 +_,15 @@
++diff a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java	(rejected hunks)
++@@ -685,6 +685,13 @@ public class Block extends BlockBehaviour implements ItemLike {
++     }
++     // CraftBukkit end
++ 
+++    // Mili start - reset push reaction
+++    @org.jetbrains.annotations.Nullable
+++    public net.minecraft.world.level.material.PushReaction getResetPushReaction() {
+++        return null;
+++    }
+++    // Mili end - reset push reaction
+++
++     record ShapePairKey(VoxelShape first, VoxelShape second) {
++         @Override
++         public boolean equals(Object other) {

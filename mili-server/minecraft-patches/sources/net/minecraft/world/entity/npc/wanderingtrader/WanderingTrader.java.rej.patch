@@ -1,0 +1,12 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/npc/wanderingtrader/WanderingTrader.java.rej
+@@ -1,0 +_,9 @@
++diff a/net/minecraft/world/entity/npc/wanderingtrader/WanderingTrader.java b/net/minecraft/world/entity/npc/wanderingtrader/WanderingTrader.java	(rejected hunks)
++@@ -124,6 +124,7 @@ public class WanderingTrader extends AbstractVillager implements Consumable.Over
++                     return InteractionResult.CONSUME;
++                 }
++ 
+++                this.voidTrade = false; // Mili - force void trade
++                 this.setTradingPlayer(player);
++                 this.openTradingScreen(player, this.getDisplayName(), 1);
++             }

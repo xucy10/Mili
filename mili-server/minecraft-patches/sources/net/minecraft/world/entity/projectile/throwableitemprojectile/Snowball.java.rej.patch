@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java.rej
+@@ -1,0 +_,14 @@
++diff a/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java	(rejected hunks)
++@@ -55,6 +55,12 @@ public class Snowball extends ThrowableItemProjectile {
++         Entity entity = result.getEntity();
++         int i = entity instanceof Blaze ? 3 : 0;
++         entity.hurt(this.damageSources().thrown(this, this.getOwner()), i);
+++        // Mili start - make snowball can knockback player
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.snowballAndEggCanKnockback && entity instanceof net.minecraft.server.level.ServerPlayer player) {
+++            player.hurt(this.damageSources().thrown(this, this.getOwner()), 0.0000001F);
+++            player.knockback(0.4000000059604645D, this.getX() - player.getX(), this.getZ() - player.getZ(), this, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.DAMAGE);
+++        }
+++        // Mili end - make snowball can knockback player
++     }
++ 
++     @Override

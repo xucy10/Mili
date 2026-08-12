@@ -1,0 +1,82 @@
+--- /dev/null
++++ b/net/minecraft/world/item/ItemStack.java.rej
+@@ -1,0 +_,79 @@
++diff a/net/minecraft/world/item/ItemStack.java b/net/minecraft/world/item/ItemStack.java	(rejected hunks)
++@@ -174,7 +174,7 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++     private int popTime;
++     @Deprecated
++     private @Nullable Item item;
++-    PatchedDataComponentMap components;
+++    public PatchedDataComponentMap components; // Mili - item over-stack util
++     private @Nullable Entity entityRepresentation;
++ 
++     public static DataResult<ItemStack> validateStrict(ItemStack stack) {
++@@ -200,7 +200,10 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++                 } else {
++                     Holder<Item> holder = Item.STREAM_CODEC.decode(buffer);
++                     DataComponentPatch dataComponentPatch = codec.decode(buffer);
++-                    return new ItemStack(holder, varInt, dataComponentPatch);
+++                    // Mili start - item over-stack util
+++                    ItemStack itemStack = new ItemStack(holder, varInt, dataComponentPatch);
+++                    return org.leavesmc.leaves.util.ItemOverstackUtils.decodeMaxStackSize(itemStack);
+++                    // Mili end - item over-stack util
++                 }
++             }
++ 
++@@ -209,13 +212,16 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++                 if (value.isEmpty() || value.getItem() == null) { // CraftBukkit - NPE fix itemstack.getItem()
++                     buffer.writeVarInt(0);
++                 } else {
++-                    buffer.writeVarInt(io.papermc.paper.util.sanitizer.ItemComponentSanitizer.sanitizeCount(io.papermc.paper.util.sanitizer.ItemObfuscationSession.currentSession(), value, value.getCount())); // Paper - potentially sanitize count
++-                    Item.STREAM_CODEC.encode(buffer, value.getItemHolder());
+++                    // Mili start - item over-stack util
+++                    final ItemStack itemStack = org.leavesmc.leaves.util.ItemOverstackUtils.encodeMaxStackSize(value.copy());
+++                    buffer.writeVarInt(io.papermc.paper.util.sanitizer.ItemComponentSanitizer.sanitizeCount(io.papermc.paper.util.sanitizer.ItemObfuscationSession.currentSession(), itemStack, itemStack.getCount())); // Paper - potentially sanitize count
+++                    Item.STREAM_CODEC.encode(buffer, itemStack.getItemHolder());
++                     // Paper start - adventure; conditionally render translatable components
++                     boolean prev = net.minecraft.network.chat.ComponentSerialization.DONT_RENDER_TRANSLATABLES.get();
++-                    try (final io.papermc.paper.util.SafeAutoClosable ignored = io.papermc.paper.util.sanitizer.ItemObfuscationSession.withContext(c -> c.itemStack(value))) { // pass the itemstack as context to the obfuscation session
+++                    try (final io.papermc.paper.util.SafeAutoClosable ignored = io.papermc.paper.util.sanitizer.ItemObfuscationSession.withContext(c -> c.itemStack(itemStack))) { // pass the itemstack as context to the obfuscation session
++                         net.minecraft.network.chat.ComponentSerialization.DONT_RENDER_TRANSLATABLES.set(true);
++-                    codec.encode(buffer, value.components.asPatch());
+++                    codec.encode(buffer, itemStack.components.asPatch());
+++                    // Mili end - item over-stack util
++                     } finally {
++                         net.minecraft.network.chat.ComponentSerialization.DONT_RENDER_TRANSLATABLES.set(prev);
++                     }
++@@ -309,7 +315,7 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++ 
++             for (ItemStack itemStack : itemContainerContents.nonEmptyItems()) {
++                 int count = itemStack.getCount();
++-                int maxStackSize = itemStack.getMaxStackSize();
+++                int maxStackSize = org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack); // Mili - item over-stack util
++                 if (count > maxStackSize) {
++                     return DataResult.error(() -> "Item stack with count of " + count + " was larger than maximum: " + maxStackSize);
++                 }
++@@ -397,8 +403,18 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++                 }
++             }
++             InteractionResult interactionResult;
+++            // Mili start - fix block place desync due to update suppression
+++            org.leavesmc.leaves.util.UpdateSuppressionException ue = null;
++             try {
++                 interactionResult = item.useOn(context);
+++            } catch (org.leavesmc.leaves.util.UpdateSuppressionException ex) {
+++                interactionResult = InteractionResult.SUCCESS.configurePaper(e -> e.placedBlockAt(clickedPos.immutable()));
+++                ue = ex;
+++                ue.provideBlock(context.getLevel(), context.getClickedPos(), serverLevel.getBlockState(context.getClickedPos()).getBlock());
+++                if (player != null) {
+++                    ue.providePlayer((net.minecraft.server.level.ServerPlayer) player);
+++                }
+++            // Mili end - fix block place desync due to update suppression
++             } finally {
++                 worldData.captureBlockStates = false; // Folia - region threading
++             }
++@@ -545,6 +561,7 @@ public final class ItemStack implements DataComponentHolder, ChangePublisher<net
++             worldData.capturedBlockStates.clear(); // Folia - region threading
++             // CraftBukkit end
++ 
+++            if (ue != null) throw ue; // Mili - fix block place desync due to update suppression
++             return interactionResult;
++         }
++     }

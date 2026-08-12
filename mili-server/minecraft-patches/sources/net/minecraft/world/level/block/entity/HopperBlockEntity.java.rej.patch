@@ -1,0 +1,90 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java.rej
+@@ -1,0 +_,87 @@
++diff a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java	(rejected hunks)
++@@ -155,7 +155,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++     public void setItem(int index, ItemStack stack) {
++         this.unpackLootTable(null);
++         this.getItems().set(index, stack);
++-        stack.limitSize(this.getMaxStackSize(stack));
+++        stack.limitSize(this.getMaxStackLeaves(stack)); // Mili - item over-stack util
++     }
++ 
++     @Override
++@@ -264,6 +264,11 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++                     }
++                     // Leaves end - Wool hopper counter
++                     setChanged(level, pos, state);
+++                    // Leaves start - pca
+++                    if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++                        org.leavesmc.leaves.protocol.PcaSyncProtocol.syncBlockEntityToClient(blockEntity);
+++                    }
+++                    // Leaves end - pca
++                     // Leaves start - Lithium Sleeping Block Entity
++                     if (me.earthme.luminol.config.modules.optimizations.LeavesSleepingBlockEntityConfig.enabled
++                             && !blockEntity.isOnCooldown()
++@@ -674,7 +679,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++ 
++             return false;
++         } else {
++-            boolean flag = hopper.isGridAligned() && blockState.isCollisionShapeFullBlock(level, blockPos) && !blockState.is(BlockTags.DOES_NOT_BLOCK_HOPPERS);
+++            boolean flag = hopper.isGridAligned() && (!fun.bm.mili.config.modules.function.OldFeatureConfig.oldHopperSuckInBehavior && blockState.isCollisionShapeFullBlock(level, blockPos)) && !blockState.is(BlockTags.DOES_NOT_BLOCK_HOPPERS); // Leaves - oldHopperSuckInBehavior
++             if (!flag) {
++                 for (ItemEntity itemEntity : me.earthme.luminol.config.modules.optimizations.LeavesSleepingBlockEntityConfig.enabled ? lithiumGetInputItemEntities(level, hopper) : getItemsAtAndAbove(level, hopper)) { // Leaves - Lithium Sleeping Block Entity
++                     if (addItem(hopper, itemEntity)) {
++@@ -762,7 +767,18 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++         // CraftBukkit end
++         } // Paper - Perf: Optimize Hoppers
++         ItemStack itemStack = item.getItem().copy();
++-        ItemStack itemStack1 = addItem(null, container, itemStack, null);
+++        // Mili start - item over-stack util
+++        int restoreCount = 0;
+++        ItemStack itemStack1 = itemStack.copy();
+++        if (org.leavesmc.leaves.util.ItemOverstackUtils.isStackable(item.getItem())) {
+++            // We need the hopper suck in the item with the vanilla max stack size each time
+++            int vanillaMax = itemStack.getMaxStackSize();
+++            restoreCount = Math.max(0, itemStack.getCount() - vanillaMax);
+++            itemStack.setCount(itemStack.getCount() - restoreCount);
+++        }
+++        itemStack1.setCount(addItem(null, container, itemStack, null).getCount());
+++        itemStack1.setCount(itemStack1.getCount() + restoreCount);
+++        // Mili end - item over-stack util
++         if (itemStack1.isEmpty()) {
++             flag = true;
++             item.setItem(ItemStack.EMPTY);
++@@ -771,7 +787,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++             item.setItem(itemStack1);
++         }
++ 
++-        return flag;
+++        return flag || (restoreCount != 0); // Mili - item over-stack util
++     }
++ 
++     public static ItemStack addItem(@Nullable Container source, Container destination, ItemStack stack, @Nullable Direction direction) {
++@@ -810,9 +826,9 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++             if (item.isEmpty()) {
++                 // Spigot start - SPIGOT-6693, SimpleContainer#setItem
++                 ItemStack leftover = ItemStack.EMPTY; // Paper - Make hoppers respect inventory max stack size
++-                if (!stack.isEmpty() && stack.getCount() > destination.getMaxStackSize()) {
+++                if (!stack.isEmpty() && (stack.getCount() > destination.getMaxStackSize() || stack.getCount() > stack.getMaxStackSize())) { // Mili - item over-stack util
++                     leftover = stack; // Paper - Make hoppers respect inventory max stack size
++-                    stack = stack.split(destination.getMaxStackSize());
+++                    stack = stack.split(Math.min(destination.getMaxStackSize(), stack.getMaxStackSize())); // Mili - item over-stack util
++                 }
++                 // Spigot end
++                 //IGNORE_TILE_UPDATES.set(Boolean.TRUE); // Paper - Perf: Optimize Hoppers // Folia - region threading // Luminol - vanilla hopper
++@@ -1770,4 +1786,14 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
++         return false;
++     }
++     // Leaves end - Lithium Sleeping Block Entity
+++
+++    // Leaves start - pca
+++    @Override
+++    public void setChanged() {
+++        super.setChanged();
+++        if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++            org.leavesmc.leaves.protocol.PcaSyncProtocol.syncBlockEntityToClient(this);
+++        }
+++    }
+++    // Leaves end - pca
++ }

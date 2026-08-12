@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/ai/gossip/GossipContainer.java.rej
+@@ -1,0 +_,18 @@
++diff a/net/minecraft/world/entity/ai/gossip/GossipContainer.java b/net/minecraft/world/entity/ai/gossip/GossipContainer.java	(rejected hunks)
++@@ -121,6 +121,16 @@ public class GossipContainer {
++ 
++     public int getReputation(UUID identifier, Predicate<GossipType> gossip) {
++         GossipContainer.EntityGossips entityGossips = this.gossips.get(identifier);
+++        // Mili start - sharedVillagerDiscounts
+++        if (fun.bm.mili.config.modules.function.VillagerTradeConfig.sharedVillagerDiscounts && gossip.test(GossipType.MAJOR_POSITIVE)) {
+++            int otherRep = 0;
+++            if (entityGossips != null) {
+++                otherRep = entityGossips.weightedValue(v -> gossip.test(v) && !v.equals(GossipType.MAJOR_POSITIVE));
+++            }
+++            int majorPositiveRep = this.gossips.values().stream().mapToInt(a -> a.weightedValue(v -> v.equals(GossipType.MAJOR_POSITIVE))).sum();
+++            return otherRep + Math.min(majorPositiveRep, GossipType.MAJOR_POSITIVE.max * GossipType.MAJOR_POSITIVE.weight);
+++        }
+++        // Mili end - sharedVillagerDiscounts
++         return entityGossips != null ? entityGossips.weightedValue(gossip) : 0;
++     }
++ 

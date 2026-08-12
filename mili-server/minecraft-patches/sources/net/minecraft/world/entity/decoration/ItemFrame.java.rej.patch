@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/decoration/ItemFrame.java.rej
+@@ -1,0 +_,18 @@
++diff a/net/minecraft/world/entity/decoration/ItemFrame.java b/net/minecraft/world/entity/decoration/ItemFrame.java	(rejected hunks)
++@@ -400,6 +400,16 @@ public class ItemFrame extends HangingEntity {
++         if (this.fixed) {
++             return InteractionResult.PASS;
++         } else if (!player.level().isClientSide()) {
+++            // Mili start - itemFrameContainerPassthrough
+++            if (fun.bm.mili.config.modules.function.OldFeatureConfig.containerPassthrough && !player.isShiftKeyDown() && (flag || !flag1)) {
+++                BlockPos pos1 = this.pos.relative(this.getDirection().getOpposite());
+++                if (level().getBlockEntity(pos1) instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity) {
+++                    net.minecraft.world.phys.BlockHitResult hitResult = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos1), this.getDirection(), pos1, false);
+++                    net.minecraft.server.level.ServerPlayer serverPlayer = (net.minecraft.server.level.ServerPlayer) player;
+++                    return serverPlayer.gameMode.useItemOn(serverPlayer, level(), itemInHand, hand, hitResult);
+++                }
+++            }
+++            // Mili end - itemFrameContainerPassthrough
++             if (!flag) {
++                 if (flag1 && !this.isRemoved()) {
++                     MapItemSavedData savedData = MapItem.getSavedData(itemInHand, this.level());

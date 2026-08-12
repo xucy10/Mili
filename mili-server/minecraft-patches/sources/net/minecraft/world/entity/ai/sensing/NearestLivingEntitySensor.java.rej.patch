@@ -1,0 +1,19 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/ai/sensing/NearestLivingEntitySensor.java.rej
+@@ -1,0 +_,16 @@
++diff a/net/minecraft/world/entity/ai/sensing/NearestLivingEntitySensor.java b/net/minecraft/world/entity/ai/sensing/NearestLivingEntitySensor.java	(rejected hunks)
++@@ -17,8 +17,13 @@ public class NearestLivingEntitySensor<T extends LivingEntity> extends Sensor<T>
++     protected void doTick(ServerLevel level, T entity) {
++         double attributeValue = entity.getAttributeValue(Attributes.FOLLOW_RANGE);
++         AABB aabb = entity.getBoundingBox().inflate(attributeValue, attributeValue, attributeValue);
+++        // Mili fix - #203: clamp AABB to the entity's region bounds to prevent cross-region entity queries
+++        // In Folia, getEntitiesOfClass with an AABB spanning multiple regions can cause issues.
+++        // Clamp the search area to a reasonable range around the entity's position.
+++        double clampedRange = Math.min(attributeValue, 16.0); // limit to 16 blocks (one chunk) to stay within region
+++        AABB clampedAabb = entity.getBoundingBox().inflate(clampedRange, clampedRange, clampedRange);
++         List<LivingEntity> entitiesOfClass = level.getEntitiesOfClass(
++-            LivingEntity.class, aabb, matchableEntity -> matchableEntity != entity && matchableEntity.isAlive()
+++            LivingEntity.class, clampedAabb, matchableEntity -> matchableEntity != entity && matchableEntity.isAlive()
++         );
++         entitiesOfClass.sort(Comparator.comparingDouble(entity::distanceToSqr));
++         Brain<?> brain = entity.getBrain();

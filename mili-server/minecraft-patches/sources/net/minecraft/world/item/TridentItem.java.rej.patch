@@ -1,0 +1,22 @@
+--- /dev/null
++++ b/net/minecraft/world/item/TridentItem.java.rej
+@@ -1,0 +_,19 @@
++diff a/net/minecraft/world/item/TridentItem.java b/net/minecraft/world/item/TridentItem.java	(rejected hunks)
++@@ -70,7 +70,7 @@ public class TridentItem extends Item implements ProjectileItem {
++                 return false;
++             } else {
++                 float tridentSpinAttackStrength = EnchantmentHelper.getTridentSpinAttackStrength(stack, player);
++-                if (tridentSpinAttackStrength > 0.0F && !player.isInWaterOrRain()) {
+++                if (tridentSpinAttackStrength > 0.0F && !player.isInWaterOrRain() || (fun.bm.mili.config.modules.function.OldFeatureConfig.lavaRiptide && player.isInLava())) { // Mili - lava riptide
++                     return false;
++                 } else if (stack.nextDamageWillBreak()) {
++                     return false;
++@@ -149,7 +149,7 @@ public class TridentItem extends Item implements ProjectileItem {
++         ItemStack itemInHand = player.getItemInHand(hand);
++         if (itemInHand.nextDamageWillBreak()) {
++             return InteractionResult.FAIL;
++-        } else if (EnchantmentHelper.getTridentSpinAttackStrength(itemInHand, player) > 0.0F && !player.isInWaterOrRain()) {
+++        } else if (EnchantmentHelper.getTridentSpinAttackStrength(itemInHand, player) > 0.0F && !player.isInWaterOrRain() && !(fun.bm.mili.config.modules.function.OldFeatureConfig.lavaRiptide && player.isInLava())) { // Mili - lava riptide
++             return InteractionResult.FAIL;
++         } else {
++             player.startUsingItem(hand);

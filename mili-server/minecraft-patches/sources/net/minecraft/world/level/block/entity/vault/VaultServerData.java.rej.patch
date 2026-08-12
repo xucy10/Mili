@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/entity/vault/VaultServerData.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/level/block/entity/vault/VaultServerData.java b/net/minecraft/world/level/block/entity/vault/VaultServerData.java	(rejected hunks)
++@@ -57,7 +57,7 @@ public class VaultServerData {
++     }
++ 
++     boolean hasRewardedPlayer(Player player) {
++-        return this.rewardedPlayers.contains(player.getUUID());
+++        return !fun.bm.mili.config.modules.misc.OldMCConfig.disableVaultBlacklist && this.rewardedPlayers.contains(player.getUUID()); // Mili - disable vault blacklist
++     }
++ 
++     @VisibleForTesting

@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/monster/zombie/ZombifiedPiglin.java.rej
+@@ -1,0 +_,11 @@
++diff a/net/minecraft/world/entity/monster/zombie/ZombifiedPiglin.java b/net/minecraft/world/entity/monster/zombie/ZombifiedPiglin.java	(rejected hunks)
++@@ -109,6 +109,9 @@ public class ZombifiedPiglin extends Zombie implements NeutralMob {
++             this.maybeAlertOthers();
++         }
++ 
+++
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldZombiePiglinDrop && this.isAngry()) this.lastHurtByPlayerMemoryTime = this.tickCount; // Leaves - old zombie piglin drop
+++
++         super.customServerAiStep(level);
++     }
++ 

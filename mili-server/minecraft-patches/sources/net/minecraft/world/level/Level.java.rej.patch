@@ -1,0 +1,39 @@
+--- /dev/null
++++ b/net/minecraft/world/level/Level.java.rej
+@@ -1,0 +_,36 @@
++diff a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java	(rejected hunks)
++@@ -1183,7 +1183,13 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
++             }
++ 
++             if ((flags & Block.UPDATE_NEIGHBORS) != 0) {
++-                this.updateNeighborsAt(pos, blockState.getBlock());
+++                // Mili start - Placing locked hopper doesn't send NC updates.
+++                if (!fun.bm.mili.config.modules.function.RedstoneUpdateConfig.placingLockedHopperNoNCUpdates
+++                    || !(blockState.getBlock() instanceof net.minecraft.world.level.block.HopperBlock)
+++                    || blockState.getValue(net.minecraft.world.level.block.HopperBlock.ENABLED)) {
+++                    this.updateNeighborsAt(pos, blockState.getBlock());
+++                }
+++                // Mili end - Placing locked hopper doesn't send NC updates.
++                 if (!this.isClientSide() && state.hasAnalogOutputSignal()) {
++                     this.updateNeighbourForOutputSignal(pos, newState.getBlock());
++                 }
++@@ -1898,6 +1904,19 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
++         return this.getEntities(entity, boundingBox, EntitySelector.pushableBy(entity));
++     }
++ 
+++    // Mili start - optimize pushEntities: early-terminate entity lookup with maxCount
+++    public void getPushableEntities(Entity entity, AABB boundingBox, List<Entity> into, int maxCount) {
+++        ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevel)this).moonrise$getEntityLookup()
+++            .getEntities(entity, boundingBox, into, EntitySelector.pushableBy(entity), maxCount);
+++        ca.spottedleaf.moonrise.common.PlatformHooks.get().addToGetEntities(
+++            (Level)(Object)this, entity, boundingBox, EntitySelector.pushableBy(entity), into);
+++        // Trim if dragon parts pushed us over maxCount
+++        while (into.size() > maxCount) {
+++            into.remove(into.size() - 1);
+++        }
+++    }
+++    // Mili end - optimize pushEntities
+++
++     public abstract @Nullable Entity getEntity(int id);
++ 
++     public @Nullable Entity getEntity(UUID uuid) {

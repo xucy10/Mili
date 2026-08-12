@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/Mob.java.rej
+@@ -1,0 +_,18 @@
++diff a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java	(rejected hunks)
++@@ -409,6 +409,16 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
++         if (!this.level().isClientSide() && this.tickCount % 5 == 0) {
++             this.updateControlFlags();
++         }
+++        // Leaves start - ender dragon part can use end portal
+++        if (!fun.bm.mili.config.modules.function.OldFeatureConfig.enderDragonPartCanUseEndPortal) return;
+++        if (!(this instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon)) return;
+++        for (net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part : dragon.getSubEntities()) {
+++            PortalProcessor portalManager = part.portalProcess;
+++            if (portalManager == null) continue;
+++            if (!(portalManager.portal instanceof net.minecraft.world.level.block.EndPortalBlock)) continue;
+++            part.handlePortal();
+++        }
+++        // Leaves end - ender dragon part can use end portal
++     }
++ 
++     protected void updateControlFlags() {

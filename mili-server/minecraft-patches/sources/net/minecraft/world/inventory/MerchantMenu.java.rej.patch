@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/inventory/MerchantMenu.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/inventory/MerchantMenu.java b/net/minecraft/world/inventory/MerchantMenu.java	(rejected hunks)
++@@ -25,7 +25,7 @@ public class MerchantMenu extends AbstractContainerMenu {
++     private static final int SELLSLOT2_X = 162;
++     private static final int BUYSLOT_X = 220;
++     private static final int ROW_Y = 37;
++-    private final Merchant trader;
+++    public final Merchant trader; // Mili - private -> public
++     private final MerchantContainer tradeContainer;
++     private int merchantLevel;
++     private boolean showProgressBar;

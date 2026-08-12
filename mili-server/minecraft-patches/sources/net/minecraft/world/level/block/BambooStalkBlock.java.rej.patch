@@ -1,0 +1,15 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/BambooStalkBlock.java.rej
+@@ -1,0 +_,12 @@
++diff a/net/minecraft/world/level/block/BambooStalkBlock.java b/net/minecraft/world/level/block/BambooStalkBlock.java	(rejected hunks)
++@@ -108,6 +108,10 @@ public class BambooStalkBlock extends Block implements BonemealableBlock {
++     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
++         if (!state.canSurvive(level, pos)) {
++             level.destroyBlock(pos, true);
+++            // Leaves start - zero tick plants
+++        } else if (fun.bm.mili.config.modules.function.OldFeatureConfig.zeroTickPlants) {
+++            this.randomTick(state, level, pos, random);
+++            // Leaves end - zero tick plants
++         }
++     }
++ 

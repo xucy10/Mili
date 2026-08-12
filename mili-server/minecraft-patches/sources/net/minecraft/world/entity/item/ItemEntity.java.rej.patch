@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/item/ItemEntity.java.rej
+@@ -1,0 +_,18 @@
++diff a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java	(rejected hunks)
++@@ -271,10 +271,15 @@ public class ItemEntity extends Entity implements TraceableEntity, ChangePublish
++ 
++     private boolean isMergable() {
++         ItemStack item = this.getItem();
++-        return this.isAlive() && this.pickupDelay != 32767 && this.age != -32768 && this.age < this.despawnRate && item.getCount() < item.getMaxStackSize(); // Paper - Alternative item-despawn-rate
+++        return this.isAlive() && this.pickupDelay != 32767 && this.age != -32768 && this.age < this.despawnRate && item.getCount() < org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(item); // Paper - Alternative item-despawn-rate // Mili - item over-stack util
++     }
++ 
++     private void tryToMerge(ItemEntity itemEntity) {
+++        // Mili start - item over-stack util
+++        if (org.leavesmc.leaves.util.ItemOverstackUtils.tryStackItems(this, itemEntity)) {
+++            return;
+++        }
+++        // Mili end - item over-stack util
++         ItemStack item = this.getItem();
++         ItemStack item1 = itemEntity.getItem();
++         if (Objects.equals(this.target, itemEntity.target) && areMergable(item, item1)) {

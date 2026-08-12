@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/vehicle/ContainerEntity.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/entity/vehicle/ContainerEntity.java b/net/minecraft/world/entity/vehicle/ContainerEntity.java	(rejected hunks)
++@@ -162,7 +162,7 @@ public interface ContainerEntity extends Container, MenuProvider {
++     default void setChestVehicleItem(int slot, ItemStack stack) {
++         this.unpackChestVehicleLootTable(null);
++         this.getItemStacks().set(slot, stack);
++-        stack.limitSize(this.getMaxStackSize(stack));
+++        stack.limitSize(this.getMaxStackLeaves(stack)); // Mili - item over-stack util
++     }
++ 
++     default @Nullable SlotAccess getChestVehicleSlot(final int slot) {

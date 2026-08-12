@@ -1,0 +1,89 @@
+--- /dev/null
++++ b/net/minecraft/world/level/levelgen/NoiseChunk.java.rej
+@@ -1,0 +_,86 @@
++diff a/net/minecraft/world/level/levelgen/NoiseChunk.java b/net/minecraft/world/level/levelgen/NoiseChunk.java	(rejected hunks)
++@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntMap;
++ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
++ import java.util.ArrayList;
++ import java.util.Arrays;
++-import java.util.HashMap;
+++import java.util.IdentityHashMap;
++ import java.util.List;
++ import java.util.Map;
++ import net.minecraft.core.QuartPos;
++@@ -31,7 +31,7 @@ public class NoiseChunk implements DensityFunction.ContextProvider, DensityFunct
++     final int firstNoiseZ;
++     final List<NoiseChunk.NoiseInterpolator> interpolators;
++     final List<NoiseChunk.CacheAllInCell> cellCaches;
++-    private final Map<DensityFunction, DensityFunction> wrapped = new HashMap<>();
+++    private final Map<DensityFunction, DensityFunction> wrapped = new IdentityHashMap<>(); // Mili optimize: use IdentityHashMap for reference-based lookup
++     private final Long2IntMap preliminarySurfaceLevelCache = new Long2IntOpenHashMap();
++     private final Aquifer aquifer;
++     private final DensityFunction preliminarySurfaceLevel;
++@@ -606,11 +606,13 @@ public class NoiseChunk implements DensityFunction.ContextProvider, DensityFunct
++                 System.arraycopy(this.lastArray, 0, array, 0, array.length);
++             } else {
++                 this.wrapped().fillArray(array, contextProvider);
++-                if (this.lastArray != null && this.lastArray.length == array.length) {
++-                    System.arraycopy(array, 0, this.lastArray, 0, array.length);
++-                } else {
++-                    this.lastArray = (double[])array.clone();
+++                // Mili optimize: reuse lastArray buffer instead of cloning to reduce GC pressure
+++                if (this.lastArray == null) {
+++                    this.lastArray = new double[array.length];
+++                } else if (this.lastArray.length != array.length) {
+++                    this.lastArray = new double[array.length];
++                 }
+++                System.arraycopy(array, 0, this.lastArray, 0, array.length);
++ 
++                 this.lastArrayCounter = NoiseChunk.this.arrayInterpolationCounter;
++             }
++@@ -637,14 +639,18 @@ public class NoiseChunk implements DensityFunction.ContextProvider, DensityFunct
++             this.sizeXZ = NoiseChunk.this.noiseSizeXZ + 1;
++             this.values = new double[this.sizeXZ * this.sizeXZ];
++             if (computeValues) {
+++                // Mili optimize: reuse mutable context instead of allocating SinglePointContext per-iteration
+++                FlatCacheContext context = new FlatCacheContext();
++                 for (int i = 0; i <= NoiseChunk.this.noiseSizeXZ; i++) {
++                     int i1 = NoiseChunk.this.firstNoiseX + i;
++                     int blockPosCoord = QuartPos.toBlock(i1);
+++                    context.blockX = blockPosCoord;
++ 
++                     for (int i2 = 0; i2 <= NoiseChunk.this.noiseSizeXZ; i2++) {
++                         int i3 = NoiseChunk.this.firstNoiseZ + i2;
++                         int blockPosCoord1 = QuartPos.toBlock(i3);
++-                        this.values[i + i2 * this.sizeXZ] = noiseFiller.compute(new DensityFunction.SinglePointContext(blockPosCoord, 0, blockPosCoord1));
+++                        context.blockZ = blockPosCoord1;
+++                        this.values[i + i2 * this.sizeXZ] = noiseFiller.compute(context);
++                     }
++                 }
++             }
++@@ -675,6 +681,28 @@ public class NoiseChunk implements DensityFunction.ContextProvider, DensityFunct
++         }
++     }
++ 
+++    // Mili optimize: mutable FunctionContext to avoid per-iteration allocation in FlatCache
+++    private static final class FlatCacheContext implements DensityFunction.FunctionContext {
+++        int blockX;
+++        int blockY;
+++        int blockZ;
+++
+++        @Override
+++        public int blockX() {
+++            return this.blockX;
+++        }
+++
+++        @Override
+++        public int blockY() {
+++            return this.blockY;
+++        }
+++
+++        @Override
+++        public int blockZ() {
+++            return this.blockZ;
+++        }
+++    }
+++
++     interface NoiseChunkDensityFunction extends DensityFunction {
++         DensityFunction wrapped();
++ 

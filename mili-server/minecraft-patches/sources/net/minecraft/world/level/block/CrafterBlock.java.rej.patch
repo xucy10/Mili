@@ -1,0 +1,31 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/CrafterBlock.java.rej
+@@ -1,0 +_,28 @@
++diff a/net/minecraft/world/level/block/CrafterBlock.java b/net/minecraft/world/level/block/CrafterBlock.java	(rejected hunks)
++@@ -75,7 +75,7 @@ public class CrafterBlock extends BaseEntityBlock {
++         boolean triggeredValue = state.getValue(TRIGGERED);
++         BlockEntity blockEntity = level.getBlockEntity(pos);
++         if (hasNeighborSignal && !triggeredValue) {
++-            level.scheduleTick(pos, this, 4);
+++            level.scheduleTick(pos, this, !fun.bm.mili.config.modules.function.OldFeatureConfig.crafter1gt ? 4 : 1); // Mili - crafter 1 gt delay
++             level.setBlock(pos, state.setValue(TRIGGERED, true), Block.UPDATE_CLIENTS);
++             this.setBlockEntityTriggered(blockEntity, true);
++         } else if (!hasNeighborSignal && triggeredValue) {
++@@ -124,7 +124,7 @@ public class CrafterBlock extends BaseEntityBlock {
++     @Override
++     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
++         if (state.getValue(TRIGGERED)) {
++-            level.scheduleTick(pos, this, 4);
+++            level.scheduleTick(pos, this, !fun.bm.mili.config.modules.function.OldFeatureConfig.crafter1gt ? 4 : 1); // Mili - crafter 1 gt delay
++         }
++     }
++ 
++@@ -199,7 +199,7 @@ public class CrafterBlock extends BaseEntityBlock {
++         Direction direction = state.getValue(ORIENTATION).front();
++         Container containerAt = HopperBlockEntity.getContainerAt(level, pos.relative(direction));
++         ItemStack itemStack = stack.copy();
++-        if (containerAt != null && (containerAt instanceof CrafterBlockEntity || stack.getCount() > containerAt.getMaxStackSize(stack))) {
+++        if (containerAt != null && (containerAt instanceof CrafterBlockEntity || stack.getCount() > containerAt.getMaxStackLeaves(stack))) { // Mili - item over-stack util
++             // CraftBukkit start - InventoryMoveItemEvent
++             org.bukkit.craftbukkit.inventory.CraftItemStack oitemstack = org.bukkit.craftbukkit.inventory.CraftItemStack.asCraftMirror(itemStack);
++ 

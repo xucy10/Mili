@@ -1,0 +1,38 @@
+--- /dev/null
++++ b/net/minecraft/util/debug/ServerDebugSubscribers.java.rej
+@@ -1,0 +_,35 @@
++diff a/net/minecraft/util/debug/ServerDebugSubscribers.java b/net/minecraft/util/debug/ServerDebugSubscribers.java	(rejected hunks)
++@@ -13,26 +13,29 @@ import net.minecraft.server.players.NameAndId;
++ 
++ public class ServerDebugSubscribers {
++     private final MinecraftServer server;
++-    private final Map<DebugSubscription<?>, List<ServerPlayer>> enabledSubscriptions = new HashMap<>();
+++    private final Map<DebugSubscription<?>, List<ServerPlayer>> enabledSubscriptions = new ConcurrentHashMap<>(); // Mili fix - #472: thread-safe map
++ 
++     public ServerDebugSubscribers(MinecraftServer server) {
++         this.server = server;
++     }
++ 
++     private List<ServerPlayer> getSubscribersFor(DebugSubscription<?> subscription) {
++-        return this.enabledSubscriptions.getOrDefault(subscription, List.of());
+++        return this.enabledSubscriptions.getOrDefault(subscription, List.of()); // ConcurrentHashMap getOrDefault is safe
++     }
++ 
++     public void tick() {
+++        // Mili fix - #472: use thread-safe collections to prevent ConcurrentModificationException
+++        // Clear all lists atomically
++         this.enabledSubscriptions.values().forEach(List::clear);
++ 
++         for (ServerPlayer serverPlayer : this.server.getPlayerList().getPlayers()) {
++             for (DebugSubscription<?> debugSubscription : serverPlayer.debugSubscriptions()) {
++-                this.enabledSubscriptions.computeIfAbsent(debugSubscription, debugSubscription1 -> new ArrayList<>()).add(serverPlayer);
+++                this.enabledSubscriptions.computeIfAbsent(debugSubscription, debugSubscription1 -> new CopyOnWriteArrayList<>()).add(serverPlayer);
++             }
++         }
++ 
++-        this.enabledSubscriptions.values().removeIf(List::isEmpty);
+++        // Remove empty entries safely using ConcurrentHashMap's removeIf
+++        this.enabledSubscriptions.entrySet().removeIf(entry -> entry.getValue().isEmpty());
++     }
++ 
++     public void broadcastToAll(DebugSubscription<?> subscription, Packet<?> packet) {

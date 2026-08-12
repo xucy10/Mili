@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/ChorusFlowerBlock.java.rej
+@@ -1,0 +_,11 @@
++diff a/net/minecraft/world/level/block/ChorusFlowerBlock.java b/net/minecraft/world/level/block/ChorusFlowerBlock.java	(rejected hunks)
++@@ -49,6 +49,9 @@ public class ChorusFlowerBlock extends Block {
++     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
++         if (!state.canSurvive(level, pos)) {
++             level.destroyBlock(pos, true);
+++        } else if (fun.bm.mili.config.modules.function.OldFeatureConfig.zeroTickPlants) {
+++            this.randomTick(state, level, pos, random);
+++            // Leaves end - zero tick plants
++         }
++     }
++ 

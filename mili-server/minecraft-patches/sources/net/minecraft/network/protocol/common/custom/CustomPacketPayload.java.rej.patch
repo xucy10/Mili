@@ -1,0 +1,28 @@
+--- /dev/null
++++ b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java.rej
+@@ -1,0 +_,25 @@
++diff a/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java b/net/minecraft/network/protocol/common/custom/CustomPacketPayload.java	(rejected hunks)
++@@ -40,13 +40,22 @@ public interface CustomPacketPayload {
++ 
++             @Override
++             public void encode(B buffer, CustomPacketPayload value) {
+++                // Mili start - protocol core (Leaves)
+++                if (value instanceof org.leavesmc.leaves.protocol.core.LeavesCustomPayload payload) {
+++                    org.leavesmc.leaves.protocol.core.LeavesProtocolManager.encode(buffer, payload);
+++                    return;
+++                }
+++                // Mili end - protocol core (Leaves)
++                 this.writeCap(buffer, value.type(), value);
++             }
++ 
++             @Override
++             public CustomPacketPayload decode(B buffer) {
++                 Identifier identifier = buffer.readIdentifier();
++-                return (CustomPacketPayload)this.findCodec(identifier).decode(buffer);
+++                // Mili start - protocol core (Leaves)
+++                var payload = org.leavesmc.leaves.protocol.core.LeavesProtocolManager.decode(identifier, buffer);
+++                return java.util.Objects.requireNonNullElseGet(payload, () -> this.findCodec(identifier).decode(buffer));
+++                // Mili end - protocol core (Leaves)
++             }
++         };
++     }

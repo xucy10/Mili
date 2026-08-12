@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/core/dispenser/ShearsDispenseItemBehavior.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/core/dispenser/ShearsDispenseItemBehavior.java b/net/minecraft/core/dispenser/ShearsDispenseItemBehavior.java	(rejected hunks)
++@@ -45,7 +45,7 @@ public class ShearsDispenseItemBehavior extends OptionalDispenseItemBehavior {
++             BlockPos blockPos = blockSource.pos().relative(blockSource.state().getValue(DispenserBlock.FACING));
++             this.setSuccess(tryShearBeehive(serverLevel, item, blockPos) || tryShearEntity(serverLevel, blockPos, item, bukkitBlock, craftItem)); // CraftBukkit
++             if (this.isSuccess()) {
++-                item.hurtAndBreak(1, serverLevel, null, item1 -> {});
+++                item.hurtAndBreak(1, serverLevel, null, item1 -> { if (fun.bm.mili.config.modules.function.OldFeatureConfig.shearsInDispenserCanZeroAmount) item.grow(1); }); // Mili - Make shears in dispenser can unlimited use
++             }
++         }
++ 

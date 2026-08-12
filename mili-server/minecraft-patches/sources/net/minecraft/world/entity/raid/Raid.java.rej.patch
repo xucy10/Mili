@@ -1,0 +1,142 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/raid/Raid.java.rej
+@@ -1,0 +_,139 @@
++diff a/net/minecraft/world/entity/raid/Raid.java b/net/minecraft/world/entity/raid/Raid.java	(rejected hunks)
++@@ -264,7 +264,7 @@ public class Raid {
++     }
++ 
++     public boolean absorbRaidOmen(ServerPlayer player) {
++-        MobEffectInstance effect = player.getEffect(MobEffects.RAID_OMEN);
+++        MobEffectInstance effect = player.getEffect(fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? MobEffects.BAD_OMEN : MobEffects.RAID_OMEN); // Leaves - old Raid Behavior
++         if (effect == null) {
++             return false;
++         } else {
++@@ -341,7 +341,13 @@ public class Raid {
++                         }
++ 
++                         if (flag1) {
++-                            this.waveSpawnPos = this.getValidSpawnPos(level);
+++                            // Leaves Start - old FindSpawnPosition
+++                            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
+++                                this.waveSpawnPos = this.preCalcRavagerSpawnLocation(level, this.raidCooldownTicks < 100 ? 1 : 0);
+++                            } else {
+++                                this.waveSpawnPos = this.getValidSpawnPos(level);
+++                            }
+++                            // Leaves End - old FindSpawnPosition
++                         }
++ 
++                         if (this.raidCooldownTicks == 300 || this.raidCooldownTicks % 20 == 0) {
++@@ -396,7 +402,14 @@ public class Raid {
++                 int i = 0;
++ 
++                 while (this.shouldSpawnGroup()) {
++-                    BlockPos blockPos = this.waveSpawnPos.orElseGet(() -> this.findRandomSpawnPos(level, 20));
+++                    // Leaves Start - old FindSpawnPosition
+++                    BlockPos blockPos;
+++                    if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior) {
+++                        blockPos = this.getRavagerSpawnLocation(level, i, 20);
+++                    } else {
+++                        blockPos = this.waveSpawnPos.orElseGet(() -> this.findRandomSpawnPos(level, 20));
+++                    }
+++                    // Leaves End - old FindSpawnPosition
++                     if (blockPos != null) {
++                         this.started = true;
++                         this.spawnGroup(level, blockPos);
++@@ -408,7 +421,7 @@ public class Raid {
++                         i++;
++                     }
++ 
++-                    if (i > 5) {
+++                    if (i > (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior ? 3 : 5)) { // Leaves - old FindSpawnPosition
++                         org.bukkit.craftbukkit.event.CraftEventFactory.callRaidStopEvent(level, this, org.bukkit.event.raid.RaidStopEvent.Reason.UNSPAWNABLE); // CraftBukkit
++                         this.stop();
++                         break;
++@@ -702,7 +715,7 @@ public class Raid {
++             int i2 = this.center.getX() + Mth.floor(Mth.cos(f2) * 32.0F * f) + level.random.nextInt(3) * Mth.floor(f);
++             int i3 = this.center.getZ() + Mth.floor(Mth.sin(f2) * 32.0F * f) + level.random.nextInt(3) * Mth.floor(f);
++             int height = level.getHeight(Heightmap.Types.WORLD_SURFACE, i2, i3);
++-            if (Mth.abs(height - this.center.getY()) <= 96) {
+++            if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldRaidBehavior || Mth.abs(height - this.center.getY()) <= 96) { // Leaves - skippable
++                 mutableBlockPos.set(i2, height, i3);
++                 if (!level.isVillage(mutableBlockPos) || i <= 7) {
++                     int i4 = 10;
++@@ -721,6 +734,35 @@ public class Raid {
++         return null;
++     }
++ 
+++    // Leaves Start - old FindSpawnPosition
+++    @Nullable
+++    private BlockPos findRandomSpawnPos(ServerLevel level, int n, int n2) {
+++        int n3 = 2 - n;
+++        BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
+++        SpawnPlacementType spawnPlacementType = SpawnPlacements.getPlacementType(EntityType.RAVAGER);
+++        for (int i = 0; i < n2; ++i) {
+++            float f = level.random.nextFloat() * ((float)Math.PI * 2);
+++            int n4 = this.center.getX() + Mth.floor(Mth.cos(f) * 32.0f * (float)n3) + level.random.nextInt(5);
+++            int n5 = this.center.getZ() + Mth.floor(Mth.sin(f) * 32.0f * (float)n3) + level.random.nextInt(5);
+++            int n6 = level.getHeight(Heightmap.Types.WORLD_SURFACE, n4, n5);
+++            mutableBlockPos.set(n4, n6, n5);
+++            if (level.isVillage(mutableBlockPos) && n < 2) continue;
+++            if (!level.hasChunksAt(mutableBlockPos.getX() - 10, mutableBlockPos.getZ() - 10, mutableBlockPos.getX() + 10, mutableBlockPos.getZ() + 10) || !level.isPositionEntityTicking(mutableBlockPos) || !spawnPlacementType.isSpawnPositionOk(level, mutableBlockPos, EntityType.RAVAGER) && (!level.getBlockState((BlockPos)mutableBlockPos.below()).is(Blocks.SNOW) || !level.getBlockState(mutableBlockPos).isAir())) continue;
+++            return mutableBlockPos;
+++        }
+++        return null;
+++    }
+++
+++    private Optional<BlockPos> getValidSpawnPos(ServerLevel level, int n) {
+++        for (int i = 0; i < 3; ++i) {
+++            BlockPos blockPos = this.findRandomSpawnPos(level, n, 1);
+++            if (blockPos == null) continue;
+++            return Optional.of(blockPos);
+++        }
+++        return Optional.empty();
+++    }
+++    // Leaves End - old FindSpawnPosition
+++
++     private boolean addWaveMob(ServerLevel level, int wave, Raider raider) {
++         // Folia start - make raids thread-safe
++         if (!this.ownsRaid(level)) {
++@@ -883,4 +925,43 @@ public class Raid {
++             this.spawnsPerWaveBeforeBonus = spawnsPerWaveBeforeBonus;
++         }
++     }
+++
+++    // Leaves start - old FindSpawnPosition
+++    private BlockPos getRavagerSpawnLocation(ServerLevel serverWorld, int proximity, int tries) {
+++        int i = proximity == 0 ? 2 : 2 - proximity;
+++        BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
+++        SpawnPlacementType spawnLocation = SpawnPlacements.getPlacementType(EntityType.RAVAGER);
+++
+++        for (int j = 0; j < tries; j++) {
+++            float f = serverWorld.random.nextFloat() * (float) (Math.PI * 2);
+++            int k = this.center.getX() + Mth.floor(Mth.cos(f) * 32.0F * (float) i + serverWorld.random.nextInt(5));
+++            int l = this.center.getZ() + Mth.floor(Mth.sin(f) * 32.0F * (float) i + serverWorld.random.nextInt(5));
+++            int m = serverWorld.getHeight(Heightmap.Types.WORLD_SURFACE, k, l);
+++            mutable.set(k, m, l);
+++
+++            if (serverWorld.isVillage(mutable) && proximity < 2) {
+++                continue;
+++            }
+++            if (serverWorld.hasChunksAt(mutable.getX() - 10, mutable.getZ() - 10, mutable.getX() + 10, mutable.getZ() + 10)
+++                && serverWorld.isPositionEntityTicking(mutable)
+++                && (spawnLocation.isSpawnPositionOk(serverWorld, mutable, EntityType.RAVAGER)
+++                    || serverWorld.getBlockState(mutable.below()).is(Blocks.SNOW)
+++                    && serverWorld.getBlockState(mutable).isAir())
+++            ) {
+++                return mutable;
+++            }
+++        }
+++        return null;
+++    }
+++
+++    private Optional<BlockPos> preCalcRavagerSpawnLocation(ServerLevel serverWorld, int proximity) {
+++        for (int i = 0; i < 3; i++) {
+++            BlockPos blockPos = this.getRavagerSpawnLocation(serverWorld, proximity, 1);
+++            if (blockPos != null) {
+++                return Optional.of(blockPos);
+++            }
+++        }
+++        return Optional.empty();
+++    }
+++    // Leaves end - old FindSpawnPosition
++ }

@@ -1,0 +1,35 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/player/Player.java.rej
+@@ -1,0 +_,32 @@
++diff a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java	(rejected hunks)
++@@ -292,7 +292,7 @@ public abstract class Player extends Avatar implements ContainerUser {
++         ItemStack mainHandItem = this.getMainHandItem();
++         if (!ItemStack.matches(this.lastItemInMainHand, mainHandItem)) {
++             if (!ItemStack.isSameItem(this.lastItemInMainHand, mainHandItem)) {
++-                this.resetAttackStrengthTicker(); // Paper - diff on change (detectEquipmentUpdates override)
+++                if (!fun.bm.mili.config.modules.function.OldFeatureConfig.spearInstantLunge || !mainHandItem.has(DataComponents.KINETIC_WEAPON)) this.resetAttackStrengthTicker(); // Paper - diff on change (detectEquipmentUpdates override) // Leaves - spear instant lunge
++             }
++ 
++             this.lastItemInMainHand = mainHandItem.copy();
++@@ -2065,7 +2065,7 @@ public abstract class Player extends Avatar implements ContainerUser {
++         ItemStack mainHandItem = this.getMainHandItem();
++         if (!ItemStack.matches(this.lastItemInMainHand, mainHandItem)) {
++             if (!ItemStack.isSameItem(this.lastItemInMainHand, mainHandItem)) {
++-                this.resetAttackStrengthTicker();
+++                if (!fun.bm.mili.config.modules.function.OldFeatureConfig.spearInstantLunge || !mainHandItem.has(DataComponents.KINETIC_WEAPON)) this.resetAttackStrengthTicker(); // Leaves - spear instant lunge
++             }
++ 
++             this.lastItemInMainHand = mainHandItem.copy();
++@@ -2138,8 +2138,10 @@ public abstract class Player extends Avatar implements ContainerUser {
++                     }
++                 }
++ 
++-                if (anyEventCancelled.booleanValue() && !this.abilities.instabuild && this instanceof final ServerPlayer player) this.resyncUsingItem(player); // Paper - resync if no item matched the Predicate
++-                return this.hasInfiniteMaterials() ? new ItemStack(Items.ARROW) : ItemStack.EMPTY;
+++                // Mili start - bow infinity fix
+++                if ((fun.bm.mili.config.modules.function.OldFeatureConfig.bowInfinityFix || anyEventCancelled.booleanValue()) && !this.abilities.instabuild && this instanceof final ServerPlayer player) this.resyncUsingItem(player); // Paper - resync if no item matched the Predicate
+++                return this.hasInfiniteMaterials() || (fun.bm.mili.config.modules.function.OldFeatureConfig.bowInfinityFix && net.minecraft.world.item.enchantment.EnchantmentHelper.processAmmoUse((ServerLevel) this.level(), shootable, new ItemStack(Items.ARROW), 1) <= 0) ? new ItemStack(Items.ARROW) : ItemStack.EMPTY;
+++                // Mili end - bow infinity fix
++             }
++         }
++     }

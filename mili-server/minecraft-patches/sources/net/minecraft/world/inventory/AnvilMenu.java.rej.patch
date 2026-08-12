@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/inventory/AnvilMenu.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/inventory/AnvilMenu.java b/net/minecraft/world/inventory/AnvilMenu.java	(rejected hunks)
++@@ -267,7 +267,7 @@ public class AnvilMenu extends ItemCombinerMenu {
++                 this.onlyRenaming = true;
++             }
++ 
++-            if (this.cost.get() >= this.maximumRepairCost && !this.player.hasInfiniteMaterials()) { // CraftBukkit
+++            if (this.cost.get() >= this.maximumRepairCost && (!fun.bm.mili.config.modules.function.OldFeatureConfig.avoidAnvilTooExpensive || this.cost.get() == DEFAULT_DENIED_COST) && !this.player.hasInfiniteMaterials()) { // CraftBukkit // Mili - avoid anvil too expensive
++                 itemStack = ItemStack.EMPTY;
++             }
++ 

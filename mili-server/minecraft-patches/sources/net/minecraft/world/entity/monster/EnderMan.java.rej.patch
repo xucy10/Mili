@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/monster/EnderMan.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/entity/monster/EnderMan.java b/net/minecraft/world/entity/monster/EnderMan.java	(rejected hunks)
++@@ -441,7 +441,7 @@ public class EnderMan extends Monster implements NeutralMob {
++ 
++     @Override
++     public boolean requiresCustomPersistence() {
++-        return super.requiresCustomPersistence() || this.getCarriedBlock() != null;
+++        return super.requiresCustomPersistence() || (!fun.bm.mili.config.modules.function.OldFeatureConfig.despawnEndermanWithBlock && this.getCarriedBlock() != null); // Leaves - despawn enderman with block
++     }
++ 
++     static class EndermanFreezeWhenLookedAt extends Goal {

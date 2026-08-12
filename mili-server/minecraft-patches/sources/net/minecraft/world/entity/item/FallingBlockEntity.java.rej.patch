@@ -1,0 +1,22 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/item/FallingBlockEntity.java.rej
+@@ -1,0 +_,19 @@
++diff a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java	(rejected hunks)
++@@ -280,7 +280,7 @@ public class FallingBlockEntity extends Entity {
++             if (ceil < 0) {
++                 return false;
++             } else {
++-                Predicate<Entity> predicate = EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE);
+++                Predicate<Entity> predicate = fun.bm.mili.config.modules.misc.OldMCConfig.allowAnvilDestroyItemEntities ? EntitySelector.NO_CREATIVE_OR_SPECTATOR : EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE); // Mili - Allow anvil destroy item entities
++                 DamageSource damageSource1 = this.blockState.getBlock() instanceof Fallable fallable
++                     ? fallable.getFallDamageSource(this)
++                     : this.damageSources().fallingBlock(this);
++@@ -384,7 +384,7 @@ public class FallingBlockEntity extends Entity {
++         ResourceKey<Level> resourceKey1 = this.level().dimension();
++         boolean flag = (resourceKey1 == Level.END || resourceKey == Level.END) && resourceKey1 != resourceKey;
++         Entity entity = super.teleport(teleportTransition);
++-        this.forceTickAfterTeleportToDuplicate = entity != null && flag && (io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation || me.earthme.luminol.config.modules.fixes.UnsafeTeleportationConfig.enabled); // Paper // Luminol - Unsafe teleportation
+++        this.forceTickAfterTeleportToDuplicate = (entity != null && flag) && (fun.bm.mili.config.modules.function.OldFeatureConfig.fixFallingBlockEntityDuplicate || io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation || me.earthme.luminol.config.modules.fixes.UnsafeTeleportationConfig.enabled); // Paper // Luminol - Unsafe teleportation // Leaves
++         return entity;
++     }
++ }

@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/player/StackedItemContents.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/entity/player/StackedItemContents.java b/net/minecraft/world/entity/player/StackedItemContents.java	(rejected hunks)
++@@ -36,7 +36,7 @@ public class StackedItemContents {
++     }
++ 
++     public void accountStack(ItemStack stack) {
++-        this.accountStack(stack, stack.getMaxStackSize());
+++        this.accountStack(stack, org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(stack)); // Mili - item over-stack util
++     }
++ 
++     public void accountStack(ItemStack stack, int maxStackSize) {

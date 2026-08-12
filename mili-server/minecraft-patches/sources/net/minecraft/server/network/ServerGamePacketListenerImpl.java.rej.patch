@@ -1,0 +1,39 @@
+--- /dev/null
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java.rej
+@@ -1,0 +_,36 @@
++diff a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java	(rejected hunks)
++@@ -2140,7 +2140,7 @@ public class ServerGamePacketListenerImpl
++                 if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.player.level(), blockPos.getX() >> 4, blockPos.getZ() >> 4, 8) && this.player.isWithinBlockInteractionRange(blockPos, 1.0)) { // Folia - do not allow players to interact with blocks outside the current region
++                     Vec3 vec3 = location.subtract(Vec3.atCenterOf(blockPos));
++                     double d = 1.0000001;
++-                    if (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
+++                    if (fun.bm.mili.config.modules.function.OldFeatureConfig.disableDistanceCheckForUseItem || fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(vec3.x()) < 1.0000001 && Math.abs(vec3.y()) < 1.0000001 && Math.abs(vec3.z()) < 1.0000001) { // Mili - disableDistanceCheckForUseItem
++                         Direction direction = hitResult.getDirection();
++                         this.player.resetLastActionTime();
++                         int maxY = this.player.level().getMaxY();
++@@ -2389,7 +2389,7 @@ public class ServerGamePacketListenerImpl
++     public void handleChat(ServerboundChatPacket packet) {
++         // CraftBukkit start - async chat
++         // SPIGOT-3638
++-        if (this.server.isStopped()) {
+++        if (this.server.isStopped() || this.server.hasStopped()) { // Mili fix - #461: also check hasStopped() which returns true earlier in shutdown
++             return;
++         }
++         // CraftBukkit end
++@@ -3559,7 +3560,7 @@ public class ServerGamePacketListenerImpl
++             }
++ 
++             boolean flag1 = packet.slotNum() >= 1 && packet.slotNum() <= 45;
++-            boolean flag2 = itemStack.isEmpty() || itemStack.getCount() <= itemStack.getMaxStackSize();
+++            boolean flag2 = itemStack.isEmpty() || itemStack.getCount() <= org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack); // Mili - item over-stack util
++             if (flag || (flag1 && !ItemStack.matches(this.player.inventoryMenu.getSlot(packet.slotNum()).getItem(), packet.itemStack()))) { // Insist on valid slot
++                 // CraftBukkit start - Call click event
++                 org.bukkit.inventory.InventoryView inventory = this.player.inventoryMenu.getBukkitView();
++@@ -3601,6 +3602,7 @@ public class ServerGamePacketListenerImpl
++                 this.player.inventoryMenu.getSlot(packet.slotNum()).setByPlayer(itemStack);
++                 this.player.inventoryMenu.setRemoteSlot(packet.slotNum(), itemStack);
++                 this.player.inventoryMenu.broadcastChanges();
+++                if (org.leavesmc.leaves.util.ItemOverstackUtils.hasOverstackingItem()) this.player.containerMenu.sendSingleSlot(packet.slotNum(), itemStack); // Mili - item over-stack util - force send carried item
++                 if (io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.updateEquipmentOnPlayerActions) this.player.detectEquipmentUpdates(); // Paper - Force update attributes.
++             } else if (flag && flag2) {
++                 if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.antiSpamDisabled || this.dropSpamThrottler.isUnderThreshold()) {

@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/item/PrimedTnt.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java	(rejected hunks)
++@@ -103,7 +103,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
++ 
++     @Override
++     public void tick() {
++-        if (this.level().spigotConfig.maxTntTicksPerTick > 0 && ++this.level().getCurrentWorldData().currentPrimedTnt > this.level().spigotConfig.maxTntTicksPerTick) { return; } // Spigot // Folia - region threading
+++        if (this.level().spigotConfig.maxTntTicksPerTick > 0 && ++this.level().getCurrentWorldData().currentPrimedTnt > (fun.bm.mili.config.modules.function.TechnicalSurvivalModeConfig.enabled ? 2000 : this.level().spigotConfig.maxTntTicksPerTick)) { return; } // Spigot // Folia - region threading // Mili - mc technical survival mode
++         //this.handlePortal(); // Folia - region threading
++         this.applyGravity();
++         this.move(MoverType.SELF, this.getDeltaMovement());

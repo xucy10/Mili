@@ -1,0 +1,26 @@
+--- /dev/null
++++ b/net/minecraft/server/level/ChunkMap.java.rej
+@@ -1,0 +_,23 @@
++diff a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java	(rejected hunks)
++@@ -1063,6 +1063,13 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
++         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
++         for (int i = 0, len = totalEntities = trackerEntities.size(); i < len; ++i) { // Folia - region threading
++             final Entity entity = trackerEntitiesRaw[i];
+++            // Mili start - fix ghost entities: skip null entries caused by concurrent swap-remove during iteration
+++            // When many entities die rapidly, setRemoved() synchronously removes from trackerEntities via swap-remove,
+++            // which can move a null to a position within the original iteration range.
+++            if (entity == null) {
+++                continue;
+++            }
+++            // Mili end - fix ghost entities
++             final ChunkMap.TrackedEntity tracker = ((ca.spottedleaf.moonrise.patches.entity_tracker.EntityTrackerEntity)entity).moonrise$getTrackedEntity();
++             if (tracker == null) {
++                 continue;
++@@ -1070,6 +1077,7 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
++             // Mili start - batch entity culling: collect entities for batch processing
++             if (fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.enabled
++                 && !tracker.seenBy.isEmpty()
+++                && !entity.isRemoved() // Mili - skip removed entities in batch culling
++                 && entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
++                 // Check if entity should be force-visible
++                 if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck) {

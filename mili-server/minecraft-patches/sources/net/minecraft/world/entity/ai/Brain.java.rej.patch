@@ -1,0 +1,16 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/ai/Brain.java.rej
+@@ -1,0 +_,13 @@
++diff a/net/minecraft/world/entity/ai/Brain.java b/net/minecraft/world/entity/ai/Brain.java	(rejected hunks)
++@@ -477,8 +477,10 @@ public class Brain<E extends LivingEntity> {
++             // the world data retrieval to fail
++             return;
++         }
+++        // Mili fix - #431: use the level parameter instead of owner.level() to avoid
+++        // "World mismatch" during cross-dimension teleport (readAdditionalSaveData 鈫?refreshBrain 鈫?stopAll)
+++        long gameTime = level.getGameTime();
++         // Folia end - region threading
++-        long gameTime = owner.level().getGameTime();
++ 
++         for (BehaviorControl<? super E> behaviorControl : behaviors) { // Folia - region threading
++             behaviorControl.doStop(level, owner, gameTime);

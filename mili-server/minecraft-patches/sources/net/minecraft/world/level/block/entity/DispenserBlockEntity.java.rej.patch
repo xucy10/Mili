@@ -1,0 +1,19 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/entity/DispenserBlockEntity.java.rej
+@@ -1,0 +_,16 @@
++diff a/net/minecraft/world/level/block/entity/DispenserBlockEntity.java b/net/minecraft/world/level/block/entity/DispenserBlockEntity.java	(rejected hunks)
++@@ -154,4 +154,14 @@ public class DispenserBlockEntity extends RandomizableContainerBlockEntity imple
++         items = inventory;
++     }
++     // Leaves end - Lithium Sleeping Block Entity
+++
+++    // Leaves start - pca
+++    @Override
+++    public void setChanged() {
+++        super.setChanged();
+++        if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++            org.leavesmc.leaves.protocol.PcaSyncProtocol.syncBlockEntityToClient(this);
+++        }
+++    }
+++    // Leaves end - pca
++ }

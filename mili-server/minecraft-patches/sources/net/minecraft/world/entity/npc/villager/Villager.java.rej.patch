@@ -1,0 +1,27 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/npc/villager/Villager.java.rej
+@@ -1,0 +_,24 @@
++diff a/net/minecraft/world/entity/npc/villager/Villager.java b/net/minecraft/world/entity/npc/villager/Villager.java	(rejected hunks)
++@@ -440,6 +440,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
++     }
++ 
++     private void startTrading(Player player) {
+++        this.voidTrade = false; // Mili - force void trade
++         this.updateSpecialPrices(player);
++         this.setTradingPlayer(player);
++         this.openTradingScreen(player, this.getDisplayName(), this.getVillagerData().level());
++@@ -673,8 +674,12 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
++     @Override
++     protected void rewardTradeXp(MerchantOffer offer) {
++         int i = 3 + this.random.nextInt(4);
++-        this.villagerXp = this.villagerXp + offer.getXp();
++-        this.lastTradedPlayer = this.getTradingPlayer();
+++        // Mili start - force void trade
+++        if (!voidTrade) {
+++            this.villagerXp += offer.getXp();
+++            this.lastTradedPlayer = this.getTradingPlayer();
+++        }
+++        // Mili end - force void trade
++         if (this.shouldIncreaseLevel()) {
++             this.updateMerchantTimer = 40;
++             this.increaseProfessionLevelOnUpdate = true;

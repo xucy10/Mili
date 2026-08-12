@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java.rej
+@@ -1,0 +_,14 @@
++diff a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java	(rejected hunks)
++@@ -56,6 +56,12 @@ public class ThrownEgg extends ThrowableItemProjectile {
++     protected void onHitEntity(EntityHitResult result) {
++         super.onHitEntity(result);
++         result.getEntity().hurt(this.damageSources().thrown(this, this.getOwner()), 0.0F);
+++        // Mili start - make egg can knockback player
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.snowballAndEggCanKnockback && result.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+++            player.hurt(this.damageSources().thrown(this, this.getOwner()), 0.0000001F);
+++            player.knockback(0.4000000059604645D, this.getX() - player.getX(), this.getZ() - player.getZ(), this, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.DAMAGE);
+++        }
+++        // Mili end - make egg can knockback player
++     }
++ 
++     @Override

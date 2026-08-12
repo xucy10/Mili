@@ -1,0 +1,19 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/entity/ComparatorBlockEntity.java.rej
+@@ -1,0 +_,16 @@
++diff a/net/minecraft/world/level/block/entity/ComparatorBlockEntity.java b/net/minecraft/world/level/block/entity/ComparatorBlockEntity.java	(rejected hunks)
++@@ -32,4 +32,14 @@ public class ComparatorBlockEntity extends BlockEntity {
++     public void setOutputSignal(int output) {
++         this.output = output;
++     }
+++
+++    // Leaves start - pca
+++    @Override
+++    public void setChanged() {
+++        super.setChanged();
+++        if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++            org.leavesmc.leaves.protocol.PcaSyncProtocol.syncBlockEntityToClient(this);
+++        }
+++    }
+++    // Leaves end - pca
++ }

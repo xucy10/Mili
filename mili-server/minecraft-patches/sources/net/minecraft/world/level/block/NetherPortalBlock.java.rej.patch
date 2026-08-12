@@ -1,0 +1,51 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/NetherPortalBlock.java.rej
+@@ -1,0 +_,48 @@
++diff a/net/minecraft/world/level/block/NetherPortalBlock.java b/net/minecraft/world/level/block/NetherPortalBlock.java	(rejected hunks)
++@@ -203,7 +203,18 @@ public class NetherPortalBlock extends Block implements Portal {
++     private @Nullable TeleportTransition getExitPortal(
++         ServerLevel level, Entity entity, BlockPos pos, BlockPos exitPos, WorldBorder worldBorder, org.bukkit.craftbukkit.event.PortalEventResult result // CraftBukkit
++     ) {
++-        Optional<BlockPos> optional = level.getPortalForcer().findClosestPortalPosition(exitPos, worldBorder, result.searchRadius()); // CraftBukkit
+++        // Mili start - fix return portal
+++        Optional<BlockPos> optional = Optional.empty();
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.netherPortalFix && entity instanceof net.minecraft.server.level.ServerPlayer player) {
+++            fun.bm.mili.utils.ReturnPortalManager.ReturnPortal portal = fun.bm.mili.utils.ReturnPortalManager.findReturnPortal(player, entity.level().dimension(), entity.blockPosition());
+++            if (portal != null && level.getBlockState(portal.pos()).is(Blocks.NETHER_PORTAL)) {
+++                optional = Optional.of(portal.pos());
+++            }
+++        }
+++        if (optional.isEmpty()) {
+++            optional = level.getPortalForcer().findClosestPortalPosition(exitPos, worldBorder, result.searchRadius()); // CraftBukkit
+++        }
+++        // Mili end - fix return portal
++         BlockUtil.FoundRectangle largestRectangleAround;
++         TeleportTransition.PostTeleportTransition postTeleportTransition;
++         if (optional.isPresent()) {
++@@ -272,14 +283,24 @@ public class NetherPortalBlock extends Block implements Portal {
++         double d = rectangle.axis1Size;
++         double d1 = rectangle.axis2Size;
++         EntityDimensions dimensions = entity.getDimensions(entity.getPose());
++-        int i = axis == axis1 ? 0 : 90;
+++        // Leaves start - old minecart motion behavior
+++        int i;
+++        Vec3 vec3d3;
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.oldMinecartMotionBehavior) {
+++            vec3d3 = axis == axis1 ? entity.getDeltaMovement() : new Vec3(entity.getDeltaMovement().z, entity.getDeltaMovement().y, -entity.getDeltaMovement().x);
+++            i = 0;
+++        } else {
+++            vec3d3 = Vec3.ZERO;
+++            i = axis == axis1 ? 0 : 90;
+++        }
+++        // Leaves end - old minecart motion behavior
++         double d2 = dimensions.width() / 2.0 + (d - dimensions.width()) * offset.x();
++         double d3 = (d1 - dimensions.height()) * offset.y();
++         double d4 = 0.5 + offset.z();
++         boolean flag = axis1 == Direction.Axis.X;
++         Vec3 vec3 = new Vec3(blockPos.getX() + (flag ? d2 : d4), blockPos.getY() + d3, blockPos.getZ() + (flag ? d4 : d2));
++         Vec3 vec31 = PortalShape.findCollisionFreePosition(vec3, level, entity, dimensions);
++-        return new TeleportTransition(level, vec31, Vec3.ZERO, i, 0.0F, Relative.union(Relative.DELTA, Relative.ROTATION), postTeleportTransition, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.NETHER_PORTAL); // CraftBukkit
+++        return new TeleportTransition(level, vec31, vec3d3, i, 0.0F, Relative.union(Relative.DELTA, Relative.ROTATION), postTeleportTransition, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.NETHER_PORTAL); // CraftBukkit // Leaves - old minecart motion behavior
++     }
++ 
++     @Override

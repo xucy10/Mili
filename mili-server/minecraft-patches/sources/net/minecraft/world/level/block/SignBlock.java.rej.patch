@@ -1,0 +1,30 @@
+--- /dev/null
++++ b/net/minecraft/world/level/block/SignBlock.java.rej
+@@ -1,0 +_,27 @@
++diff a/net/minecraft/world/level/block/SignBlock.java b/net/minecraft/world/level/block/SignBlock.java	(rejected hunks)
++@@ -130,6 +142,25 @@ public abstract class SignBlock extends BaseEntityBlock implements SimpleWaterlo
++                     return InteractionResult.SUCCESS_SERVER;
++                 } else if (flag) {
++                     return InteractionResult.SUCCESS_SERVER;
+++                // Mili start - signContainerPassthrough
+++            } else if (fun.bm.mili.config.modules.function.OldFeatureConfig.containerPassthrough) {
+++                if (player.isShiftKeyDown()) {
+++                    if (!this.otherPlayerIsEditingSign(player, signBlockEntity) && player.mayBuild() && this.hasEditableText(player, signBlockEntity, isFacingFrontText)) {
+++                        this.openTextEdit(player, signBlockEntity, isFacingFrontText, io.papermc.paper.event.player.PlayerOpenSignEvent.Cause.INTERACT); // Paper - Add PlayerOpenSignEvent
+++                        return InteractionResult.SUCCESS;
+++                    }
+++                }
+++
+++                BlockPos pos1 = pos.relative(hitResult.getDirection().getOpposite());
+++                if (this instanceof WallSignBlock || this instanceof WallHangingSignBlock) {
+++                    pos1 = pos.relative(state.getValue(HorizontalDirectionalBlock.FACING).getOpposite());
+++                }
+++                if (level.getBlockEntity(pos1) instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity) {
+++                    BlockState state1 = level.getBlockState(pos1);
+++                    return state1.useWithoutItem(level, player, hitResult.withPosition(pos1));
+++                }
+++                return InteractionResult.PASS;
+++                // Mili end - signContainerPassthrough
++                 } else if (!this.otherPlayerIsEditingSign(player, signBlockEntity)
++                     && player.mayBuild()
++                     && this.hasEditableText(player, signBlockEntity, isFacingFrontText)) {

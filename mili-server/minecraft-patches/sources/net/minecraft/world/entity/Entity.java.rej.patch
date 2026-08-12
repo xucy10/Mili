@@ -1,0 +1,198 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/Entity.java.rej
+@@ -1,0 +_,195 @@
++diff a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java	(rejected hunks)
++@@ -189,7 +189,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     // Paper end - Share random for entities to make them more random
++     public org.bukkit.event.entity.CreatureSpawnEvent.@Nullable SpawnReason spawnReason; // Paper - Entity#getEntitySpawnReason
++ 
++-    private volatile org.bukkit.craftbukkit.entity.@Nullable CraftEntity bukkitEntity; // Paper - Folia schedulers - volatile
+++    public volatile org.bukkit.craftbukkit.entity.@Nullable CraftEntity bukkitEntity; // Paper - Folia schedulers - volatile // Leaves - private -> public
++ 
++     public org.bukkit.craftbukkit.entity.CraftEntity getBukkitEntity() {
++         if (this.bukkitEntity == null) {
++@@ -341,6 +341,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     private final LongSet visitedBlocks = new LongOpenHashSet();
++     private final InsideBlockEffectApplier.StepBasedCollector insideEffectCollector = new InsideBlockEffectApplier.StepBasedCollector();
++     private CustomData customData = CustomData.EMPTY;
+++    private net.minecraft.nbt.CompoundTag leavesData = new net.minecraft.nbt.CompoundTag(); // Leaves - Leaves ex data
++     // CraftBukkit start
++     public boolean forceDrops;
++     public boolean persist = true;
++@@ -2383,7 +2384,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public void push(Vec3 vector) {
++-        if (vector.isFinite()) {
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues || vector.isFinite()) { // Mili - allow Inf NaN motion values
++             this.push(vector.x, vector.y, vector.z);
++         }
++     }
++@@ -2395,7 +2396,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++ 
++     public void push(double x, double y, double z, @Nullable Entity pushingEntity) {
++         // Paper end - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
++-        if (Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z)) {
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues || (Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z))) { // Mili - allow Inf NaN motion values
++             // Paper start - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
++             org.bukkit.util.Vector delta = new org.bukkit.util.Vector(x, y, z);
++             if (pushingEntity != null) {
++@@ -2601,13 +2602,17 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++             output.store("Motion", Vec3.CODEC, this.getDeltaMovement());
++             // CraftBukkit start - Checking for NaN pitch/yaw and resetting to zero
++             // TODO: make sure this is the best way to address this.
++-            if (Float.isNaN(this.yRot)) {
++-                this.yRot = 0;
++-            }
+++            // Mili start - allow Inf NaN motion values
+++            if (!fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues) {
+++                if (Float.isNaN(this.yRot)) {
+++                    this.yRot = 0;
+++                }
++ 
++-            if (Float.isNaN(this.xRot)) {
++-                this.xRot = 0;
+++                if (Float.isNaN(this.xRot)) {
+++                    this.xRot = 0;
+++                }
++             }
+++            // Mili end - allow Inf NaN motion values
++             // CraftBukkit end
++             output.store("Rotation", Vec2.CODEC, new Vec2(this.getYRot(), this.getXRot()));
++             output.putDouble("fall_distance", this.fallDistance);
++@@ -2678,6 +2683,8 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++                 output.store("data", CustomData.CODEC, this.customData);
++             }
++ 
+++            output.store("Leaves.Data", net.minecraft.nbt.CompoundTag.CODEC, leavesData); // Leaves - leaves ex data
+++
++             this.addAdditionalSaveData(output, includeAll); // CraftBukkit - pass on includeAll
++             if (this.isVehicle()) {
++                 ValueOutput.ValueOutputList valueOutputList = output.childrenList("Passengers");
++@@ -2779,6 +2786,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++                 );
++                 // Paper end
++                 this.customData = input.read("data", CustomData.CODEC).orElse(CustomData.EMPTY);
+++                leavesData = input.read("Leaves.Data", net.minecraft.nbt.CompoundTag.CODEC).orElse(new net.minecraft.nbt.CompoundTag()); // Leaves - leaves ex data
++                 this.tags.clear();
++                 input.read("Tags", TAG_LIST_CODEC).ifPresent(this.tags::addAll);
++                 this.readAdditionalSaveData(input);
++@@ -2953,6 +2961,10 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++         if (this.noPhysics) {
++             return false;
++         }
+++        // Mili fix - #327: ensure we are on the tick thread before accessing chunks
+++        if (this.level() instanceof ServerLevel) {
+++            ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(this, "Cannot call isInWall async");
+++        }
++ 
++         final double reducedWith = (double)(this.dimensions.width() * 0.8F);
++         final AABB boundingBox = AABB.ofSize(this.getEyePosition(), reducedWith, 1.0E-6D, reducedWith);
++@@ -4497,6 +4509,24 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++         wrapped.callEvent();
++         // Luminol end
++ 
+++        // Mili fix - #490: fire PlayerTeleportEvent for players, as plugins expect it
+++        // EntityTeleportAsyncEvent is a Luminol custom event and does not replace the standard Bukkit event
+++        if (this instanceof ServerPlayer serverPlayer) {
+++            org.bukkit.Location from = this.getBukkitEntity().getLocation();
+++            org.bukkit.event.player.PlayerTeleportEvent event = new org.bukkit.event.player.PlayerTeleportEvent(
+++                serverPlayer.getBukkitEntity(), from, destinationLoc, cause
+++            );
+++            if (!event.callEvent()) {
+++                return false;
+++            }
+++            // Update destination if event changed it
+++            if (!event.getTo().equals(destinationLoc) && event.getTo() != null) {
+++                destinationLoc = event.getTo();
+++                pos = new Vec3(destinationLoc.getX(), destinationLoc.getY(), destinationLoc.getZ());
+++            }
+++        }
+++        // Mili end - #490
+++
++         // check for same region
++         if (destination == this.level()
++                 && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(destination, ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkX(pos), ca.spottedleaf.moonrise.common.util.CoordinateUtils.getChunkZ(pos), 8)
++@@ -4958,7 +4988,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++         }
++         // Folia end - region threading
++         // Paper start - Fix item duplication and teleport issues
++-        if ((!this.isAlive() || !this.valid) && (teleportTransition.newLevel() != this.level)) {
+++        if (!(fun.bm.mili.config.modules.function.OldFeatureConfig.enderDragonPartCanUseEndPortal && this instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart)) if ((!this.isAlive() || !this.valid) && (teleportTransition.newLevel() != this.level)) { // Leaves - endDragonPartCanUseEndPortal
++             LOGGER.warn("Illegal Entity Teleport {} to {}:{}", this, teleportTransition.newLevel(), teleportTransition.position(), new Throwable());
++             return null;
++         }
++@@ -5072,7 +5102,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++             entityx.restoreFrom(this);
++             this.removeAfterChangingDimensions();
++             entityx.teleportSetPosition(PositionMoveRotation.of(this), PositionMoveRotation.of(teleportTransition), teleportTransition.relatives());
++-            if (this.inWorld) newLevel.addDuringTeleport(entityx); // CraftBukkit - Don't spawn the new entity if the current entity isn't spawned
+++            if (this.inWorld || (this instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart && fun.bm.mili.config.modules.function.OldFeatureConfig.enderDragonPartCanUseEndPortal)) newLevel.addDuringTeleport(entityx); // CraftBukkit - Don't spawn the new entity if the current entity isn't spawned // Leaves - ender dragon part can use end portal
++ 
++             for (Entity entity2 : list) {
++                 entity2.startRiding(entityx, true, false);
++@@ -5105,7 +5135,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++                 teleportTransition.relatives().contains(Relative.Y) ? 0.0 : vec3.y(),
++                 teleportTransition.relatives().contains(Relative.Z) ? 0.0 : vec3.z()
++             );
++-        return teleportTransition.withPosition(vec31).withRotation(f, f1).transitionAsPassenger();
+++        return fun.bm.mili.config.modules.function.OldFeatureConfig.oldMinecartMotionBehavior ? new TeleportTransition(teleportTransition.newLevel(), teleportTransition.position(), teleportTransition.deltaMovement(), 0, 0, teleportTransition.postTeleportTransition()) : teleportTransition.withPosition(vec31).withRotation(f, f1).transitionAsPassenger(); // Leaves - old minecart motion behavior
++     }
++ 
++     private void sendTeleportTransitionToRidingPlayers(TeleportTransition teleportTransition) {
++@@ -5195,6 +5225,8 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public boolean canTeleport(Level fromLevel, Level toLevel) {
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.enderDragonPartCanUseEndPortal && this instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart) return true; // Leaves - enderDragonPartCanUseEndPortal
+++        if (!fun.bm.mili.config.modules.misc.OldMCConfig.allowEntityPortalWithPassenger && (this.isPassenger() || this.isVehicle())) return false; // Mili - allowEntityPortalWithPassenger
++         if (!this.isAlive() || !this.valid) return false; // Paper - Fix item duplication and teleport issues
++         if (fromLevel.dimension() == Level.END && toLevel.dimension() == Level.OVERWORLD) {
++             for (Entity entity : this.getPassengers()) {
++@@ -5916,7 +5948,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public void setDeltaMovement(Vec3 deltaMovement) {
++-        if (deltaMovement.isFinite()) {
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues || deltaMovement.isFinite()) { // Mili - allow Inf NaN motion values
++             synchronized (this.posLock) { // Paper - detailed watchdog information
++             this.deltaMovement = deltaMovement;
++             } // Paper - detailed watchdog information
++@@ -5924,7 +5956,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public void addDeltaMovement(Vec3 addend) {
++-        if (addend.isFinite()) {
+++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues || addend.isFinite()) { // Mili - allow Inf NaN motion values
++             this.setDeltaMovement(this.getDeltaMovement().add(addend));
++         }
++     }
++@@ -6143,7 +6175,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public void setYRot(float yRot) {
++-        if (!Float.isFinite(yRot)) {
+++        if (!fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues && !Float.isFinite(yRot)) { // Mili - allow Inf NaN motion values
++             Util.logAndPauseIfInIde("Invalid entity rotation: " + yRot + ", discarding.");
++         } else {
++             this.yRot = yRot;
++@@ -6155,7 +6187,7 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++ 
++     public void setXRot(float xRot) {
++-        if (!Float.isFinite(xRot)) {
+++        if (!fun.bm.mili.config.modules.function.OldFeatureConfig.allowInfNanMotionValues && !Float.isFinite(xRot)) { // Mili - allow Inf NaN motion values
++             Util.logAndPauseIfInIde("Invalid entity rotation: " + xRot + ", discarding.");
++         } else {
++             this.xRot = Math.clamp(xRot % 360.0F, -90.0F, 90.0F);
++@@ -6488,4 +6520,10 @@ public abstract class Entity implements SyncedDataHolder, DebugValueSource, Name
++     }
++     // Mili end - entity culling
++     public boolean shouldTickHot() { return this.tickCount > 20 * 10 && this.isAlive(); } // KioCG
+++
+++    // Leaves start - leaves ex data
+++    public net.minecraft.nbt.CompoundTag getLeavesData() {
+++        return leavesData;
+++    }
+++    // Leaves end - leaves ex data
++ }

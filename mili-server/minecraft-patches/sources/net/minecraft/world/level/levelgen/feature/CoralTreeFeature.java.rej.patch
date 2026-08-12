@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/level/levelgen/feature/CoralTreeFeature.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/level/levelgen/feature/CoralTreeFeature.java b/net/minecraft/world/level/levelgen/feature/CoralTreeFeature.java	(rejected hunks)
++@@ -15,7 +15,7 @@ public class CoralTreeFeature extends CoralFeature {
++     }
++ 
++     @Override
++-    protected boolean placeFeature(LevelAccessor level, RandomSource random, BlockPos pos, BlockState state) {
+++    public boolean placeFeature(LevelAccessor level, RandomSource random, BlockPos pos, BlockState state) { // Mili - protected -> public (renewable coral)
++         BlockPos.MutableBlockPos mutableBlockPos = pos.mutable();
++         int i = random.nextInt(3) + 1;
++ 

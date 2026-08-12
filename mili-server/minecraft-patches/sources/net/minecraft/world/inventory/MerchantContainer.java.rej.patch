@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/net/minecraft/world/inventory/MerchantContainer.java.rej
+@@ -1,0 +_,10 @@
++diff a/net/minecraft/world/inventory/MerchantContainer.java b/net/minecraft/world/inventory/MerchantContainer.java	(rejected hunks)
++@@ -108,7 +108,7 @@ public class MerchantContainer implements Container {
++     @Override
++     public void setItem(int index, ItemStack stack) {
++         this.itemStacks.set(index, stack);
++-        stack.limitSize(this.getMaxStackSize(stack));
+++        stack.limitSize(this.getMaxStackLeaves(stack)); // Mili - item over-stack util
++         if (this.isPaymentSlot(index)) {
++             this.updateSellItem();
++         }

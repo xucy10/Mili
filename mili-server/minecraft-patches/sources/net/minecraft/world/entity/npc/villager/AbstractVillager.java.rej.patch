@@ -1,0 +1,83 @@
+--- /dev/null
++++ b/net/minecraft/world/entity/npc/villager/AbstractVillager.java.rej
+@@ -1,0 +_,80 @@
++diff a/net/minecraft/world/entity/npc/villager/AbstractVillager.java b/net/minecraft/world/entity/npc/villager/AbstractVillager.java	(rejected hunks)
++@@ -44,11 +44,21 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     private @Nullable Player tradingPlayer;
++     protected @Nullable MerchantOffers offers;
++     private final SimpleContainer inventory = new SimpleContainer(8, (org.bukkit.craftbukkit.entity.CraftAbstractVillager) this.getBukkitEntity()); // CraftBukkit - add argument
+++    protected boolean voidTrade = false; // Mili - force void trade
++ 
++     public AbstractVillager(EntityType<? extends AbstractVillager> type, Level level) {
++         super(type, level);
++         this.setPathfindingMalus(PathType.DANGER_FIRE, 16.0F);
++         this.setPathfindingMalus(PathType.DAMAGE_FIRE, -1.0F);
+++        // Leaves start - pca
+++        if (!this.level().isClientSide()) {
+++            this.inventory.addListener(inventory -> {
+++                if (fun.bm.mili.config.modules.function.protocol.PcaSyncProtocolConfig.enable) {
+++                    org.leavesmc.leaves.protocol.PcaSyncProtocol.syncEntityToClient(this);
+++                }
+++            });
+++        }
+++        // Leaves end - pca
++     }
++ 
++     @Override
++@@ -135,7 +145,13 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     @Override
++     public void processTrade(MerchantOffer offer, io.papermc.paper.event.player.@Nullable PlayerPurchaseEvent event) { // The MerchantRecipe passed in here is the one set by the PlayerPurchaseEvent
++         if (event == null || event.willIncreaseTradeUses()) {
++-            offer.increaseUses();
+++            // Mili start - force void trade
+++            if (voidTrade) {
+++                offer.increaseVoidUses();
+++            } else {
+++                offer.increaseUses();
+++            }
+++            // Mili end - force void trade
++         }
++         if (event == null || event.isRewardingExp()) {
++             this.rewardTradeXp(offer);
++@@ -147,7 +163,7 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     @Override
++     public void notifyTrade(MerchantOffer offer) {
++         // offer.increaseUses(); // Paper - Add PlayerTradeEvent and PlayerPurchaseEvent
++-        this.ambientSoundTime = -this.getAmbientSoundInterval();
+++        if (!voidTrade) this.ambientSoundTime = -this.getAmbientSoundInterval(); // Mili - force void trade
++         // this.rewardTradeXp(offer); // Paper - Add PlayerTradeEvent and PlayerPurchaseEvent
++         if (this.tradingPlayer instanceof ServerPlayer) {
++             CriteriaTriggers.TRADE.trigger((ServerPlayer)this.tradingPlayer, this, offer.getResult());
++@@ -164,7 +180,7 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     @Override
++     public void notifyTradeUpdated(ItemStack stack) {
++         if (!this.level().isClientSide() && this.ambientSoundTime > -this.getAmbientSoundInterval() + 20) {
++-            this.ambientSoundTime = -this.getAmbientSoundInterval();
+++            if (!voidTrade) this.ambientSoundTime = -this.getAmbientSoundInterval(); // Mili - force void trade
++             this.makeSound(this.getTradeUpdatedSound(!stack.isEmpty()));
++         }
++     }
++@@ -217,6 +233,12 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     }
++ 
++     protected void stopTrading() {
+++        // Mili start - force void trade
+++        this.voidTrade = false;
+++        if (this.offers != null) {
+++            this.offers.forEach(MerchantOffer::resetVoidUses);
+++        }
+++        // Mili end - force void trade
++         this.setTradingPlayer(null);
++     }
++ 
++@@ -295,4 +317,10 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
++     public boolean stillValid(Player player) {
++         return this.getTradingPlayer() == player && this.isAlive() && player.isWithinEntityInteractionRange(this, 4.0);
++     }
+++
+++    // Mili start - force void trade
+++    public void setVoidTrade() {
+++        this.voidTrade = true;
+++    }
+++    // Mili end - force void trade
++ }

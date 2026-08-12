@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/net/minecraft/world/Container.java.rej
+@@ -1,0 +_,14 @@
++diff a/net/minecraft/world/Container.java b/net/minecraft/world/Container.java	(rejected hunks)
++@@ -37,6 +37,12 @@ public interface Container extends Clearable, SlotProvider, Iterable<ItemStack>,
++         return Math.min(this.getMaxStackSize(), stack.getMaxStackSize());
++     }
++ 
+++    // Mili start - item over-stack util
+++    default int getMaxStackLeaves(ItemStack stack) {
+++        return Math.min(this.getMaxStackSize(), org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(stack));
+++    }
+++    // Mili end - item over-stack util
+++
++     void setChanged();
++ 
++     boolean stillValid(Player player);

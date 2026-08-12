@@ -1,0 +1,101 @@
+--- /dev/null
++++ b/net/minecraft/world/inventory/AbstractContainerMenu.java.rej
+@@ -1,0 +_,98 @@
++diff a/net/minecraft/world/inventory/AbstractContainerMenu.java b/net/minecraft/world/inventory/AbstractContainerMenu.java	(rejected hunks)
++@@ -292,6 +292,14 @@ public abstract class AbstractContainerMenu {
++         this.sendAllDataToRemote();
++     }
++ 
+++    // Mili start - item over-stack util
+++    public void sendSingleSlot(int slotIndex, ItemStack item) {
+++        if (this.synchronizer != null) {
+++            this.synchronizer.sendSlotChange(this, slotIndex, item);
+++        }
+++    }
+++    // Mili end - item over-stack util
+++
++     private void updateDataSlotListeners(int slotIndex, int value) {
++         for (ContainerListener containerListener : this.containerListeners) {
++             containerListener.dataChanged(this, slotIndex, value);
++@@ -449,7 +457,7 @@ public abstract class AbstractContainerMenu {
++                             && (this.quickcraftType == 2 || carried1.getCount() >= this.quickcraftSlots.size())
++                             && this.canDragTo(slot1)) {
++                             int i2 = slot1.hasItem() ? slot1.getItem().getCount() : 0;
++-                            int min = Math.min(itemStack.getMaxStackSize(), slot1.getMaxStackSize(itemStack));
+++                            int min = Math.min(org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack), slot1.getMaxStackSize(itemStack)); // Mili - item over-stack util
++                             int min1 = Math.min(getQuickCraftPlaceCount(this.quickcraftSlots, this.quickcraftType, itemStack) + i2, min);
++                             count -= min1 - i2;
++                             // slot1.setByPlayer(itemStack.copyWithCount(min1));
++@@ -557,7 +565,7 @@ public abstract class AbstractContainerMenu {
++                                 slot.setByPlayer(carried2);
++                             }
++                         } else if (ItemStack.isSameItemSameComponents(carried, carried2)) {
++-                            Optional<ItemStack> optional1 = slot.tryRemove(carried.getCount(), carried2.getMaxStackSize() - carried2.getCount(), player);
+++                            Optional<ItemStack> optional1 = slot.tryRemove(carried.getCount(), org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(carried2) - carried2.getCount(), player); // Mili - item over-stack util
++                             optional1.ifPresent(itemStack2 -> {
++                                 carried2.grow(itemStack2.getCount());
++                                 slot.onTake(player, itemStack2);
++@@ -619,7 +627,7 @@ public abstract class AbstractContainerMenu {
++             Slot slot2 = this.slots.get(slotIndex);
++             if (slot2.hasItem()) {
++                 ItemStack itemStack = slot2.getItem();
++-                this.setCarried(itemStack.copyWithCount(itemStack.getMaxStackSize()));
+++                this.setCarried(itemStack.copyWithCount(org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack))); // Mili - item over-stack util
++             }
++         } else if (clickType == ClickType.THROW && this.getCarried().isEmpty() && slotIndex >= 0) {
++             Slot slot2 = this.slots.get(slotIndex);
++@@ -654,15 +662,15 @@ public abstract class AbstractContainerMenu {
++                 int maxStackSize = button == 0 ? 1 : -1;
++ 
++                 for (int i3 = 0; i3 < 2; i3++) {
++-                    for (int i4 = count; i4 >= 0 && i4 < this.slots.size() && itemStack.getCount() < itemStack.getMaxStackSize(); i4 += maxStackSize) {
+++                    for (int i4 = count; i4 >= 0 && i4 < this.slots.size() && itemStack.getCount() < org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack); i4 += maxStackSize) { // Mili - item over-stack util
++                         Slot slot3 = this.slots.get(i4);
++                         if (slot3.hasItem()
++                             && canItemQuickReplace(slot3, itemStack, true)
++                             && slot3.mayPickup(player)
++                             && this.canTakeItemForPickAll(itemStack, slot3)) {
++                             ItemStack item1 = slot3.getItem();
++-                            if (i3 != 0 || item1.getCount() != item1.getMaxStackSize()) {
++-                                ItemStack itemStack1 = slot3.safeTake(item1.getCount(), itemStack.getMaxStackSize() - itemStack.getCount(), player);
+++                            if (i3 != 0 || item1.getCount() != org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(item1)) { // Mili - item over-stack util
+++                                ItemStack itemStack1 = slot3.safeTake(item1.getCount(), org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(itemStack) - itemStack.getCount(), player); // Mili - item over-stack util
++                                 itemStack.grow(itemStack1.getCount());
++                             }
++                         }
++@@ -780,7 +788,7 @@ public abstract class AbstractContainerMenu {
++             i = endIndex - 1;
++         }
++ 
++-        if (stack.isStackable()) {
+++        if (org.leavesmc.leaves.util.ItemOverstackUtils.isStackable(stack)) { // Mili - item over-stack util
++             while (!stack.isEmpty() && (reverseDirection ? i >= startIndex : i < endIndex)) {
++                 Slot slot = this.slots.get(i);
++                 ItemStack item = slot.getItem();
++@@ -881,7 +889,7 @@ public abstract class AbstractContainerMenu {
++     public static boolean canItemQuickReplace(@Nullable Slot slot, ItemStack stack, boolean stackSizeMatters) {
++         boolean flag = slot == null || !slot.hasItem();
++         return !flag && ItemStack.isSameItemSameComponents(stack, slot.getItem())
++-            ? slot.getItem().getCount() + (stackSizeMatters ? 0 : stack.getCount()) <= stack.getMaxStackSize()
+++            ? slot.getItem().getCount() + (stackSizeMatters ? 0 : stack.getCount()) <= org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(stack) // Mili - item over-stack util
++             : flag;
++     }
++ 
++@@ -889,7 +897,7 @@ public abstract class AbstractContainerMenu {
++         return switch (type) {
++             case 0 -> Mth.floor((float)stack.getCount() / slots.size());
++             case 1 -> 1;
++-            case 2 -> stack.getMaxStackSize();
+++            case 2 -> org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackMaxCount(stack); // Mili - item over-stack util
++             default -> stack.getCount();
++         };
++     }
++@@ -912,7 +920,7 @@ public abstract class AbstractContainerMenu {
++             for (int i = 0; i < container.getContainerSize(); i++) {
++                 ItemStack item = container.getItem(i);
++                 if (!item.isEmpty()) {
++-                    f += (float)item.getCount() / container.getMaxStackSize(item);
+++                    f += org.leavesmc.leaves.util.ItemOverstackUtils.getItemStackSignalStrength(container.getMaxStackSize(), item); // Mili - item over-stack util
++                 }
++             }
++ 
