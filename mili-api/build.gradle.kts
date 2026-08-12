@@ -9,6 +9,9 @@ plugins {
 java {
     withSourcesJar()
     withJavadocJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 val annotationsVersion = "26.0.2"

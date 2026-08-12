@@ -43,6 +43,16 @@ subprojects {
         }
     }
 
+    // Mili - explicitly bind JavaCompile to the JDK 25 toolchain compiler,
+    // otherwise forked compilation may pick a stale JDK on CI runners
+    // ("release version 25 not supported")
+    val javaToolchains = extensions.getByType<JavaToolchainService>()
+    tasks.withType<JavaCompile>().configureEach {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
     repositories {
         mavenCentral()
         maven(paperMavenPublicUrl)
