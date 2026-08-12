@@ -1,6 +1,6 @@
 <div align="center">
   
-  <img src="./docs/mili-logo.png" alt="Mili" width="160">
+  <img src="./docs/" alt="Mili" width="160">
 
   
   # Mili（米粒） 
