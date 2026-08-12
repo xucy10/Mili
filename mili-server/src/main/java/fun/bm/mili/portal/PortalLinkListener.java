@@ -2,6 +2,7 @@ package fun.bm.mili.portal;
 
 import fun.bm.mili.config.modules.fixes.PortalLinkFixConfig;
 import me.earthme.luminol.api.entity.PreEntityPortalEvent;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -10,26 +11,37 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.Bukkit;
 
 public class PortalLinkListener implements Listener {
-    private Plugin plugin;
+    // Mili start - fix: use passed-in Mili plugin instance instead of iterating all plugins
+    private static org.bukkit.plugin.Plugin plugin;
 
-    public void register() {
-        Plugin[] plugins = Bukkit.getPluginManager().getPlugins();
-        for (Plugin p : plugins) {
-            if (p.isEnabled()) { plugin = p; break; }
-        }
-        if (plugin == null && plugins.length > 0) {
-            plugin = plugins[0];
+    public void register(org.bukkit.plugin.Plugin miliPlugin) {
+        if (miliPlugin != null && miliPlugin.isEnabled()) {
+            plugin = miliPlugin;
+        } else {
+            // Mili start - fix: fallback with warning if Mili plugin instance unavailable
+            Plugin[] plugins = Bukkit.getPluginManager().getPlugins();
+            for (Plugin p : plugins) {
+                if (p.isEnabled()) { plugin = p; break; }
+            }
+            if (plugin == null && plugins.length > 0) {
+                plugin = plugins[0];
+            }
+            Bukkit.getLogger().warning("[Mili Portal] Could not obtain Mili plugin instance, falling back to: " + (plugin != null ? plugin.getName() : "none"));
+            // Mili end
         }
         if (plugin != null) {
             Bukkit.getPluginManager().registerEvents(this, plugin);
         }
     }
+    // Mili end
 
     public void unregister() {
         org.bukkit.event.HandlerList.unregisterAll(this);
+        // Mili start - fix: clear static plugin reference on unregister
+        plugin = null;
+        // Mili end
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

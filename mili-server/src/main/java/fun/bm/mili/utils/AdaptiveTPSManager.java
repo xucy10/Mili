@@ -65,9 +65,12 @@ public class AdaptiveTPSManager {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
-            } catch (Exception ex) {
-                LogUtils.getClassLogger().error("AdaptiveTPS error", ex);
+            // Mili start - fix: catch Throwable to handle Error (OOM/StackOverflowError); reset running flag to prevent zombie thread state
+            } catch (Throwable ex) {
+                LogUtils.getClassLogger().error("AdaptiveTPS error, stopping manager thread", ex);
+                running.set(false);
             }
+            // Mili end
         }
     }
 

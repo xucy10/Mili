@@ -1,6 +1,5 @@
 package fun.bm.mili.rust;
 
-import fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -27,8 +26,10 @@ public final class EntityCullHelper {
     private static final int PLANES_FLOATS = 24;
 
     /** Cached direct buffers — grown as needed, reused across ticks */
-    private static ByteBuffer entityBuffer = null;
-    private static ByteBuffer planesBuffer = null;
+    // Mili start - fix: static ByteBuffer 多线程并发访问导致数据损坏，改为 ThreadLocal
+    private static final ThreadLocal<ByteBuffer> entityBuffer = ThreadLocal.withInitial(() -> null);
+    private static final ThreadLocal<ByteBuffer> planesBuffer = ThreadLocal.withInitial(() -> null);
+    // Mili end
 
     /**
      * Check if the Rust native library is loaded and available.
@@ -59,17 +60,29 @@ public final class EntityCullHelper {
         }
 
         int n = entities.size();
-        int requiredBytes = n * ENTITY_STRIDE * 4; // floats -> bytes
+        // Mili start - fix: 整数溢出风险，n * ENTITY_STRIDE * 4 可能溢出 int 范围
+        long requiredBytesLong = (long) n * ENTITY_STRIDE * 4;
+        if (requiredBytesLong > Integer.MAX_VALUE) {
+            return null;
+        }
+        int requiredBytes = (int) requiredBytesLong;
+        // Mili end
 
+        // Mili start - fix: 使用 ThreadLocal 隔离的 ByteBuffer，避免多线程数据损坏
+        ByteBuffer entityBuf = entityBuffer.get();
+        // Mili end
         // Ensure entity buffer is large enough and direct
-        if (entityBuffer == null || entityBuffer.capacity() < requiredBytes) {
-            entityBuffer = ByteBuffer.allocateDirect(requiredBytes).order(ByteOrder.nativeOrder());
+        if (entityBuf == null || entityBuf.capacity() < requiredBytes) {
+            entityBuf = ByteBuffer.allocateDirect(requiredBytes).order(ByteOrder.nativeOrder());
+            // Mili start - fix: 使用 ThreadLocal 隔离的 ByteBuffer
+            entityBuffer.set(entityBuf);
+            // Mili end
         }
 
         // Pack entity data into direct buffer
-        entityBuffer.clear();
-        entityBuffer.limit(requiredBytes);
-        java.nio.FloatBuffer floatView = entityBuffer.asFloatBuffer();
+        entityBuf.clear();
+        entityBuf.limit(requiredBytes);
+        java.nio.FloatBuffer floatView = entityBuf.asFloatBuffer();
         for (int i = 0; i < n; i++) {
             Entity e = entities.get(i);
             AABB box = e.getBoundingBox();
@@ -83,12 +96,18 @@ public final class EntityCullHelper {
             floatView.put((float) e.getZ());
         }
 
+        // Mili start - fix: 使用 ThreadLocal 隔离的 ByteBuffer
+        ByteBuffer planesBuf = planesBuffer.get();
+        // Mili end
         // Ensure planes buffer
-        if (planesBuffer == null || planesBuffer.capacity() < PLANES_FLOATS * 4) {
-            planesBuffer = ByteBuffer.allocateDirect(PLANES_FLOATS * 4).order(ByteOrder.nativeOrder());
+        if (planesBuf == null || planesBuf.capacity() < PLANES_FLOATS * 4) {
+            planesBuf = ByteBuffer.allocateDirect(PLANES_FLOATS * 4).order(ByteOrder.nativeOrder());
+            // Mili start - fix: 使用 ThreadLocal 隔离的 ByteBuffer
+            planesBuffer.set(planesBuf);
+            // Mili end
         }
-        planesBuffer.clear();
-        java.nio.FloatBuffer planesView = planesBuffer.asFloatBuffer();
+        planesBuf.clear();
+        java.nio.FloatBuffer planesView = planesBuf.asFloatBuffer();
         if (frustumPlanes != null && frustumPlanes.length >= PLANES_FLOATS) {
             planesView.put(frustumPlanes, 0, PLANES_FLOATS);
         } else {
@@ -111,12 +130,14 @@ public final class EntityCullHelper {
         Vec3 eye = viewer.getEyePosition(1.0f);
 
         try {
+            // Mili start - fix: 传递 ThreadLocal 隔离的局部变量而非 static 字段
             return RustBridge.batchCullEntitiesDirect(
-                entityBuffer, n,
+                entityBuf, n,
                 eye.x, eye.y, eye.z,
                 reachSq, hitboxLimit,
-                planesBuffer
+                planesBuf
             );
+            // Mili end
         } catch (UnsatisfiedLinkError e) {
             return null;
         }

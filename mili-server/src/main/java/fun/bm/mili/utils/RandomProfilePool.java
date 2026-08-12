@@ -25,7 +25,9 @@ public class RandomProfilePool {
     }
 
     public static GameProfile getRandomProfile(String id) {
-        if (ReplayAPIConfig.enableCache) {
+        // Mili start - fix: add cache != null check to prevent NPE if enableCache toggled after init
+        if (ReplayAPIConfig.enableCache && cache != null) {
+        // Mili end
             synchronized (lockCache) {
                 Map<Integer, GameProfile> snapshot = cache.asMap();
                 if (!snapshot.isEmpty()) {
@@ -40,7 +42,9 @@ public class RandomProfilePool {
     }
 
     public static void putProfile(GameProfile profile) {
-        if (ReplayAPIConfig.enableCache) {
+        // Mili start - fix: add cache != null check to prevent NPE if enableCache toggled after init
+        if (ReplayAPIConfig.enableCache && cache != null) {
+        // Mili end
             synchronized (lockCache) {
                 cache.put(getNextId(), profile);
             }

@@ -30,4 +30,21 @@ public class NetworkOptimizerConfig implements IConfigModule {
 
     @ConfigInfo(name = "silent-chunk-loads", comments = "静默区块加载 (不发送多余的加载动画包)")
     public static boolean silentChunkLoads = true;
+
+    // --- Network stability settings ---
+
+    @ConfigInfo(name = "connection-read-timeout-seconds", comments = "Read timeout for player connections in seconds (vanilla=30)")
+    public static int connectionReadTimeoutSeconds = 30;
+
+    @ConfigInfo(name = "write-buffer-low-water-mark", comments = "Netty write buffer low water mark in bytes (backpressure)")
+    public static int writeBufferLowWaterMark = 32768;
+
+    @ConfigInfo(name = "write-buffer-high-water-mark", comments = "Netty write buffer high water mark in bytes (backpressure, 0=disable)")
+    public static int writeBufferHighWaterMark = 65536;
+
+    @ConfigInfo(name = "reuse-address", comments = "Enable SO_REUSEADDR for the server socket (quick restart)")
+    public static boolean reuseAddress = true;
+
+    @ConfigInfo(name = "entity-track-cache-max-size", comments = "Max entries in entity track cache before forced cleanup (0=unlimited)")
+    public static int entityTrackCacheMaxSize = 5000;
 }

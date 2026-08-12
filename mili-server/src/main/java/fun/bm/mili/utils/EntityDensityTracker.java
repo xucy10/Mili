@@ -77,8 +77,11 @@ public class EntityDensityTracker {
                 totalEntities.incrementAndGet();
                 if (entity instanceof LivingEntity) livingEntities.incrementAndGet();
 
-                int cellX = entity.getLocation().getBlockX() / cellSize;
-                int cellZ = entity.getLocation().getBlockZ() / cellSize;
+                // Mili start - fix: call getLocation() once to prevent race condition between two calls
+                org.bukkit.Location loc = entity.getLocation();
+                int cellX = loc.getBlockX() / cellSize;
+                int cellZ = loc.getBlockZ() / cellSize;
+                // Mili end
                 long key = pack(cellX, cellZ);
                 cells.merge(key, 1, Integer::sum);
             }

@@ -1,5 +1,7 @@
 package fun.bm.mili.utils;
 
+import com.mojang.logging.LogUtils;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -8,15 +10,17 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
-import com.mojang.logging.LogUtils;
 
 public final class MemoryOptimizer {
 
     private MemoryOptimizer() {}
 
-    private static volatile boolean running = false;
+    // Mili start - fix: use AtomicBoolean for atomic init guard to prevent duplicate scheduler creation
+    private static final AtomicBoolean running = new AtomicBoolean(false);
+    // Mili end
     private static ScheduledExecutorService scheduler;
     private static final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 
@@ -25,14 +29,18 @@ public final class MemoryOptimizer {
     private static final AtomicInteger logCounter = new AtomicInteger(0);
 
     private static long maxMemoryBytes = 0;
-    private static double gcThreshold = 0.85;
-    private static double aggressiveGcThreshold = 0.95;
+    // Mili start - fix: declare thresholds as volatile for visibility across threads
+    private static volatile double gcThreshold = 0.85;
+    private static volatile double aggressiveGcThreshold = 0.95;
+    // Mili end
     private static boolean autoMemoryTuning = true;
 
     public static void init() {
-        if (running) {
+        // Mili start - fix: use compareAndSet for atomic init guard to prevent duplicate scheduler
+        if (!running.compareAndSet(false, true)) {
             return;
         }
+        // Mili end
 
         maxMemoryBytes = Runtime.getRuntime().maxMemory();
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -49,15 +57,15 @@ public final class MemoryOptimizer {
                 TimeUnit.MILLISECONDS
         );
 
-        running = true;
         LogUtils.getLogger().info("[Mili] MemoryOptimizer initialized");
     }
 
     public static void shutdown() {
-        if (!running) {
+        // Mili start - fix: use compareAndSet for atomic shutdown guard
+        if (!running.compareAndSet(true, false)) {
             return;
         }
-        running = false;
+        // Mili end
 
         if (scheduler != null) {
             scheduler.shutdown();
@@ -77,7 +85,13 @@ public final class MemoryOptimizer {
             MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
             long used = heapUsage.getUsed();
             long committed = heapUsage.getCommitted();
+            // Mili start - fix: getMax() may return -1, fallback to Runtime.maxMemory()
             long max = heapUsage.getMax();
+            if (max <= 0) {
+                max = Runtime.getRuntime().maxMemory();
+            }
+            if (max <= 0) return;
+            // Mili end
 
             double usageRatio = (double) used / max;
 
@@ -93,9 +107,12 @@ public final class MemoryOptimizer {
 
             logMemoryStatus(used, committed, max, usageRatio);
 
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors (OOM, StackOverflow)
+        // that would otherwise propagate and silently kill the memory monitor scheduler thread
+        } catch (Throwable e) {
             LogUtils.getLogger().error("[Mili] Memory monitor error", e);
         }
+        // Mili end
     }
 
     private static void performMemoryCleanup(long currentUsed, boolean aggressive) {
@@ -177,7 +194,9 @@ public final class MemoryOptimizer {
         stats.put("usage_percent", (int)(getMemoryUsageRatio() * 100));
         stats.put("cleanup_count", gcCount.sum());
         stats.put("total_freed_mb", totalFreedBytes.sum() / (1024 * 1024));
-        stats.put("running", running);
+        // Mili start - fix: use AtomicBoolean.get() since running is now AtomicBoolean
+        stats.put("running", running.get());
+        // Mili end
 
         return stats;
     }

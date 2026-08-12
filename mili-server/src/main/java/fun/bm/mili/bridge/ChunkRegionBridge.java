@@ -2,13 +2,13 @@ package fun.bm.mili.bridge;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.chunk.MiliChunkSystem;
-import fun.bm.mili.utils.RegionBalancer;
-import fun.bm.mili.utils.RegionLoadMonitor;
-import fun.bm.mili.utils.SmartRegionManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,15 +45,34 @@ public final class ChunkRegionBridge {
 
     static void syncLoadData() {
         try {
-            for (World world : Bukkit.getWorlds()) {
-                int loadedChunks = world.getLoadedChunks().length;
-                int playerCount = world.getPlayers().size();
+            // Mili start - fix: snapshot Bukkit collections to avoid ConcurrentModificationException
+            List<World> worlds = new ArrayList<>(Bukkit.getWorlds());
+            for (World world : worlds) {
+                List<Player> players;
+                try {
+                    players = new ArrayList<>(world.getPlayers());
+                } catch (Throwable t) {
+                    // World unloaded concurrently — skip this world
+                    continue;
+                }
 
-                for (Player player : world.getPlayers()) {
+                int loadedChunks;
+                try {
+                    loadedChunks = world.getLoadedChunks().length;
+                } catch (Throwable t) {
+                    loadedChunks = 0;
+                }
+
+                int playerCount = players.size();
+
+                for (Player player : players) {
                     if (!player.isOnline()) continue;
 
-                    int cx = player.getLocation().getBlockX() >> 4;
-                    int cz = player.getLocation().getBlockZ() >> 4;
+                    // Mili start - fix: call getLocation() once to avoid race between two calls
+                    Location loc = player.getLocation();
+                    int cx = loc.getBlockX() >> 4;
+                    int cz = loc.getBlockZ() >> 4;
+                    // Mili end
 
                     var hotness = MiliChunkSystem.getChunkHotness(world, cx, cz);
                     if (hotness != null) {
@@ -62,7 +81,8 @@ public final class ChunkRegionBridge {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Mili start - fix: catch Throwable (not just Exception) to prevent scheduler thread death on Error
             LogUtils.getLogger().warn("[Mili] ChunkRegionBridge sync error", e);
         }
     }

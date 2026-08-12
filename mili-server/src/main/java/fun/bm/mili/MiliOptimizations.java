@@ -7,11 +7,7 @@ import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import fun.bm.mili.config.modules.optimizations.NetworkOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.TechnicalMCOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
-import fun.bm.mili.utils.LagRemover;
-import fun.bm.mili.utils.NetworkOptimizer;
-import fun.bm.mili.utils.RegionBalancer;
-import fun.bm.mili.utils.SmartRegionManager;
-import fun.bm.mili.utils.TechnicalMCOptimizer;
+import fun.bm.mili.utils.*;
 import fun.bm.mili.villager.VillagerOptimizer;
 import org.bukkit.plugin.Plugin;
 
@@ -68,14 +64,29 @@ public final class MiliOptimizations {
     }
 
     public static void shutdown() {
-        MiliChunkSystem.shutdown();
-        VillagerOptimizer.shutdown();
+        AsyncKeepaliveManager.shutdown(); // Mili - graceful shutdown of async keepalive scheduler
+        // Mili start - fix: only shutdown subsystems that were initialized (config enabled)
+        if (ChunkSystemConfig.enabled) {
+            MiliChunkSystem.shutdown();
+        }
+        if (VillagerOptimizerConfig.enabled) {
+            VillagerOptimizer.shutdown();
+        }
         LagRemover.shutdown();
-        RegionBalancer.shutdown();
-        SmartRegionManager.shutdown();
-        ChunkRegionBridge.shutdown();
-        NetworkOptimizer.shutdown();
-        TechnicalMCOptimizer.shutdown();
+        if (RegionBalancerConfig.enabled) {
+            RegionBalancer.shutdown();
+            SmartRegionManager.shutdown();
+        }
+        if (RegionBalancerConfig.enabled || ChunkSystemConfig.enabled) {
+            ChunkRegionBridge.shutdown();
+        }
+        if (NetworkOptimizerConfig.enabled) {
+            NetworkOptimizer.shutdown();
+        }
+        if (TechnicalMCOptimizerConfig.enabled) {
+            TechnicalMCOptimizer.shutdown();
+        }
+        // Mili end
 
         LOGGER.info("[Mili] All optimizations shutdown");
     }

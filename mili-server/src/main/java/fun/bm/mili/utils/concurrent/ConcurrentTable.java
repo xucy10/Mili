@@ -1,9 +1,6 @@
 package fun.bm.mili.utils.concurrent;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Predicate;
 
@@ -33,7 +30,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
             if (flagX) {
                 List<X> datas = getX(y, z);
                 for (X x1 : datas) {
-                    if (!x1.equals(x)) {
+                    // Mili start - fix: use Objects.equals to prevent NPE
+                    if (!Objects.equals(x1, x)) {
+                    // Mili end
                         remove(x1, y, z);
                     }
                 }
@@ -41,7 +40,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
             if (flagY) {
                 List<Y> datas = getY(x, z);
                 for (Y y1 : datas) {
-                    if (!y1.equals(y)) {
+                    // Mili start - fix: use Objects.equals to prevent NPE
+                    if (!Objects.equals(y1, y)) {
+                    // Mili end
                         remove(x, y1, z);
                     }
                 }
@@ -49,7 +50,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
             if (flagZ) {
                 List<Z> datas = getZ(x, y);
                 for (Z z1 : datas) {
-                    if (!z1.equals(z)) {
+                    // Mili start - fix: use Objects.equals to prevent NPE
+                    if (!Objects.equals(z1, z)) {
+                    // Mili end
                         remove(x, y, z1);
                     }
                 }
@@ -60,13 +63,17 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
 
     @Override
     public void remove(X x, Y y, Z z) {
-        data.removeIf(entry -> entry.getX().equals(x) && entry.getY().equals(y) && entry.getZ().equals(z));
+        // Mili start - fix: use Objects.equals to prevent NPE when entry fields are null
+        data.removeIf(entry -> Objects.equals(entry.getX(), x) && Objects.equals(entry.getY(), y) && Objects.equals(entry.getZ(), z));
+        // Mili end
     }
 
     @Override
     public List<Z> getZ(X x, Y y) {
         return filterAndCollect(
-                entry -> entry.getX().equals(x) && entry.getY().equals(y),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getX(), x) && Objects.equals(entry.getY(), y),
+                // Mili end
                 TableEntry::getZ
         );
     }
@@ -74,7 +81,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     @Override
     public List<Y> getY(X x, Z z) {
         return filterAndCollect(
-                entry -> entry.getX().equals(x) && entry.getZ().equals(z),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getX(), x) && Objects.equals(entry.getZ(), z),
+                // Mili end
                 TableEntry::getY
         );
     }
@@ -82,7 +91,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     @Override
     public List<X> getX(Y y, Z z) {
         return filterAndCollect(
-                entry -> entry.getY().equals(y) && entry.getZ().equals(z),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getY(), y) && Objects.equals(entry.getZ(), z),
+                // Mili end
                 TableEntry::getX
         );
     }
@@ -90,7 +101,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     @Override
     public Map<X, Y> getXY(Z z) {
         return filterAndMap(
-                entry -> entry.getZ().equals(z),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getZ(), z),
+                // Mili end
                 TableEntry::getX,
                 TableEntry::getY
         );
@@ -99,7 +112,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     @Override
     public Map<Y, Z> getYZ(X x) {
         return filterAndMap(
-                entry -> entry.getX().equals(x),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getX(), x),
+                // Mili end
                 TableEntry::getY,
                 TableEntry::getZ
         );
@@ -108,7 +123,9 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
     @Override
     public Map<X, Z> getXZ(Y y) {
         return filterAndMap(
-                entry -> entry.getY().equals(y),
+                // Mili start - fix: use Objects.equals to prevent NPE
+                entry -> Objects.equals(entry.getY(), y),
+                // Mili end
                 TableEntry::getX,
                 TableEntry::getZ
         );
@@ -131,17 +148,23 @@ public class ConcurrentTable<X, Y, Z> extends AbstractConcurrentTable<X, Y, Z> {
 
     @Override
     public void clearXY(Z z) {
-        data.removeIf(entry -> entry.getZ().equals(z));
+        // Mili start - fix: use Objects.equals to prevent NPE
+        data.removeIf(entry -> Objects.equals(entry.getZ(), z));
+        // Mili end
     }
 
     @Override
     public void clearYZ(X x) {
-        data.removeIf(entry -> entry.getX().equals(x));
+        // Mili start - fix: use Objects.equals to prevent NPE
+        data.removeIf(entry -> Objects.equals(entry.getX(), x));
+        // Mili end
     }
 
     @Override
     public void clearXZ(Y y) {
-        data.removeIf(entry -> entry.getY().equals(y));
+        // Mili start - fix: use Objects.equals to prevent NPE
+        data.removeIf(entry -> Objects.equals(entry.getY(), y));
+        // Mili end
     }
 
     @Override

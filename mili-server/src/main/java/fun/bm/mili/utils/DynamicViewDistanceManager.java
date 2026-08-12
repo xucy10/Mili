@@ -18,6 +18,12 @@ public class DynamicViewDistanceManager {
     public static void setEnabled(boolean v) { enabled = v; }
     public static boolean isEnabled() { return enabled; }
 
+    // Mili start - fix: add method to clean up offline player entries to prevent map growth OOM
+    public static void onPlayerQuit(String uuid) {
+        playerStates.remove(uuid);
+    }
+    // Mili end
+
     public static void tick() {
         if (!enabled) return;
 
@@ -64,13 +70,16 @@ public class DynamicViewDistanceManager {
 
     private static int countNearbyPlayers(Player player, int viewDistance) {
         int count = 0;
+        // Mili start - fix: call getLocation() once to prevent race condition
+        org.bukkit.Location playerLoc = player.getLocation();
+        double thresholdSq = (viewDistance * 16L) * (viewDistance * 16L);
         for (Player other : player.getWorld().getPlayers()) {
             if (other.equals(player)) continue;
-            if (player.getLocation().distanceSquared(other.getLocation()) <
-                    (viewDistance * 16L) * (viewDistance * 16L)) {
+            if (playerLoc.distanceSquared(other.getLocation()) < thresholdSq) {
                 count++;
             }
         }
+        // Mili end
         return count;
     }
 
@@ -87,7 +96,9 @@ public class DynamicViewDistanceManager {
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors
+        } catch (Throwable ignored) {}
+        // Mili end
 
         return 20.0;
     }

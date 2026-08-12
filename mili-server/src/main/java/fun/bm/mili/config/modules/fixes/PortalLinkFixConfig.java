@@ -1,9 +1,9 @@
 package fun.bm.mili.config.modules.fixes;
 
 import fun.bm.mili.command.PortalCommand;
-import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.portal.PortalLinkListener;
 import fun.bm.mili.portal.PortalLinkManager;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -45,7 +45,10 @@ public class PortalLinkFixConfig implements IConfigModule {
         PortalLinkManager.load();
         if (enabled && listener == null) {
             listener = new PortalLinkListener();
-            listener.register();
+            // Mili start - fix: pass Mili plugin instance to register instead of letting it pick a random plugin
+            org.bukkit.plugin.Plugin miliPlugin = org.bukkit.Bukkit.getPluginManager().getPlugin("Mili");
+            listener.register(miliPlugin);
+            // Mili end
         }
         if (portalCommand == null) {
             portalCommand = new PortalCommand();

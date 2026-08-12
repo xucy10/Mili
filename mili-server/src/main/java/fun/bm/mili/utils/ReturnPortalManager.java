@@ -54,16 +54,31 @@ public class ReturnPortalManager {
     public static ReturnPortal findReturnPortal(ServerPlayer player, ResourceKey<Level> fromDim, BlockPos fromPos) {
         ListTag portalList = getPlayerPortalList(player);
         for (Tag entry : portalList) {
-            CompoundTag portal = (CompoundTag) entry;
-            ResourceKey<Level> entryFromDim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(portal.getString(FROM_DIM).orElseThrow()));
-            if (entryFromDim == fromDim) {
-                BlockPos portalTrigger = BlockPos.of(portal.getLong(FROM_POS).orElseThrow());
+            // Mili start - fix: use instanceof check instead of direct cast; use isPresent checks instead of orElseThrow; use equals() instead of == for ResourceKey
+            if (!(entry instanceof CompoundTag portal)) continue;
+            var fromDimOpt = portal.getString(FROM_DIM);
+            if (fromDimOpt.isEmpty()) continue;
+            ResourceKey<Level> entryFromDim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(fromDimOpt.get()));
+            if (entryFromDim.equals(fromDim)) {
+                var fromPosOpt = portal.getLong(FROM_POS);
+                if (fromPosOpt.isEmpty()) continue;
+                BlockPos portalTrigger = BlockPos.of(fromPosOpt.get());
                 if (portalTrigger.distSqr(fromPos) <= MAX_PORTAL_DISTANCE_SQ) {
-                    final UUID uid = portal.contains(RETURN_PORTAL_UID) ? portal.read(RETURN_PORTAL_UID, UUIDUtil.CODEC).orElseThrow() : UUID.randomUUID();
-                    final BlockPos pos = BlockPos.of(portal.getLong(TO_POS).orElseThrow());
+                    final UUID uid;
+                    if (portal.contains(RETURN_PORTAL_UID)) {
+                        var uidOpt = portal.read(RETURN_PORTAL_UID, UUIDUtil.CODEC);
+                        if (uidOpt.isEmpty()) continue;
+                        uid = uidOpt.get();
+                    } else {
+                        uid = UUID.randomUUID();
+                    }
+                    var toPosOpt = portal.getLong(TO_POS);
+                    if (toPosOpt.isEmpty()) continue;
+                    final BlockPos pos = BlockPos.of(toPosOpt.get());
                     return new ReturnPortal(uid, pos);
                 }
             }
+            // Mili end
         }
 
         return null;
@@ -87,11 +102,17 @@ public class ReturnPortalManager {
     public static void removeReturnPortal(ServerPlayer player, ReturnPortal portal) {
         ListTag portalList = getPlayerPortalList(player);
         for (int i = 0; i < portalList.size(); i++) {
-            CompoundTag entry = (CompoundTag) portalList.get(i);
-            if (entry.contains(RETURN_PORTAL_UID) && entry.read(RETURN_PORTAL_UID, UUIDUtil.CODEC).orElseThrow().equals(portal.uid)) {
-                portalList.remove(i);
-                break;
+            // Mili start - fix: use isPresent check instead of orElseThrow to prevent NoSuchElementException
+            // if the UUID tag is malformed or corrupted
+            if (!(portalList.get(i) instanceof CompoundTag entry)) continue;
+            if (entry.contains(RETURN_PORTAL_UID)) {
+                var uidOpt = entry.read(RETURN_PORTAL_UID, UUIDUtil.CODEC);
+                if (uidOpt.isPresent() && uidOpt.get().equals(portal.uid)) {
+                    portalList.remove(i);
+                    break;
+                }
             }
+            // Mili end
         }
     }
 

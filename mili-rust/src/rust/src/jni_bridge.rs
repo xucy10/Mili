@@ -7,7 +7,15 @@ use jni::sys::{jboolean, jbyteArray, jdouble, jfloatArray, jint, jsize, jstring}
 ///
 /// Zero-copy path: Java passes a DirectByteBuffer; Rust reads via
 /// GetDirectBufferAddress — no array copy across the JNI boundary.
+///
+/// ## Panic safety
+///
+/// Every JNI entry point wraps its body in `std::panic::catch_unwind` to
+/// prevent Rust panics from crossing the JNI boundary (which would abort
+/// the JVM). On panic the function returns a null/false sentinel so the
+/// Java caller can detect the failure.
 use jni::JNIEnv;
+use std::panic::AssertUnwindSafe;
 
 use crate::{config, entity_cull, frustum};
 
@@ -15,14 +23,14 @@ use crate::{config, entity_cull, frustum};
 // Native init
 // ============================================================================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_nativeInit(_env: JNIEnv, _class: JClass) {}
 
 // ============================================================================
 // Entity culling — zero-copy via DirectByteBuffer
 // ============================================================================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntitiesDirect(
     env: JNIEnv,
     _: JClass,
@@ -35,20 +43,75 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntitiesDirect(
     hitbox_limit: jdouble,
     planes_buffer: JByteBuffer,
 ) -> jbyteArray {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        batch_cull_entities_direct_inner(
+            &env,
+            entity_buffer,
+            num_entities,
+            viewer_x,
+            viewer_y,
+            viewer_z,
+            reach_sq,
+            hitbox_limit,
+            planes_buffer,
+        )
+    }));
+    result.unwrap_or(std::ptr::null_mut())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn batch_cull_entities_direct_inner(
+    env: &JNIEnv,
+    entity_buffer: JByteBuffer,
+    num_entities: jint,
+    viewer_x: jdouble,
+    viewer_y: jdouble,
+    viewer_z: jdouble,
+    reach_sq: jdouble,
+    hitbox_limit: jdouble,
+    planes_buffer: JByteBuffer,
+) -> jbyteArray {
+    // Mili start - fix: validate num_entities >= 0 to prevent negative jint → huge usize cast
+    if num_entities < 0 {
+        return std::ptr::null_mut();
+    }
+    let num_entities = num_entities as usize;
+    // Mili end
+
+    // Mili start - fix: check direct buffer address is not null
     let entity_addr = match env.get_direct_buffer_address(&entity_buffer) {
-        Ok(addr) => addr as *const f32,
-        Err(_) => return std::ptr::null_mut(),
+        Ok(addr) if !addr.is_null() => addr as *const f32,
+        _ => return std::ptr::null_mut(),
     };
 
     let planes_addr = match env.get_direct_buffer_address(&planes_buffer) {
-        Ok(addr) => addr as *const f32,
-        Err(_) => return std::ptr::null_mut(),
+        Ok(addr) if !addr.is_null() => addr as *const f32,
+        _ => return std::ptr::null_mut(),
     };
+    // Mili end
 
+    // Mili start - fix: validate DirectByteBuffer capacity before creating slices
+    let entity_capacity = env.get_direct_buffer_capacity(&entity_buffer).unwrap_or(0);
+    let required_entity_bytes = num_entities
+        .checked_mul(entity_cull::ENTITY_STRIDE)
+        .and_then(|n| n.checked_mul(std::mem::size_of::<f32>()));
+    if num_entities > 0
+        && (required_entity_bytes.is_none() || entity_capacity < required_entity_bytes.unwrap_or(0))
+    {
+        return std::ptr::null_mut();
+    }
+
+    let planes_capacity = env.get_direct_buffer_capacity(&planes_buffer).unwrap_or(0);
+    if planes_capacity < 24 * std::mem::size_of::<f32>() {
+        return std::ptr::null_mut();
+    }
+    // Mili end
+
+    // Safety: Java guarantees the DirectByteBuffer contains at least 24 f32 values.
     let planes_slice = unsafe { std::slice::from_raw_parts(planes_addr, 24) };
     let mut planes = [[0.0f32; 4]; 6];
-    for i in 0..6 {
-        planes[i] = [
+    for (i, plane) in planes.iter_mut().enumerate() {
+        *plane = [
             planes_slice[i * 4],
             planes_slice[i * 4 + 1],
             planes_slice[i * 4 + 2],
@@ -57,16 +120,20 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntitiesDirect(
     }
     let frustum = frustum::Frustum { planes };
 
-    let results = entity_cull::batch_cull_entities_zero_copy(
-        entity_addr,
-        num_entities as usize,
-        viewer_x,
-        viewer_y,
-        viewer_z,
-        reach_sq,
-        hitbox_limit as f32,
-        &frustum,
-    );
+    // Safety: batch_cull_entities_zero_copy requires unsafe because it
+    // dereferences entity_addr, which Java guarantees is a valid DirectByteBuffer.
+    let results = unsafe {
+        entity_cull::batch_cull_entities_zero_copy(
+            entity_addr,
+            num_entities,
+            viewer_x,
+            viewer_y,
+            viewer_z,
+            reach_sq,
+            hitbox_limit as f32,
+            &frustum,
+        )
+    };
 
     let len = results.len() as jsize;
     let byte_array = match env.new_byte_array(len) {
@@ -82,7 +149,7 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntitiesDirect(
 // Entity culling — array fallback (non-zero-copy)
 // ============================================================================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
     mut env: JNIEnv,
     _: JClass,
@@ -95,6 +162,41 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
     hitbox_limit: jdouble,
     planes_arr: jni::objects::JFloatArray,
 ) -> jbyteArray {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        batch_cull_entities_array_inner(
+            &mut env,
+            entities,
+            num_entities,
+            viewer_x,
+            viewer_y,
+            viewer_z,
+            reach_sq,
+            hitbox_limit,
+            planes_arr,
+        )
+    }));
+    result.unwrap_or(std::ptr::null_mut())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn batch_cull_entities_array_inner(
+    env: &mut JNIEnv,
+    entities: jni::objects::JFloatArray,
+    num_entities: jint,
+    viewer_x: jdouble,
+    viewer_y: jdouble,
+    viewer_z: jdouble,
+    reach_sq: jdouble,
+    hitbox_limit: jdouble,
+    planes_arr: jni::objects::JFloatArray,
+) -> jbyteArray {
+    // Mili start - fix: validate num_entities >= 0
+    if num_entities < 0 {
+        return std::ptr::null_mut();
+    }
+    let num_entities = num_entities as usize;
+    // Mili end
+
     let entity_data: Vec<f32> =
         match unsafe { env.get_array_elements(&entities, jni::objects::ReleaseMode::CopyBack) } {
             Ok(slice) => slice.iter().copied().collect(),
@@ -111,9 +213,15 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
         return std::ptr::null_mut();
     }
 
+    // Mili start - fix: validate entity_data has enough elements for num_entities
+    if entity_data.len() < num_entities * entity_cull::ENTITY_STRIDE {
+        return std::ptr::null_mut();
+    }
+    // Mili end
+
     let mut planes = [[0.0f32; 4]; 6];
-    for i in 0..6 {
-        planes[i] = [
+    for (i, plane) in planes.iter_mut().enumerate() {
+        *plane = [
             planes_data[i * 4],
             planes_data[i * 4 + 1],
             planes_data[i * 4 + 2],
@@ -124,7 +232,7 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
 
     let results = entity_cull::batch_cull_entities(
         &entity_data,
-        num_entities as usize,
+        num_entities,
         viewer_x,
         viewer_y,
         viewer_z,
@@ -147,10 +255,29 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_batchCullEntities(
 // Frustum — build from camera params
 // ============================================================================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_buildFrustumFromCamera(
     mut env: JNIEnv,
     _: JClass,
+    fov_y: jdouble,
+    aspect: jdouble,
+    near: jdouble,
+    far: jdouble,
+    pos_arr: jni::objects::JFloatArray,
+    fwd_arr: jni::objects::JFloatArray,
+    up_arr: jni::objects::JFloatArray,
+) -> jfloatArray {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        build_frustum_from_camera_inner(
+            &mut env, fov_y, aspect, near, far, pos_arr, fwd_arr, up_arr,
+        )
+    }));
+    result.unwrap_or(std::ptr::null_mut())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_frustum_from_camera_inner(
+    env: &mut JNIEnv,
     fov_y: jdouble,
     aspect: jdouble,
     near: jdouble,
@@ -208,30 +335,47 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_buildFrustumFromCamera(
 // Config — TOML load/save
 // ============================================================================
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configLoad(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
 ) -> jstring {
-    let path_str: String = match env.get_string(&path) {
-        Ok(s) => s.into(),
-        Err(_) => return env.new_string("").unwrap().into_raw(),
-    };
-
-    match config::load_config(&path_str) {
-        Some(json) => env.new_string(&json).unwrap().into_raw(),
-        None => env.new_string("").unwrap().into_raw(),
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| config_load_inner(&mut env, path)));
+    match result {
+        Ok(s) => s,
+        Err(_) => jni_string_or_empty(&mut env),
     }
 }
 
-#[no_mangle]
+fn config_load_inner(env: &mut JNIEnv, path: JString) -> jstring {
+    let path_str: String = match env.get_string(&path) {
+        Ok(s) => s.into(),
+        Err(_) => return jni_string_or_empty(env),
+    };
+
+    match config::load_config(&path_str) {
+        Some(json) => match env.new_string(&json) {
+            Ok(s) => s.into_raw(),
+            Err(_) => jni_string_or_empty(env),
+        },
+        None => jni_string_or_empty(env),
+    }
+}
+
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSave(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     json: JString,
 ) -> jboolean {
+    let result =
+        std::panic::catch_unwind(AssertUnwindSafe(|| config_save_inner(&mut env, path, json)));
+    result.unwrap_or(0)
+}
+
+fn config_save_inner(env: &mut JNIEnv, path: JString, json: JString) -> jboolean {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return 0,
@@ -248,13 +392,20 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSave(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSaveMerge(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     json: JString,
 ) -> jboolean {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        config_save_merge_inner(&mut env, path, json)
+    }));
+    result.unwrap_or(0)
+}
+
+fn config_save_merge_inner(env: &mut JNIEnv, path: JString, json: JString) -> jboolean {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return 0,
@@ -271,13 +422,20 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configSaveMerge(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configContains(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     key: JString,
 ) -> jboolean {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        config_contains_inner(&mut env, path, key)
+    }));
+    result.unwrap_or(0)
+}
+
+fn config_contains_inner(env: &mut JNIEnv, path: JString, key: JString) -> jboolean {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return 0,
@@ -294,33 +452,53 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configContains(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configGetValue(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     key: JString,
 ) -> jstring {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        config_get_value_inner(&mut env, path, key)
+    }));
+    match result {
+        Ok(s) => s,
+        Err(_) => jni_string(&mut env, "null"),
+    }
+}
+
+fn config_get_value_inner(env: &mut JNIEnv, path: JString, key: JString) -> jstring {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
-        Err(_) => return env.new_string("null").unwrap().into_raw(),
+        Err(_) => return jni_string(env, "null"),
     };
     let key_str: String = match env.get_string(&key) {
         Ok(s) => s.into(),
-        Err(_) => return env.new_string("null").unwrap().into_raw(),
+        Err(_) => return jni_string(env, "null"),
     };
 
     let val = config::get_value(&path_str, &key_str);
-    env.new_string(&val).unwrap().into_raw()
+    match env.new_string(&val) {
+        Ok(s) => s.into_raw(),
+        Err(_) => jni_string(env, "null"),
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configRemove(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
     key: JString,
 ) -> jboolean {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        config_remove_inner(&mut env, path, key)
+    }));
+    result.unwrap_or(0)
+}
+
+fn config_remove_inner(env: &mut JNIEnv, path: JString, key: JString) -> jboolean {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return 0,
@@ -337,12 +515,17 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configRemove(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configClear(
     mut env: JNIEnv,
     _: JClass,
     path: JString,
 ) -> jboolean {
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| config_clear_inner(&mut env, path)));
+    result.unwrap_or(0)
+}
+
+fn config_clear_inner(env: &mut JNIEnv, path: JString) -> jboolean {
     let path_str: String = match env.get_string(&path) {
         Ok(s) => s.into(),
         Err(_) => return 0,
@@ -353,4 +536,22 @@ pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_configClear(
     } else {
         0
     }
+}
+
+// ============================================================================
+// JNI helper — safe string creation without unwrap()
+// ============================================================================
+
+/// Create a JNI string from a Rust &str, returning a raw pointer.
+/// On failure returns a null pointer (should not happen in practice).
+fn jni_string(env: &mut JNIEnv, s: &str) -> jstring {
+    match env.new_string(s) {
+        Ok(js) => js.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Convenience for creating an empty JNI string.
+fn jni_string_or_empty(env: &mut JNIEnv) -> jstring {
+    jni_string(env, "")
 }

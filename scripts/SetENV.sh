@@ -25,7 +25,18 @@ elif [ "$release" = "2" ]; then
   make_latest=true
 fi
 
-mv mili-server/build/libs/*-paperclip-$grdversion-mojmap.jar $jarName_dir
+# hyacinthusweight 2.0.15 (MC 26.2) no longer appends the -mojmap suffix
+jarSrc=$(ls mili-server/build/libs/*-paperclip-$grdversion.jar 2>/dev/null | head -1)
+if [ -z "$jarSrc" ]; then
+  # fall back to legacy naming (older paperweight versions)
+  jarSrc=$(ls mili-server/build/libs/*-paperclip-$grdversion-mojmap.jar 2>/dev/null | head -1)
+fi
+if [ -z "$jarSrc" ]; then
+  echo "ERROR: paperclip jar matching *-paperclip-$grdversion*.jar not found in mili-server/build/libs/"
+  ls -la mili-server/build/libs/ || true
+  exit 1
+fi
+mv "$jarSrc" "$jarName_dir"
 
 echo "project_id=$project_id" >> $GITHUB_ENV
 echo "project_id_b=$project_id_b" >> $GITHUB_ENV
