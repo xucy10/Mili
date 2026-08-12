@@ -1,6 +1,6 @@
 name: 新的需求 Feature Request
 description:
-  为Lophine提供新的想法。
+  为Mili提供新的想法。
   Suggest an idea for Lophine.
 labels:
   - enhancement
@@ -9,7 +9,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢您为 Lophine 提交新的需求！请尽可能详细地描述，以便我们可以更轻松地考虑和审查请求。
+        感谢您为 Mili 提交新的需求！请尽可能详细地描述，以便我们可以更轻松地考虑和审查请求。
         Thank you for filling out a feature request for Lophine! Please be as detailed as possible so that we may consider and review the request easier.<br>
         在提问之前，请您先阅读 [提问的智慧](https://lug.ustc.edu.cn/wiki/doc/smart-questions/) ，我们不会为任何无意义的问题作回复。
         Please read [smart questions](http://www.catb.org/~esr/faqs/smart-questions.html) before asking questions, we won't respond to any meaningless questions.
