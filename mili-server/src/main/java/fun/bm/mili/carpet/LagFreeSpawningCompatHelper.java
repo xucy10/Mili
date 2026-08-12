@@ -26,7 +26,9 @@ import java.util.WeakHashMap;
 
 public final class LagFreeSpawningCompatHelper {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Map<RegionizedWorldData, Map<EntityType<?>, Mob>> PRECOOKED_MOBS = new WeakHashMap<>();
+    // Mili start - fix: WeakHashMap 非线程安全，Folia 区域线程并发访问会破坏内部结构
+    private static final Map<RegionizedWorldData, Map<EntityType<?>, Mob>> PRECOOKED_MOBS = java.util.Collections.synchronizedMap(new WeakHashMap<>());
+    // Mili end
 
     public static boolean hasNoCollision(ServerLevel world, AABB bb) {
         if (!TickThread.isTickThreadFor(world, bb)) return world.noCollision(bb);
@@ -102,13 +104,17 @@ public final class LagFreeSpawningCompatHelper {
     public static @Nullable Mob createMob(ServerLevel level, EntityType<?> entityType) {
         try {
             if (entityType.create(level, EntitySpawnReason.NATURAL) instanceof Mob created) {
-                PRECOOKED_MOBS.get(level.getCurrentWorldData()).put(entityType, created);
+                // Mili start - fix: 用 computeIfAbsent 替代 get().put() 防 NPE，同时保证线程安全
+                PRECOOKED_MOBS.computeIfAbsent(level.getCurrentWorldData(), key -> new HashMap<>()).put(entityType, created);
+                // Mili end
                 return created;
             }
             LOGGER.warn("Can't precook non-mob entity type: {}", entityType);
-        } catch (Exception exception) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors during entity creation
+        } catch (Throwable exception) {
             LOGGER.warn("Failed to precook mob {}", entityType, exception);
         }
+        // Mili end
 
         return null;
     }

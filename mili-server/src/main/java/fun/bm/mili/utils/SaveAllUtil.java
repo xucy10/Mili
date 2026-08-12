@@ -42,6 +42,9 @@ public class SaveAllUtil {
 
     public static void postRegionSave(io.papermc.paper.threadedregions.TickRegions.TickRegionData region) {
         Pair<CommandSourceStack, Boolean> currentSaveAll = SaveAllUtil.currentSaveAll;
+        // Mili start - fix: currentSaveAll may be null when read outside lock, causing NPE
+        if (currentSaveAll == null) return;
+        // Mili end
         synchronized (lock) {
             if (lastSaveAllTime < region.lastSavedTime) return; // already saved
         }
@@ -58,12 +61,14 @@ public class SaveAllUtil {
         region.lastSavedTime = System.currentTimeMillis();
         int saved = savedRegionCount.incrementAndGet();
         if (saved >= regionCount) {
+            // Mili start - fix: always reset currentSaveAll in all branches (success/failure) to prevent permanent saving state
             if (withError.get()) {
                 currentSaveAll.getFirst().sendFailure(Component.literal("At least one region failed to save!"));
             } else if (saved == regionCount) {
                 currentSaveAll.getFirst().sendSuccess(() -> Component.translatable("commands.save.success"), true);
-                SaveAllUtil.currentSaveAll = null;
             }
+            SaveAllUtil.currentSaveAll = null;
+            // Mili end
         }
     }
 

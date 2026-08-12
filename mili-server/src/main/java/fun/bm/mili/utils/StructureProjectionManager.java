@@ -1,13 +1,15 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.function.StructureProjectionConfig;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class StructureProjectionManager {
@@ -24,7 +26,9 @@ public class StructureProjectionManager {
         if (!enabled) return false;
 
         String uuid = player.getUniqueId().toString();
-        List<Projection> projections = playerProjections.computeIfAbsent(uuid, k -> new ArrayList<>());
+        // Mili start - fix: use CopyOnWriteArrayList for thread-safe value
+        List<Projection> projections = playerProjections.computeIfAbsent(uuid, k -> new CopyOnWriteArrayList<>());
+        // Mili end
 
         if (projections.size() >= StructureProjectionConfig.maxProjectionsPerPlayer) {
             return false;
@@ -35,6 +39,9 @@ public class StructureProjectionManager {
             return false;
         }
 
+        // Mili start - fix: check same world before calculating distance to avoid IllegalArgumentException
+        if (!player.getWorld().equals(origin.getWorld())) return false;
+        // Mili end
         double distance = player.getLocation().distance(origin);
         if (distance > StructureProjectionConfig.projectionRange) {
             return false;

@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * on every TPS calculation, and ring buffer with modulo-free indexing.
  */
 public final class TPSTracker {
-    private static final int TICK_HISTORY_SIZE = 600;
+    // Mili start - fix: TICK_HISTORY_SIZE must be power of 2 for mask-based ring buffer indexing (600 & 599 = 592, not 0)
+    private static final int TICK_HISTORY_SIZE = 1024;
+    // Mili end
     private static final int TICK_HISTORY_MASK = TICK_HISTORY_SIZE - 1;
     private static final AtomicLongArray ticks = new AtomicLongArray(TICK_HISTORY_SIZE);
     private static final AtomicLong runningSum = new AtomicLong(0);
@@ -49,9 +51,11 @@ public final class TPSTracker {
 
     private static double calculateTPS(int requestedTicks) {
         int count = tickCount.get();
-        if (count < requestedTicks) {
+        // Mili start - fix: use <= to correctly handle boundary when count equals requestedTicks
+        if (count <= requestedTicks) {
             return 20.0;
         }
+        // Mili end
         int target = ((count - 1) - requestedTicks) & TICK_HISTORY_MASK;
         long elapsed = System.currentTimeMillis() - ticks.get(target);
         if (elapsed <= 0) {

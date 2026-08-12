@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+// Mili start - fix: import Objects for null-safe equals
+// Mili end
+
 public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> {
     private final ConcurrentHashMap<X, ConcurrentHashMap<Y, Set<Z>>> xyIndex = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Y, ConcurrentHashMap<Z, Set<X>>> yzIndex = new ConcurrentHashMap<>();
@@ -23,7 +26,9 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
         if (flagX) {
             List<X> datas = getX(y, z);
             for (X x1 : datas) {
-                if (!x1.equals(x)) {
+                // Mili start - fix: use Objects.equals to prevent NPE
+                if (!Objects.equals(x1, x)) {
+                // Mili end
                     remove(x1, y, z);
                 }
             }
@@ -31,7 +36,9 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
         if (flagY) {
             List<Y> datas = getY(x, z);
             for (Y y1 : datas) {
-                if (!y1.equals(y)) {
+                // Mili start - fix: use Objects.equals to prevent NPE
+                if (!Objects.equals(y1, y)) {
+                // Mili end
                     remove(x, y1, z);
                 }
             }
@@ -39,7 +46,9 @@ public class OptimizedConcurrentTable<X, Y, Z> extends ConcurrentTable<X, Y, Z> 
         if (flagZ) {
             List<Z> datas = getZ(x, y);
             for (Z z1 : datas) {
-                if (!z1.equals(z)) {
+                // Mili start - fix: use Objects.equals to prevent NPE
+                if (!Objects.equals(z1, z)) {
+                // Mili end
                     remove(x, y, z1);
                 }
             }

@@ -1,12 +1,11 @@
 package fun.bm.mili.utils;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class LightCallbackManager {
     private static volatile boolean enabled = false;
@@ -49,7 +48,11 @@ public class LightCallbackManager {
             try {
                 callback.onLightChange(type, worldName, pos, oldLevel, newLevel);
                 totalCallbacks.incrementAndGet();
-            } catch (Exception ignored) {}
+            // Mili start - fix: catch Throwable and log instead of silently swallowing exceptions
+            } catch (Throwable t) {
+                LogUtils.getLogger().warn("[Mili] Light callback error", t);
+            }
+            // Mili end
         }
     }
 

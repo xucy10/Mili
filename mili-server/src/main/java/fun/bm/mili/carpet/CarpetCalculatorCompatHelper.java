@@ -24,9 +24,11 @@ public final class CarpetCalculatorCompatHelper {
         try {
             double result = new ExpressionBuilder(expression).build().evaluate();
             response = Component.literal(expression + " = " + formatNumber(result)).withStyle(ChatFormatting.YELLOW);
-        } catch (RuntimeException exception) {
-            response = Component.literal("Calculator error: " + exception.getMessage()).withStyle(ChatFormatting.RED);
+        // Mili start - fix: catch Throwable instead of RuntimeException to handle StackOverflowError from malicious expressions
+        } catch (Throwable t) {
+            response = Component.literal("Calculator error: " + t.getMessage()).withStyle(ChatFormatting.RED);
         }
+        // Mili end
 
         Component scheduledResponse = response;
         player.getBukkitEntity().taskScheduler.schedule((ServerPlayer scheduledPlayer) -> scheduledPlayer.sendSystemMessage(scheduledResponse), null, 1L);

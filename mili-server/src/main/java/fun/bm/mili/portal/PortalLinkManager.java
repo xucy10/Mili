@@ -5,15 +5,14 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
-import org.bukkit.material.MaterialData;
-import org.bukkit.Material;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
@@ -44,19 +43,34 @@ public class PortalLinkManager {
                 registry.putAll(loaded);
             }
             Bukkit.getLogger().info("[Mili Portal] Loaded " + registry.size() + " portal pairs");
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable for robustness during load
+        } catch (Throwable e) {
+        // Mili end
             Bukkit.getLogger().log(Level.WARNING, "[Mili Portal] Failed to load portal links", e);
         }
     }
 
-    public static void save() {
+    // Mili start - fix: atomic file save via temp file + rename
+    public static synchronized void save() {
         if (dataFile == null) return;
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(dataFile), StandardCharsets.UTF_8)) {
+        File tmpFile = new File(dataFile.getParentFile(), dataFile.getName() + ".tmp");
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(tmpFile), StandardCharsets.UTF_8)) {
             GSON.toJson(registry, writer);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Bukkit.getLogger().log(Level.WARNING, "[Mili Portal] Failed to save portal links", e);
+            return;
+        }
+        if (dataFile.exists() && !dataFile.delete()) {
+            Bukkit.getLogger().warning("[Mili Portal] Could not delete old portal_links.json");
+            tmpFile.delete();
+            return;
+        }
+        if (!tmpFile.renameTo(dataFile)) {
+            Bukkit.getLogger().warning("[Mili Portal] Could not rename temp file to portal_links.json");
+            tmpFile.delete();
         }
     }
+    // Mili end
 
     public static PortalPair findPair(Location source) {
         if (!enabled) return null;
@@ -73,12 +87,20 @@ public class PortalLinkManager {
     }
 
     public static void registerPair(Location source, Location destination) {
+        // Mili start - fix: null checks for world to prevent NPE
         if (!enabled) return;
+        World srcWorld = source.getWorld();
+        World destWorld = destination.getWorld();
+        if (srcWorld == null || destWorld == null) {
+            Bukkit.getLogger().warning("[Mili Portal] Cannot register pair: source or destination world is null");
+            return;
+        }
         String key = locationKey(source);
         PortalPair pair = new PortalPair(
-                source.getWorld().getName(), source.getBlockX(), source.getBlockY(), source.getBlockZ(),
-                destination.getWorld().getName(), destination.getBlockX(), destination.getBlockY(), destination.getBlockZ()
+                srcWorld.getName(), source.getBlockX(), source.getBlockY(), source.getBlockZ(),
+                destWorld.getName(), destination.getBlockX(), destination.getBlockY(), destination.getBlockZ()
         );
+        // Mili end
         registry.put(key, pair);
         save();
     }
@@ -164,9 +186,13 @@ public class PortalLinkManager {
         return expected;
     }
 
+    // Mili start - fix: null check for world to prevent NPE
     public static String locationKey(Location loc) {
-        return loc.getWorld().getName() + ":" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
+        World w = loc.getWorld();
+        if (w == null) throw new IllegalArgumentException("Location has no world");
+        return w.getName() + ":" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
     }
+    // Mili end
 
     public static class PortalPair {
         private String sourceWorld;
@@ -186,8 +212,11 @@ public class PortalLinkManager {
             this.destZ = destZ;
         }
 
+        // Mili start - fix: null check for world to prevent NPE in matchesSource
         public boolean matchesSource(Location loc) {
-            if (!loc.getWorld().getName().equals(sourceWorld)) return false;
+            World w = loc.getWorld();
+            if (w == null || !w.getName().equals(sourceWorld)) return false;
+            // Mili end
             int dx = Math.abs(loc.getBlockX() - sourceX);
             int dz = Math.abs(loc.getBlockZ() - sourceZ);
             return dx <= 2 && dz <= 2 && Math.abs(loc.getBlockY() - sourceY) <= 4;

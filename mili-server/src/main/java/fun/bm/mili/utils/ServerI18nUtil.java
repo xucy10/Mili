@@ -94,7 +94,8 @@ public class ServerI18nUtil {
             final ConfigsInstance configsInstance = ConfigManager.getConfigs("mili");
             configsInstance.setConfig(new String[]{"function", "language", "lang"}, "en_us");
             configsInstance.reloadAsync(true);
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors in async preload
+        } catch (Throwable e) {
             if (e instanceof MalformedJsonException malformedJson) {
                 malformedJson.clean();
             }
@@ -105,6 +106,7 @@ public class ServerI18nUtil {
                 logger.error("Failed to download language list file for many times, skip pre-load language.");
             }
         }
+        // Mili end
     }
 
     private static void loadI18n(String lang, int retryTime) {
@@ -114,7 +116,8 @@ public class ServerI18nUtil {
             }
             Language.inject(createLangInstance());
             logger.info("Successfully loaded language: {}", lang);
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors in async load
+        } catch (Throwable e) {
             if (e instanceof MalformedJsonException malformedJson) {
                 malformedJson.clean();
             }
@@ -125,6 +128,7 @@ public class ServerI18nUtil {
                 logger.error("Failed to load for many times, use default lang \"en_us\" instead");
             }
         }
+        // Mili end
     }
 
     private static void downloadLang(boolean fetchFromAssets) throws Exception {
@@ -137,7 +141,14 @@ public class ServerI18nUtil {
             return;
         }
 
-        JsonObject langEntry = json.getAsJsonObject("objects").getAsJsonObject(langJsonPath);
+        // Mili start - fix: null check for getAsJsonObject("objects") to prevent NPE
+        JsonObject objects = json.getAsJsonObject("objects");
+        if (objects == null) {
+            throw new IllegalStateException("Assets JSON does not contain 'objects' field");
+        }
+
+        JsonObject langEntry = objects.getAsJsonObject(langJsonPath);
+        // Mili end
 
         if (langEntry == null) {
             throw new UnsupportedLanguageException();
@@ -162,7 +173,12 @@ public class ServerI18nUtil {
             return;
         }
 
+        // Mili start - fix: null check for getAsJsonObject("assetIndex") to prevent NPE
         JsonObject assetIndex = json.getAsJsonObject("assetIndex");
+        if (assetIndex == null) {
+            throw new IllegalStateException("Version JSON does not contain 'assetIndex' field");
+        }
+        // Mili end
         String assetUrl = assetIndex.get("url").getAsString();
         fetchAndSave(assetUrl, assetsPath);
     }
@@ -177,8 +193,15 @@ public class ServerI18nUtil {
             return;
         }
 
+        // Mili start - fix: null check for getAsJsonArray("versions") to prevent NPE
+        var versionsArray = json.getAsJsonArray("versions");
+        if (versionsArray == null) {
+            throw new IllegalStateException("Manifest JSON does not contain 'versions' array");
+        }
+
         String versionUrl = null;
-        for (JsonElement element : json.getAsJsonArray("versions")) {
+        for (JsonElement element : versionsArray) {
+            // Mili end
             String id = element.getAsJsonObject().get("id").getAsString();
             String url = element.getAsJsonObject().get("url").getAsString();
             if (VERSION.equals(id)) {
@@ -194,15 +217,19 @@ public class ServerI18nUtil {
         fetchAndSave(versionUrl, versionPath);
     }
 
+    // Mili start - fix: use static shared HttpClient instance instead of creating new one each call
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    // Mili end
+
     private static byte[] fetch(String urlString) throws IOException, InterruptedException {
         HttpResponse<String> response;
-        try (HttpClient httpClient = HttpClient.newHttpClient()) {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlString))
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        }
+        // Mili start - fix: use static shared HttpClient
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(urlString))
+                .timeout(Duration.ofSeconds(10))
+                .build();
+        response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        // Mili end
 
         int responseCode = response.statusCode();
         if (responseCode != 200) {
@@ -217,7 +244,9 @@ public class ServerI18nUtil {
         byte[] data = fetch(url);
         Path outputPath = Path.of(savePath);
         Files.createDirectories(outputPath.getParent());
-        Files.write(outputPath, data, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        // Mili start - fix: add TRUNCATE_EXISTING to prevent residual old content
+        Files.write(outputPath, data, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+        // Mili end
     }
 
     private static JsonObject loadJson(String path) {
@@ -227,10 +256,12 @@ public class ServerI18nUtil {
         } catch (JsonSyntaxException e) {
             logger.warn("Corrupt json file!");
             throw new MalformedJsonException(e, path);
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors
+        } catch (Throwable e) {
             logger.warn("Failed to load local JSON!");
             return null;
         }
+        // Mili end
     }
 
     private static Language createLangInstance() throws IOException {
