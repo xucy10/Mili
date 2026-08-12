@@ -1,103 +1,114 @@
 ---
-title: 自动化回归测试（个人工作流）
+title: Mili 项目代码审查与 bug 修复工作流
 scope: workspace
-owner: "个人"
+owner: "Mili"
 summary: |
-  一个面向个人使用的完整、多步骤自动化回归测试工作流模板。包含触发条件、准备步骤、运行测试、收集结果、回滚/报告和质量门控准则。
-tags: [testing, regression, ci, workflow]
+  面向 Mili Minecraft 服务端核心的系统性代码审查工作流。覆盖 Java 源码并发安全、NPE、整数溢出、时间尺度混淆、线程静默死亡等 bug 排查，以及 Rust JNI 模块的安全加固。
+tags: [code-review, bug-fix, rust, jni, concurrency, minecraft]
 ---
 
-# 自动化回归测试 工作流（个人）
+# Mili 代码审查与 bug 修复工作流
 
 ## 目标
 
-为个人开发者提供一套可复用的自动化回归测试工作流，帮助在提交补丁、合并 PR 或切换分支时快速验证回归风险并生成可行动的报告。
+对 Mili 项目（基于 Folia 的 Minecraft 26.2 服务端核心）进行系统性 bug 排查与修复，覆盖 Java 源码中的并发安全、NPE、整数溢出、时间尺度混淆、线程静默死亡等问题，以及 Rust JNI 模块的安全加固。
 
 ## 适用场景
 
-- 本地开发验证（快速回归）
-- 在 CI 之前的本地完整回归运行
-- 快速复现上游或补丁导致的回归问题
+- 全项目代码审查（Java + Rust）
+- 线程安全问题排查（竞态、死锁、线程静默死亡）
+- JNI 边界安全加固
+- 区域调度系统稳定性优化
+- 网络连接稳定性优化
 
 ## 何时触发
 
-- 在准备合并补丁或 PR 前
-- 在拉取远程分支并集成后
-- 在关键功能更改或依赖升级后
+- 大规模代码变更后需要全面审查
+- 发现服务器线程静默死亡或 OOM 崩溃
+- JNI 调用导致 native 崩溃
+- 区域调度系统出现任务 ID 碰撞或任务丢失
+- 网络连接不稳定需要优化
 
 ## 前提条件
 
-- 本地已配置项目构建工具（Gradle/Maven/Gradle Kotlin DSL）。
-- 必要的服务（如数据库、消息队列）可通过脚本启动或有可替代的测试替身。
-- 可以从仓库根目录运行测试脚本（`./scripts` 下或 `gradlew`）。
+- JDK 25 已安装并配置 `JAVA_HOME`
+- Rust toolchain（edition 2024）已安装
+- 项目已 `applyAllPatches` 并可成功编译
+- 构建环境：`./gradlew :mili-server:compileJava` + `cargo clippy --release` + `cargo test --release`
 
 ## 工作流步骤
 
-1. 环境准备
-   - 检查工作树干净：`git status --porcelain` 应为空。
-   - 切换到目标分支并更新：`git checkout <branch>`，`git pull --rebase`。
-   - 启动必要的本地服务（可选）：`./scripts/start-test-env.sh`。
-
-2. 构建与快速 smoke 测试
-   - 执行增量构建：`./gradlew assemble`。
-   - 运行 smoke 测试套件（快速失败以节省时间）：`./gradlew testSmoke`。
-
-3. 完整回归测试（可并行化）
-   - 运行完整单元与集成测试：`./gradlew test integrationTest --parallel`。
-   - 若项目提供特定回归任务，优先运行：`./gradlew regressionTest`。
-
-4. 收集与归档结果
-   - 将测试报告导出到 `build/reports/tests/`。
-   - 保存失败测试的栈追踪与相关日志到 `artifacts/regression/<timestamp>/`。
-
-5. 分析与分类失败
-   - 将失败分为：环境问题 / 新增回归 / 非确定性（flaky）
-   - 对于非确定性失败，运行重复测试：`./gradlew test --tests "com.example.*" --rerun-tasks -Dtest.retries=3`。
-
-6. 回滚或隔离变更（如果是新增回归）
-   - 使用二分法（git bisect）在本地确认引入回归的提交。
-   - 创建临时分支保存调查进度：`git checkout -b regress/diagnose-<short-commit>`。
-
-7. 报告与下一步
-   - 生成简短报告模板并粘贴到 issue/PR 中：
-     - 复现步骤
-     - 失败的测试列表与日志位置
-     - 本地临时分支或回退建议
-   - 如果是环境问题，记录可复现环境并更新 `scripts/` 启动脚本。
-
-## 质量门（Quality Gates）
-
-- 阶段一（合并前）：所有 smoke 测试通过。
-- 阶段二（CI 入口）：关键模块无失败；若有 flaky，标注并建立 ticket。
-- 阶段三（发布）：无高/严重级别失败，回归数不超过阈值（默认 0）。
-
-## 实用脚本与示例命令
-
-- 启动全环境、运行回归并收集报告（示例）：
+### 1. 环境准备
 
 ```bash
-./scripts/start-test-env.sh
-./gradlew clean assemble regressionTest --parallel
-mkdir -p artifacts/regression/$(date +%Y%m%d%H%M%S)
-cp -r build/reports/tests/* artifacts/regression/$(date +%Y%m%d%H%M%S)/
+export JAVA_HOME="C:/Users/Administrator/Downloads/jdk-25_windows-x64_bin/jdk-25.0.4"
+export PATH="$JAVA_HOME/bin:$PATH"
+cd "E:/Program Files/Tencent/AndrowsData/Mili"
+./gradlew :mili-server:compileJava
 ```
 
-## 异常处理与常见问题
+### 2. Java 代码审查
 
-- 构建失败：先运行 `./gradlew assemble --stacktrace` 并检查依赖或本地构建缓存。
-- 测试依赖外部服务超时：在脚本里增加重试与更长超时，或使用本地替身（mock）。
+按严重程度分类排查：
 
-## 可选增强（后续迭代）
+**致命级 — 线程静默死亡**：
+- 搜索 `catch(Exception)` 模式，在调度器/线程上下文中改为 `catch(Throwable)`
+- 涉及 `ScheduledExecutorService`、`CompletableFuture`、线程池的所有 catch 块
 
-- 将工作流集成到本地 git 钩子（`pre-push`）以自动运行 smoke 测试。
-- 增加 `--fast` 与 `--full` 模式切换脚本。
-- 将结果自动上传到远程归档（例如 S3）并在 PR 中附上链接。
+**致命级 — 数据损坏**：
+- 检查浮点位操作（如 `SCORE_MASK` 破坏 double 位布局）
+- 检查 writeIndex 溢出（`Math.floorMod` 替代 `%`）
+- 检查时间尺度混淆（游戏时间 vs 系统时间）
 
-## 示例提示
+**资源泄漏级**：
+- 检查 Map/Queue 无限增长（添加 TTL 清理或上限）
+- 检查 `Deflater`/`RandomAccessFile`/`FileChannel` 未在 finally 中关闭
+- 检查 UUID 注册后未注销
 
-- "使用此技能在合并前运行完整回归并生成报告。"
-- "为当前分支运行 smoke 测试并保存失败日志到 artifacts。"
+**并发竞态级**：
+- 检查 `volatile boolean` 初始化标志（改为 `AtomicBoolean.compareAndSet`）
+- 检查异步遍历 Bukkit 集合（先快照为 ArrayList）
+- 检查 `getLocation()` 多次调用竞态（调用一次存入局部变量）
+- 检查 `.equals()` 模式 NPE（改为 `Objects.equals()`）
+
+### 3. Rust JNI 安全审查
+
+- 所有 JNI 入口用 `catch_unwind(AssertUnwindSafe(...))` 包装
+- `#[no_mangle]` → `#[unsafe(no_mangle)]`（edition 2024）
+- `unsafe fn` 内部显式 `unsafe` 块
+- `checked_mul` 防止长度溢出
+- 负数实体数/null 指针/DirectByteBuffer 容量校验
+- EPSILON=1e-6 浮点比较防护
+
+### 4. 验证
+
+```bash
+# Java 编译
+./gradlew :mili-server:compileJava
+
+# Rust clippy（必须 0 warning）
+cd mili-rust/src/rust && cargo clippy --release
+
+# Rust 测试（28 tests passed）
+cargo test --release
+```
+
+### 5. 修复标记
+
+所有修复使用 `// Mili start - fix:` / `// Mili end` 注释标记。
+
+## 质量门
+
+- Java `BUILD SUCCESSFUL`
+- Rust `cargo clippy --release` — 0 error, 0 warning
+- Rust `cargo test --release` — 28 passed, 0 failed
+
+## 异常处理
+
+- 编译错误：检查 JDK 版本是否为 25（不是 21）
+- Rust edition 2024 编译错误：检查 `#[unsafe(no_mangle)]` 语法
+- `catch_unwind` 编译错误：需用 `AssertUnwindSafe` 包装 `JNIEnv`
 
 ## 维护记录
 
-- 版本 0.1 — 初始草稿
+- 版本 0.2 — 适配 Mili 26.2 分支，JDK 25，Rust edition 2024

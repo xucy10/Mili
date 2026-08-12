@@ -1,5 +1,4 @@
 Special thanks (Logo authors):
-- Helvetica Volubi <suisuroru@blue-millennium.fun>
-- bdlvl <bdlvl@blendreams.cn>
+- xucy10 Volubi <xucy0609@gmail.com>
 
 If you'd like to be credited differently, please open an issue or PR.
