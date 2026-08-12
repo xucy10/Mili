@@ -4,27 +4,6 @@ Date: Tue, 11 Aug 2026 22:04:18 +0800
 Subject: [PATCH] redstone refactoring
 
 
-diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java.rej b/io/papermc/paper/threadedregions/RegionizedServer.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/commands/arguments/blocks/BlockInput.java.rej b/net/minecraft/commands/arguments/blocks/BlockInput.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/core/Direction.java.rej b/net/minecraft/core/Direction.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/network/chat/SignedMessageValidator.java.rej b/net/minecraft/network/chat/SignedMessageValidator.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/server/commands/TickCommand.java.rej b/net/minecraft/server/commands/TickCommand.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/server/dedicated/DedicatedPlayerList.java.rej b/net/minecraft/server/dedicated/DedicatedPlayerList.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/server/level/ServerPlayer.java.rej b/net/minecraft/server/level/ServerPlayer.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 index c794b993e0ebd5b98b90f5727e387d6353c02703..ad2d550a68aa1462233eabb122741739ff68f92d 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
@@ -55,69 +34,6 @@ index c794b993e0ebd5b98b90f5727e387d6353c02703..ad2d550a68aa1462233eabb122741739
      }
  
      public void internalTeleport(Location dest) {
-diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java.rej b/net/minecraft/server/network/ServerGamePacketListenerImpl.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/entity/Entity.java.rej b/net/minecraft/world/entity/Entity.java.rej
-deleted file mode 100644
-index 5994a5d9cdab01ff744075e25036a9290af2604f..0000000000000000000000000000000000000000
---- a/net/minecraft/world/entity/Entity.java.rej
-+++ /dev/null
-@@ -1,15 +0,0 @@
--diff a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java	(rejected hunks)
--@@ -4467,11 +4467,13 @@ public abstract class Entity
--     }
-- 
--     protected Entity transformForAsyncTeleport(ServerLevel destination, Vec3 pos, Float yaw, Float pitch, Vec3 velocity) {
--+        final boolean toSameWorld = this.level != destination; // Luminol - region threading for sleeping block entity
--         this.removeAfterChangingDimensions(); // remove before so that any CBEntity#getHandle call affects this entity before copying
-- 
--         Entity copy = this.getType().create(destination, EntitySpawnReason.DIMENSION_TRAVEL);
--         copy.restoreFrom(this);
--         copy.transform(pos, yaw, pitch, velocity);
--+        if (toSameWorld) copy.notifyLithiumTrackerIfNeeded();// Luminol - region threading for sleeping block entity
--         if (copy instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) dragon.syncDragonPartsAfterTeleportTransform(); // Luminol - Sync dragon part when teleportation or firstly created
--         // vanilla code used to call remove _after_ copying, and some stuff is required to be after copy - so add hook here
--         // for example, clearing of inventory after switching dimensions
-diff --git a/net/minecraft/world/entity/ExperienceOrb.java.rej b/net/minecraft/world/entity/ExperienceOrb.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/entity/item/PrimedTnt.java.rej b/net/minecraft/world/entity/item/PrimedTnt.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/entity/monster/EnderMan.java.rej b/net/minecraft/world/entity/monster/EnderMan.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/entity/player/Player.java.rej b/net/minecraft/world/entity/player/Player.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/item/BlockItem.java.rej b/net/minecraft/world/item/BlockItem.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/item/ServerItemCooldowns.java.rej b/net/minecraft/world/item/ServerItemCooldowns.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/item/crafting/RecipeManager.java.rej b/net/minecraft/world/item/crafting/RecipeManager.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/Level.java.rej b/net/minecraft/world/level/Level.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/NaturalSpawner.java.rej b/net/minecraft/world/level/NaturalSpawner.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java.rej b/net/minecraft/world/level/block/CarvedPumpkinBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/ChestBlock.java.rej b/net/minecraft/world/level/block/ChestBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/EnderChestBlock.java.rej b/net/minecraft/world/level/block/EnderChestBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/ObserverBlock.java.rej b/net/minecraft/world/level/block/ObserverBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
 index df9649ddb161f4c6553040bace8eddfe40212d30..6257554992c46a10b5ac9a7d45883e600231c99d 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
@@ -205,30 +121,6 @@ index df9649ddb161f4c6553040bace8eddfe40212d30..6257554992c46a10b5ac9a7d45883e60
                  level.getWireHandler().onWireUpdated(pos, state, orientation);
              } else
                  // Paper end - optimize redstone (Alternate Current)
-diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java.rej b/net/minecraft/world/level/block/RedStoneWireBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/ShulkerBoxBlock.java.rej b/net/minecraft/world/level/block/ShulkerBoxBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/TntBlock.java.rej b/net/minecraft/world/level/block/TntBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java.rej b/net/minecraft/world/level/block/entity/HopperBlockEntity.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/piston/PistonBaseBlock.java.rej b/net/minecraft/world/level/block/piston/PistonBaseBlock.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/block/state/BlockBehaviour.java.rej b/net/minecraft/world/level/block/state/BlockBehaviour.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/chunk/LevelChunk.java.rej b/net/minecraft/world/level/chunk/LevelChunk.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
-diff --git a/net/minecraft/world/level/levelgen/feature/SpikeFeature.java.rej b/net/minecraft/world/level/levelgen/feature/SpikeFeature.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000
 diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
 index 65299640a027ebfcae593338ee6f44c0014e61a5..76f9aa3f3ea95f557c1536ddb9407b4727f81cb0 100644
 --- a/net/minecraft/world/level/redstone/NeighborUpdater.java
@@ -270,6 +162,3 @@ index 65299640a027ebfcae593338ee6f44c0014e61a5..76f9aa3f3ea95f557c1536ddb9407b47
              return;
          }
          try {
-diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java.rej b/net/minecraft/world/level/redstone/NeighborUpdater.java.rej
-deleted file mode 100644
-index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..0000000000000000000000000000000000000000

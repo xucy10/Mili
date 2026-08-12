@@ -292,27 +292,6 @@ index c89780288312a502c06c627071064ceab245fa38..cffd09a1adacc0cfa6db52ca1be58e1d
      public void checkDespawn() {
      }
  
-diff --git a/net/minecraft/world/entity/Entity.java.rej b/net/minecraft/world/entity/Entity.java.rej
-new file mode 100644
-index 0000000000000000000000000000000000000000..5994a5d9cdab01ff744075e25036a9290af2604f
---- /dev/null
-+++ b/net/minecraft/world/entity/Entity.java.rej
-@@ -0,0 +1,15 @@
-+diff a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java	(rejected hunks)
-+@@ -4467,11 +4467,13 @@ public abstract class Entity
-+     }
-+ 
-+     protected Entity transformForAsyncTeleport(ServerLevel destination, Vec3 pos, Float yaw, Float pitch, Vec3 velocity) {
-++        final boolean toSameWorld = this.level != destination; // Luminol - region threading for sleeping block entity
-+         this.removeAfterChangingDimensions(); // remove before so that any CBEntity#getHandle call affects this entity before copying
-+ 
-+         Entity copy = this.getType().create(destination, EntitySpawnReason.DIMENSION_TRAVEL);
-+         copy.restoreFrom(this);
-+         copy.transform(pos, yaw, pitch, velocity);
-++        if (toSameWorld) copy.notifyLithiumTrackerIfNeeded();// Luminol - region threading for sleeping block entity
-+         if (copy instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) dragon.syncDragonPartsAfterTeleportTransform(); // Luminol - Sync dragon part when teleportation or firstly created
-+         // vanilla code used to call remove _after_ copying, and some stuff is required to be after copy - so add hook here
-+         // for example, clearing of inventory after switching dimensions
 diff --git a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java
 index 303b9befb30d7156a9a71900ac1a6ea8f7e8d876..6f5d3ebb7adc567e5106a3c76fccdbee93f51c27 100644
 --- a/net/minecraft/world/entity/item/ItemEntity.java

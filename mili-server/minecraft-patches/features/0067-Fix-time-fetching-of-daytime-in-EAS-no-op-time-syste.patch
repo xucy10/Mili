@@ -1,6 +1,0 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: mrhua269 <mrhua269@gmail.com>
-Date: Tue, 11 Aug 2026 20:09:47 +0800
-Subject: [PATCH] Fix time fetching of daytime in EAS (no-op: time system
- rewritten in 26.2 via ClockManager)
-
