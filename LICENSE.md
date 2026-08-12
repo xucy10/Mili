@@ -26,5 +26,5 @@ should submit a pull request to this project to add their name.
 任何希望使用 [MIT 许可证](licenses/MIT.md) 发布的作者都应该向此项目提交一个拉取请求以在下方添加他们的名字。
 
 ```text
-xucy10 Volubi <xucy0609@gmail.com>
+xucy10 <xucy0609@gmail.com>
 ```
