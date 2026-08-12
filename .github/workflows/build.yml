@@ -181,7 +181,7 @@ jobs:
           fi
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
@@ -263,7 +263,7 @@ jobs:
           fi
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.project_id_b || 'Mili' }} CI Artifacts
           path: mili-server/build/libs/*-paperclip-*.jar
