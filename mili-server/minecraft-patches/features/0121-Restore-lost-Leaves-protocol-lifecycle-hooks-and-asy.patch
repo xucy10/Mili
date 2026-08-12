@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy <xucy0609@gmail.com>
+Date: Wed, 12 Aug 2026 16:35:16 +0800
+Subject: [PATCH] Restore lost Leaves protocol lifecycle hooks and async
+ keepalive branch
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 8214d0684d1eca4f94db4cbc87b9662a2eacbd80..a795a899592b55d8f3095ad3469bb799e6f1dd8b 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -2058,6 +2058,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             tickable.run();
+         }
+ 
++        org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handleTick(); // Leaves - protocol
++
+         profiler.popPush("send chunks");
+ 
+         // Folia start - region threading - implement flush consolidation
+diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+index a1fe6b35fe28384834620addb29919a76a6805a9..7f1331e390ad80f06f9169586679b9f3c71a488c 100644
+--- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
+@@ -261,6 +261,13 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
+     protected void keepConnectionAlive() {
+         Profiler.get().push("keepAlive");
+         long now = Util.getMillis();
++        // Mili start - async keepalive
++        if (fun.bm.mili.config.modules.function.OldFeatureConfig.asyncKeepalive) {
++            this.checkIfClosed(now);
++            Profiler.get().pop();
++            return;
++        }
++        // Mili end - async keepalive
+         // Paper start - improve keepalives
+         if (this.checkIfClosed(now)) {
+             long currTime = System.nanoTime();
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 5eeb426aa0e9e67f328e4e65babe59243846b5e0..745ccc2d257e38aac5aa7c9785a44784b7d766c7 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -363,6 +363,13 @@ public abstract class PlayerList {
+         );
+         } // Luminol - Async protocol switch
+         playerConnection.suspendFlushing();
++
++        // Leaves start - Bytebuf API
++        if (!(player instanceof org.leavesmc.leaves.bot.ServerBot) && !(player instanceof org.leavesmc.leaves.replay.ServerPhotographer)) {
++            org.leavesmc.leaves.bytebuf.internal.InternalBytebufHandler.updatePlayer(player);
++        }
++        // Leaves end - Bytebuf API
++
+         GameRules gameRules = level.getGameRules();
+         boolean immediateRespawn = gameRules.get(GameRules.IMMEDIATE_RESPAWN);
+         boolean reducedDebugInfo = gameRules.get(GameRules.REDUCED_DEBUG_INFO);
+@@ -550,6 +557,7 @@ public abstract class PlayerList {
+             );
+         }
+         // Luminol end
++        org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerJoin(player); // Leaves - protocol // Mili - moved to end of placeNewPlayer
+     }
+ 
+     public void updateEntireScoreboard(final ServerScoreboard scoreboard, final ServerPlayer player) {
+@@ -691,6 +699,7 @@ public abstract class PlayerList {
+     }
+     public net.kyori.adventure.text.@Nullable Component remove(final ServerPlayer player, final net.kyori.adventure.text.Component leaveMessage) {
+         // Paper end - Fix kick event leave message not being sent
++        org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerLeave(player); // Leaves - protocol
+         ServerLevel level = player.level();
+         player.awardStat(Stats.LEAVE_GAME);
+         // CraftBukkit start - Quitting must be before we do final save of data, in case plugins need to modify it
