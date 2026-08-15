@@ -81,5 +81,12 @@ public class ServerBotPacketListenerImpl extends ServerGamePacketListenerImpl {
         @Override
         public void send(@NotNull Packet<?> packet, @javax.annotation.Nullable ChannelFutureListener channelFutureListener, boolean flag) {
         }
+
+        @Override
+        public void flush() {
+            // Bot 连接没有真实的网络 channel（channel 为 null），所有 send 都被覆盖为空操作，
+            // 因此 flush 也无需做任何事。不加此覆盖的话，tick 期间 resumeFlushing ->
+            // flushChannel -> flushQueue -> flush 会调用 this.channel.eventLoop() 抛出 NPE。
+        }
     }
 }
