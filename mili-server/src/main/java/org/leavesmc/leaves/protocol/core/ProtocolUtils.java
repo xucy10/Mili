@@ -61,7 +61,7 @@ public class ProtocolUtils {
     }
 
     public static void sendPayloadPacket(ServerPlayer player, CustomPacketPayload payload) {
-        player.connection.send(new ClientboundCustomPayloadPacket(payload));
+        player.connection.send(new ClientboundCustomPayloadPacket(toDiscardedPayload(payload)));
     }
 
     public static void sendEmptyPacket(Context context, Identifier id) {
@@ -75,7 +75,14 @@ public class ProtocolUtils {
     }
 
     public static void sendPayloadPacket(Context context, CustomPacketPayload payload) {
-        context.connection().send(new ClientboundCustomPayloadPacket(payload));
+        context.connection().send(new ClientboundCustomPayloadPacket(toDiscardedPayload(payload)));
+    }
+
+    private static CustomPacketPayload toDiscardedPayload(CustomPacketPayload payload) {
+        if (payload instanceof LeavesCustomPayload leavesCustomPayload) {
+            return LeavesProtocolManager.toDiscardedPayload(leavesCustomPayload);
+        }
+        return payload;
     }
 
     public static RegistryFriendlyByteBuf decorate(ByteBuf buf) {

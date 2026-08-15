@@ -20,9 +20,12 @@ package org.leavesmc.leaves.protocol.core;
 
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.DiscardedPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import org.leavesmc.leaves.protocol.core.invoker.*;
@@ -233,6 +236,24 @@ public class LeavesProtocolManager {
         } catch (Exception e) {
             LOGGER.error("Failed to encode payload {}", location, e);
             throw e;
+        }
+    }
+
+    public static DiscardedPayload toDiscardedPayload(LeavesCustomPayload payload) {
+        Identifier id = IDS.get(payload.getClass());
+        StreamCodec<? super RegistryFriendlyByteBuf, LeavesCustomPayload> codec = CODECS.get(payload.getClass());
+        if (id == null || codec == null) {
+            throw new IllegalArgumentException("Payload " + payload.getClass() + " is not configured correctly");
+        }
+        RegistryFriendlyByteBuf buf = ProtocolUtils.decorate(Unpooled.buffer());
+        try {
+            codec.encode(buf, payload);
+            return new DiscardedPayload(id, ByteBufUtil.getBytes(buf));
+        } catch (Exception e) {
+            LOGGER.error("Failed to encode payload {}", id, e);
+            throw e;
+        } finally {
+            buf.release();
         }
     }
 
