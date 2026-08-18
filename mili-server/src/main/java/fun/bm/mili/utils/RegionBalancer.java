@@ -125,7 +125,7 @@ public final class RegionBalancer {
 
     // Mili start - fix: periodic cleanup of completed task records to prevent OOM
     private static final long TASK_RECORD_TTL_NS = 60_000_000_000L; // 60 seconds
-    private static volatile long lastRecordCleanupNanos = 0;
+    private static final AtomicLong lastRecordCleanupNanos = new AtomicLong(0);
     private static final long RECORD_CLEANUP_INTERVAL_NS = 30_000_000_000L; // 30 seconds
     // Mili end
 
@@ -467,9 +467,9 @@ public final class RegionBalancer {
     // Mili start - fix: periodic cleanup of stale task records to prevent OOM
     private static void maybeCleanupStaleTaskRecords() {
         long now = System.nanoTime();
-        long last = lastRecordCleanupNanos;
+        long last = lastRecordCleanupNanos.get();
         if (now - last < RECORD_CLEANUP_INTERVAL_NS) return;
-        lastRecordCleanupNanos = now;
+        if (!lastRecordCleanupNanos.compareAndSet(last, now)) return;
 
         taskRecords.entrySet().removeIf(entry -> {
             TaskRecord rec = entry.getValue();

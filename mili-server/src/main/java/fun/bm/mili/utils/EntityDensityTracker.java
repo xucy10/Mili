@@ -1,5 +1,6 @@
 package fun.bm.mili.utils;
 
+import fun.bm.mili.rust.RustAnalyticsHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -21,9 +22,17 @@ public class EntityDensityTracker {
     public static void update() {
         if (!enabled) return;
 
+        int cellSize = fun.bm.mili.config.modules.optimizations.EntityDensityHeatmapConfig.cellSize;
+        int threshold = fun.bm.mili.config.modules.optimizations.EntityDensityHeatmapConfig.maxDensityThreshold;
+
         for (World world : Bukkit.getWorlds()) {
             WorldDensity density = worldDensities.computeIfAbsent(world.getName(), k -> new WorldDensity());
-            density.update(world);
+            RustAnalyticsHelper.DensityHeatmapSnapshot snapshot = RustAnalyticsHelper.analyzeEntityDensity(world, cellSize, threshold);
+            if (snapshot != null) {
+                density.applySnapshot(snapshot);
+            } else {
+                density.updateInJava(world, cellSize, threshold);
+            }
         }
         totalUpdates.incrementAndGet();
     }
@@ -63,15 +72,21 @@ public class EntityDensityTracker {
         final AtomicInteger maxDensity = new AtomicInteger();
         final AtomicInteger hotCells = new AtomicInteger();
 
-        void update(World world) {
+        void applySnapshot(RustAnalyticsHelper.DensityHeatmapSnapshot snapshot) {
+            cells.clear();
+            cells.putAll(snapshot.cells());
+            totalEntities.set(snapshot.totalEntities());
+            livingEntities.set(snapshot.livingEntities());
+            maxDensity.set(snapshot.maxDensity());
+            hotCells.set(snapshot.hotCells());
+        }
+
+        void updateInJava(World world, int cellSize, int threshold) {
             cells.clear();
             totalEntities.set(0);
             livingEntities.set(0);
             maxDensity.set(0);
             hotCells.set(0);
-
-            int cellSize = fun.bm.mili.config.modules.optimizations.EntityDensityHeatmapConfig.cellSize;
-            int threshold = fun.bm.mili.config.modules.optimizations.EntityDensityHeatmapConfig.maxDensityThreshold;
 
             for (Entity entity : world.getEntities()) {
                 totalEntities.incrementAndGet();

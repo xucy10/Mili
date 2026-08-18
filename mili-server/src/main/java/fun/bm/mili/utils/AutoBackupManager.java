@@ -23,7 +23,8 @@ import java.util.zip.ZipOutputStream;
 
 public class AutoBackupManager {
     private static ScheduledExecutorService scheduler;
-    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS");
+    private static final Object BACKUP_LOCK = new Object();
     private static volatile boolean running = false;
     // Mili start - fix: lastBackupTime 和 lastBackupResult 非 volatile，多线程可见性问题
     private static volatile long lastBackupTime = 0;
@@ -78,7 +79,7 @@ public class AutoBackupManager {
     public static CompletableFuture<Boolean> backupNow(String worldName) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                doBackup(worldName);
+                runBackupCycle(worldName);
                 return true;
             // Mili start - fix: catch Throwable instead of Exception to handle Errors
             } catch (Throwable e) {
@@ -91,8 +92,7 @@ public class AutoBackupManager {
 
     private static void performBackup() {
         try {
-            doBackup(null);
-            cleanupOldBackups();
+            runBackupCycle(null);
         // Mili start - fix: catch Throwable instead of Exception to handle Errors in scheduled backup
         } catch (Throwable e) {
             lastBackupResult = "Error: " + e.getMessage();
@@ -100,6 +100,15 @@ public class AutoBackupManager {
         }
         // Mili end
     }
+
+    // Mili start - fix: serialize auto/manual backups and always apply retention cleanup
+    private static void runBackupCycle(@Nullable String specificWorld) throws IOException {
+        synchronized (BACKUP_LOCK) {
+            doBackup(specificWorld);
+            cleanupOldBackups();
+        }
+    }
+    // Mili end
 
     private static void doBackup(@Nullable String specificWorld) throws IOException {
         // Mili start - fix: doBackup 从异步线程调用 Bukkit.broadcast() 等非线程安全 Bukkit API

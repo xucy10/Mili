@@ -1,8 +1,10 @@
 package fun.bm.mili.villager;
 
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
+import fun.bm.mili.rust.RustAnalyticsHelper;
 import fun.bm.mili.utils.TPSTracker;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerOptimizer implements Listener {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final PlainTextComponentSerializer PLAIN_TEXT = PlainTextComponentSerializer.plainText();
     // Mili start - fix: instance 字段不是 volatile，可能导致多线程可见性问题
     private static volatile VillagerOptimizer instance;
     // Mili end
@@ -57,6 +60,13 @@ public final class VillagerOptimizer implements Listener {
     private final Map<Chunk, Long> changedChunks = new ConcurrentHashMap<>();
     private final VillagerActivityPolicy activityPolicy;
     private final BlockClassifier blockClassifier;
+    private final boolean lobotomizePassengers;
+    private final boolean onlyProfessions;
+    private final boolean onlyWithExperience;
+    private final boolean checkRoof;
+    private final boolean ignoreStuckInDoors;
+    private final boolean ignoreNonSolidBlocks;
+    private final Set<String> exemptNames;
 
     private volatile boolean shuttingDown = false;
     private long lastProcessTime = 0;
@@ -70,20 +80,27 @@ public final class VillagerOptimizer implements Listener {
         this.lastRestockCheckDayTimeKey = new NamespacedKey(activePlugin, "mili_last_restock");
         this.restocksTodayKey = new NamespacedKey(activePlugin, "mili_restocks_today");
         this.blockClassifier = BlockClassifier.fromServerRegistry();
+        this.lobotomizePassengers = VillagerOptimizerConfig.lobotomizePassengers;
+        this.onlyProfessions = VillagerOptimizerConfig.onlyProfessions;
+        this.onlyWithExperience = VillagerOptimizerConfig.onlyWithExperience;
+        this.checkRoof = VillagerOptimizerConfig.checkRoof;
+        this.ignoreStuckInDoors = VillagerOptimizerConfig.ignoreStuckInDoors;
+        this.ignoreNonSolidBlocks = VillagerOptimizerConfig.ignoreNonSolidBlocks;
 
         Set<String> exemptNames = new HashSet<>();
         for (String name : VillagerOptimizerConfig.alwaysActiveNames) {
-            exemptNames.add(name.toLowerCase());
+            exemptNames.add(name.toLowerCase(Locale.ROOT));
         }
+        this.exemptNames = Set.copyOf(exemptNames);
 
         this.activityPolicy = new VillagerActivityPolicy(
-                VillagerOptimizerConfig.lobotomizePassengers,
-                VillagerOptimizerConfig.onlyProfessions,
-                VillagerOptimizerConfig.onlyWithExperience,
-                VillagerOptimizerConfig.checkRoof,
-                VillagerOptimizerConfig.ignoreStuckInDoors,
-                VillagerOptimizerConfig.ignoreNonSolidBlocks,
-                exemptNames,
+                this.lobotomizePassengers,
+                this.onlyProfessions,
+                this.onlyWithExperience,
+                this.checkRoof,
+                this.ignoreStuckInDoors,
+                this.ignoreNonSolidBlocks,
+                this.exemptNames,
                 blockClassifier
         );
     }
@@ -304,6 +321,7 @@ public final class VillagerOptimizer implements Listener {
         lastProcessTime = now;
 
         // Process changed chunks
+        List<Villager> changedInactiveVillagers = new ArrayList<>();
         Iterator<Map.Entry<Chunk, Long>> it = changedChunks.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Chunk, Long> entry = it.next();
@@ -314,28 +332,25 @@ public final class VillagerOptimizer implements Listener {
             }
 
             for (Entity entity : chunk.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    if (inactiveVillagers.contains(villager)) {
-                        // Re-check if villager should be active
-                        if (shouldBeActive(villager)) {
-                            activate(villager);
-                        }
-                    }
+                if (entity instanceof Villager villager && inactiveVillagers.contains(villager)
+                        && villager.isValid() && !villager.isDead()) {
+                    changedInactiveVillagers.add(villager);
                 }
             }
             it.remove();
         }
+        activateVillagersIfNeeded(changedInactiveVillagers);
 
         // Process active villagers
+        List<Villager> activeSnapshot = new ArrayList<>(activeVillagers.size());
         for (Villager villager : activeVillagers) {
             if (!villager.isValid() || villager.isDead()) {
                 removeVillager(villager);
                 continue;
             }
-            if (!shouldBeActive(villager)) {
-                lobotomize(villager);
-            }
+            activeSnapshot.add(villager);
         }
+        lobotomizeVillagersIfNeeded(activeSnapshot);
 
         // Process inactive villagers (restocking)
         for (Villager villager : inactiveVillagers) {
@@ -350,7 +365,7 @@ public final class VillagerOptimizer implements Listener {
     private boolean shouldBeActive(Villager villager) {
         String name = "";
         if (villager.customName() != null) {
-            name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(villager.customName()).toLowerCase();
+            name = PLAIN_TEXT.serialize(villager.customName()).toLowerCase(Locale.ROOT);
         }
 
         // Mili start - fix: call getLocation() once to prevent race condition between multiple calls
@@ -370,6 +385,70 @@ public final class VillagerOptimizer implements Listener {
 
         BlockGrid grid = new BlockGrid(villager.getWorld(), state.blockX(), state.blockY(), state.blockZ(), 1);
         return activityPolicy.shouldBeActive(state, grid);
+    }
+
+    private void activateVillagersIfNeeded(List<Villager> villagers) {
+        if (villagers.isEmpty()) {
+            return;
+        }
+
+        byte[] nativeResults = evaluateVillagerActivityWithRust(villagers);
+        if (nativeResults != null && nativeResults.length >= villagers.size()) {
+            for (int i = 0; i < villagers.size(); i++) {
+                if (nativeResults[i] != 0) {
+                    Villager villager = villagers.get(i);
+                    if (inactiveVillagers.contains(villager)) {
+                        activate(villager);
+                    }
+                }
+            }
+            return;
+        }
+
+        for (Villager villager : villagers) {
+            if (shouldBeActive(villager) && inactiveVillagers.contains(villager)) {
+                activate(villager);
+            }
+        }
+    }
+
+    private void lobotomizeVillagersIfNeeded(List<Villager> villagers) {
+        if (villagers.isEmpty()) {
+            return;
+        }
+
+        byte[] nativeResults = evaluateVillagerActivityWithRust(villagers);
+        if (nativeResults != null && nativeResults.length >= villagers.size()) {
+            for (int i = 0; i < villagers.size(); i++) {
+                if (nativeResults[i] == 0) {
+                    Villager villager = villagers.get(i);
+                    if (activeVillagers.contains(villager)) {
+                        lobotomize(villager);
+                    }
+                }
+            }
+            return;
+        }
+
+        for (Villager villager : villagers) {
+            if (!shouldBeActive(villager) && activeVillagers.contains(villager)) {
+                lobotomize(villager);
+            }
+        }
+    }
+
+    private byte[] evaluateVillagerActivityWithRust(List<Villager> villagers) {
+        return RustAnalyticsHelper.evaluateVillagerActivity(
+                villagers,
+                lobotomizePassengers,
+                onlyProfessions,
+                onlyWithExperience,
+                checkRoof,
+                ignoreStuckInDoors,
+                ignoreNonSolidBlocks,
+                exemptNames,
+                blockClassifier
+        );
     }
 
     private void tryRestock(Villager villager) {

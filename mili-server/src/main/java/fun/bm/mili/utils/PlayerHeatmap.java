@@ -1,6 +1,7 @@
 package fun.bm.mili.utils;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -10,7 +11,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PlayerHeatmap {
@@ -93,10 +94,8 @@ public class PlayerHeatmap {
     }
 
     private static class WorldHeatmapData {
-        private final ConcurrentHashMap<Long, Integer> heatMap = new ConcurrentHashMap<>();
-        private final CopyOnWriteArrayList<String> trackedPlayers = new CopyOnWriteArrayList<>();
-        private final ConcurrentHashMap<String, Long> lastSeenPositions = new ConcurrentHashMap<>();
-        // Mili start - fix: track last seen timestamps for proper cleanup
+        // Mili start - fix: preserve a real sliding time window instead of clearing the whole heat map on cleanup
+        private final ConcurrentHashMap<Long, ConcurrentLinkedQueue<Long>> heatMap = new ConcurrentHashMap<>();
         private final ConcurrentHashMap<String, Long> lastSeenTime = new ConcurrentHashMap<>();
         // Mili end
         private final AtomicLong totalRecords = new AtomicLong();
@@ -104,50 +103,75 @@ public class PlayerHeatmap {
         void recordPlayers(World world) {
             int cellSize = fun.bm.mili.config.modules.function.PlayerHeatmapConfig.cellSizeBlocks >> 4;
             if (cellSize < 1) cellSize = 1;
+            long now = System.currentTimeMillis();
 
             for (Player player : world.getPlayers()) {
                 String uuid = player.getUniqueId().toString();
-                int chunkX = player.getLocation().getBlockX() >> 4;
-                int chunkZ = player.getLocation().getBlockZ() >> 4;
+                // Mili start - fix: call getLocation() once to avoid mixed X/Z snapshots under movement
+                Location loc = player.getLocation();
+                int chunkX = loc.getBlockX() >> 4;
+                int chunkZ = loc.getBlockZ() >> 4;
+                // Mili end
                 int cellX = chunkX / cellSize;
                 int cellZ = chunkZ / cellSize;
                 long key = pack(cellX, cellZ);
 
-                heatMap.merge(key, 1, Integer::sum);
+                heatMap.computeIfAbsent(key, unused -> new ConcurrentLinkedQueue<>()).add(now);
                 totalRecords.incrementAndGet();
-
-                if (!trackedPlayers.contains(uuid)) {
-                    trackedPlayers.add(uuid);
-                }
-
-                long newKey = pack(chunkX, chunkZ);
-                lastSeenPositions.put(uuid, newKey);
-                // Mili start - fix: store timestamp for proper cleanup
-                lastSeenTime.put(uuid, System.currentTimeMillis());
-                // Mili end
+                lastSeenTime.put(uuid, now);
             }
         }
 
-        int getUniquePlayerCount() { return trackedPlayers.size(); }
+        int getUniquePlayerCount() { return lastSeenTime.size(); }
 
         int getHotCellCount() {
-            return (int) heatMap.values().stream().filter(v -> v > 10).count();
+            int hotCells = 0;
+            for (ConcurrentLinkedQueue<Long> visits : heatMap.values()) {
+                if (visits.size() > 10) {
+                    hotCells++;
+                }
+            }
+            return hotCells;
         }
 
         long getTotalRecords() { return totalRecords.get(); }
 
         Map<Long, Integer> getHeatMap() {
-            return Collections.unmodifiableMap(heatMap);
+            Map<Long, Integer> snapshot = new LinkedHashMap<>();
+            for (Map.Entry<Long, ConcurrentLinkedQueue<Long>> entry : heatMap.entrySet()) {
+                int visits = entry.getValue().size();
+                if (visits > 0) {
+                    snapshot.put(entry.getKey(), visits);
+                }
+            }
+            return Collections.unmodifiableMap(snapshot);
         }
 
-        // Mili start - fix: cleanup based on timestamps instead of packed coordinates
         void cleanup(long cutoffMs) {
             lastSeenTime.entrySet().removeIf(e -> e.getValue() < cutoffMs);
-            lastSeenPositions.keySet().retainAll(lastSeenTime.keySet());
-            heatMap.clear();
-            totalRecords.set(0);
+
+            for (Map.Entry<Long, ConcurrentLinkedQueue<Long>> entry : heatMap.entrySet()) {
+                ConcurrentLinkedQueue<Long> visits = entry.getValue();
+                long removed = 0;
+
+                while (true) {
+                    Long ts = visits.peek();
+                    if (ts == null || ts >= cutoffMs) {
+                        break;
+                    }
+                    if (visits.poll() != null) {
+                        removed++;
+                    }
+                }
+
+                if (removed != 0) {
+                    totalRecords.addAndGet(-removed);
+                }
+                if (visits.isEmpty()) {
+                    heatMap.remove(entry.getKey(), visits);
+                }
+            }
         }
-        // Mili end
 
         private static long pack(int x, int z) {
             return ((long) x << 32) | (z & 0xFFFFFFFFL);

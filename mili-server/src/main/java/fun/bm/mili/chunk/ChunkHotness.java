@@ -108,6 +108,10 @@ public final class ChunkHotness {
         return Math.sqrt(Math.max(0, nearestPlayerDistanceSq));
     }
 
+    double getNearestPlayerDistanceSq() {
+        return nearestPlayerDistanceSq;
+    }
+
     public long getLastAccessTime() {
         return lastAccessTime.get();
     }

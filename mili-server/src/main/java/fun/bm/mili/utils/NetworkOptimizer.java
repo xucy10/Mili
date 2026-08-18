@@ -5,6 +5,8 @@ import org.bukkit.Bukkit;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -25,7 +27,7 @@ public class NetworkOptimizer {
     private static final ConcurrentHashMap<java.util.UUID, Long> lastEntityTrackSend = new ConcurrentHashMap<>();
 
     // Periodic cleanup state
-    private static volatile long lastCleanupTime = 0;
+    private static final AtomicLong lastCleanupTime = new AtomicLong(0);
     private static final long CLEANUP_INTERVAL_MS = 60_000; // 60 seconds
 
     public static void init() {
@@ -44,13 +46,21 @@ public class NetworkOptimizer {
         maybeCleanupStaleEntries();
 
         long now = System.currentTimeMillis();
-        Long last = lastEntityTrackSend.get(entityId);
-        if (last != null && (now - last) < NetworkOptimizerConfig.entityTrackSendRateLimitMs) {
+        long limitMs = NetworkOptimizerConfig.entityTrackSendRateLimitMs;
+        AtomicBoolean throttled = new AtomicBoolean(false);
+
+        lastEntityTrackSend.compute(entityId, (unused, last) -> {
+            if (last != null && (now - last) < limitMs) {
+                throttled.set(true);
+                return last;
+            }
+            return now;
+        });
+
+        if (throttled.get()) {
             packetsThrottled.increment();
-            return true;
         }
-        lastEntityTrackSend.put(entityId, now);
-        return false;
+        return throttled.get();
     }
 
     /**
@@ -67,10 +77,13 @@ public class NetworkOptimizer {
      */
     private static void maybeCleanupStaleEntries() {
         long now = System.currentTimeMillis();
-        if ((now - lastCleanupTime) < CLEANUP_INTERVAL_MS) {
+        long last = lastCleanupTime.get();
+        if ((now - last) < CLEANUP_INTERVAL_MS) {
             return;
         }
-        lastCleanupTime = now;
+        if (!lastCleanupTime.compareAndSet(last, now)) {
+            return;
+        }
 
         // Remove entries older than 60 seconds
         long cutoff = now - 60_000;

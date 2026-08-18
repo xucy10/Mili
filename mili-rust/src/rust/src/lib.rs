@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod config;
 pub mod entity_cull;
 pub mod frustum;

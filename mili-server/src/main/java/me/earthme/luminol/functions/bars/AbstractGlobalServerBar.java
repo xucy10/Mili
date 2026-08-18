@@ -3,7 +3,6 @@ package me.earthme.luminol.functions.bars;
 import com.google.common.collect.Maps;
 import com.mojang.logging.LogUtils;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import me.earthme.luminol.utils.NullPlugin;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
@@ -21,7 +20,7 @@ public abstract class AbstractGlobalServerBar {
     protected static final NullPlugin NULL_PLUGIN = new NullPlugin();
 
     protected final Map<UUID, BossBar> uuid2Bossbars = Maps.newConcurrentMap();
-    protected final Map<UUID, ScheduledTask> scheduledTasks = new Object2ObjectLinkedOpenHashMap<>();
+    protected final Map<UUID, ScheduledTask> scheduledTasks = Maps.newConcurrentMap();
 
     protected ScheduledTask scannerTask = null;
     protected boolean disabled = true;
@@ -37,8 +36,8 @@ public abstract class AbstractGlobalServerBar {
                 try {
                     update();
                     cleanUp();
-                } catch (Exception e) {
-                    logger.error(e.getLocalizedMessage());
+                } catch (Throwable t) {
+                    logger.error("Failed to update global server bar {}", this.getClass().getSimpleName(), t);
                 }
             }, 1, updateInterval);
         }

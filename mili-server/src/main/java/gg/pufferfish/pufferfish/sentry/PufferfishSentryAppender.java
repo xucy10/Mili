@@ -27,7 +27,6 @@ import io.sentry.protocol.Message;
 import io.sentry.protocol.User;
 import me.earthme.luminol.config.modules.misc.SentryConfig;
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
@@ -38,7 +37,10 @@ import java.util.Map;
 
 public class PufferfishSentryAppender extends AbstractAppender {
 
-    private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(PufferfishSentryAppender.class.getSimpleName());
+    private static final org.apache.logging.log4j.Logger logger = org.apache.logging.log4j.status.StatusLogger.getLogger();
+    private static final String SENTRY_PACKAGE_PREFIX = PufferfishSentryAppender.class.getPackageName();
+    private static final String LEGACY_SENTRY_PACKAGE_PREFIX = "gg.castaway.pufferfish.sentry";
+    private static final String APPENDER_LOGGER_NAME = PufferfishSentryAppender.class.getSimpleName();
     private static final Gson GSON = new Gson();
     private final Level logLevel;
 
@@ -52,14 +54,14 @@ public class PufferfishSentryAppender extends AbstractAppender {
         if (logEvent.getLevel().isMoreSpecificThan(logLevel) && (logEvent.getThrown() != null || !SentryConfig.onlyLogThrown)) {
             try {
                 logException(logEvent);
-            } catch (Exception e) {
-                logger.warn("Failed to log event with sentry", e);
+            } catch (Throwable t) {
+                logger.warn("Failed to log event with sentry", t);
             }
         } else {
             try {
                 logBreadcrumb(logEvent);
-            } catch (Exception e) {
-                logger.warn("Failed to log event with sentry", e);
+            } catch (Throwable t) {
+                logger.warn("Failed to log event with sentry", t);
             }
         }
     }
@@ -67,8 +69,11 @@ public class PufferfishSentryAppender extends AbstractAppender {
     private void logException(LogEvent e) {
         SentryEvent event = new SentryEvent(e.getThrown());
 
-        Message sentryMessage = new Message();
-        sentryMessage.setMessage(e.getMessage().getFormattedMessage());
+        if (e.getMessage() != null) {
+            Message sentryMessage = new Message();
+            sentryMessage.setMessage(e.getMessage().getFormattedMessage());
+            event.setMessage(sentryMessage);
+        }
 
         event.setThrowable(e.getThrown());
         event.setLevel(getLevel(e.getLevel()));
@@ -108,7 +113,9 @@ public class PufferfishSentryAppender extends AbstractAppender {
         breadcrumb.setLevel(getLevel(e.getLevel()));
         breadcrumb.setCategory(e.getLoggerName());
         breadcrumb.setType(e.getLoggerName());
-        breadcrumb.setMessage(e.getMessage().getFormattedMessage());
+        if (e.getMessage() != null) {
+            breadcrumb.setMessage(e.getMessage().getFormattedMessage());
+        }
 
         Sentry.addBreadcrumb(breadcrumb);
     }
@@ -142,7 +149,13 @@ public class PufferfishSentryAppender extends AbstractAppender {
         }
 
         private Result filter(String loggerName) {
-            return loggerName != null && loggerName.startsWith("gg.castaway.pufferfish.sentry") ? Result.DENY
+            if (loggerName == null) {
+                return Result.NEUTRAL;
+            }
+            return loggerName.startsWith(SENTRY_PACKAGE_PREFIX)
+                    || loggerName.startsWith(LEGACY_SENTRY_PACKAGE_PREFIX)
+                    || loggerName.equals(APPENDER_LOGGER_NAME)
+                    ? Result.DENY
                     : Result.NEUTRAL;
         }
     }

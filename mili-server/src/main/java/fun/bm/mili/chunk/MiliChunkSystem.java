@@ -29,6 +29,7 @@ public final class MiliChunkSystem {
     private static final AtomicLong totalChunkUnloads = new AtomicLong(0);
     private static final AtomicLong cacheHits = new AtomicLong(0);
     private static final AtomicLong cacheMisses = new AtomicLong(0);
+    private static final AtomicLong tickCounter = new AtomicLong(0);
 
     public static void init(org.bukkit.plugin.Plugin plugin) {
         // Mili start - fix: CAS-based init to prevent double initialization race
@@ -100,12 +101,14 @@ public final class MiliChunkSystem {
 
         worldData.clear();
         asyncProcessor.clear();
+        tickCounter.set(0);
 
         LogUtils.getLogger().info("[Mili] MiliChunkSystem shutdown complete");
     }
 
     private static void tick() {
         long startNanos = System.nanoTime();
+        boolean cleanupCycle = tickCounter.incrementAndGet() % 600L == 0L;
 
         try {
             for (Map.Entry<World, WorldChunkData> entry : worldData.entrySet()) {
@@ -115,6 +118,9 @@ public final class MiliChunkSystem {
                 ChunkHotnessUpdater.update(world, data);
                 ChunkLifecycleManager.manage(world, data, totalChunkUnloads);
                 ChunkViewDistanceOptimizer.optimize(world, data);
+                if (cleanupCycle) {
+                    data.cleanupStaleEntries();
+                }
             }
         } catch (Throwable e) {
             // Mili start - fix: catch Throwable (not just Exception) to prevent main thread task cancellation on Error

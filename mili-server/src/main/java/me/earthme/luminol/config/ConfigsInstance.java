@@ -112,14 +112,15 @@ public class ConfigsInstance {
             for (Runnable r : pendingBeforeFinalLoad) {
                 try {
                     r.run();
-                } catch (Exception e) {
-                    logger.error("Failed to run beforeFinalLoad callback in {}", name, e);
+                } catch (Throwable t) {
+                    logger.error("Failed to run beforeFinalLoad callback in {}", name, t);
                 }
             }
             pendingBeforeFinalLoad.clear();
             finalizeLoadConfig();
-        } catch (Exception e) {
-            logger.error("Fail to load config file of {}.", name, e);
+        } catch (Throwable t) {
+            logger.error("Fail to load config file of {}.", name, t);
+            throw t instanceof RuntimeException runtimeException ? runtimeException : new RuntimeException(t);
         }
     }
 
@@ -138,14 +139,15 @@ public class ConfigsInstance {
                 for (Runnable r : pendingBeforeFinalLoad) {
                     try {
                         r.run();
-                    } catch (Exception e) {
-                        logger.error("Failed to run beforeFinalLoad callback in {}", name, e);
+                    } catch (Throwable t) {
+                        logger.error("Failed to run beforeFinalLoad callback in {}", name, t);
                     }
                 }
                 pendingBeforeFinalLoad.clear();
                 finalizeLoadConfig();
-            } catch (Exception e) {
-                logger.error("Fail to load config file of {}.", name, e);
+            } catch (Throwable t) {
+                logger.error("Fail to load config file of {}.", name, t);
+                throw t instanceof RuntimeException runtimeException ? runtimeException : new RuntimeException(t);
             }
         }, task -> RegionizedServer.getInstance().addTask(task));
     }
@@ -164,8 +166,8 @@ public class ConfigsInstance {
         for (IConfigModule module : allInstanced.keySet()) {
             try {
                 module.onUnloaded(configFileInstance);
-            } catch (Exception e) {
-                logger.error("Failed to call onUnloaded for module in {}", name, e);
+            } catch (Throwable t) {
+                logger.error("Failed to call onUnloaded for module in {}", name, t);
             }
         }
     }
@@ -177,8 +179,8 @@ public class ConfigsInstance {
         for (Map.Entry<IConfigModule, Set<Exception>> entry : allInstanced.entrySet()) {
             try {
                 entry.getKey().onLoaded(configFileInstance, entry.getValue());
-            } catch (Exception e) {
-                logger.error("Failed to call onLoaded for module in {}", name, e);
+            } catch (Throwable t) {
+                logger.error("Failed to call onLoaded for module in {}", name, t);
             }
         }
         setupLatch();
@@ -210,9 +212,9 @@ public class ConfigsInstance {
         try {
             instanceAllModule();
             loadAllModules(keepComments);
-        } catch (Exception e) {
-            logger.error("Failed to load config modules!", e);
-            throw new RuntimeException(e);
+        } catch (Throwable t) {
+            logger.error("Failed to load config modules!", t);
+            throw t instanceof RuntimeException runtimeException ? runtimeException : new RuntimeException(t);
         }
 
         saveConfigs();

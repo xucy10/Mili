@@ -52,8 +52,8 @@ public class SentryManager {
             appender.start();
             ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(appender);
             logger.info("Sentry logging started!");
-        } catch (Exception e) {
-            logger.warn("Failed to initialize sentry!", e);
+        } catch (Throwable t) {
+            logger.warn("Failed to initialize sentry!", t);
             initialized = false;
         }
     }

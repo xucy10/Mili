@@ -54,7 +54,9 @@ public final class RustBridge {
                     if (is == null) continue;
                     Path dst = tmp.resolve(lib);
                     Files.copy(is, dst, StandardCopyOption.REPLACE_EXISTING);
+                    dst.toFile().deleteOnExit();
                     System.load(dst.toAbsolutePath().toString());
+                    nativeInit();
                     loaded = true;
                     return;
                 } catch (UnsatisfiedLinkError e) {
@@ -137,6 +139,84 @@ public final class RustBridge {
             double reachSq,
             double hitboxLimit,
             float[] frustumPlanes
+    );
+
+    // ========================================================================
+    // Batch analytics — chunk hotness / dynamic view distance / entity density
+    // ========================================================================
+
+    /**
+     * Analyze chunk hotness in bulk.
+     *
+     * @param chunkCoordBuffer direct ByteBuffer with [chunkX, chunkZ] x N (i32)
+     * @param numChunks number of chunks packed into the buffer
+     * @param playerCoordBuffer direct ByteBuffer with [playerChunkX, playerChunkZ] x M (i32)
+     * @param numPlayers number of players packed into the buffer
+     * @param radiusSq squared hot-chunk radius threshold
+     * @return double array with [nearFlag(0/1), minDistSq] x N
+     */
+    public static native double[] analyzeChunkHotnessDirect(
+            ByteBuffer chunkCoordBuffer,
+            int numChunks,
+            ByteBuffer playerCoordBuffer,
+            int numPlayers,
+            double radiusSq
+    );
+
+    /**
+     * Compute per-player dynamic view distances in bulk.
+     *
+     * @param playerDataBuffer direct ByteBuffer with [blockX, blockZ, currentViewDistance] x N (i32)
+     * @param numPlayers number of players packed into the buffer
+     * @param currentTps current server TPS
+     * @param tpsHighThreshold high TPS threshold for increasing view distance
+     * @param tpsLowThreshold low TPS threshold for decreasing view distance
+     * @param minViewDistance minimum allowed view distance
+     * @param maxViewDistance maximum allowed view distance
+     * @param playerDensityWeight density penalty weight
+     * @return int array of target view distances, one per input player
+     */
+    public static native int[] computeDynamicViewDistancesDirect(
+            ByteBuffer playerDataBuffer,
+            int numPlayers,
+            double currentTps,
+            double tpsHighThreshold,
+            double tpsLowThreshold,
+            int minViewDistance,
+            int maxViewDistance,
+            double playerDensityWeight
+    );
+
+    /**
+     * Build an entity density heatmap in bulk.
+     *
+     * @param entityDataBuffer direct ByteBuffer with [blockX, blockZ, livingFlag] x N (i32)
+     * @param numEntities number of entities packed into the buffer
+     * @param cellSize grid cell size in blocks
+     * @param threshold high-density warning threshold
+     * @return long array encoded as [totalEntities, livingEntities, maxDensity, hotCells, cellCount, key1, count1, ...]
+     */
+    public static native long[] analyzeEntityDensityDirect(
+            ByteBuffer entityDataBuffer,
+            int numEntities,
+            int cellSize,
+            int threshold
+    );
+
+    /**
+     * Evaluate villager activity in bulk.
+     *
+     * @param villagerStateBuffer direct ByteBuffer with one i32 state bitmask per villager
+     * @param blockFlagBuffer direct ByteBuffer with 16 i32 block bitmasks per villager
+     * @param numVillagers number of villagers packed into the buffers
+     * @param configFlags global activity-policy config bitmask
+     * @return byte array where result[i] is 1 if the villager should remain active, otherwise 0
+     */
+    public static native byte[] evaluateVillagerActivityDirect(
+            ByteBuffer villagerStateBuffer,
+            ByteBuffer blockFlagBuffer,
+            int numVillagers,
+            int configFlags
     );
 
     /**

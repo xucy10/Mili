@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -57,6 +58,7 @@ public final class RegionTaskIdRegistry {
 
     private static ScheduledExecutorService cleanupScheduler;
 
+    private static final AtomicInteger ACTIVE_ENTRIES = new AtomicInteger(0);
     private static final AtomicLong totalAllocated = new AtomicLong(0);
     private static final AtomicLong totalRegistered = new AtomicLong(0);
     private static final AtomicLong totalUnregistered = new AtomicLong(0);
@@ -112,7 +114,7 @@ public final class RegionTaskIdRegistry {
             }
         }
 
-        int cleared = REGISTRY.size();
+        int cleared = ACTIVE_ENTRIES.getAndSet(0);
         REGISTRY.clear();
         CREATION_TIME.clear();
 
@@ -145,42 +147,55 @@ public final class RegionTaskIdRegistry {
             return uuid;
         }
 
-        // Bounded check: reject if too many active entries
-        if (REGISTRY.size() >= MAX_ACTIVE_ENTRIES) {
+        if (!tryReserveActiveSlot()) {
             totalRejectedFull.incrementAndGet();
             LogUtils.getLogger().warn("[Mili] RegionTaskIdRegistry full ({}), skipping registration for {}",
                     MAX_ACTIVE_ENTRIES, uuid);
             return uuid;
         }
-
-        TaskMeta meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
-        TaskMeta existing = REGISTRY.putIfAbsent(uuid, meta);
-        if (existing != null) {
-            // Collision — should be astronomically rare, but handle it
-            totalCollisions.incrementAndGet();
-            LogUtils.getLogger().warn("[Mili] UUID collision detected: {} (already registered as '{}')",
-                    uuid, existing.taskType);
-            // Regenerate and retry
-            for (int i = 0; i < MAX_REGEN_ATTEMPTS; i++) {
-                uuid = allocateUniqueUuid();
-                meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
-                if (REGISTRY.putIfAbsent(uuid, meta) == null) {
-                    break;
-                }
-                totalCollisions.incrementAndGet();
-            }
-            // If still colliding after retries, use the last UUID without registration
-            // (effectively untracked, but the task can still run)
-            if (REGISTRY.containsKey(uuid)) {
-                LogUtils.getLogger().error("[Mili] Failed to register UUID after {} attempts, task will run untracked", MAX_REGEN_ATTEMPTS);
-                return uuid;
-            }
+        if (SHUTDOWN.get()) {
+            releaseActiveSlot();
+            return uuid;
         }
 
-        CREATION_TIME.put(uuid, System.currentTimeMillis());
-        totalAllocated.incrementAndGet();
-        totalRegistered.incrementAndGet();
-        return uuid;
+        boolean registered = false;
+        try {
+            TaskMeta meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
+            TaskMeta existing = REGISTRY.putIfAbsent(uuid, meta);
+            if (existing != null) {
+                // Collision — should be astronomically rare, but handle it
+                totalCollisions.incrementAndGet();
+                LogUtils.getLogger().warn("[Mili] UUID collision detected: {} (already registered as '{}')",
+                        uuid, existing.taskType);
+                // Regenerate and retry
+                for (int i = 0; i < MAX_REGEN_ATTEMPTS; i++) {
+                    uuid = allocateUniqueUuid();
+                    meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
+                    if (REGISTRY.putIfAbsent(uuid, meta) == null) {
+                        registered = true;
+                        break;
+                    }
+                    totalCollisions.incrementAndGet();
+                }
+                // If still colliding after retries, use the last UUID without registration
+                // (effectively untracked, but the task can still run)
+                if (!registered) {
+                    LogUtils.getLogger().error("[Mili] Failed to register UUID after {} attempts, task will run untracked", MAX_REGEN_ATTEMPTS);
+                    return uuid;
+                }
+            } else {
+                registered = true;
+            }
+
+            CREATION_TIME.put(uuid, System.currentTimeMillis());
+            totalAllocated.incrementAndGet();
+            totalRegistered.incrementAndGet();
+            return uuid;
+        } finally {
+            if (!registered) {
+                releaseActiveSlot();
+            }
+        }
     }
 
     /**
@@ -195,14 +210,19 @@ public final class RegionTaskIdRegistry {
     public static boolean register(@NotNull UUID uuid, @NotNull String taskType, @Nullable Object scheduleRef) {
         if (SHUTDOWN.get()) return false;
 
-        if (REGISTRY.size() >= MAX_ACTIVE_ENTRIES) {
+        if (!tryReserveActiveSlot()) {
             totalRejectedFull.incrementAndGet();
+            return false;
+        }
+        if (SHUTDOWN.get()) {
+            releaseActiveSlot();
             return false;
         }
 
         TaskMeta meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
         if (REGISTRY.putIfAbsent(uuid, meta) != null) {
             totalRejectedDuplicate.incrementAndGet();
+            releaseActiveSlot();
             return false; // already registered — duplicate
         }
         CREATION_TIME.put(uuid, System.currentTimeMillis());
@@ -233,6 +253,7 @@ public final class RegionTaskIdRegistry {
         TaskMeta removed = REGISTRY.remove(uuid);
         CREATION_TIME.remove(uuid);
         if (removed != null) {
+            releaseActiveSlot();
             totalUnregistered.incrementAndGet();
             return true;
         }
@@ -296,6 +317,22 @@ public final class RegionTaskIdRegistry {
 
     // -------------------- Internal --------------------
 
+    private static boolean tryReserveActiveSlot() {
+        while (true) {
+            int current = ACTIVE_ENTRIES.get();
+            if (current >= MAX_ACTIVE_ENTRIES) {
+                return false;
+            }
+            if (ACTIVE_ENTRIES.compareAndSet(current, current + 1)) {
+                return true;
+            }
+        }
+    }
+
+    private static void releaseActiveSlot() {
+        ACTIVE_ENTRIES.updateAndGet(current -> current > 0 ? current - 1 : 0);
+    }
+
     private static UUID allocateUniqueUuid() {
         return UUID.randomUUID();
     }
@@ -311,11 +348,17 @@ public final class RegionTaskIdRegistry {
                 if (now - entry.getValue() > ENTRY_TTL_MS) {
                     UUID uuid = entry.getKey();
                     TaskMeta meta = REGISTRY.get(uuid);
-                    // Don't evict running tasks — only stale queued/completed ones
-                    if (meta != null && !"running".equals(meta.state)) {
-                        REGISTRY.remove(uuid);
+                    if (meta == null) {
                         it.remove();
-                        evicted++;
+                        continue;
+                    }
+                    // Don't evict running tasks — only stale queued/completed ones
+                    if (!"running".equals(meta.state)) {
+                        if (REGISTRY.remove(uuid, meta)) {
+                            releaseActiveSlot();
+                            evicted++;
+                        }
+                        it.remove();
                     }
                 }
             }
@@ -323,7 +366,7 @@ public final class RegionTaskIdRegistry {
             if (evicted > 0) {
                 totalEvicted.addAndGet(evicted);
                 LogUtils.getLogger().debug("[Mili] Evicted {} stale task UUIDs (active={})",
-                        evicted, REGISTRY.size());
+                        evicted, ACTIVE_ENTRIES.get());
             }
         // Mili start - fix: catch Throwable to prevent Error from silently cancelling all future scheduling
         } catch (Throwable t) {
@@ -336,7 +379,7 @@ public final class RegionTaskIdRegistry {
 
     public static Map<String, Object> getStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("active_entries", REGISTRY.size());
+        stats.put("active_entries", ACTIVE_ENTRIES.get());
         stats.put("initialized", INITIALIZED.get());
         stats.put("shutdown", SHUTDOWN.get());
         stats.put("total_allocated", totalAllocated.get());
@@ -350,7 +393,7 @@ public final class RegionTaskIdRegistry {
     }
 
     public static int activeCount() {
-        return REGISTRY.size();
+        return ACTIVE_ENTRIES.get();
     }
 
     // -------------------- TaskMeta --------------------

@@ -3,9 +3,7 @@ package fun.bm.mili.chunk;
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import org.bukkit.Chunk;
-import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -13,6 +11,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 final class ChunkLifecycleManager {
+
+    private static final double KEEP_ALIVE_DISTANCE_SQ = 256.0D;
 
     private ChunkLifecycleManager() {}
 
@@ -28,7 +28,7 @@ final class ChunkLifecycleManager {
         for (Chunk chunk : loadedChunks) {
             ChunkHotness hotness = data.getHotness(chunk.getX(), chunk.getZ());
             if (hotness == null) continue;
-            if (!isChunkKeepAlive(chunk)) {
+            if (!isChunkKeepAlive(chunk, hotness)) {
                 candidates.add(new CandidateChunk(chunk, hotness));
             }
         }
@@ -41,6 +41,7 @@ final class ChunkLifecycleManager {
                 candidates.size(),
                 loadedCount - (int) (maxLoaded * ChunkSystemConfig.unloadSafetyMargin)
         );
+        if (toUnload <= 0) return;
 
         for (int i = 0; i < toUnload; i++) {
             CandidateChunk candidate = candidates.get(i);
@@ -49,23 +50,18 @@ final class ChunkLifecycleManager {
         }
     }
 
-    private static boolean isChunkKeepAlive(Chunk chunk) {
+    private static boolean isChunkKeepAlive(Chunk chunk, ChunkHotness hotness) {
+        if (chunk.isForceLoaded()) return true;
         if (chunk.getEntities().length > 0) return true;
-
-        for (Player player : chunk.getWorld().getPlayers()) {
-            Location eyeLoc = player.getEyeLocation();
-            int dx = (eyeLoc.getBlockX() >> 4) - chunk.getX();
-            int dz = (eyeLoc.getBlockZ() >> 4) - chunk.getZ();
-            if (dx * dx + dz * dz <= 256) {
-                return true;
-            }
-        }
-        return false;
+        return hotness.getNearestPlayerDistanceSq() <= KEEP_ALIVE_DISTANCE_SQ;
     }
 
     static void unloadChunkSafely(Chunk chunk) {
+        if (chunk.isForceLoaded()) {
+            return;
+        }
         try {
-            if (chunk.isForceLoaded() || chunk.isLoaded()) {
+            if (chunk.isLoaded()) {
                 chunk.unload(true);
             }
         // Mili start - fix: catch Throwable to prevent silent thread death on Error (StackOverflowError/OOM)

@@ -17,7 +17,7 @@ index 377c5c5d51f23c9b20660fa2c5194a74ddac45b3..8214d0684d1eca4f94db4cbc87b9662a
 +        if (region != null && io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() % 20 == 0) {
 +            try {
 +                fun.bm.mili.utils.DynamicViewDistanceManager.tick();
-+            } catch (Exception e) {
++            } catch (Throwable e) {
 +                LOGGER.warn("Dynamic view distance manager tick failed", e);
 +            }
 +        }
