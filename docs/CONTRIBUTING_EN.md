@@ -29,7 +29,7 @@ git config --global core.longpaths true
 
 | Dependency | Version | Notes |
 |------------|---------|-------|
-| JDK | 25+ | Mili 26.2 branch requires Java 25, not JDK 21 |
+| JDK | 25+ | Mili 26.1.2 branch requires Java 25, not JDK 21 |
 | Rust | stable (edition 2024) | Optional, for native optimization library |
 | Git | 2.x | Enable long path support on Windows |
 

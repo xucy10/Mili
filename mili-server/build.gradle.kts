@@ -19,7 +19,7 @@ kotlin {
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
-    mache("io.papermc:mache:26.2+build.1")
+    mache("io.papermc:mache:26.1.2+build.1")
     hyacinthusclip(files(rootProject.layout.projectDirectory.file("libs/hyacinthusclip.jar")))
 }
 

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy <xucy0609@gmail.com>
 Date: Wed, 12 Aug 2026 12:41:55 +0800
-Subject: [PATCH] Fix compilation for MC 26.2 API migration
+Subject: [PATCH] Fix compilation for MC 26.1.2 API migration
 
 
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
@@ -295,7 +295,7 @@ index 49fb94848d2336e7c6a2d2c0fa45e9901e8b3005..0e208eac6b7aed80a2c2484d8bc86e1e
  
          if (!regionFormat.getArgument().equalsIgnoreCase(extensionName)) {
 -            net.minecraft.server.MinecraftServer.setFatalException(new RuntimeException("Invalid region file format: " + extensionName + " expected " + regionFormat.getArgument()));
-+            LOGGER.error("Invalid region file format: {} expected {}", extensionName, regionFormat.getArgument()); // Mili - setFatalException removed in 26.2
++            LOGGER.error("Invalid region file format: {} expected {}", extensionName, regionFormat.getArgument()); // Mili - setFatalException removed in 26.1.2
              throw new IOException("Invalid region file format: " + extensionName + " expected " + regionFormat.getArgument());
          }
  

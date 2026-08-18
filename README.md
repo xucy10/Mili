@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-26.2-green" alt="Minecraft 26.2">
+  <img src="https://img.shields.io/badge/Minecraft-26.1.2-green" alt="Minecraft 26.1.2">
   <img src="https://img.shields.io/badge/JDK-25+-orange" alt="JDK 25+">
   <img src="https://img.shields.io/badge/Rust-edition%202024-red" alt="Rust edition 2024">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="GPL-3.0">
@@ -107,7 +107,7 @@ Minecraft（原版）
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
-| JDK | 25+ | 构建工具链（Mili 26.2 分支需要 Java 25，不是 JDK 21） |
+| JDK | 25+ | 构建工具链（Mili 26.1.2 分支需要 Java 25，不是 JDK 21） |
 | Rust | stable (edition 2024) | 可选，用于编译原生优化库 |
 | Git | 2.x | 需启用长路径支持（Windows） |
 
@@ -135,7 +135,7 @@ python scripts/inject_kotlin.py
 ```
 
 构建产物位于 `mili-server/build/libs/`：
-- `mili-paperclip-26.2-R0.1-SNAPSHOT.jar` — 可直接运行的 Paperclip JAR
+- `mili-paperclip-26.1.2-R0.1-SNAPSHOT.jar` — 可直接运行的 Paperclip JAR
 - `mili_optimizer.dll` / `.so` / `.dylib` — Rust 原生优化库（打包进 JAR）
 
 ### Rust 单独编译与测试
@@ -161,7 +161,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("fun.bm.mili:mili-api:26.2-R0.1-SNAPSHOT")
+    compileOnly("fun.bm.mili:mili-api:26.1.2-R0.1-SNAPSHOT")
 }
 ```
 
@@ -179,7 +179,7 @@ dependencies {
   <dependency>
     <groupId>fun.bm.mili</groupId>
     <artifactId>mili-api</artifactId>
-    <version>26.2-R0.1-SNAPSHOT</version>
+    <version>26.1.2-R0.1-SNAPSHOT</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>

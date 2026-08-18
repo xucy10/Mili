@@ -11,7 +11,7 @@ tags: [code-review, bug-fix, rust, jni, concurrency, minecraft]
 
 ## 目标
 
-对 Mili 项目（基于 Folia 的 Minecraft 26.2 服务端核心）进行系统性 bug 排查与修复，覆盖 Java 源码中的并发安全、NPE、整数溢出、时间尺度混淆、线程静默死亡等问题，以及 Rust JNI 模块的安全加固。
+对 Mili 项目（基于 Folia 的 Minecraft 26.1.2 服务端核心）进行系统性 bug 排查与修复，覆盖 Java 源码中的并发安全、NPE、整数溢出、时间尺度混淆、线程静默死亡等问题，以及 Rust JNI 模块的安全加固。
 
 ## 适用场景
 
@@ -111,4 +111,4 @@ cargo test --release
 
 ## 维护记录
 
-- 版本 0.2 — 适配 Mili 26.2 分支，JDK 25，Rust edition 2024
+- 版本 0.2 — 适配 Mili 26.1.2 分支，JDK 25，Rust edition 2024

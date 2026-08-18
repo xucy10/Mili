@@ -2,7 +2,7 @@
 
 > 本文档汇总 Mili 的修复、改动与新增功能，并说明各项功能对应的实现位置与优化点。
 >
-> **适用版本**：`26.2-R0.1-SNAPSHOT`（基于 Paper → Folia 构建）
+> **适用版本**：`26.1.2-R0.1-SNAPSHOT`（基于 Paper → Folia 构建）
 
 ---
 
@@ -49,8 +49,8 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理多层
 | JDK | Java 25（toolchain + `--release 25`） |
 | 构建工具 | Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统 |
 | Rust | edition 2024，通过 `cargo build --release` 产出 JNI 原生库 |
-| 产物 | `mili-server/build/libs/mili-paperclip-26.2-R0.1-SNAPSHOT.jar` |
-| Maven 坐标 | `fun.bm.mili:mili-api:26.2-R0.1-SNAPSHOT` |
+| 产物 | `mili-server/build/libs/mili-paperclip-26.1.2-R0.1-SNAPSHOT.jar` |
+| Maven 坐标 | `fun.bm.mili:mili-api:26.1.2-R0.1-SNAPSHOT` |
 
 首次构建必须先执行：
 

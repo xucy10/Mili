@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-26.2-green" alt="Minecraft 26.2">
+  <img src="https://img.shields.io/badge/Minecraft-26.1.2-green" alt="Minecraft 26.1.2">
   <img src="https://img.shields.io/badge/JDK-25+-orange" alt="JDK 25+">
   <img src="https://img.shields.io/badge/Rust-edition%202024-red" alt="Rust edition 2024">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="GPL-3.0">
@@ -107,7 +107,7 @@ Supports creating ReplayMod photographer entities for recording, with `Photograp
 
 | Dependency | Version | Notes |
 |------------|---------|-------|
-| JDK | 25+ | Build toolchain (Mili 26.2 branch requires Java 25, not JDK 21) |
+| JDK | 25+ | Build toolchain (Mili 26.1.2 branch requires Java 25, not JDK 21) |
 | Rust | stable (edition 2024) | Optional, for compiling native optimization library |
 | Git | 2.x | Enable long path support on Windows |
 
@@ -135,7 +135,7 @@ python scripts/inject_kotlin.py
 ```
 
 Build artifacts in `mili-server/build/libs/`:
-- `mili-paperclip-26.2-R0.1-SNAPSHOT.jar` — runnable Paperclip JAR
+- `mili-paperclip-26.1.2-R0.1-SNAPSHOT.jar` — runnable Paperclip JAR
 - `mili_optimizer.dll` / `.so` / `.dylib` — Rust native optimization library (packaged in JAR)
 
 ### Rust Standalone Build & Test
@@ -161,7 +161,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("fun.bm.mili:mili-api:26.2-R0.1-SNAPSHOT")
+    compileOnly("fun.bm.mili:mili-api:26.1.2-R0.1-SNAPSHOT")
 }
 ```
 
@@ -179,7 +179,7 @@ dependencies {
   <dependency>
     <groupId>fun.bm.mili</groupId>
     <artifactId>mili-api</artifactId>
-    <version>26.2-R0.1-SNAPSHOT</version>
+    <version>26.1.2-R0.1-SNAPSHOT</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>

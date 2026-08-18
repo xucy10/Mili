@@ -29,7 +29,7 @@ git config --global core.longpaths true
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
-| JDK | 25+ | Mili 26.2 分支需要 Java 25，不是 JDK 21 |
+| JDK | 25+ | Mili 26.1.2 分支需要 Java 25，不是 JDK 21 |
 | Rust | stable (edition 2024) | 可选，编译原生优化库 |
 | Git | 2.x | Windows 需启用长路径支持 |
 

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: xucy <xucy0609@gmail.com>
 Date: Wed, 12 Aug 2026 12:41:55 +0800
-Subject: [PATCH] Fix compilation for MC 26.2 API migration
+Subject: [PATCH] Fix compilation for MC 26.1.2 API migration
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
