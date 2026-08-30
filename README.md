@@ -291,7 +291,7 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理 121 �
 ## 社区
 
 欢迎各位
-[Discord](https://discord.com/invite/BSa67dbvVf)
+[Discord](https://discord.com/invite/BSa67dbvVf)  [QQ](https://qun.qq.com/universal-share/share?ac=1&authKey=a6t7hRvlxKAYQEtG7BnIxgMBY4ozc8nbGKpz0pIbIioovmrf2knWn83frrAIdc5W&busi_data=eyJncm91cENvZGUiOiIxMTA3MjI0MTkwIiwidG9rZW4iOiI1dEUyNU1YZXg5YXo2VEtoUFBHeC9zZmVKdkJKQjNkUmdPTjNwbHQwK2IxRjVjR3pOdVlPa21zOEp2dk0vZ3dhIiwidWluIjoiNzI4MjI1NiJ9&data=pGwn1GHB86r4H0dverQtu5YAtQZiS8LswEw_hS2B1EZcbdQidP37cVF_uaitxSHUpTTroe0oMF1kQTWR78tAJA&svctype=4&tempid=h5_group_info)
 
 ## 感谢
 
