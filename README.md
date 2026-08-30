@@ -5,7 +5,7 @@
 <h1 align="center">Mili（米粒）</h1>
 
 <p align="center">
-  <strong>基于 Folia 的高性能 Minecraft 服务端核心，融合 Rust 原生加速与深度生电兼容</strong>
+  <strong>基于 Folia 的高性能 Minecraft 服务端核心，面向生电服与技术服的性能优化与生态兼容</strong>
 </p>
 
 <p align="center">
@@ -43,7 +43,10 @@ Minecraft（原版）
 
 ### Rust 原生加速（`mili-rust`）
 
-通过 JNI 桥接 Rust 编译的原生库（`mili_optimizer.dll` / `.so` / `.dylib`），对高频计算路径做零拷贝批量加速：
+>因rust库原因，我们对最低版本产生了要求，如Debian12
+Ubuntu也可能需要22或24，win也可能需server2022或22H2
+
+通过 JNI 桥接 Rust 编译的原生库（`mili_optimizer.dll` / `.so` ），对高频计算路径做零拷贝批量加速：
 
 | 模块 | 功能 | 技术亮点 |
 |------|------|----------|
@@ -151,39 +154,7 @@ cargo test --release     # 运行单元测试（28 个）
 
 ## API 使用
 
-### Gradle
-
-```kotlin
-repositories {
-    maven {
-        url = "https://repo.menthamc.org/repository/maven-public/"
-    }
-}
-
-dependencies {
-    compileOnly("fun.bm.mili:mili-api:26.2-R0.1-SNAPSHOT")
-}
-```
-
-### Maven
-
-```xml
-<repositories>
-  <repository>
-    <id>menthamc</id>
-    <url>https://repo.menthamc.org/repository/maven-public/</url>
-  </repository>
-</repositories>
-
-<dependencies>
-  <dependency>
-    <groupId>fun.bm.mili</groupId>
-    <artifactId>mili-api</artifactId>
-    <version>26.2-R0.1-SNAPSHOT</version>
-    <scope>provided</scope>
-  </dependency>
-</dependencies>
-```
+## 懒得上传，如有需要，我以后单独制作一个只发布api的仓库
 
 ---
 
@@ -291,7 +262,8 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理 121 �
 ## 社区
 
 欢迎各位
-[Discord](https://discord.com/invite/BSa67dbvVf)  [QQ](https://qun.qq.com/universal-share/share?ac=1&authKey=a6t7hRvlxKAYQEtG7BnIxgMBY4ozc8nbGKpz0pIbIioovmrf2knWn83frrAIdc5W&busi_data=eyJncm91cENvZGUiOiIxMTA3MjI0MTkwIiwidG9rZW4iOiI1dEUyNU1YZXg5YXo2VEtoUFBHeC9zZmVKdkJKQjNkUmdPTjNwbHQwK2IxRjVjR3pOdVlPa21zOEp2dk0vZ3dhIiwidWluIjoiNzI4MjI1NiJ9&data=pGwn1GHB86r4H0dverQtu5YAtQZiS8LswEw_hS2B1EZcbdQidP37cVF_uaitxSHUpTTroe0oMF1kQTWR78tAJA&svctype=4&tempid=h5_group_info)
+Discord社区：[Discord](https://discord.com/invite/BSa67dbvVf)  
+QQ社区：[QQ](https://qun.qq.com/universal-share/share?ac=1&authKey=a6t7hRvlxKAYQEtG7BnIxgMBY4ozc8nbGKpz0pIbIioovmrf2knWn83frrAIdc5W&busi_data=eyJncm91cENvZGUiOiIxMTA3MjI0MTkwIiwidG9rZW4iOiI1dEUyNU1YZXg5YXo2VEtoUFBHeC9zZmVKdkJKQjNkUmdPTjNwbHQwK2IxRjVjR3pOdVlPa21zOEp2dk0vZ3dhIiwidWluIjoiNzI4MjI1NiJ9&data=pGwn1GHB86r4H0dverQtu5YAtQZiS8LswEw_hS2B1EZcbdQidP37cVF_uaitxSHUpTTroe0oMF1kQTWR78tAJA&svctype=4&tempid=h5_group_info)
 
 ## 感谢
 
