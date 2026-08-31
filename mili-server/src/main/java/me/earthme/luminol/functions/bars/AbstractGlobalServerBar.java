@@ -51,10 +51,13 @@ public abstract class AbstractGlobalServerBar {
             }
 
             // we need wait until the task is really cancelled so that we are safe to modify scheduledTasks map
+            // Mili start - fix: NEXT_RUNS_CANCELLED(_ALREADY) means no future runs are scheduled,
+            // waiting for them here busy-spins at 100% CPU while holding the monitor (can deadlock on shutdown)
             ScheduledTask.CancelledState cancelledState;
             do {
                 cancelledState = this.scannerTask.cancel();
-            } while (cancelledState != ScheduledTask.CancelledState.CANCELLED_ALREADY && cancelledState != ScheduledTask.CancelledState.CANCELLED_BY_CALLER);
+            } while (cancelledState == ScheduledTask.CancelledState.RUNNING);
+            // Mili end - fix: busy-spin on cancel
 
             for (ScheduledTask task : this.scheduledTasks.values()) {
                 if (!task.isCancelled()) {

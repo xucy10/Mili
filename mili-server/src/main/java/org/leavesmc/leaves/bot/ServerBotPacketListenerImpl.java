@@ -83,10 +83,11 @@ public class ServerBotPacketListenerImpl extends ServerGamePacketListenerImpl {
         }
 
         @Override
-        public void flush() {
-            // Bot 连接没有真实的网络 channel（channel 为 null），所有 send 都被覆盖为空操作，
-            // 因此 flush 也无需做任何事。不加此覆盖的话，tick 期间 resumeFlushing ->
-            // flushChannel -> flushQueue -> flush 会调用 this.channel.eventLoop() 抛出 NPE。
+        public void flushChannel() {
+            // Bot 连接没有真实的网络 channel（channel 为 null），所有 send 都被覆盖为空操作。
+            // Folia 补丁后的 Connection.flush() 是 private，无法覆盖；而 flushChannel() 是其唯一
+            // 公开入口（会把 Connection::flush 塞入 pendingActions，执行时访问 channel.eventLoop() 抛 NPE），
+            // 因此直接覆盖 flushChannel() 为空操作以阻断该链路。
         }
     }
 }

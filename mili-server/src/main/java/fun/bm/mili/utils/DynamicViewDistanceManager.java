@@ -13,7 +13,11 @@ public class DynamicViewDistanceManager {
     private static volatile boolean enabled = false;
     private static final ConcurrentHashMap<String, PlayerVDState> playerStates = new ConcurrentHashMap<>();
     private static final AtomicLong totalAdjustments = new AtomicLong();
-    private static long lastAdjustTime = 0;
+    // Mili start - fix: lastAdjustTime was a plain static long mutated from multiple region
+    // threads (check-then-act race), use CAS so exactly one region thread runs the adjustment pass
+    private static final AtomicLong lastAdjustTime = new AtomicLong();
+    private static final me.earthme.luminol.utils.NullPlugin SCHEDULER_PLUGIN = new me.earthme.luminol.utils.NullPlugin();
+    // Mili end - fix: lastAdjustTime race
 
     public static void setEnabled(boolean v) { enabled = v; }
     public static boolean isEnabled() { return enabled; }
@@ -29,16 +33,25 @@ public class DynamicViewDistanceManager {
 
         long now = System.currentTimeMillis();
         long intervalMs = DynamicViewDistanceConfig.adjustIntervalSeconds * 1000L;
-        if (now - lastAdjustTime < intervalMs) return;
-        lastAdjustTime = now;
+        // Mili start - fix: CAS guard instead of unsynchronized check-then-act on a static long
+        long last = lastAdjustTime.get();
+        if (now - last < intervalMs) return;
+        if (!lastAdjustTime.compareAndSet(last, now)) return;
+        // Mili end - fix: CAS guard
 
         double currentTps = getCurrentTps();
 
+        java.util.Set<String> onlineUuids = new java.util.HashSet<>();
         for (World world : Bukkit.getWorlds()) {
             for (Player player : world.getPlayers()) {
+                onlineUuids.add(player.getUniqueId().toString());
                 adjustPlayerViewDistance(player, currentTps);
             }
         }
+
+        // Mili start - fix: drop states of offline players (slow leak, onPlayerQuit is never wired)
+        playerStates.keySet().retainAll(onlineUuids);
+        // Mili end - fix: stale state cleanup
     }
 
     private static void adjustPlayerViewDistance(Player player, double currentTps) {
@@ -64,7 +77,15 @@ public class DynamicViewDistanceManager {
         if (targetVD != currentVD) {
             state.adjustments++;
             totalAdjustments.incrementAndGet();
-            player.setViewDistance(targetVD);
+            // Mili start - fix: setViewDistance must run on the player's region thread under Folia,
+            // schedule it through the entity scheduler instead of calling it from a foreign region thread
+            final int newViewDistance = targetVD;
+            player.getScheduler().run(
+                SCHEDULER_PLUGIN,
+                t -> player.setViewDistance(newViewDistance),
+                null
+            );
+            // Mili end - fix: region-thread-safe setViewDistance
         }
     }
 
@@ -84,21 +105,16 @@ public class DynamicViewDistanceManager {
     }
 
     private static double getCurrentTps() {
+        // Mili start - fix: the old implementation read a scoreboard objective "mili_tps" that is
+        // never created anywhere, so it always returned 20.0 and the low-TPS protection never fired.
+        // Use the Paper global TPS API (5s average) instead.
         try {
-            org.bukkit.scoreboard.Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
-            if (main != null) {
-                var criteria = main.getObjective("mili_tps");
-                if (criteria != null) {
-                    var entry = main.getEntries().stream().findFirst();
-                    if (entry.isPresent()) {
-                        var score = criteria.getScore(entry.get());
-                        return score.getScore() / 20.0;
-                    }
-                }
+            double[] tps = Bukkit.getTPS();
+            if (tps != null && tps.length > 0 && tps[0] > 0.0) {
+                return tps[0];
             }
-        // Mili start - fix: catch Throwable instead of Exception to handle Errors
         } catch (Throwable ignored) {}
-        // Mili end
+        // Mili end - fix: dead scoreboard TPS source
 
         return 20.0;
     }

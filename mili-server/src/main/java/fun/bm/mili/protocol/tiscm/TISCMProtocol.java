@@ -42,6 +42,13 @@ public class TISCMProtocol implements LeavesProtocol {
             return;
         }
 
+        // Mili start - fix: this runs every global tick; MSPT_METRICS_SAMPLE is not a handshake
+        // packet, so when no client registered support we can skip building the NBT/payload entirely
+        if (CLIENT_SUPPORTED_PACKETS.isEmpty()) {
+            return;
+        }
+        // Mili end - fix: skip payload allocation when nobody listens
+
         CompoundTag nbt = new CompoundTag();
         nbt.putInt("version", 2);
         nbt.putLong("millisecond", nanosecond / 1_000_000L);
