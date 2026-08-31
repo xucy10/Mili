@@ -18,6 +18,10 @@ public class BufferedLinearRegionFileFlusher implements Runnable {
 
     private final Set<BufferedLinearRegionFile> inManagement = new ObjectArraySet<>();
     private final ScheduledFuture<?> flusherChecker;
+    // Mili start - fix: keep a reference to the checker executor so it can be shut down,
+    // previously only the scheduled task was cancelled and the thread pool leaked
+    private final ScheduledExecutorService checkerPool;
+    // Mili end - fix: checker executor reference
     private final Executor ioWorkerPool;
     private final long flushOfWriteTimeoutMs;
 
@@ -31,27 +35,42 @@ public class BufferedLinearRegionFileFlusher implements Runnable {
                 .setDaemon(true)
                 .build()
         );
-        this.flusherChecker = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
+        this.checkerPool = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
                         .setNameFormat("BufferedLinearRegionFile Flusher Checker")
                         .setDaemon(true)
-                        .build())
-                .scheduleWithFixedDelay(this, checkIntervalMs, checkIntervalMs, TimeUnit.MILLISECONDS);
+                        .build());
+        this.flusherChecker = this.checkerPool.scheduleWithFixedDelay(this, checkIntervalMs, checkIntervalMs, TimeUnit.MILLISECONDS);
         this.flushOfWriteTimeoutMs = flushOfWriteTimeoutMs;
     }
 
     public void shutdown() {
         this.flusherChecker.cancel(false);
+        // Mili start - fix: also shut down the checker executor itself
+        this.checkerPool.shutdown();
+        // Mili end - fix: checker executor shutdown
 
         ((ExecutorService) this.ioWorkerPool).shutdown();
+        // Mili start - fix: the old loop busy-spinned forever when interrupted and had no
+        // deadline, so a wedged I/O task would hang the whole JVM shutdown; bound the wait
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30L);
         for (; ; ) {
             try {
                 if (((ExecutorService) this.ioWorkerPool).awaitTermination(100, TimeUnit.MILLISECONDS)) {
                     break;
                 }
             } catch (InterruptedException e) {
+                logger.warn("Interrupted while waiting for region file flusher to finish, forcing shutdown");
+                ((ExecutorService) this.ioWorkerPool).shutdownNow();
                 Thread.currentThread().interrupt();
+                break;
+            }
+            if (System.nanoTime() - deadline >= 0L) {
+                logger.warn("Region file flusher did not terminate in 30s, forcing shutdown (pending flushes may be lost)");
+                ((ExecutorService) this.ioWorkerPool).shutdownNow();
+                break;
             }
         }
+        // Mili end - fix: bounded shutdown wait
     }
 
     @Override

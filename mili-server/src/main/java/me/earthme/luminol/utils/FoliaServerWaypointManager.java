@@ -21,12 +21,29 @@ public class FoliaServerWaypointManager implements WaypointManager<@NotNull Wayp
     private final Map<ServerPlayer, Map<WaypointTransmitter, WaypointTransmitter.Connection>> connections = new ConcurrentHashMap<>();
 
     public void breakAllConnections() {
-        throw new UnsupportedOperationException("Unused");
+        // Mili start - fix: implement instead of throwing; also used for config-off cleanup
+        for (Map.Entry<ServerPlayer, Map<WaypointTransmitter, WaypointTransmitter.Connection>> entry : this.connections.entrySet()) {
+            for (WaypointTransmitter.Connection connection : entry.getValue().values()) {
+                scheduleIfOffTarget((Entity) entry.getKey(), connection::disconnect);
+            }
+        }
+        this.connections.clear();
+        // Mili end - fix: implement breakAllConnections
     }
 
     public void remakeConnections(WaypointTransmitter waypoint) {
-        throw new UnsupportedOperationException("Unused");
-
+        // Mili start - fix: implement instead of throwing so vanilla call paths cannot crash
+        for (Map.Entry<ServerPlayer, Map<WaypointTransmitter, WaypointTransmitter.Connection>> entry : this.connections.entrySet()) {
+            final ServerPlayer player = entry.getKey();
+            final WaypointTransmitter.Connection removed = entry.getValue().remove(waypoint);
+            if (removed != null) {
+                scheduleIfOffTarget((Entity) player, removed::disconnect);
+            }
+            if (this.waypoints.contains(waypoint)) {
+                this.createConnection(player, waypoint);
+            }
+        }
+        // Mili end - fix: implement remakeConnections
     }
 
     public Set<WaypointTransmitter> transmitters() {
@@ -35,23 +52,20 @@ public class FoliaServerWaypointManager implements WaypointManager<@NotNull Wayp
 
     @Override
     public void trackWaypoint(WaypointTransmitter waypoint) {
-        if (!CommandConfig.waypointsAndWaypointCommand) {
-            return;
-        }
-
+        // Mili start - fix: keep internal state consistent regardless of the config flag;
+        // the flag is only checked where actual connections are created (createConnection),
+        // otherwise flipping the config at runtime leaks entries/connections
         this.waypoints.add(waypoint);
 
         for (ServerPlayer toCreateFor : this.trackingPlayers) {
             this.createConnection(toCreateFor, waypoint);
         }
+        // Mili end - fix: symmetric config handling
     }
 
     @Override
     public void updateWaypoint(WaypointTransmitter waypoint) {
-        if (!CommandConfig.waypointsAndWaypointCommand) {
-            return;
-        }
-
+        // Mili start - fix: symmetric config handling (state ops must stay consistent)
         if (this.waypoints.contains(waypoint)) {
             for (ServerPlayer player : this.trackingPlayers) {
                 Map<WaypointTransmitter, WaypointTransmitter.Connection> connectionsOfThisPlayer = this.connections.get(player);
@@ -68,14 +82,13 @@ public class FoliaServerWaypointManager implements WaypointManager<@NotNull Wayp
                 }
             }
         }
+        // Mili end - fix: symmetric config handling
     }
 
     @Override
     public void untrackWaypoint(WaypointTransmitter waypoint) {
-        if (!CommandConfig.waypointsAndWaypointCommand) {
-            return;
-        }
-
+        // Mili start - fix: symmetric config handling — untrack must always clean up state,
+        // otherwise entries/connections leak when the config is disabled
         for (Map.Entry<ServerPlayer, Map<WaypointTransmitter, WaypointTransmitter.Connection>> connectionMapEntry : this.connections.entrySet()) {
             final Map<WaypointTransmitter, WaypointTransmitter.Connection> connectionsOfCurr = connectionMapEntry.getValue();
             final ServerPlayer ownerOfCurr = connectionMapEntry.getKey();
@@ -87,6 +100,7 @@ public class FoliaServerWaypointManager implements WaypointManager<@NotNull Wayp
         }
 
         this.waypoints.remove(waypoint);
+        // Mili end - fix: symmetric config handling
     }
 
     public void addPlayer(ServerPlayer player) {
@@ -157,6 +171,11 @@ public class FoliaServerWaypointManager implements WaypointManager<@NotNull Wayp
     }
 
     private void createConnection(ServerPlayer player, WaypointTransmitter waypoint) {
+        // Mili start - fix: the feature flag is enforced here where connections are actually created
+        if (!CommandConfig.waypointsAndWaypointCommand) {
+            return;
+        }
+        // Mili end - fix: enforce feature flag at connection creation
         if (player != waypoint) {
             if (isLocatorBarEnabledFor(player)) {
                 // -> waypoint

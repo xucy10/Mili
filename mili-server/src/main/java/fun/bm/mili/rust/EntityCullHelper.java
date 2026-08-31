@@ -26,6 +26,29 @@ public final class EntityCullHelper {
     /** Frustum planes: 6 planes x 4 floats = 24 floats */
     private static final int PLANES_FLOATS = 24;
 
+    // Mili start - fix: RustBridge.load() was never called anywhere, so the native optimizer was
+    // silently unavailable and the batch culling feature collected data every tick for nothing.
+    // Try to load the library lazily on first use and warn only once on failure.
+    private static final java.util.concurrent.atomic.AtomicBoolean loadAttempted =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private static boolean ensureNativeLoaded() {
+        if (RustBridge.isLoaded()) {
+            return true;
+        }
+        if (loadAttempted.compareAndSet(false, true)) {
+            try {
+                RustBridge.load();
+            } catch (Throwable t) {
+                com.mojang.logging.LogUtils.getLogger().warn(
+                    "Mili native optimizer library failed to load, raytracking entity culling is disabled: {}", t.getMessage()
+                );
+            }
+        }
+        return RustBridge.isLoaded();
+    }
+    // Mili end - fix: lazy native library load
+
     /** Cached direct buffers — grown as needed, reused across ticks */
     private static ByteBuffer entityBuffer = null;
     private static ByteBuffer planesBuffer = null;
@@ -54,9 +77,11 @@ public final class EntityCullHelper {
             double hitboxLimit,
             float[] frustumPlanes
     ) {
-        if (!RustBridge.isLoaded() || entities.isEmpty()) {
+        // Mili start - fix: lazily attempt native load on first use
+        if (!ensureNativeLoaded() || entities.isEmpty()) {
             return null;
         }
+        // Mili end - fix: lazy native load
 
         int n = entities.size();
         int requiredBytes = n * ENTITY_STRIDE * 4; // floats -> bytes
@@ -157,4 +182,19 @@ public final class EntityCullHelper {
             cullable.setCulled(culled);
         }
     }
+
+    // Mili start - fix: failure fallback — entities culled in a previous tick must never stay
+    // frozen when the native call fails or the feature is disabled mid-run
+    /**
+     * Force-uncull all given entities. Called when culling results are unavailable so that
+     * previously culled entities resume receiving update packets instead of staying frozen.
+     */
+    public static void resetCulledFlags(List<Entity> entities) {
+        for (int i = 0; i < entities.size(); i++) {
+            if (entities.get(i) instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
+                cullable.setCulled(false);
+            }
+        }
+    }
+    // Mili end - fix: culling failure fallback
 }

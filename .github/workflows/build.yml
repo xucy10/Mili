@@ -78,6 +78,18 @@ jobs:
           distribution: zulu
           java-version: 21
 
+      # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
+      # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
+      - name: Publish Hyacinthusweight plugin to mavenLocal
+        run: |
+          set -eux
+          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
+          cd hyacinthusweight-src
+          chmod +x gradlew
+          ./gradlew publishToMavenLocal --no-daemon
+          cd ..
+          rm -rf hyacinthusweight-src
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -255,9 +267,11 @@ jobs:
 
       - name: Check for Pending Patch Rebuild
         run: |
-          if git diff --name-only | grep -q "^mili-server/src/minecraft/"; then
+          # Patched sources under mili-server/src/minecraft are untracked in the main repo,
+          # so plain `git diff` never reports them; check untracked files too.
+          if git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | grep -q "mili-server/src/minecraft/"; then
             echo "WARN: Patched source has uncommitted changes — run 'rebuildPatches' to generate patch files"
-            git diff --stat -- "mili-server/src/minecraft/"
+            git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | head -50
           else
             echo "OK: No pending patch rebuild needed"
           fi

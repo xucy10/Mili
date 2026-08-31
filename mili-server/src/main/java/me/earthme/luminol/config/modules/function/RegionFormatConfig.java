@@ -74,7 +74,9 @@ public class RegionFormatConfig implements IConfigModule {
     }
 
     private static void checkCompressionLevel() {
-        if (RegionFormatConfig.linearCompressionLevel > 23 || RegionFormatConfig.linearCompressionLevel < 1) {
+        // Mili start - fix: bounds check allowed 23 while the message (and Zstd's max level) is 22
+        if (RegionFormatConfig.linearCompressionLevel > 22 || RegionFormatConfig.linearCompressionLevel < 1) {
+        // Mili end - fix: compression level bound
             MinecraftServer.LOGGER.error("Linear or BufferedLinear region compression level should be between 1 and 22 in config: {}", RegionFormatConfig.linearCompressionLevel);
             MinecraftServer.LOGGER.error("Falling back to compression level 1.");
             RegionFormatConfig.linearCompressionLevel = 1;
