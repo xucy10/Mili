@@ -20,9 +20,9 @@ body:
   - type: input
     id: LophineMC-version
     attributes:
-      label: 服务端版本 LophineMC Version
+      label: 服务端版本 Mili Version
       description:
-        LophineMC服务端发行版本 LophineMC server release version (contains the git commit's hash)<br>
+        Mili服务端发行版本 Mili server release version (contains the git commit's hash)<br>
         通过执行`/version`命令将获取到的内容复制到这里。 Run `/version` on your server and paste the full, unmodified output here.
       placeholder: >
         e.g. git-Lophine-"fa1ab90" (MC: 1.21.8)
