@@ -299,6 +299,13 @@ tasks.withType<JavaCompile>().configureEach {
 // files with the same name (e.g. mili.properties); let the later source set win
 tasks.withType<ProcessResources>().configureEach {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    // Mili start - substitute the bstats_plugin_id placeholder in mili.properties at build time
+    // CI passes -PbstatsPluginId (secrets.BSTATS_PLUGIN_ID); missing/blank falls back to 0 (bStats disabled)
+    val bstatsPluginId = providers.gradleProperty("bstatsPluginId").getOrElse("0").trim().ifEmpty { "0" }
+    filesMatching("**/mili.properties") {
+        expand("bstats_plugin_id" to bstatsPluginId)
+    }
+    // Mili end
 }
 
 val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {
