@@ -78,8 +78,6 @@ jobs:
           distribution: zulu
           java-version: 25
 
-      # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
-      # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
       - name: Publish Hyacinthusweight plugin to mavenLocal
         run: |
           set -eux
@@ -116,7 +114,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mingw-w64
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           sudo apt-get install -y clang lld build-essential pkg-config curl git
           sudo apt-get install -y libssl-dev zlib1g-dev
 
@@ -136,7 +133,40 @@ jobs:
             echo "WARN: cargo-zigbuild not available"
           fi
           which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
-          which aarch64-linux-gnu-gcc || echo "aarch64 cross-gcc not found in PATH"
+
+      - name: Setup Zig linkers for musl targets
+        run: |
+          mkdir -p "$HOME/.local/bin"
+
+          cat > "$HOME/.local/bin/zigcc-x86_64-musl" <<'EOF'
+          #!/bin/bash
+          exec zig cc -target x86_64-linux-musl "$@"
+          EOF
+
+          cat > "$HOME/.local/bin/zigcc-aarch64-musl" <<'EOF'
+          #!/bin/bash
+          exec zig cc -target aarch64-linux-musl "$@"
+          EOF
+
+          chmod +x "$HOME/.local/bin/zigcc-x86_64-musl" "$HOME/.local/bin/zigcc-aarch64-musl"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          mkdir -p ~/.cargo
+          cat > ~/.cargo/config.toml <<'EOF'
+          [target.x86_64-unknown-linux-musl]
+          linker = "zigcc-x86_64-musl"
+
+          [target.aarch64-unknown-linux-musl]
+          linker = "zigcc-aarch64-musl"
+
+          [target.x86_64-pc-windows-gnu]
+          linker = "x86_64-w64-mingw32-gcc"
+          EOF
+
+          echo "=== Cargo config ==="
+          cat ~/.cargo/config.toml
+          echo "=== Wrappers ==="
+          ls -la "$HOME/.local/bin/zigcc-"*
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -158,12 +188,11 @@ jobs:
       - name: Build Rust Optimizer (cross targets)
         env:
           RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          CC_x86_64_pc_windows_gnu: x86_64-w64-mingw32-gcc
+          CXX_x86_64_pc_windows_gnu: x86_64-w64-mingw32-g++
         run: |
           set -eux
-          export PATH="$PATH:$HOME/.cargo/bin"
-          export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
-          export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+          export PATH="$PATH:$HOME/.cargo/bin:$HOME/.local/bin"
           ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
 
       - name: Verify Rust Optimizer Binary
@@ -267,8 +296,6 @@ jobs:
 
       - name: Check for Pending Patch Rebuild
         run: |
-          # Patched sources under mili-server/src/minecraft are untracked in the main repo,
-          # so plain `git diff` never reports them; check untracked files too.
           if git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | grep -q "mili-server/src/minecraft/"; then
             echo "WARN: Patched source has uncommitted changes — run 'rebuildPatches' to generate patch files"
             git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | head -50
