@@ -64,23 +64,30 @@ public class MiliMetrics {
     private static void sendMetrics(int pluginId) {
         String serverUUID = getServerUUID();
         int players = Bukkit.getOnlinePlayers().size();
-        int maxPlayers = Bukkit.getMaxPlayers();
-        String javaVersion = System.getProperty("java.version");
         String osName = System.getProperty("os.name");
         String osArch = System.getProperty("os.arch");
-        String mcVersion = Bukkit.getBukkitVersion().split("-")[0];
-        int worldCount = Bukkit.getWorlds().size();
+        String osVersion = System.getProperty("os.version");
 
+        // Mili start - feat: switch to the standard bStats server-implementation schema
+        // (same as Paper/CatServer) so custom charts are recognized; the "players"
+        // SingleLineChart renders the player count graph on bStats.org
+        // (skipped when 0 to match the reference implementations)
+        String playersChart = players > 0
+            ? "{\"chartId\":\"players\",\"data\":{\"value\":" + players + "}}"
+            : "";
         String json = "{" +
-            "\"osname\":\"" + jsonEscape(osName) + "\"," +
-            "\"osarch\":\"" + jsonEscape(osArch) + "\"," +
-            "\"javaVersion\":\"" + jsonEscape(javaVersion) + "\"," +
-            "\"serverImplementation\":\"Mili\"," +
-            "\"mcVersion\":\"" + jsonEscape(mcVersion) + "\"," +
-            "\"onlinePlayers\":" + players + "," +
-            "\"maxPlayers\":" + maxPlayers + "," +
-            "\"worldCount\":" + worldCount +
-            "}";
+            "\"serverUUID\":\"" + jsonEscape(serverUUID) + "\"," +
+            "\"osName\":\"" + jsonEscape(osName) + "\"," +
+            "\"osArch\":\"" + jsonEscape(osArch) + "\"," +
+            "\"osVersion\":\"" + jsonEscape(osVersion) + "\"," +
+            "\"coreCount\":" + Runtime.getRuntime().availableProcessors() + "," +
+            "\"plugins\":[" +
+                "{" +
+                "\"pluginName\":\"Mili\"," +
+                "\"customCharts\":[" + playersChart + "]" +
+                "}" +
+            "]}";
+        // Mili end
 
         // Mili start - fix: ensure HttpURLConnection is disconnected to prevent connection leak
         java.net.HttpURLConnection conn = null;
@@ -88,16 +95,18 @@ public class MiliMetrics {
             URL url = new URL("https://bStats.org/submitData/server-implementation");
             conn = (java.net.HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("Accept", "application/json");
             conn.setRequestProperty("Connection", "close");
+            conn.setRequestProperty("Content-Encoding", "gzip");
             conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("User-Agent", "Server-Software");
+            conn.setRequestProperty("User-Agent", "MC-Server/1");
             conn.setDoOutput(true);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
 
-            String postData = "metrics=" + java.net.URLEncoder.encode(json, StandardCharsets.UTF_8);
-            conn.getOutputStream().write(postData.getBytes(StandardCharsets.UTF_8));
+            byte[] compressed = gzip(json.getBytes(StandardCharsets.UTF_8));
+            conn.setFixedLengthStreamingMode(compressed.length);
+            conn.getOutputStream().write(compressed);
 
             int responseCode = conn.getResponseCode();
             LOGGER.debug("[MiliMetrics] Response: {}", responseCode);
@@ -133,6 +142,14 @@ public class MiliMetrics {
 
     private static String jsonEscape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static byte[] gzip(byte[] data) throws java.io.IOException {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.GZIPOutputStream gz = new java.util.zip.GZIPOutputStream(bos)) {
+            gz.write(data);
+        }
+        return bos.toByteArray();
     }
 
     public static void shutdown() {
