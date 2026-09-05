@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <noreply@mili.local>
+Date: Wed, 22 Jan 2026 12:00:00 +0800
+Subject: [PATCH] Mili: Add legacy NMS class name remapping
+
+
+Some plugins still reference pre-1.20.5 spigot NMS class names that have
+since been renamed in upstream Mojang (and therefore also in spigot) and
+which the Paper reflection-rewriter therefore cannot resolve, because
+io.papermc.paper.util.ObfHelper only knows about current
+spigot (obfuscated) <-> mojang (public) name pairs.
+
+This shim consults a small curated table maintained in
+fun.bm.mili.nms.LegacyNMSMappings before falling back to the original
+ObfHelper lookup, so that reflective Class.forName(...) calls made by
+plugins such as CustomCrops 3.6.x for
+net.minecraft.server.ScoreboardServer (now ServerScoreboard) succeed
+instead of throwing NoClassDefFoundError.
+
+Plugins that hard-code an NMS class symbol in their bytecode (e.g. an
+NMS-version-specific implementation class that extends a renamed class)
+still cannot be fixed at this layer and must be updated by their authors.
+
+
+diff --git a/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java b/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
+index 92bc8e4933ff13764fa2ac7f3729216332e202c9..0c1bff165c0b41464728c869988dc321bd5e95d5 100644
+--- a/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
++++ b/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
+@@ -51,6 +51,12 @@
+ 
+     @Override
+     protected String mapClassName(final String name) {
++        // Mili start - legacy NMS remapping shim
++        final String legacyMapped = fun.bm.mili.nms.LegacyNMSMappings.mapClassName(name);
++        if (legacyMapped != name) {
++            return legacyMapped;
++        }
++        // Mili end - legacy NMS remapping shim
+         final ObfHelper.@Nullable ClassMapping mapping = this.mappingsByObfName.get(name);
+         return mapping != null ? mapping.mojangName() : removeCraftBukkitRelocation(name);
+     }
+-- 
+2.43.0
+
