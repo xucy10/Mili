@@ -80,8 +80,8 @@ jobs:
 
       # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
       # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
-      - name: Publish Hyacinthusweight plugin to mavenLocal
-         run: |
+      - name: Publish Hyacinthusweight plugin to
+        run: |
            set -eux
            git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
            cd hyacinthusweight-src
