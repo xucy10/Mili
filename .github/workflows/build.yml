@@ -83,8 +83,9 @@ jobs:
       - name: Publish Hyacinthusweight plugin to mavenLocal
         run: |
           set -eux
-          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
+          git clone https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
           cd hyacinthusweight-src
+          git checkout c046e1f # hyacinthusweight 2.0.7 final (matches weightVersion in gradle.properties; this branch needs the 1.21.x-era plugin with mache mappings wiring, not 2.0.15 from master)
           chmod +x gradlew
           ./gradlew publishToMavenLocal --no-daemon
           cd ..

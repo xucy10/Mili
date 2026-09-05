@@ -212,7 +212,7 @@ dependencies {
     runtimeOnly(log4jPlugins.output)
     alsoShade(log4jPlugins.output)
 
-    implementation("one.pkg.velocity_rc:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT ReastLib
+    implementation("com.velocitypowered:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT official artifact (one.pkg.velocity_rc fork only lives on the defunct repo.menthamc.org)
         isTransitive = false
     }
     implementation("io.netty:netty-codec-haproxy:4.2.7.Final") // Add support for proxy protocol
