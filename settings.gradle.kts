@@ -2,8 +2,9 @@ pluginManagement {
     val weightVersion: String by settings
 
     repositories {
+        mavenLocal()  // ← 优先使用本地 Maven
         gradlePluginPortal()
-        mavenLocal()
+        mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://repo.menthamc.org/repository/maven-public/")
     }
