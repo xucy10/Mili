@@ -25,7 +25,7 @@ elif [ "$release" = "2" ]; then
   make_latest=true
 fi
 
-mv mili-server/build/libs/*-paperclip-$grdversion-reobf.jar $jarName_dir
+mv mili-server/build/libs/*-paperclip-$grdversion-mojmap.jar $jarName_dir
 
 echo "project_id=$project_id" >> $GITHUB_ENV
 echo "project_id_b=$project_id_b" >> $GITHUB_ENV
