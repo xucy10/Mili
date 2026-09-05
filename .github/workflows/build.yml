@@ -86,7 +86,7 @@ jobs:
           git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
           cd hyacinthusweight-src
           chmod +x gradlew
-          ./gradlew publishToMavenLocal --no-daemon
+          ./gradlew publishToMavenLocal --no-daemon 
           cd ..
           rm -rf hyacinthusweight-src
 
