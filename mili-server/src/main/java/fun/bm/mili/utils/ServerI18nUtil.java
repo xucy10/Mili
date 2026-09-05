@@ -60,6 +60,45 @@ public class ServerI18nUtil {
     private static String miliLangPath;
 
     public static void init() {
+        // Mili start: always load Mili's own translations so that
+        // mili.tpscommand.* lookups resolve even when LanguageConfig.lang is
+        // the default "en_us" (the original implementation short-circuited
+        // below and never injected the mili table into the Language instance).
+        final Runnable loadMiliDefault = () -> {
+            final Map<String, String> miliTable = new HashMap<>();
+            loadMiliI18nDefault(miliTable::put);
+            if (!miliTable.isEmpty()) {
+                final Language current = Language.getInstance();
+                Language.inject(new Language() {
+                    @Override
+                    public String getOrDefault(final String key, final String defaultValue) {
+                        final String translated = miliTable.get(key);
+                        return translated != null ? translated : current.getOrDefault(key, defaultValue);
+                    }
+
+                    @Override
+                    public boolean has(final String id) {
+                        return miliTable.containsKey(id) || current.has(id);
+                    }
+
+                    @Override
+                    public boolean isDefaultRightToLeft() {
+                        return current.isDefaultRightToLeft();
+                    }
+
+                    @Override
+                    public FormattedCharSequence getVisualOrder(final FormattedText text) {
+                        return current.getVisualOrder(text);
+                    }
+                });
+            }
+        };
+        if (LanguageConfig.full_blocking_load) {
+            loadMiliDefault.run();
+        } else {
+            CompletableFuture.runAsync(loadMiliDefault);
+        }
+        // Mili end
         if (Objects.equals(LanguageConfig.lang, "en_us")) {
             return;
         }
