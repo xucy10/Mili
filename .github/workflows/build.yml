@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -45,16 +45,11 @@ jobs:
       - name: Repair submodules & paperweight cache (prevent corrupted upstreams)
         run: |
           set -eux
-
           git submodule deinit -f --all || true
-
           rm -rf .git/modules || true
-
           git submodule init
           git submodule sync --recursive
-
           git submodule update --init --recursive --force
-
           git submodule foreach --recursive '
             echo "=== Submodule: $name ==="
             if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
@@ -65,10 +60,8 @@ jobs:
             git reset --hard || true
             git clean -fdx || true
           '
-
           rm -rf .gradle/caches/paperweight || true
           rm -rf .gradle/caches/paperweight/upstreams || true
-
           git status --porcelain --untracked-files=all || true
           ls -la .gradle/caches || true
 
@@ -103,7 +96,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -134,40 +127,6 @@ jobs:
           fi
           which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
 
-      - name: Setup Zig linkers for musl targets
-        run: |
-          mkdir -p "$HOME/.local/bin"
-
-          cat > "$HOME/.local/bin/zigcc-x86_64-musl" <<'EOF'
-          #!/bin/bash
-          exec zig cc -target x86_64-linux-musl "$@"
-          EOF
-
-          cat > "$HOME/.local/bin/zigcc-aarch64-musl" <<'EOF'
-          #!/bin/bash
-          exec zig cc -target aarch64-linux-musl "$@"
-          EOF
-
-          chmod +x "$HOME/.local/bin/zigcc-x86_64-musl" "$HOME/.local/bin/zigcc-aarch64-musl"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-          mkdir -p ~/.cargo
-          cat > ~/.cargo/config.toml <<'EOF'
-          [target.x86_64-unknown-linux-musl]
-          linker = "zigcc-x86_64-musl"
-
-          [target.aarch64-unknown-linux-musl]
-          linker = "zigcc-aarch64-musl"
-
-          [target.x86_64-pc-windows-gnu]
-          linker = "x86_64-w64-mingw32-gcc"
-          EOF
-
-          echo "=== Cargo config ==="
-          cat ~/.cargo/config.toml
-          echo "=== Wrappers ==="
-          ls -la "$HOME/.local/bin/zigcc-"*
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
@@ -177,8 +136,6 @@ jobs:
           git config --global user.name "Mili CI"
           git config --global advice.mergeConflict false
           git config --global init.defaultBranch main
-          # Prevent 'git gc --auto' (used by hyacinthusweight) from detaching a background gc
-          # that races with paperweight copying the repo dirs (NoSuchFileException midx.lock)
           git config --global gc.autoDetach false
 
       - name: Clean build artifacts
@@ -188,14 +145,14 @@ jobs:
           rm -rf .gradle/caches/paperweight
           rm -rf .gradle/configuration-cache
 
-      - name: Build Rust Optimizer (cross targets)
+      - name: Build Rust Optimizer (cross targets via Gradle)
         env:
-          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
           CC_x86_64_pc_windows_gnu: x86_64-w64-mingw32-gcc
           CXX_x86_64_pc_windows_gnu: x86_64-w64-mingw32-g++
         run: |
           set -eux
-          export PATH="$PATH:$HOME/.cargo/bin:$HOME/.local/bin"
+          export PATH="$PATH:$HOME/.cargo/bin"
           ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
 
       - name: Verify Rust Optimizer Binary
@@ -224,46 +181,50 @@ jobs:
             exit 1
           fi
 
-      - name: Rebuild x86_64 Linux Rust library with musl (no glibc dependency)
+      # >>> 关键修改：Gradle 生成的 so 依赖高版本 glibc，这里用 cargo-zigbuild 强制链接到 glibc 2.28
+      - name: Rebuild x86_64 Linux Rust library with glibc 2.28 compatibility
         run: |
           set -eux
-          export PATH="$PATH:$HOME/.cargo/bin:$HOME/.local/bin"
+          export PATH="$PATH:$HOME/.cargo/bin"
 
-          # 找到 Rust 源码目录
           RUST_SRC="mili-rust/src/rust"
           if [ ! -f "$RUST_SRC/Cargo.toml" ]; then
             RUST_SRC="mili-rust"
           fi
           cd "$RUST_SRC"
 
-          echo "=== Building x86_64-unknown-linux-musl with cargo-zigbuild ==="
-          rustup target add x86_64-unknown-linux-musl
-          cargo zigbuild --target x86_64-unknown-linux-musl --release
+          echo "=== Building x86_64-unknown-linux-gnu.2.28 with cargo-zigbuild ==="
+          rustup target add x86_64-unknown-linux-gnu
+          cargo zigbuild --target x86_64-unknown-linux-gnu.2.28 --release
 
-          MUSL_SO="$PWD/../../build/cargo-target/x86_64-unknown-linux-musl/release/libmili_optimizer.so"
-          if [ ! -f "$MUSL_SO" ]; then
-            # 尝试其他可能路径
-            MUSL_SO="$PWD/../build/cargo-target/x86_64-unknown-linux-musl/release/libmili_optimizer.so"
+          # cargo-zigbuild 输出路径包含版本后缀
+          GNU_SO="$PWD/target/x86_64-unknown-linux-gnu.2.28/release/libmili_optimizer.so"
+          if [ ! -f "$GNU_SO" ]; then
+            # 兼容旧版 cargo-zigbuild 可能不带后缀的路径
+            GNU_SO="$PWD/target/x86_64-unknown-linux-gnu/release/libmili_optimizer.so"
           fi
 
-          if [ -f "$MUSL_SO" ]; then
-            echo "=== Musl build succeeded: $MUSL_SO ==="
-            # 替换 Gradle 生成的 glibc 版本
+          if [ -f "$GNU_SO" ]; then
+            echo "=== Build succeeded: $GNU_SO ==="
             STAGE_DIR="$PWD/../../build/rust"
             mkdir -p "$STAGE_DIR"
-            cp "$MUSL_SO" "$STAGE_DIR/libmili_optimizer.so"
+            
+            # Java 端加载时查找 libmili_optimizer.so，同时保留 mili_optimizer.so 以防万一
+            cp "$GNU_SO" "$STAGE_DIR/libmili_optimizer.so"
+            cp "$GNU_SO" "$STAGE_DIR/mili_optimizer.so"
+            
             echo "=== Replaced staged library ==="
             ls -la "$STAGE_DIR/"
             
-            # 验证没有 glibc 依赖
-            echo "=== Checking dynamic dependencies ==="
+            echo "=== Verifying glibc dependency (should show <= GLIBC_2.28) ==="
             file "$STAGE_DIR/libmili_optimizer.so" || true
-            ldd "$STAGE_DIR/libmili_optimizer.so" 2>/dev/null || true
+            objdump -T "$STAGE_DIR/libmili_optimizer.so" | grep -oE 'GLIBC_[0-9.]+' | sort -V | uniq || true
           else
-            echo "ERROR: musl build did not produce libmili_optimizer.so"
-            find "$PWD/../../build" -name "libmili_optimizer.so" 2>/dev/null || true
+            echo "ERROR: build did not produce libmili_optimizer.so"
+            find "$PWD/target" -name "libmili_optimizer.so" 2>/dev/null || true
             exit 1
           fi
+      # <<< 关键修改结束
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
