@@ -55,12 +55,6 @@ paperweight {
     activeFork = mili
 
 
-    spigot {
-        enabled = true
-        buildDataRef = "17f77cee7117ab9d6175f088ae8962bfd04e61a9"
-        packageVersion = "v1_21_R7" // also needs to be updated in MappingEnvironment
-    }
-
     reobfPackagesToFix.addAll(
         "co.aikar.timings",
         "com.destroystokyo.paper",
