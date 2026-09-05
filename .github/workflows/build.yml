@@ -83,7 +83,7 @@ jobs:
       - name: Publish Hyacinthusweight plugin to mavenLocal
         run: |
           set -eux
-          git clone --depth 1 https://github.com/LuminolCustomArchive/Hyacinthusweight.git hyacinthusweight-src
+          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
           cd hyacinthusweight-src
           chmod +x gradlew
           ./gradlew publishToMavenLocal --no-daemon
