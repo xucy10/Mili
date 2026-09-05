@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -73,28 +73,39 @@ jobs:
           ls -la .gradle/caches || true
 
       - name: Set up JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
-          java-version: 21
+          java-version: 25
 
       # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
       # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
       - name: Publish Hyacinthusweight plugin to mavenLocal
         run: |
           set -eux
-          git clone https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
+          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
           cd hyacinthusweight-src
-          git checkout c046e1f # hyacinthusweight 2.0.7 final (matches weightVersion in gradle.properties; this branch needs the 1.21.x-era plugin with mache mappings wiring, not 2.0.15 from master)
           chmod +x gradlew
           ./gradlew publishToMavenLocal --no-daemon
           cd ..
           rm -rf hyacinthusweight-src
 
+      - name: Download Hyacinthusclip
+        run: |
+          mkdir -p libs
+          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
+          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          if [ ! -s libs/hyacinthusclip.jar ]; then
+            echo "ERROR: Failed to download hyacinthusclip jar"
+            exit 1
+          fi
+          ls -la libs/hyacinthusclip.jar
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -146,8 +157,8 @@ jobs:
 
       - name: Build Rust Optimizer (cross targets)
         env:
-          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
         run: |
           set -eux
           export PATH="$PATH:$HOME/.cargo/bin"
@@ -182,7 +193,7 @@ jobs:
           fi
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
@@ -190,18 +201,6 @@ jobs:
           cache-exclude: |
             **/paperweight/**
             **/caches/paperweight/**
-
-      - name: Download Hyacinthusclip
-        run: |
-          mkdir -p libs
-          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
-          if [ ! -s libs/hyacinthusclip.jar ]; then
-            echo "ERROR: Failed to download hyacinthusclip jar"
-            exit 1
-          fi
-          ls -la libs/hyacinthusclip.jar
 
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
@@ -246,14 +245,14 @@ jobs:
           echo "Total CIS source files: ${COUNT}"
 
       - name: Build Paperclip Jar
-        run: ./gradlew :mili-server:createMojmapPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
+        run: ./gradlew :mili-server:createPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
       - name: Post-Build CIS Smoke Test
         run: |
           JAR_PATH="mili-server/build/libs"
           echo "=== CIS Smoke Test ==="
-          if ls "$JAR_PATH"/*-paperclip-*-mojmap.jar 1>/dev/null 2>&1; then
-            JAR=$(ls "$JAR_PATH"/*-paperclip-*-mojmap.jar | head -1)
+          if ls "$JAR_PATH"/*-paperclip-*.jar 1>/dev/null 2>&1; then
+            JAR=$(ls "$JAR_PATH"/*-paperclip-*.jar | head -1)
             JAR_SIZE=$(stat -c%s "$JAR" 2>/dev/null || stat --format=%s "$JAR" 2>/dev/null || echo "unknown")
             echo "OK: JAR built — $JAR (${JAR_SIZE} bytes)"
             echo ""
@@ -278,10 +277,10 @@ jobs:
           fi
 
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.project_id_b || 'Mili' }} CI Artifacts
-          path: mili-server/build/libs/*-paperclip-*-mojmap.jar
+          path: mili-server/build/libs/*-paperclip-*.jar
           if-no-files-found: error
           retention-days: 14
           compression-level: 9
