@@ -81,14 +81,19 @@ jobs:
       # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
       # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
       - name: Publish Hyacinthusweight plugin to mavenLocal
-        run: |
-          set -eux
-          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
-          cd hyacinthusweight-src
-          chmod +x gradlew
-          ./gradlew publishToMavenLocal --no-daemon
-          cd ..
-          rm -rf hyacinthusweight-src
+         run: |
+           set -eux
+           git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
+           cd hyacinthusweight-src
+           chmod +x gradlew
+           ./gradlew publishToMavenLocal --no-daemon
+           cd ..
+           rm -rf hyacinthusweight-src
+
+       - name: Clear Gradle dependency cache
+         run: |
+           rm -rf ~/.m2/repository/moe/luminolmc/hyacinthusweight || true
+           rm -rf .gradle/caches/modules-2/files-2.1/moe.luminolmc || true
 
       - name: Download Hyacinthusclip
         run: |
