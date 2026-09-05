@@ -177,6 +177,9 @@ jobs:
           git config --global user.name "Mili CI"
           git config --global advice.mergeConflict false
           git config --global init.defaultBranch main
+          # Prevent 'git gc --auto' (used by hyacinthusweight) from detaching a background gc
+          # that races with paperweight copying the repo dirs (NoSuchFileException midx.lock)
+          git config --global gc.autoDetach false
 
       - name: Clean build artifacts
         run: |
