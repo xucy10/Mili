@@ -224,6 +224,47 @@ jobs:
             exit 1
           fi
 
+      - name: Rebuild x86_64 Linux Rust library with musl (no glibc dependency)
+        run: |
+          set -eux
+          export PATH="$PATH:$HOME/.cargo/bin:$HOME/.local/bin"
+
+          # 找到 Rust 源码目录
+          RUST_SRC="mili-rust/src/rust"
+          if [ ! -f "$RUST_SRC/Cargo.toml" ]; then
+            RUST_SRC="mili-rust"
+          fi
+          cd "$RUST_SRC"
+
+          echo "=== Building x86_64-unknown-linux-musl with cargo-zigbuild ==="
+          rustup target add x86_64-unknown-linux-musl
+          cargo zigbuild --target x86_64-unknown-linux-musl --release
+
+          MUSL_SO="$PWD/../../build/cargo-target/x86_64-unknown-linux-musl/release/libmili_optimizer.so"
+          if [ ! -f "$MUSL_SO" ]; then
+            # 尝试其他可能路径
+            MUSL_SO="$PWD/../build/cargo-target/x86_64-unknown-linux-musl/release/libmili_optimizer.so"
+          fi
+
+          if [ -f "$MUSL_SO" ]; then
+            echo "=== Musl build succeeded: $MUSL_SO ==="
+            # 替换 Gradle 生成的 glibc 版本
+            STAGE_DIR="$PWD/../../build/rust"
+            mkdir -p "$STAGE_DIR"
+            cp "$MUSL_SO" "$STAGE_DIR/libmili_optimizer.so"
+            echo "=== Replaced staged library ==="
+            ls -la "$STAGE_DIR/"
+            
+            # 验证没有 glibc 依赖
+            echo "=== Checking dynamic dependencies ==="
+            file "$STAGE_DIR/libmili_optimizer.so" || true
+            ldd "$STAGE_DIR/libmili_optimizer.so" 2>/dev/null || true
+          else
+            echo "ERROR: musl build did not produce libmili_optimizer.so"
+            find "$PWD/../../build" -name "libmili_optimizer.so" 2>/dev/null || true
+            exit 1
+          fi
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
