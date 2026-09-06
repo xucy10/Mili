@@ -10,6 +10,7 @@ import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.config.flags.DoNotLoad;
 import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
+import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 
 import java.util.Set;
 
@@ -44,7 +45,7 @@ public class PortalLinkFixConfig implements IConfigModule {
         PortalLinkManager.setStrictMatching(strictMatching);
         PortalLinkManager.load();
         if (enabled && listener == null) {
-            listener = new PortalLinkListener();
+            listener = new PortalLinkListener(MinecraftInternalPlugin.INSTANCE);
             listener.register();
         }
         if (portalCommand == null) {

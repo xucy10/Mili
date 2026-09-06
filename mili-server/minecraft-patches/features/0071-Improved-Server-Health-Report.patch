@@ -3,38 +3,194 @@ From: Bacteriawa <A3167717663@hotmail.com>
 Date: Tue, 14 Oct 2025 00:28:47 +0800
 Subject: [PATCH] Improved Server Health Report
 
-
 diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9a847dab9 100644
+index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..31096de43eb26134b1155e3d913d2c1aff099b0f 100644
 --- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 +++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-@@ -28,6 +28,14 @@ import java.util.ArrayList;
+@@ -1,6 +1,7 @@
+ package io.papermc.paper.threadedregions.commands;
+ 
+ import ca.spottedleaf.moonrise.common.time.TickData;
++import fun.bm.mili.utils.MiliI18n;
+ import io.papermc.paper.threadedregions.RegionizedServer;
+ import io.papermc.paper.threadedregions.ThreadedRegionizer;
+ import io.papermc.paper.threadedregions.TickRegionScheduler;
+@@ -15,36 +16,59 @@ import net.kyori.adventure.text.format.NamedTextColor;
+ import net.kyori.adventure.text.format.TextColor;
+ import net.kyori.adventure.text.format.TextDecoration;
+ import net.minecraft.server.level.ServerLevel;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.level.ChunkPos;
+ import org.bukkit.Bukkit;
+ import org.bukkit.World;
+ import org.bukkit.command.Command;
+ import org.bukkit.command.CommandSender;
+ import org.bukkit.craftbukkit.CraftWorld;
+-import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Player;
+ import java.text.DecimalFormat;
+ import java.util.ArrayList;
  import java.util.Arrays;
++import java.util.HashMap;
  import java.util.List;
  import java.util.Locale;
-+// Luminol start - Improved Server Health Report
+-
++import java.util.Map;
 +import java.util.concurrent.TimeUnit;
 +import java.lang.management.ManagementFactory;
 +import java.lang.management.MemoryMXBean;
 +import java.lang.management.MemoryUsage;
 +import java.lang.management.RuntimeMXBean;
 +import org.jetbrains.annotations.NotNull;
-+// Luminol end
- 
++
++/**
++ * Refactored /tps command with clean sectioned output and hover tooltips.
++ * <p>
++ * Layout:</p>
++ * <pre>
++ * ═══ Server ═══
++ * Uptime: 2d 3h 15m 30s
++ *
++ * [Performance]  section
++ * [World]        section
++ * [TPS Range]    section
++ * [Memory]       section
++ * [Highest Utilisation - Top N]  section ← hover on players/entities counts
++ * </pre>
++ */
  public final class CommandServerHealth extends Command {
  
-@@ -44,7 +52,7 @@ public final class CommandServerHealth extends Command {
+-    private static final ThreadLocal<DecimalFormat> TWO_DECIMAL_PLACES = ThreadLocal.withInitial(() -> {
+-        return new DecimalFormat("#,##0.00");
+-    });
+-    private static final ThreadLocal<DecimalFormat> ONE_DECIMAL_PLACES = ThreadLocal.withInitial(() -> {
+-        return new DecimalFormat("#,##0.0");
+-    });
+-    private static final ThreadLocal<DecimalFormat> NO_DECIMAL_PLACES = ThreadLocal.withInitial(() -> {
+-        return new DecimalFormat("#,##0");
+-    });
++    private static final ThreadLocal<DecimalFormat> TWO_DECIMAL_PLACES = ThreadLocal.withInitial(() -> new DecimalFormat("#,##0.00"));
++    private static final ThreadLocal<DecimalFormat> ONE_DECIMAL_PLACES = ThreadLocal.withInitial(() -> new DecimalFormat("#,##0.0"));
++    private static final ThreadLocal<DecimalFormat> NO_DECIMAL_PLACES = ThreadLocal.withInitial(() -> new DecimalFormat("#,##0"));
++
++    /** Half-size of a Folia region in chunks (region = (2R+1)x(2R+1) chunks). */
++    private static final int REGION_CHUNK_RADIUS = 2;
+ 
      private static final TextColor HEADER = TextColor.color(79, 164, 240);
-     private static final TextColor PRIMARY = TextColor.color(48, 145, 237);
-     private static final TextColor SECONDARY = TextColor.color(104, 177, 240);
+-    private static final TextColor PRIMARY = TextColor.color(48, 145, 237);
+-    private static final TextColor SECONDARY = TextColor.color(104, 177, 240);
 -    private static final TextColor INFORMATION = TextColor.color(145, 198, 243);
-+    private static final TextColor INFORMATION = TextColor.color(180, 220, 255); // Luminol start - Improved Server Health Report
++    private static final TextColor SECTION = TextColor.color(255, 170, 0);
++    private static final TextColor LABEL = TextColor.color(120, 170, 220);
++    private static final TextColor VALUE = NamedTextColor.WHITE;
++    private static final TextColor SEPARATOR = TextColor.color(80, 80, 80);
++    private static final TextColor DIM = TextColor.color(100, 100, 100);
      private static final TextColor LIST = TextColor.color(33, 97, 188);
  
      public CommandServerHealth() {
-@@ -57,30 +65,32 @@ public final class CommandServerHealth extends Command {
-     private static Component formatRegionInfo(final String prefix, final double util, final double mspt, final double tps,
-                                               final boolean newline) {
+@@ -54,40 +78,182 @@ public final class CommandServerHealth extends Command {
+         this.setPermission("bukkit.command.tps");
+     }
+ 
+-    private static Component formatRegionInfo(final String prefix, final double util, final double mspt, final double tps,
+-                                              final boolean newline) {
++    // -----------------------------------------------------------------------
++    //  Region data helpers
++    // -----------------------------------------------------------------------
++
++    /** Collects player names whose chunk lies within {@code chunkRadius} of {@code center}. */
++    private static List<String> getPlayerNamesInRegion(@NotNull final ServerLevel world,
++                                                        @NotNull final ChunkPos center,
++                                                        final int chunkRadius) {
++        final List<String> names = new ArrayList<>();
++        final int minX = center.x - chunkRadius;
++        final int maxX = center.x + chunkRadius;
++        final int minZ = center.z - chunkRadius;
++        final int maxZ = center.z + chunkRadius;
++        for (final ServerPlayer player : world.players()) {
++            final ChunkPos pc = new ChunkPos(player.blockPosition());
++            if (pc.x >= minX && pc.x <= maxX && pc.z >= minZ && pc.z <= maxZ) {
++                names.add(player.getScoreboardName());
++            }
++        }
++        return names;
++    }
++
++    /** Counts entity types (by descriptionId) within {@code chunkRadius} of {@code center}. */
++    private static Map<String, Long> getEntityCountsInRegion(@NotNull final ServerLevel world,
++                                                              @NotNull final ChunkPos center,
++                                                              final int chunkRadius) {
++        final Map<String, Long> counts = new HashMap<>();
++        final int minX = center.x - chunkRadius;
++        final int maxX = center.x + chunkRadius;
++        final int minZ = center.z - chunkRadius;
++        final int maxZ = center.z + chunkRadius;
++        for (final Entity entity : world.getAllEntities()) {
++            final ChunkPos ec = new ChunkPos(entity.blockPosition());
++            if (ec.x >= minX && ec.x <= maxX && ec.z >= minZ && ec.z <= maxZ) {
++                counts.merge(entity.getType().getDescriptionId(), 1L, Long::sum);
++            }
++        }
++        return counts;
++    }
++
++    /** Builds the hover component for the player-count label in a region. */
++    private static Component buildPlayerHover(@NotNull final List<String> playerNames) {
++        final TextComponent.Builder builder = Component.text()
++                .append(Component.text(MiliI18n.get("mili.tpscommand.hover_players_header", "Players in region:"), LABEL));
++        if (playerNames.isEmpty()) {
++            builder.append(Component.newline())
++                    .append(Component.text(MiliI18n.get("mili.tpscommand.hover_players_empty", "  No players"), DIM));
++        } else {
++            for (final String name : playerNames) {
++                builder.append(Component.newline())
++                        .append(Component.text(String.format(MiliI18n.get("mili.tpscommand.hover_players_line", "  %s"), name), VALUE));
++            }
++        }
++        return builder.build();
++    }
++
++    /** Builds the hover component for the entity-count label in a region. */
++    private static Component buildEntityHover(@NotNull final Map<String, Long> entityCounts, final int topN) {
++        final List<Map.Entry<String, Long>> sorted = entityCounts.entrySet().stream()
++                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
++                .limit(topN)
++                .toList();
++
++        final long total = entityCounts.values().stream().mapToLong(Long::longValue).sum();
++
++        final TextComponent.Builder builder = Component.text()
++                .append(Component.text(String.format(
++                        MiliI18n.get("mili.tpscommand.hover_entities_header", "Top %d entities in region:", topN), topN), LABEL))
++                .append(Component.newline());
++
++        for (final Map.Entry<String, Long> entry : sorted) {
++            final String entityName = mcComponentToPlainString(
++                    net.minecraft.network.chat.Component.translatable(entry.getKey()));
++            builder.append(Component.text(String.format(
++                            MiliI18n.get("mili.tpscommand.hover_entity_line", "  %s: %d"),
++                            entityName, entry.getValue()),
++                    VALUE))
++                    .append(Component.newline());
++        }
++
++        builder.append(Component.text(String.format(
++                MiliI18n.get("mili.tpscommand.hover_entity_total", "  Total: %d"), total), DIM));
++
++        return builder.build();
++    }
++
++    /** Extracts the plain text from a Minecraft Component (for use in hover text). */
++    private static String mcComponentToPlainString(final net.minecraft.network.chat.Component mcComponent) {
++        return mcComponent.getString();
++    }
++
++    // -----------------------------------------------------------------------
++    //  Format helpers
++    // -----------------------------------------------------------------------
++
++    private static Component sectionTitle(@NotNull final String key, @NotNull final String fallback) {
          return Component.text()
 -            .append(Component.text(prefix, PRIMARY, TextDecoration.BOLD))
 -            .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
@@ -44,19 +200,27 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -            .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
 -            .append(Component.text(" TPS" + (newline ? "\n" : ""), PRIMARY))
 -            .build();
-+                .append(Component.text(prefix, PRIMARY, TextDecoration.BOLD))
-+                .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
-+                .append(Component.text("% util", PRIMARY))
-+                .append(Component.text(" | ", SECONDARY))
-+                .append(Component.text(TWO_DECIMAL_PLACES.get().format(mspt), CommandUtil.getColourForMSPT(mspt)))
-+                .append(Component.text(" mspt", PRIMARY))
-+                .append(Component.text(" | ", SECONDARY))
-+                .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
-+                .append(Component.text(" TPS" + (newline ? "\n" : ""), PRIMARY))
++                .append(Component.text("[", DIM))
++                .append(Component.text(MiliI18n.get(key, fallback), SECTION, TextDecoration.BOLD))
++                .append(Component.text("]", DIM))
 +                .build();
++    }
++
++    private static Component labelValue(@NotNull final String labelKey, @NotNull final String labelFallback,
++                                         @NotNull final Component value) {
++        final String label = MiliI18n.get(labelKey, labelFallback);
++        final TextComponent.Builder builder = Component.text();
++        if (!label.isEmpty()) {
++            builder.append(Component.text(label, LABEL))
++                    .append(Component.text(": ", SEPARATOR));
++        }
++        builder.append(value);
++        return builder.build();
      }
  
-     private static Component formatRegionStats(final TickRegions.RegionStats stats, final boolean newline) {
+-    private static Component formatRegionStats(final TickRegions.RegionStats stats, final boolean newline) {
++    /** Region info line: util% | mspt | tps. */
++    private static Component formatRegionInfo(final String prefix, final double util, final double mspt, final double tps) {
          return Component.text()
 -            .append(Component.text("Chunks: ", PRIMARY))
 -            .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getChunkCount()), INFORMATION))
@@ -65,23 +229,71 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -            .append(Component.text(" Entities: ", PRIMARY))
 -            .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
 -            .build();
-+                .append(Component.text("Chunks: ", PRIMARY))
-+                .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getChunkCount()), INFORMATION))
-+                .append(Component.text("  Players: ", PRIMARY))
-+                .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getPlayerCount()), INFORMATION))
-+                .append(Component.text("  Entities: ", PRIMARY))
-+                .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
++                .append(Component.text(prefix, LABEL, TextDecoration.BOLD))
++                .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.util_short", "% util"), LABEL))
++                .append(Component.text(" | ", SEPARATOR))
++                .append(Component.text(TWO_DECIMAL_PLACES.get().format(mspt), CommandUtil.getColourForMSPT(mspt)))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.mspt_short", " MSPT"), LABEL))
++                .append(Component.text(" | ", SEPARATOR))
++                .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.tps_short", " TPS"), LABEL))
 +                .build();
      }
  
++    /** Region stats line with hover tooltips on Players and Entities counts. */
++    private static Component formatRegionStatsWithHover(final int chunkCount, int playerCount, int entityCount,
++                                                        @NotNull final Component playerHover,
++                                                        @NotNull final Component entityHover,
++                                                        final boolean newline) {
++        final String nl = newline ? "\n" : "";
++        // Use abbreviated labels with hover hints
++        final Component playerLabel = Component.text()
++                .append(Component.text(MiliI18n.get("mili.tpscommand.players", "Players"), LABEL))
++                .append(Component.text(": ", SEPARATOR))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(playerCount), VALUE))
++                .hoverEvent(HoverEvent.showText(playerHover))
++                .build();
++
++        final Component entityLabel = Component.text()
++                .append(Component.text(MiliI18n.get("mili.tpscommand.entities", "Entities"), LABEL))
++                .append(Component.text(": ", SEPARATOR))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(entityCount), VALUE))
++                .hoverEvent(HoverEvent.showText(entityHover))
++                .build();
++
++        return Component.text()
++                .append(Component.text(MiliI18n.get("mili.tpscommand.chunks", "Chunks"), LABEL))
++                .append(Component.text(": ", SEPARATOR))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(chunkCount), VALUE))
++                .append(Component.text("  ", SEPARATOR))
++                .append(playerLabel)
++                .append(Component.text("  ", SEPARATOR))
++                .append(entityLabel)
++                .append(Component.text(nl, SEPARATOR))
++                .build();
++    }
++
++    // -----------------------------------------------------------------------
++    //  Command execution
++    // -----------------------------------------------------------------------
++
      private static boolean executeRegion(final CommandSender sender, final String commandLabel, final String[] args) {
          final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
 -            TickRegionScheduler.getCurrentRegion();
 +                TickRegionScheduler.getCurrentRegion();
          if (region == null) {
-             sender.sendMessage(Component.text("You are not in a region currently", NamedTextColor.RED));
+-            sender.sendMessage(Component.text("You are not in a region currently", NamedTextColor.RED));
++            sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.not_in_region", "You are not in a region currently"), NamedTextColor.RED));
              return true;
-@@ -104,25 +114,17 @@ public final class CommandServerHealth extends Command {
+         }
+ 
+         final long currTime = System.nanoTime();
+-
+         final TickData.TickReportData report15s = region.getData().getRegionSchedulingHandle().getTickReport15s(currTime);
+         final TickData.TickReportData report1m = region.getData().getRegionSchedulingHandle().getTickReport1m(currTime);
+ 
+@@ -104,27 +270,33 @@ public final class CommandServerHealth extends Command {
          final double tps1m = report1m.tpsData().segmentAll().average();
          final double mspt1m = report1m.timePerTickData().segmentAll().average() / 1.0E6;
  
@@ -89,11 +301,13 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -        final String location = "[w:'" + world.getWorld().getName() + "'," + centerBlockX + "," + yLoc + "," + centerBlockZ + "]";
 +        final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
  
-         final Component line = Component.text()
+-        final Component line = Component.text()
 -            .append(Component.text("Region around block ", PRIMARY))
 -            .append(Component.text(location, INFORMATION))
 -            .append(Component.text(":\n", PRIMARY))
--
++        final List<String> playerNames = getPlayerNamesInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
++        final Map<String, Long> entityCounts = getEntityCountsInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
+ 
 -            .append(
 -                formatRegionInfo("15s: ", util15s, mspt15s, tps15s, true)
 -            )
@@ -103,29 +317,54 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -            .append(
 -                formatRegionStats(region.getData().getRegionStats(), false)
 -            )
--
++        final Component playerHover = buildPlayerHover(playerNames);
++        final Component entityHover = buildEntityHover(entityCounts, 5);
+ 
 -            .build();
-+                .append(Component.text("Region around block ", PRIMARY))
-+                .append(Component.text(location, INFORMATION))
-+                .append(Component.text(":\n", PRIMARY))
++        final TickRegions.RegionStats stats = region.getData().getRegionStats();
+ 
+-        sender.sendMessage(line);
++        sender.sendMessage(
++                Component.text()
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.header", "Server Health Report"), HEADER, TextDecoration.BOLD))
++                        .append(Component.text(" - ", SEPARATOR))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.region_around", "Region around block "), LABEL))
++                        .append(Component.text(location, VALUE))
++                        .append(Component.text("\n\n", SEPARATOR))
 +
-+                .append(formatRegionInfo("15s: ", util15s, mspt15s, tps15s, true))
-+                .append(formatRegionInfo("1m:  ", util1m, mspt1m, tps1m, true))
-+                .append(formatRegionStats(region.getData().getRegionStats(), false))
-+                .build();
++                        .append(formatRegionInfo(MiliI18n.get("mili.tpscommand.tps_15s", "15s") + ": ", util15s, mspt15s, tps15s))
++                        .append(Component.newline())
++                        .append(formatRegionInfo(MiliI18n.get("mili.tpscommand.tps_1m", "1m") + ": ", util1m, mspt1m, tps1m))
++                        .append(Component.newline())
++                        .append(formatRegionStatsWithHover(
++                                stats.getChunkCount(), stats.getPlayerCount(), stats.getEntityCount(),
++                                playerHover, entityHover, false))
++                        .build()
++        );
  
-         sender.sendMessage(line);
- 
-@@ -143,7 +145,7 @@ public final class CommandServerHealth extends Command {
+         return true;
+     }
+@@ -137,16 +309,15 @@ public final class CommandServerHealth extends Command {
+             try {
+                 lowestRegionsCount = Integer.parseInt(args[1]);
+             } catch (final NumberFormatException ex) {
+-                sender.sendMessage(Component.text("Highest utilisation count '" + args[1] + "' must be an integer", NamedTextColor.RED));
++                sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.invalid_count", "Highest utilisation count '%s' must be an integer", args[1]), NamedTextColor.RED));
+                 return true;
+             }
          }
  
-         final List<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>> regions =
+-        final List<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>> regions =
 -            new ArrayList<>();
-+                new ArrayList<>();
++        final List<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>> regions = new ArrayList<>();
  
          for (final World bukkitWorld : Bukkit.getWorlds()) {
-             final ServerLevel world = ((CraftWorld)bukkitWorld).getHandle();
-@@ -162,6 +164,18 @@ public final class CommandServerHealth extends Command {
+-            final ServerLevel world = ((CraftWorld)bukkitWorld).getHandle();
++            final ServerLevel world = ((CraftWorld) bukkitWorld).getHandle();
+             world.regioniser.computeForAllRegions(regions::add);
+         }
+ 
+@@ -162,6 +333,17 @@ public final class CommandServerHealth extends Command {
          final long currTime = System.nanoTime();
          final TickData.TickReportData globalTickReport = RegionizedServer.getGlobalTickData().getTickReport15s(currTime);
  
@@ -133,7 +372,6 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 +        final MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
 +        final long usedMemory = heapUsage.getUsed() / (1024 * 1024);
 +        final long maxMemory = heapUsage.getMax() / (1024 * 1024);
-+
 +        final double memPercent = (double) usedMemory / maxMemory * 100.0;
 +        final TextColor memColor = memPercent < 60 ? CommandUtil.getUtilisationColourRegion(0.0) : (memPercent < 85 ? NamedTextColor.YELLOW : NamedTextColor.RED);
 +
@@ -144,11 +382,11 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
          for (final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region : regions) {
              final TickData.TickReportData report = region.getData().getRegionSchedulingHandle().getTickReport15s(currTime);
              tpsByRegion.add(report == null ? 20.0 : report.tpsData().segmentAll().average());
-@@ -173,31 +187,27 @@ public final class CommandServerHealth extends Command {
+@@ -173,32 +355,27 @@ public final class CommandServerHealth extends Command {
          final double loadRate = ca.spottedleaf.moonrise.patches.chunk_system.scheduling.task.ChunkFullTask.loadRate(currTime);
  
          totalUtil += globalTickReport.utilisation();
-+        final TextColor utilisationColor = CommandUtil.getUtilisationColourRegion(totalUtil / (double)maxThreadCount);
++        final TextColor utilisationColor = CommandUtil.getUtilisationColourRegion(totalUtil / (double) maxThreadCount);
  
          tpsByRegion.sort(null);
          if (!tpsByRegion.isEmpty()) {
@@ -173,12 +411,14 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 +                regionsBelowThreshold = new ArrayList<>();
  
          for (int i = 0, len = regions.size(); i < len; ++i) {
-             final TickData.TickReportData report = reportsByRegion.get(i);
+-            final TickData.TickReportData report = reportsByRegion.get(i);
 -
-             regionsBelowThreshold.add(new ObjectObjectImmutablePair<>(regions.get(i), report));
+-            regionsBelowThreshold.add(new ObjectObjectImmutablePair<>(regions.get(i), report));
++            regionsBelowThreshold.add(new ObjectObjectImmutablePair<>(regions.get(i), reportsByRegion.get(i)));
          }
  
-@@ -206,11 +216,18 @@ public final class CommandServerHealth extends Command {
+         regionsBelowThreshold.sort((p1, p2) -> {
+@@ -206,111 +383,172 @@ public final class CommandServerHealth extends Command {
              final TickData.TickReportData report2 = p2.right();
              final double util1 = report1 == null ? 0.0 : report1.utilisation();
              final double util2 = report2 == null ? 0.0 : report2.utilisation();
@@ -187,8 +427,10 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
              return Double.compare(util2, util1);
          });
  
+-        final TextComponent.Builder lowestRegionsBuilder = Component.text();
 +        long totalChunks = 0;
 +        long totalEntities = 0;
++        int totalPlayers = Bukkit.getOnlinePlayers().size();
 +
 +        for (final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region : regions) {
 +            final TickRegions.RegionStats stats = region.getData().getRegionStats();
@@ -196,10 +438,13 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 +            totalEntities += stats.getEntityCount();
 +        }
 +
-         final TextComponent.Builder lowestRegionsBuilder = Component.text();
++        // ---------- Build top-N region components with hovers ----------
++
++        final TextComponent.Builder topRegionsBuilder = Component.text();
  
          if (sender instanceof Player) {
-@@ -218,23 +235,18 @@ public final class CommandServerHealth extends Command {
+-            lowestRegionsBuilder.append(Component.text(" Click to teleport\n", SECONDARY));
++            topRegionsBuilder.append(Component.text(MiliI18n.get("mili.tpscommand.click_teleport", " Click to teleport\n"), DIM));
          }
          for (int i = 0, len = Math.min(lowestRegionsCount, regionsBelowThreshold.size()); i < len; ++i) {
              final ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, TickData.TickReportData>
@@ -207,9 +452,9 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 +                    pair = regionsBelowThreshold.get(i);
  
              final TickData.TickReportData report = pair.right();
-             final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
+-            final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
 -                pair.left();
-+                    pair.left();
++            final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region = pair.left();
  
 -            if (report == null) {
 -                // skip regions with no data
@@ -228,17 +473,19 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
              final int centerBlockX = ((chunkCenter.x << 4) | 7);
              final int centerBlockZ = ((chunkCenter.z << 4) | 7);
              final double util = report.utilisation();
-@@ -242,75 +254,102 @@ public final class CommandServerHealth extends Command {
+             final double tps = report.tpsData().segmentAll().average();
              final double mspt = report.timePerTickData().segmentAll().average() / 1.0E6;
++            final TickRegions.RegionStats stats = region.getData().getRegionStats();
  
-             final int yLoc = 80;
+-            final int yLoc = 80;
 -            final String location = "[w:'" + world.getWorld().getName() + "'," + centerBlockX + "," + yLoc + "," + centerBlockZ + "]";
 -            final Component line = Component.text()
 -                .append(Component.text(" - ", LIST, TextDecoration.BOLD))
 -                .append(Component.text("Region around block ", PRIMARY))
 -                .append(Component.text(location, INFORMATION))
 -                .append(Component.text(":\n", PRIMARY))
--
++            final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
+ 
 -                .append(Component.text("    ", PRIMARY))
 -                .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
 -                .append(Component.text("% util at ", PRIMARY))
@@ -246,41 +493,44 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -                .append(Component.text(" MSPT at ", PRIMARY))
 -                .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
 -                .append(Component.text(" TPS\n", PRIMARY))
-+            final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
- 
+-
 -                .append(Component.text("    ", PRIMARY))
 -                .append(formatRegionStats(region.getData().getRegionStats(), (i + 1) != len))
 -                .build()
--
++            // Gathered hover data
++            final List<String> playerNames = getPlayerNamesInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
++            final Map<String, Long> entityCounts = getEntityCountsInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
++            final Component playerHover = buildPlayerHover(playerNames);
++            final Component entityHover = buildEntityHover(entityCounts, 5);
+ 
 -                .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
 -                .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
-+            final Component line = Component.text()
-+                    .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                    .append(Component.text("Region at ", PRIMARY))
-+                    .append(Component.text(location, INFORMATION))
-+                    .append(Component.text(":\n", PRIMARY))
-+
-+                    .append(Component.text("    ", PRIMARY))
-+                    .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
-+                    .append(Component.text("% util", PRIMARY))
-+                    .append(Component.text(" | ", SECONDARY))
-+                    .append(Component.text(TWO_DECIMAL_PLACES.get().format(mspt), CommandUtil.getColourForMSPT(mspt)))
-+                    .append(Component.text(" mspt", PRIMARY))
-+                    .append(Component.text(" | ", SECONDARY))
-+                    .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
-+                    .append(Component.text(" TPS\n", PRIMARY))
-+
-+                    .append(Component.text("    ", PRIMARY))
-+                    .append(formatRegionStats(region.getData().getRegionStats(), (i + 1) != len))
-+                    .build()
-+
-+                    .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
-+                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
++            final int yLoc = 80;
  
-             lowestRegionsBuilder.append(line);
+-            lowestRegionsBuilder.append(line);
++            final Component line = Component.text()
++                    .append(Component.text("  - ", LIST, TextDecoration.BOLD))
++                    .append(Component.text(location, VALUE, TextDecoration.BOLD))
++                    .append(Component.text("\n", SEPARATOR))
++
++                    .append(formatRegionInfo("    ", util, mspt, tps))
++                    .append(Component.newline())
++                    .append(formatRegionStatsWithHover(
++                            stats.getChunkCount(),
++                            stats.getPlayerCount(),
++                            stats.getEntityCount(),
++                            playerHover, entityHover, (i + 1) != len))
++                    .build()
++                    .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND,
++                            "/minecraft:execute as @s in " + world.getWorld().getKey().toString()
++                                    + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
++                    .hoverEvent(HoverEvent.showText(Component.text(
++                            MiliI18n.get("mili.tpscommand.click_teleport_hover", "Click to teleport to %s", location), DIM)));
++
++            topRegionsBuilder.append(line);
          }
  
-         sender.sendMessage(
+-        sender.sendMessage(
 -            Component.text()
 -                .append(Component.text("Server Health Report\n", HEADER, TextDecoration.BOLD))
 -
@@ -321,100 +571,155 @@ index 2c3a3c9dd48b096d12bbff344750a1eae1f0549e..d1bd2ad461d1e5b061378c3990addef9
 -                .append(Component.text("Highest ", HEADER, TextDecoration.BOLD))
 -                .append(Component.text(Integer.toString(lowestRegionsCount), INFORMATION, TextDecoration.BOLD))
 -                .append(Component.text(" utilisation regions\n", HEADER, TextDecoration.BOLD))
--
++        // ---------- Assemble final component ----------
+ 
 -                .append(lowestRegionsBuilder.build())
 -                .build()
++        sender.sendMessage(
 +                Component.text()
-+                        .append(Component.text("Server Health Report", HEADER, TextDecoration.BOLD))
-+                        .append(Component.text(" (Uptime: ", SECONDARY))
-+                        .append(Component.text(uptimeStr, utilisationColor))
-+                        .append(Component.text(")\n", SECONDARY))
-+
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Online Players: ", PRIMARY))
-+                        .append(Component.text(Bukkit.getOnlinePlayers().size(), INFORMATION))
++                        // Header
++                        .append(Component.text("═══ ", DIM))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.header", "Server Health Report"), HEADER, TextDecoration.BOLD))
++                        .append(Component.text(" ═══\n", DIM))
++                        .append(labelValue("uptime.label", "", Component.text(uptimeStr, utilisationColor)))
++                        .append(Component.newline())
 +                        .append(Component.newline())
 +
++                        // ── Performance section ──
++                        .append(sectionTitle("mili.tpscommand.section_performance", "Performance"))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("tps.label",
++                                "TPS",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(globalTickReport.tpsData().segmentAll().average()), CommandUtil.getColourForTPS(globalTickReport.tpsData().segmentAll().average()))))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.utilisation", "Utilisation",
++                                Component.text(ONE_DECIMAL_PLACES.get().format(totalUtil * 100.0), utilisationColor)
++                                        .append(Component.text("%", LABEL))
++                                        .append(Component.text(" / ", SEPARATOR))
++                                        .append(Component.text(ONE_DECIMAL_PLACES.get().format(maxThreadCount * 100.0), VALUE))
++                                        .append(Component.text("%", LABEL))))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.load_rate", "Load rate",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(loadRate), VALUE)))
++                        .append(Component.text(" | ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.gen_rate", "Gen rate",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(genRate), VALUE)))
++                        .append(Component.newline())
++                        .append(Component.newline())
 +
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Total regions: ", PRIMARY))
-+                        .append(Component.text(regions.size(), INFORMATION))
-+                        .append(Component.text(", ", PRIMARY))
-+                        .append(Component.text("Total Chunks: ", PRIMARY))
-+                        .append(Component.text(NO_DECIMAL_PLACES.get().format(totalChunks), INFORMATION))
-+                        .append(Component.text(", ", PRIMARY))
-+                        .append(Component.text("Total Entities: ", PRIMARY))
-+                        .append(Component.text(NO_DECIMAL_PLACES.get().format(totalEntities) + "\n", INFORMATION))
++                        // ── World section ──
++                        .append(sectionTitle("mili.tpscommand.section_world", "World"))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.online_players", "Players",
++                                Component.text(Integer.toString(totalPlayers), VALUE)))
++                        .append(Component.text(" | ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.total_entities", "Entities",
++                                Component.text(NO_DECIMAL_PLACES.get().format(totalEntities), VALUE)))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.total_chunks", "Chunks",
++                                Component.text(NO_DECIMAL_PLACES.get().format(totalChunks), VALUE)))
++                        .append(Component.text(" | ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.total_regions", "Regions",
++                                Component.text(Integer.toString(regions.size()), VALUE)))
++                        .append(Component.newline())
++                        .append(Component.newline())
 +
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Utilisation: ", PRIMARY))
-+                        .append(Component.text(ONE_DECIMAL_PLACES.get().format(totalUtil * 100.0), utilisationColor))
-+                        .append(Component.text("%", PRIMARY))
-+                        .append(Component.text(" / ", SECONDARY))
-+                        .append(Component.text(ONE_DECIMAL_PLACES.get().format(maxThreadCount * 100.0), INFORMATION))
-+                        .append(Component.text("%\n", PRIMARY))
++                        // ── TPS Range section ──
++                        .append(sectionTitle("mili.tpscommand.section_tps_range", "TPS Range"))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.lowest_tps", "Lowest",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(minTps), CommandUtil.getColourForTPS(minTps))))
++                        .append(Component.text(" | ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.median_tps", "Median",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(medianTps), CommandUtil.getColourForTPS(medianTps))))
++                        .append(Component.text(" | ", SEPARATOR))
++                        .append(labelValue("mili.tpscommand.highest_tps", "Highest",
++                                Component.text(TWO_DECIMAL_PLACES.get().format(maxTps), CommandUtil.getColourForTPS(maxTps))))
++                        .append(Component.newline())
++                        .append(Component.newline())
 +
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Load rate: ", PRIMARY))
-+                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(loadRate), INFORMATION))
-+                        .append(Component.text(", ", PRIMARY))
-+                        .append(Component.text("Gen rate: ", PRIMARY))
-+                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(genRate) + "\n", INFORMATION))
-+
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Memory: ", PRIMARY))
++                        // ── Memory section ──
++                        .append(sectionTitle("mili.tpscommand.section_memory", "Memory"))
++                        .append(Component.newline())
++                        .append(Component.text("  ", SEPARATOR))
 +                        .append(Component.text(NO_DECIMAL_PLACES.get().format(usedMemory), memColor))
 +                        .append(Component.text(" MB", memColor))
-+                        .append(Component.text(" / ", SECONDARY))
-+                        .append(Component.text(NO_DECIMAL_PLACES.get().format(maxMemory), INFORMATION))
-+                        .append(Component.text(" MB", INFORMATION))
-+                        .append(Component.text(" (", SECONDARY))
++                        .append(Component.text(" / ", SEPARATOR))
++                        .append(Component.text(NO_DECIMAL_PLACES.get().format(maxMemory), VALUE))
++                        .append(Component.text(" MB", VALUE))
++                        .append(Component.text(" (", SEPARATOR))
 +                        .append(Component.text(ONE_DECIMAL_PLACES.get().format(memPercent) + "%", memColor))
-+                        .append(Component.text(")", SECONDARY))
++                        .append(Component.text(")", SEPARATOR))
++                        .append(Component.newline())
 +                        .append(Component.newline())
 +
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Lowest Region TPS: ", PRIMARY))
-+                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(minTps) + "\n", CommandUtil.getColourForTPS(minTps)))
-+
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Median Region TPS: ", PRIMARY))
-+                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(medianTps) + "\n", CommandUtil.getColourForTPS(medianTps)))
-+
-+                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
-+                        .append(Component.text("Highest Region TPS: ", PRIMARY))
-+                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(maxTps) + "\n", CommandUtil.getColourForTPS(maxTps)))
-+
-+                        .append(Component.text("Highest ", HEADER, TextDecoration.BOLD))
-+                        .append(Component.text(Integer.toString(lowestRegionsCount), INFORMATION, TextDecoration.BOLD))
-+                        .append(Component.text(" utilisation regions\n", HEADER, TextDecoration.BOLD))
-+
-+                        .append(lowestRegionsBuilder.build())
++                        // ── Highest Utilisation section ──
++                        .append(sectionTitle("mili.tpscommand.section_top_regions", "Highest Utilisation"))
++                        .append(Component.text(" (", SEPARATOR))
++                        .append(Component.text("Top ", DIM))
++                        .append(Component.text(Integer.toString(Math.min(lowestRegionsCount, regionsBelowThreshold.size())), VALUE, TextDecoration.BOLD))
++                        .append(Component.text(")\n", SEPARATOR))
++                        .append(topRegionsBuilder)
 +                        .build()
          );
  
          return true;
-@@ -360,4 +399,21 @@ public final class CommandServerHealth extends Command {
+@@ -326,20 +564,17 @@ public final class CommandServerHealth extends Command {
+         }
+ 
+         switch (type.toLowerCase(Locale.ROOT)) {
+-            case "server": {
++            case "server":
+                 return executeServer(sender, commandLabel, args);
+-            }
+-            case "region": {
++            case "region":
+                 if (!(sender instanceof Entity)) {
+-                    sender.sendMessage(Component.text("Cannot see current region information as console", NamedTextColor.RED));
++                    sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.console_no_region", "Cannot see current region information as console"), NamedTextColor.RED));
+                     return true;
+                 }
+                 return executeRegion(sender, commandLabel, args);
+-            }
+-            default: {
+-                sender.sendMessage(Component.text("Type '" + args[0] + "' must be one of: [server, region]", NamedTextColor.RED));
++            default:
++                sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.invalid_type", "Type '%s' must be one of: [server, region]", args[0]), NamedTextColor.RED));
+                 return true;
+-            }
+         }
+     }
+ 
+@@ -360,4 +595,24 @@ public final class CommandServerHealth extends Command {
          }
          return new ArrayList<>();
      }
 -}
 \ No newline at end of file
 +
-+    // Luminol start - Improved Server Health Report
 +    private static @NotNull String formatUptime(long uptimeMillis) {
 +        long days = TimeUnit.MILLISECONDS.toDays(uptimeMillis);
 +        long hours = TimeUnit.MILLISECONDS.toHours(uptimeMillis) % 24;
 +        long minutes = TimeUnit.MILLISECONDS.toMinutes(uptimeMillis) % 60;
 +        long seconds = TimeUnit.MILLISECONDS.toSeconds(uptimeMillis) % 60;
 +
++        final String daySuffix = MiliI18n.get("mili.tpscommand.uptime_days", "d ");
++        final String hourSuffix = MiliI18n.get("mili.tpscommand.uptime_hours", "h ");
++        final String minuteSuffix = MiliI18n.get("mili.tpscommand.uptime_minutes", "m ");
++        final String secondSuffix = MiliI18n.get("mili.tpscommand.uptime_seconds", "s");
++
 +        StringBuilder sb = new StringBuilder();
-+        if (days > 0) sb.append(days).append("d ");
-+        if (hours > 0) sb.append(hours).append("h ");
-+        if (minutes > 0) sb.append(minutes).append("m ");
-+        sb.append(seconds).append("s");
++        if (days > 0) sb.append(days).append(daySuffix);
++        if (hours > 0) sb.append(hours).append(hourSuffix);
++        if (minutes > 0) sb.append(minutes).append(minuteSuffix);
++        sb.append(seconds).append(secondSuffix);
 +
 +        return sb.toString();
 +    }
-+    // Luminol end
 +}
