@@ -305,20 +305,6 @@ jobs:
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
-      # Mili start - Publish artifacts to GitHub Packages
-      - name: Publish to GitHub Packages
-        if: github.event_name != 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -eux
-          REF_NAME="${{ github.ref_name }}"
-          echo "Publishing version derived from branch: ${REF_NAME}"
-          ./gradlew publishMiliPublicationToGitHubPackagesRepository \
-            --no-configuration-cache \
-            -Pversion="${REF_NAME#ver/}" \
-            -x test
-      # Mili end
 
       - name: Post-Build CIS Smoke Test
         run: |
