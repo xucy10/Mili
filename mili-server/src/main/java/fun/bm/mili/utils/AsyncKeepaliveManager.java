@@ -4,6 +4,7 @@ import fun.bm.mili.config.modules.function.OldFeatureConfig;
 import net.minecraft.network.Connection;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
+import org.leavesmc.leaves.bot.ServerBotPacketListenerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,14 @@ public final class AsyncKeepaliveManager {
 
     public static void register(ServerCommonPacketListenerImpl listener) {
         if (!OldFeatureConfig.asyncKeepalive) {
+            return;
+        }
+
+        // 假人没有真实客户端，send() 为空操作导致其永远不会回复 keepalive 包，lastKeepAliveResponse 永不更新；
+        // 注册进管理器会在超时后每秒对假人触发一次超时踢出链路（"bot was kicked due to keepalive timeout!" 刷屏）。
+        // 且所有假人共享 BotConnection.INSTANCE 作为 map key，注册会互相覆盖并造成 listener 泄漏。
+        // 因此将假人完全排除在异步 keepalive 管理之外。
+        if (listener instanceof ServerBotPacketListenerImpl) {
             return;
         }
 
