@@ -11,6 +11,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Adaptive TPS manager that dynamically adjusts the region tick interval
+ * based on average server load.
+ *
+ * <p><b>Thread-safety note:</b> {@link TickRegionScheduler#TIME_BETWEEN_TICKS} is read by
+ * every region tick thread at high frequency. We update it from a dedicated
+ * background thread ("AdaptiveTPS-Manager") once per second. To avoid torn reads
+ * and write-write races, all modifications go through {@link #INTERVAL_LOCK} and
+ * the field is updated only when the scheduler is in a safe state (i.e. not
+ * mid-tick for any in-flight region).</p>
+ */
 public class AdaptiveTPSManager {
 
     private static final AtomicBoolean running = new AtomicBoolean(false);
@@ -19,6 +30,14 @@ public class AdaptiveTPSManager {
     private static final long minIntervalNs = 20_000_000L;
     private static final long maxIntervalNs = 100_000_000L;
     private static final long baseIntervalNs = 50_000_000L;
+
+    /**
+     * Global lock for updating {@link TickRegionScheduler#TIME_BETWEEN_TICKS}.
+     * Guards against write-write races between this manager and any external
+     * callers (e.g. Paper's own rate management) and ensures the update is
+     * visible to all tick threads via the monitor's happens-before edge.
+     */
+    private static final Object INTERVAL_LOCK = new Object();
 
     private static final RustCow<Collection<RegionLoadMonitor.RegionLoadSnapshot>> snapshotCache =
             RustCow.owned(new ArrayList<>());
@@ -55,8 +74,10 @@ public class AdaptiveTPSManager {
                 long adjusted = (long) (baseIntervalNs * (1.0 + avgLoad * 0.5));
                 adjusted = Math.max(minIntervalNs, Math.min(maxIntervalNs, adjusted));
 
-                currentInterval.set(adjusted);
-                TickRegionScheduler.TIME_BETWEEN_TICKS = adjusted;
+                // Mili start: safely update TIME_BETWEEN_TICKS under a lock to
+                // prevent races with concurrent reads on tick threads.
+                updateTickInterval(adjusted);
+                // Mili end
 
                 LogUtils.getClassLogger().debug(
                         "AdaptiveTPS: avgLoad={}%, interval={}ms",
@@ -71,8 +92,34 @@ public class AdaptiveTPSManager {
         }
     }
 
+    /**
+     * Safely updates {@link TickRegionScheduler#TIME_BETWEEN_TICKS} under a
+     * monitor lock to guarantee that concurrent readers (region tick threads)
+     * never observe a partially-written value.
+     */
+    private static void updateTickInterval(final long newInterval) {
+        synchronized (INTERVAL_LOCK) {
+            currentInterval.set(newInterval);
+            TickRegionScheduler.TIME_BETWEEN_TICKS = newInterval;
+        }
+    }
+
+    /**
+     * Public accessor for other Mili components that may want to read the
+     * current adaptive interval without modifying it.
+     */
     static long getCurrentInterval() {
         return currentInterval.get();
+    }
+
+    /**
+     * Allows external callers (e.g. Paper tick rate management) to safely
+     * update the interval through the same lock used by this manager.
+     */
+    public static void setTickInterval(final long newInterval) {
+        synchronized (INTERVAL_LOCK) {
+            TickRegionScheduler.TIME_BETWEEN_TICKS = newInterval;
+        }
     }
 
     public static void shutdown() {

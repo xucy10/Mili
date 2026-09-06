@@ -1,3 +1,4 @@
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
@@ -85,8 +86,35 @@ subprojects {
                     password = System.getenv("PRIVATE_MAVEN_REPO_PASSWORD")
                 }
             }
+            // Mili start - GitHub Packages repository (only when running in GitHub Actions)
+            if (System.getenv("GITHUB_ACTIONS") == "true") {
+                maven("https://maven.pkg.github.com/xucy10/Mili") {
+                    name = "GitHubPackages"
+                    credentials(PasswordCredentials::class) {
+                        username = System.getenv("GITHUB_ACTOR")
+                        password = System.getenv("GITHUB_TOKEN")
+                    }
+                }
+            }
+            // Mili end
         }
     }
+
+    // Mili start - Configure component publication for GitHub Packages
+    // Exposes mili-api and mili-server as Maven artifacts.
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("mili") {
+                groupId = "org.leavesmc.mili"
+                artifactId = project.name
+                // Allow overriding version via -Pversion=... on the CLI (used by CI)
+                version = project.findProperty("version")?.toString() ?: project.version.toString()
+
+                from(components["java"])
+            }
+        }
+    }
+    // Mili end
 
     tasks.withType<Javadoc>().configureEach {
         options {
