@@ -12,6 +12,8 @@ import fun.bm.mili.utils.NetworkOptimizer;
 import fun.bm.mili.utils.RegionBalancer;
 import fun.bm.mili.utils.SmartRegionManager;
 import fun.bm.mili.utils.TechnicalMCOptimizer;
+import fun.bm.mili.utils.dagschedule.DAGScheduler;
+import fun.bm.mili.utils.picontrol.TickDurationGovernor;
 import fun.bm.mili.villager.VillagerOptimizer;
 import org.bukkit.plugin.Plugin;
 
@@ -25,6 +27,7 @@ import java.util.logging.Logger;
  * - 网络优化 (NetworkOptimizer)
  * - 生电优化 (TechnicalMCOptimizer)
  * - 延迟缓解 (LagRemover)
+ * - 自适应TPS调节 (TickDurationGovernor + DAG调度)
  */
 public final class MiliOptimizations {
     private static final Logger LOGGER = Logger.getLogger("Mili");
@@ -64,18 +67,51 @@ public final class MiliOptimizations {
             TechnicalMCOptimizer.init();
         }
 
-        LOGGER.info("[Mili] Optimizations initialized (v3.1)");
+        // DAG 调度器（依赖感知的并行tick）
+        if (RegionBalancerConfig.dagEnabled) {
+            DAGScheduler.init();
+        }
+
+        // Tick 持续时间调节器（PI控制器，替代纯TPS触发）
+        if (RegionBalancerConfig.governorEnabled) {
+            TickDurationGovernor.init();
+        }
+
+        LOGGER.info("[Mili] Optimizations initialized (v3.1, dag={}, governor={})",
+                RegionBalancerConfig.dagEnabled, RegionBalancerConfig.governorEnabled);
     }
 
     public static void shutdown() {
-        MiliChunkSystem.shutdown();
-        VillagerOptimizer.shutdown();
+        // Mili start - fix: only shutdown subsystems that were initialized (config enabled)
+        if (ChunkSystemConfig.enabled) {
+            MiliChunkSystem.shutdown();
+        }
+        if (VillagerOptimizerConfig.enabled) {
+            VillagerOptimizer.shutdown();
+        }
         LagRemover.shutdown();
-        RegionBalancer.shutdown();
-        SmartRegionManager.shutdown();
-        ChunkRegionBridge.shutdown();
-        NetworkOptimizer.shutdown();
-        TechnicalMCOptimizer.shutdown();
+        if (RegionBalancerConfig.enabled) {
+            RegionBalancer.shutdown();
+            SmartRegionManager.shutdown();
+        }
+        // Mili start - shutdown new subsystems
+        if (RegionBalancerConfig.dagEnabled) {
+            DAGScheduler.shutdown();
+        }
+        if (RegionBalancerConfig.governorEnabled) {
+            TickDurationGovernor.shutdown();
+        }
+        // Mili end
+        if (RegionBalancerConfig.enabled || ChunkSystemConfig.enabled) {
+            ChunkRegionBridge.shutdown();
+        }
+        if (NetworkOptimizerConfig.enabled) {
+            NetworkOptimizer.shutdown();
+        }
+        if (TechnicalMCOptimizerConfig.enabled) {
+            TechnicalMCOptimizer.shutdown();
+        }
+        // Mili end
 
         LOGGER.info("[Mili] All optimizations shutdown");
     }

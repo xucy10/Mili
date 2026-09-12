@@ -1,6 +1,7 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
+import fun.bm.mili.utils.picontrol.CatchUpController;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -9,7 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Adaptive Region Balancer.
@@ -105,12 +109,19 @@ public final class RegionBalancer {
 
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private static volatile ExecutorService workerPool;
+    // Bounded queue to prevent OOM under extreme load.
+    // When full, submit() rejects and falls back to synchronous execution.
+    private static final int MAX_QUEUE_CAPACITY = 4000;
     private static final PriorityBlockingQueue<RegionTask> taskQueue =
-            new PriorityBlockingQueue<>();
+            new PriorityBlockingQueue<>(256);
     private static final ConcurrentHashMap<Integer, AtomicLong> lastTickTime =
             new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, TaskRecord> taskRecords = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, RegionTask> pendingTasks = new ConcurrentHashMap<>();
+    // Lock-free queue depth counter (avoids PriorityBlockingQueue.size() O(n) cost)
+    private static final AtomicInteger queueDepth = new AtomicInteger(0);
+    // Overflow counter — tasks rejected because queue was full
+    private static final LongAdder queueOverflowCount = new LongAdder();
     private static final AtomicLong sequence = new AtomicLong(0);
     private static final AtomicBoolean shutdown = new AtomicBoolean(false);
 
@@ -138,6 +149,11 @@ public final class RegionBalancer {
         // Mili start - Adaptive TPS
         fun.bm.mili.utils.AdaptiveTPSManager.start();
         // Mili end - Adaptive TPS
+
+        // Mili start - PI controller for catch-up limiting
+        CatchUpController.init();
+        syncDagAndGovernorConfig();
+        // Mili end
 
         com.mojang.logging.LogUtils.getClassLogger().info(
                 "RegionBalancer initialized with {} worker threads", poolSize);
@@ -178,6 +194,7 @@ public final class RegionBalancer {
             try {
                 RegionTask task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
                 if (task == null) continue;
+                queueDepth.decrementAndGet();
 
                 // Re-score priority right before execution to avoid starvation
                 long overdue = System.nanoTime() - task.enqueueNanos;
@@ -265,8 +282,27 @@ public final class RegionBalancer {
      */
     public static void submit(Object scheduleRef, long tickCount, Runnable work) {
         if (!RegionBalancerConfig.enabled || workerPool == null) {
-            // Fallback: run synchronously
-            work.run();
+            // Mili start - fix: catch exceptions in fallback synchronous execution to prevent server crash
+            try {
+                work.run();
+            } catch (Throwable ex) {
+                com.mojang.logging.LogUtils.getClassLogger().error(
+                        "RegionBalancer fallback synchronous execution failed", ex);
+            }
+            // Mili end
+            return;
+        }
+
+        // Bounded queue: reject when full to prevent OOM
+        if (queueDepth.get() >= MAX_QUEUE_CAPACITY) {
+            queueOverflowCount.increment();
+            // Fallback to synchronous execution — safer than unbounded queue growth
+            try {
+                work.run();
+            } catch (Throwable ex) {
+                com.mojang.logging.LogUtils.getClassLogger().error(
+                        "RegionBalancer overflow-fallback execution failed", ex);
+            }
             return;
         }
 
@@ -280,6 +316,7 @@ public final class RegionBalancer {
         task.priority = priority;
         registerTask(task);
         taskQueue.add(task);
+        queueDepth.incrementAndGet();
     }
 
     /**
@@ -389,7 +426,8 @@ public final class RegionBalancer {
     }
 
     public static int pendingTasks() {
-        return taskQueue.size();
+        // Use O(1) atomic counter instead of O(n) PriorityBlockingQueue.size()
+        return Math.max(0, queueDepth.get());
     }
 
     public static int activeWorkers() {
@@ -408,7 +446,33 @@ public final class RegionBalancer {
         stats.put("active_workers", activeWorkers());
         stats.put("initialized", initialized.get());
         stats.put("shutdown", shutdown.get());
+        stats.put("queue_overflows", queueOverflowCount.sum());
+        stats.put("catch_up_controller", CatchUpController.getStats());
         return stats;
+    }
+
+    /**
+     * Sync config values to subsystem statics.
+     * Called after config load, before subsystem init.
+     */
+    private static void syncDagAndGovernorConfig() {
+        // DAG scheduler config
+        fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_BATCH_SIZE = RegionBalancerConfig.dagBatchSize;
+        fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_WAVES = RegionBalancerConfig.dagMaxWaves;
+
+        // Governor config
+        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.TARGET_INTERVAL_NS = RegionBalancerConfig.governorTargetIntervalNs;
+        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.MIN_INTERVAL_NS = RegionBalancerConfig.governorMinIntervalNs;
+        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.MAX_INTERVAL_NS = RegionBalancerConfig.governorMaxIntervalNs;
+        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.ENABLED = RegionBalancerConfig.governorEnabled;
+
+        // PI controller config
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.KP = RegionBalancerConfig.piKp;
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.KI = RegionBalancerConfig.piKi;
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_CATCHUP_TICKS = RegionBalancerConfig.piMaxCatchup;
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_TICK_DURATION_BUDGET_NS = RegionBalancerConfig.piCpuBudgetMs * 1_000_000L;
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_QUEUE_DEPTH = RegionBalancerConfig.piMaxQueueDepth;
+        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_WORKER_UTILIZATION = RegionBalancerConfig.piMaxWorkerUtil;
     }
 
     /**
@@ -427,5 +491,8 @@ public final class RegionBalancer {
                 Thread.currentThread().interrupt();
             }
         }
+        // Mili start - shutdown PI controller
+        CatchUpController.shutdown();
+        // Mili end
     }
 }
