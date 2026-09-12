@@ -245,8 +245,13 @@ public final class DAGScheduler {
         }
 
         // Wait with timeout
-        phaser.awaitAdvanceInterruptibly(phaser.arrive(),
-                Config.WAVE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        try {
+            phaser.awaitAdvanceInterruptibly(phaser.arrive(),
+                    Config.WAVE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            LogUtils.getLogger().warn("[Mili] DAG wave interrupted, forcing completion");
+        }
 
         return new WaveResult(completed.get(), failed.get(), 0, failed.get() == 0);
     }
