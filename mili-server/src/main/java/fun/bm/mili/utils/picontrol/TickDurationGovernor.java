@@ -1,1 +1,291 @@
-package fun.bm.mili.utils.picontrol;import com.mojang.logging.LogUtils;import fun.bm.mili.utils.RegionBalancer;import fun.bm.mili.utils.RegionLoadMonitor;import io.papermc.paper.threadedregions.TickRegionScheduler;import org.jetbrains.annotations.NotNull;import java.util.Map;import java.util.concurrent.atomic.AtomicBoolean;import java.util.concurrent.atomic.AtomicLong;import java.util.concurrent.locks.LockSupport;/** * Adaptive tick-duration governor that uses {@link CatchUpController} to * dynamically adjust the time between server ticks. * * <p>Unlike naive TPS-fixup that simply tries to hit 20 TPS (which creates * a positive feedback loop when the server is already overloaded), this * governor treats tick duration as the controllable output and observes * queue depth / worker utilization as constraints.</p> * * <h3>Governor state machine:</h3> * <pre> *   NORMAL  ──(tick duration exceeds budget)──▶  LIMITING *   LIMITING ──(backlog cleared AND budgets free)──▶  NORMAL * </pre> * * <p>The governor runs at a fixed 1 Hz cadence. Each tick it reads the * RegionLoadMonitor snapshots and RegionBalancer queue depth, feeds them * into the PI controller, and adjusts {@link TickRegionScheduler#TIME_BETWEEN_TICKS}.</p> */public final class TickDurationGovernor {    private TickDurationGovernor() {}    /**     * Governor configuration.     */    public static final class Config {        /** Minimum interval between ticks (fastest TPS). */        public static long MIN_INTERVAL_NS = 45_000_000L; // ~22.2 TPS max        /** Maximum interval between ticks (slowest TPS). */        public static long MAX_INTERVAL_NS = 60_000_000L; // ~16.6 TPS min        /** Target interval at normal load. */        public static long TARGET_INTERVAL_NS = 50_000_000L; // 20 TPS        /** Governor wake-up period. */        public static long GOVERNOR_PERIOD_MS = 1000L;        /** Enable the governor. */        public static boolean ENABLED = true;        private Config() {}    }    /**     * Governor phase.     */    public enum Phase {        /** Running at or near 20 TPS — no pressure. */        NORMAL,        /** Detected pressure — reducing TPS to prevent overloading. */        GOVERNING,        /** Backlog detected — attempting controlled catch-up. */        CATCHING_UP,        /** Exhausted all budgets — can only run at minimum speed. */        CLAMPED    }    /**     * Snapshot of governor state.     */    public record GovernorState(            Phase phase,            long currentIntervalNs,            double currentTps,            long allowedCatchup,            CatchUpController.State controllerState    ) {}    // ---------- State ----------    private static final AtomicBoolean initialized = new AtomicBoolean(false);    private static final AtomicBoolean running = new AtomicBoolean(false);    private static volatile Thread governorThread;    /** Current tick interval. */    private static final AtomicLong currentIntervalNs = new AtomicLong(Config.TARGET_INTERVAL_NS);    /** Current governor phase. */    private static volatile Phase currentPhase = Phase.NORMAL;    /** Monotonic tick counter. */    private static final AtomicLong tickCounter = new AtomicLong(0);    // ---------- Lifecycle ----------    public static void init() {        if (!Config.ENABLED) return;        if (!initialized.compareAndSet(false, true)) return;        CatchUpController.init();        running.set(true);        governorThread = new Thread(TickDurationGovernor::governorLoop, "Mili-TickGovernor");        governorThread.setDaemon(true);        governorThread.setPriority(Thread.NORM_PRIORITY + 1);        governorThread.start();        LogUtils.getLogger().info("[Mili] TickDurationGovernor initialized (targetInterval={}ns, range={}-{}ns)",                Config.TARGET_INTERVAL_NS, Config.MIN_INTERVAL_NS, Config.MAX_INTERVAL_NS);    }    public static void shutdown() {        if (!initialized.compareAndSet(true, false)) return;        running.set(false);        if (governorThread != null) {            governorThread.interrupt();            LockSupport.unpark(governorThread);        }        CatchUpController.shutdown();        currentIntervalNs.set(Config.TARGET_INTERVAL_NS);        // Reset Folia scheduler to default        TickRegionScheduler.TIME_BETWEEN_TICKS = Config.TARGET_INTERVAL_NS;        LogUtils.getLogger().info("[Mili] TickDurationGovernor shutdown");    }    // ---------- Control Loop ----------    private static void governorLoop() {        long lastTickNanos = System.nanoTime();        while (running.get()) {            try {                Thread.sleep(Config.GOVERNOR_PERIOD_MS);                if (!running.get()) break;                if (!Config.ENABLED) continue;                long now = System.nanoTime();                double dt = (now - lastTickNanos) / 1_000_000_000.0;                lastTickNanos = now;                governorTick(dt);                tickCounter.incrementAndGet();            } catch (InterruptedException e) {                Thread.currentThread().interrupt();                break;            } catch (Throwable ex) {                LogUtils.getLogger().error("[Mili] TickGovernor loop error, surviving", ex);            }        }    }    /**     * One governor computation cycle.     */    private static void governorTick(double dt) {        // Gather observations        CatchUpController.Observation obs = buildObservation(dt);        // Compute PI controller output        long allowedCatchup = CatchUpController.computeAllowedCatchup(obs);        // Determine phase and target interval        Phase newPhase;        long targetInterval;        CatchUpController.State ctrlState = CatchUpController.getState();        boolean budgetExhausted = ctrlState.cpuBudgetExhausted()                || ctrlState.queueBudgetExhausted()                || ctrlState.workerBudgetExhausted();        if (budgetExhausted) {            // All budgets exhausted — reduce tick speed            newPhase = Phase.CLAMPED;            targetInterval = Config.MAX_INTERVAL_NS;        } else if (allowedCatchup > 1 && obs.ticksBehind() > 0) {            // Catch-up phase: reduce interval (faster TPS) under controller limit            newPhase = Phase.CATCHING_UP;            // Spread catch-up over several ticks so we don't spike            double intervalReductionFactor = Math.max(0.8,                    1.0 - (allowedCatchup * 0.02)); // Each catchup tick saves 2%            targetInterval = (long) (currentIntervalNs.get() * intervalReductionFactor);            targetInterval = Math.max(Config.MIN_INTERVAL_NS, targetInterval);            // Don't go below target if we have headroom            targetInterval = Math.max(Config.TARGET_INTERVAL_NS - 1_000_000L, targetInterval);        } else if (obs.avgTickDurationNanos() > Config.MIN_INTERVAL_NS * 0.9) {            // Detected pressure — governing            newPhase = Phase.GOVERNING;            // Gradually increase interval to relieve pressure            long increase = (obs.avgTickDurationNanos() - Config.MIN_INTERVAL_NS) / 4;            targetInterval = Math.min(Config.MAX_INTERVAL_NS,                    currentIntervalNs.get() + Math.max(500_000L, increase));        } else {            // Normal operation — converge to target            newPhase = Phase.NORMAL;            long current = currentIntervalNs.get();            long diff = Config.TARGET_INTERVAL_NS - current;            // Smooth convergence: move 10% of the way to target            targetInterval = current + diff / 10;        }        // Apply        targetInterval = clamp(targetInterval, Config.MIN_INTERVAL_NS, Config.MAX_INTERVAL_NS);        currentIntervalNs.set(targetInterval);        TickRegionScheduler.TIME_BETWEEN_TICKS = targetInterval;        currentPhase = newPhase;    }    /**     * Build an observation from current scheduler state.     */    @NotNull    private static CatchUpController.Observation buildObservation(double dt) {        // Get average tick duration from RegionLoadMonitor        var snapshots = RegionLoadMonitor.getAllSnapshots();        long avgTickNanos = 0;        if (!snapshots.isEmpty()) {            long totalNanos = 0;            for (RegionLoadMonitor.RegionLoadSnapshot snap : snapshots) {                totalNanos += snap.avgTickNanos();            }            avgTickNanos = totalNanos / snapshots.size();        }        int queueDepth = RegionBalancer.pendingTasks();        int activeWorkers = RegionBalancer.activeWorkers();        int totalWorkers = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);        // Estimate ticks behind from current interval deviation        long targetInterval = Config.TARGET_INTERVAL_NS;        long currentInterval = currentIntervalNs.get();        long ticksBehind = 0;        if (currentInterval < targetInterval) {            // We're running slower than target — compute how many ticks we owe            long perTickDeficit = targetInterval - currentInterval;            if (perTickDeficit > 0) {                ticksBehind = Math.min(20, Config.TARGET_INTERVAL_NS / perTickDeficit);            }        }        return new CatchUpController.Observation(                avgTickNanos,                queueDepth,                activeWorkers,                totalWorkers,                ticksBehind,                dt        );    }    // ---------- Public API ----------    /**     * Get the current governor state.     */    public static GovernorState getState() {        long interval = currentIntervalNs.get();        double tps = 1_000_000_000.0 / interval;        return new GovernorState(                currentPhase,                interval,                tps,                CatchUpController.getState().allowedCatchup(),                CatchUpController.getState()        );    }    /**     * Get governor statistics.     */    public static Map<String, Object> getStats() {        return Map.of(                "tick_count", tickCounter.get(),                "current_interval_ns", currentIntervalNs.get(),                "current_tps", String.format("%.2f", 1_000_000_000.0 / currentIntervalNs.get()),                "phase", currentPhase,                "controller", CatchUpController.getStats()        );    }    public static long getCurrentIntervalNs() {        return currentIntervalNs.get();    }    // ---------- Helpers ----------    private static long clamp(long value, long min, long max) {        return Math.max(min, Math.min(max, value));    }}
+package fun.bm.mili.utils.picontrol;
+
+import com.mojang.logging.LogUtils;
+import fun.bm.mili.utils.RegionBalancer;
+import fun.bm.mili.utils.RegionLoadMonitor;
+import io.papermc.paper.threadedregions.TickRegionScheduler;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
+
+/**
+ * Adaptive tick-duration governor that uses {@link CatchUpController} to
+ * dynamically adjust the time between server ticks.
+ *
+ * <p>Unlike naive TPS-fixup that simply tries to hit 20 TPS (which creates
+ * a positive feedback loop when the server is already overloaded), this
+ * governor treats tick duration as the controllable output and observes
+ * queue depth / worker utilization as constraints.</p>
+ *
+ * <h3>Governor state machine:</h3>
+ * <pre>
+ *   NORMAL  ──(tick duration exceeds budget)──▶  LIMITING
+ *   LIMITING ──(backlog cleared AND budgets free)──▶  NORMAL
+ * </pre>
+ *
+ * <p>The governor runs at a fixed 1 Hz cadence. Each tick it reads the
+ * RegionLoadMonitor snapshots and RegionBalancer queue depth, feeds them
+ * into the PI controller, and adjusts {@link TickRegionScheduler#TIME_BETWEEN_TICKS}.</p>
+ */
+public final class TickDurationGovernor {
+
+    private TickDurationGovernor() {}
+
+    /**
+     * Governor configuration.
+     */
+    public static final class Config {
+        /** Minimum interval between ticks (fastest TPS). */
+        public static long MIN_INTERVAL_NS = 45_000_000L; // ~22.2 TPS max
+        /** Maximum interval between ticks (slowest TPS). */
+        public static long MAX_INTERVAL_NS = 60_000_000L; // ~16.6 TPS min
+        /** Target interval at normal load. */
+        public static long TARGET_INTERVAL_NS = 50_000_000L; // 20 TPS
+        /** Governor wake-up period. */
+        public static long GOVERNOR_PERIOD_MS = 1000L;
+        /** Enable the governor. */
+        public static boolean ENABLED = true;
+
+        private Config() {}
+    }
+
+    /**
+     * Governor phase.
+     */
+    public enum Phase {
+        /** Running at or near 20 TPS — no pressure. */
+        NORMAL,
+        /** Detected pressure — reducing TPS to prevent overloading. */
+        GOVERNING,
+        /** Backlog detected — attempting controlled catch-up. */
+        CATCHING_UP,
+        /** Exhausted all budgets — can only run at minimum speed. */
+        CLAMPED
+    }
+
+    /**
+     * Snapshot of governor state.
+     */
+    public record GovernorState(
+            Phase phase,
+            long currentIntervalNs,
+            double currentTps,
+            long allowedCatchup,
+            CatchUpController.State controllerState
+    ) {}
+
+    // ---------- State ----------
+
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
+    private static final AtomicBoolean running = new AtomicBoolean(false);
+    private static volatile Thread governorThread;
+
+    /** Current tick interval. */
+    private static final AtomicLong currentIntervalNs = new AtomicLong(Config.TARGET_INTERVAL_NS);
+
+    /** Current governor phase. */
+    private static volatile Phase currentPhase = Phase.NORMAL;
+
+    /** Monotonic tick counter. */
+    private static final AtomicLong tickCounter = new AtomicLong(0);
+
+    // ---------- Lifecycle ----------
+
+    public static void init() {
+        if (!Config.ENABLED) return;
+        if (!initialized.compareAndSet(false, true)) return;
+
+        CatchUpController.init();
+
+        running.set(true);
+        governorThread = new Thread(TickDurationGovernor::governorLoop, "Mili-TickGovernor");
+        governorThread.setDaemon(true);
+        governorThread.setPriority(Thread.NORM_PRIORITY + 1);
+        governorThread.start();
+
+        LogUtils.getLogger().info("[Mili] TickDurationGovernor initialized (targetInterval={}ns, range={}-{}ns)",
+                Config.TARGET_INTERVAL_NS, Config.MIN_INTERVAL_NS, Config.MAX_INTERVAL_NS);
+    }
+
+    public static void shutdown() {
+        if (!initialized.compareAndSet(true, false)) return;
+        running.set(false);
+        if (governorThread != null) {
+            governorThread.interrupt();
+            LockSupport.unpark(governorThread);
+        }
+        CatchUpController.shutdown();
+        currentIntervalNs.set(Config.TARGET_INTERVAL_NS);
+        // Reset Folia scheduler to default
+        TickRegionScheduler.TIME_BETWEEN_TICKS = Config.TARGET_INTERVAL_NS;
+        LogUtils.getLogger().info("[Mili] TickDurationGovernor shutdown");
+    }
+
+    // ---------- Control Loop ----------
+
+    private static void governorLoop() {
+        long lastTickNanos = System.nanoTime();
+
+        while (running.get()) {
+            try {
+                Thread.sleep(Config.GOVERNOR_PERIOD_MS);
+                if (!running.get()) break;
+                if (!Config.ENABLED) continue;
+
+                long now = System.nanoTime();
+                double dt = (now - lastTickNanos) / 1_000_000_000.0;
+                lastTickNanos = now;
+
+                governorTick(dt);
+                tickCounter.incrementAndGet();
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Throwable ex) {
+                LogUtils.getLogger().error("[Mili] TickGovernor loop error, surviving", ex);
+            }
+        }
+    }
+
+    /**
+     * One governor computation cycle.
+     */
+    private static void governorTick(double dt) {
+        // Gather observations
+        CatchUpController.Observation obs = buildObservation(dt);
+
+        // Compute PI controller output
+        long allowedCatchup = CatchUpController.computeAllowedCatchup(obs);
+
+        // Determine phase and target interval
+        Phase newPhase;
+        long targetInterval;
+
+        CatchUpController.State ctrlState = CatchUpController.getState();
+        boolean budgetExhausted = ctrlState.cpuBudgetExhausted()
+                || ctrlState.queueBudgetExhausted()
+                || ctrlState.workerBudgetExhausted();
+
+        if (budgetExhausted) {
+            // All budgets exhausted — reduce tick speed
+            newPhase = Phase.CLAMPED;
+            targetInterval = Config.MAX_INTERVAL_NS;
+        } else if (allowedCatchup > 1 && obs.ticksBehind() > 0) {
+            // Catch-up phase: reduce interval (faster TPS) under controller limit
+            newPhase = Phase.CATCHING_UP;
+            // Spread catch-up over several ticks so we don't spike
+            double intervalReductionFactor = Math.max(0.8,
+                    1.0 - (allowedCatchup * 0.02)); // Each catchup tick saves 2%
+            targetInterval = (long) (currentIntervalNs.get() * intervalReductionFactor);
+            targetInterval = Math.max(Config.MIN_INTERVAL_NS, targetInterval);
+            // Don't go below target if we have headroom
+            targetInterval = Math.max(Config.TARGET_INTERVAL_NS - 1_000_000L, targetInterval);
+        } else if (obs.avgTickDurationNanos() > Config.MIN_INTERVAL_NS * 0.9) {
+            // Detected pressure — governing
+            newPhase = Phase.GOVERNING;
+            // Gradually increase interval to relieve pressure
+            long increase = (obs.avgTickDurationNanos() - Config.MIN_INTERVAL_NS) / 4;
+            targetInterval = Math.min(Config.MAX_INTERVAL_NS,
+                    currentIntervalNs.get() + Math.max(500_000L, increase));
+        } else {
+            // Normal operation — converge to target
+            newPhase = Phase.NORMAL;
+            long current = currentIntervalNs.get();
+            long diff = Config.TARGET_INTERVAL_NS - current;
+            // Smooth convergence: move 10% of the way to target
+            targetInterval = current + diff / 10;
+        }
+
+        // Apply
+        targetInterval = clamp(targetInterval, Config.MIN_INTERVAL_NS, Config.MAX_INTERVAL_NS);
+        currentIntervalNs.set(targetInterval);
+        TickRegionScheduler.TIME_BETWEEN_TICKS = targetInterval;
+        currentPhase = newPhase;
+    }
+
+    /**
+     * Build an observation from current scheduler state.
+     */
+    @NotNull
+    private static CatchUpController.Observation buildObservation(double dt) {
+        // Get average tick duration from RegionLoadMonitor
+        var snapshots = RegionLoadMonitor.getAllSnapshots();
+        long avgTickNanos = 0;
+        if (!snapshots.isEmpty()) {
+            long totalNanos = 0;
+            for (RegionLoadMonitor.RegionLoadSnapshot snap : snapshots) {
+                totalNanos += snap.avgTickNanos();
+            }
+            avgTickNanos = totalNanos / snapshots.size();
+        }
+
+        int queueDepth = RegionBalancer.pendingTasks();
+        int activeWorkers = RegionBalancer.activeWorkers();
+        int totalWorkers = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
+
+        // Estimate ticks behind from current interval deviation
+        long targetInterval = Config.TARGET_INTERVAL_NS;
+        long currentInterval = currentIntervalNs.get();
+        long ticksBehind = 0;
+        if (currentInterval < targetInterval) {
+            // We're running slower than target — compute how many ticks we owe
+            long perTickDeficit = targetInterval - currentInterval;
+            if (perTickDeficit > 0) {
+                ticksBehind = Math.min(20, Config.TARGET_INTERVAL_NS / perTickDeficit);
+            }
+        }
+
+        return new CatchUpController.Observation(
+                avgTickNanos,
+                queueDepth,
+                activeWorkers,
+                totalWorkers,
+                ticksBehind,
+                dt
+        );
+    }
+
+    // ---------- Public API ----------
+
+    /**
+     * Get the current governor state.
+     */
+    public static GovernorState getState() {
+        long interval = currentIntervalNs.get();
+        double tps = 1_000_000_000.0 / interval;
+        return new GovernorState(
+                currentPhase,
+                interval,
+                tps,
+                CatchUpController.getState().allowedCatchup(),
+                CatchUpController.getState()
+        );
+    }
+
+    /**
+     * Get governor statistics.
+     */
+    public static Map<String, Object> getStats() {
+        return Map.of(
+                "tick_count", tickCounter.get(),
+                "current_interval_ns", currentIntervalNs.get(),
+                "current_tps", String.format("%.2f", 1_000_000_000.0 / currentIntervalNs.get()),
+                "phase", currentPhase,
+                "controller", CatchUpController.getStats()
+        );
+    }
+
+    public static long getCurrentIntervalNs() {
+        return currentIntervalNs.get();
+    }
+
+    // ---------- Helpers ----------
+
+    private static long clamp(long value, long min, long max) {
+        return Math.max(min, Math.min(max, value));
+    }
+}
