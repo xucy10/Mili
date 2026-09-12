@@ -262,6 +262,7 @@ public final class CatchUpController {
         stats.put("queue_budget_remaining", 1.0 - lastQueueBudgetFraction);
         stats.put("worker_budget_remaining", 1.0 - lastWorkerUtilization);
         return stats;
+    }
 
     // ---------- Helpers ----------
 
