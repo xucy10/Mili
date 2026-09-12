@@ -251,6 +251,8 @@ public final class DAGScheduler {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             LogUtils.getLogger().warn("[Mili] DAG wave interrupted, forcing completion");
+        } catch (TimeoutException ex) {
+            LogUtils.getLogger().warn("[Mili] DAG wave timed out after {}ms", Config.WAVE_TIMEOUT_MS);
         }
 
         return new WaveResult(completed.get(), failed.get(), 0, failed.get() == 0);
