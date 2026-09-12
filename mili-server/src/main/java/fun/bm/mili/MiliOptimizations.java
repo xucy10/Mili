@@ -77,8 +77,8 @@ public final class MiliOptimizations {
             TickDurationGovernor.init();
         }
 
-        LOGGER.info("[Mili] Optimizations initialized (v3.1, dag={}, governor={})",
-                RegionBalancerConfig.dagEnabled, RegionBalancerConfig.governorEnabled);
+        LOGGER.info(String.format("[Mili] Optimizations initialized (v3.1, dag=%b, governor=%b)",
+                RegionBalancerConfig.dagEnabled, RegionBalancerConfig.governorEnabled));
     }
 
     public static void shutdown() {
