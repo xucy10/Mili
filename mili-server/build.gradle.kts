@@ -416,12 +416,12 @@ tasks.registerRunTask("runDevServer") {
 
 tasks.registerRunTask("runBundler") {
     description = "Spin up a test server from the Mojang mapped bundler jar"
-    classpath(tasks.createMojmapBundlerJar.flatMap { it.outputZip })
+    classpath(tasks.createBundlerJar.flatMap { it.outputZip })
     mainClass.set(null as String?)
 }
 tasks.registerRunTask("runPaperclip") {
     description = "Spin up a test server from the Mojang mapped Paperclip jar"
-    classpath(tasks.createMojmapPaperclipJar.flatMap { it.outputZip })
+    classpath(tasks.createPaperclipJar.flatMap { it.outputZip })
     mainClass.set(null as String?)
 }
 
@@ -435,7 +435,7 @@ fill {
 
         downloads {
             register("server:default") {
-                file = tasks.createMojmapPaperclipJar.flatMap { it.outputZip }
+                file = tasks.createPaperclipJar.flatMap { it.outputZip }
                 nameResolver.set { project, _, version, build -> "$project-$version-$build.jar" }
             }
         }
