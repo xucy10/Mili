@@ -206,10 +206,10 @@
 +    project("luminol")
      versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
      version(paperweight.minecraftVersion)
-
+ 
      build {
          channel = BuildChannel.STABLE
-
+ 
          downloads {
              register("server:default") {
 -                file = tasks.createMojmapPaperclipJar.flatMap { it.outputZip }
@@ -218,5 +218,4 @@
              }
          }
      }
-}
- 
+ }
