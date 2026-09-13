@@ -29,7 +29,7 @@ Minecraft（原版）
 > Mili 原为 Lophine/Luminol 的衍生分支，现已迁移为直接基于 Folia，将 Luminol 的优化源码内联合并。
 > Luminol、Hyacinthusweight 均已删库。
 
-Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理多层 fork：
+Mili 使用 **Milihyacinthus**（xucy10 维护的 paperweight fork）补丁系统管理多层 fork：
 
 | 模块 | 说明 |
 |------|------|
@@ -47,7 +47,7 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理多层
 | 项目 | 说明 |
 |------|------|
 | JDK | Java 25（toolchain + `--release 25`） |
-| 构建工具 | Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统 |
+| 构建工具 | Gradle 9.4.1（Kotlin DSL）+ Milihyacinthus 补丁系统 |
 | Rust | edition 2024，通过 `cargo build --release` 产出 JNI 原生库 |
 | 产物 | `mili-server/build/libs/mili-paperclip-26.2-R0.1-SNAPSHOT.jar` |
 | Maven 坐标 | `fun.bm.mili:mili-api:26.2-R0.1-SNAPSHOT` |

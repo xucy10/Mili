@@ -163,7 +163,7 @@ public final class AutoUpdateHelper {
 
         if (finalJarPath.equals(stagedJar)) {
             LOGGER.info(
-                    "Downloaded the latest Luminol jar to {} and refreshed auto_update/core.path for Hyacinthusclip. Please restart your server.",
+                    "Downloaded the latest Luminol jar to {} and refreshed auto_update/core.path for Riceear. Please restart your server.",
                     finalJarPath.toAbsolutePath()
             );
         } else {

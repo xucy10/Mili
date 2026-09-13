@@ -7,7 +7,7 @@ This file provides guidance to CodeBuddy / AI code assistants when working with 
 **Mili** 是直接基于 [Folia](https://github.com/PaperMC/Folia) 的 Minecraft 26.2 服务端核心，使用 Java 25 + Rust（edition 2024）构建。目标是在 Folia 并发调度环境下提供更稳定、可配置的服务器运行时。
 
 **版本**：`26.2-R0.1-SNAPSHOT`
-**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统（121 个 feature 补丁）
+**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Milihyacinthus 补丁系统（121 个 feature 补丁）
 **上游**：Folia `57f643f`（`foliaRef` in `gradle.properties`）
 
 > Mili 原为 Lophine/Luminol 衍生分支，现已直接基于 Folia。Luminol 已删库。

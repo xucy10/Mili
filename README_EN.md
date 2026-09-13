@@ -251,7 +251,7 @@ Config categories:
 
 ## Patch Workflow
 
-Mili uses the **Hyacinthusweight** (paperweight-based) patch system with 121 feature patches:
+Mili uses the **Milihyacinthus** (paperweight fork) patch system with 121 feature patches:
 
 1. Modify code in `mili-server/src/minecraft/` or `mili-api/`
 2. Commit changes: `git commit -m "description"`

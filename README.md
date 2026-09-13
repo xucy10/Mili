@@ -224,7 +224,7 @@ Mili 提供两套 TOML 配置文件：
 
 ## 补丁工作流
 
-Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理 121 个 feature 补丁：
+Mili 使用 **Milihyacinthus**（paperweight fork）补丁系统管理 121 个 feature 补丁：
 
 1. 在 `mili-server/src/minecraft/` 或 `mili-api/` 中修改代码
 2. 提交变更：`git commit -m "描述"`

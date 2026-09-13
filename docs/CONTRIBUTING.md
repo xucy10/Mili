@@ -35,7 +35,7 @@ git config --global core.longpaths true
 
 ## 补丁模型概览
 
-Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统，仓库在应用补丁后生成工作树目录：
+Mili 使用 **Milihyacinthus**（xucy10 维护的 paperweight fork）补丁系统，仓库在应用补丁后生成工作树目录：
 
 - `mili-api/` — Mili API 模块
 - `mili-server/src/minecraft/` — 服务器实现（应用 121 个 feature 补丁后的源码）

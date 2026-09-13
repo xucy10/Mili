@@ -35,7 +35,7 @@ git config --global core.longpaths true
 
 ## Patch Model Overview
 
-Mili uses the **Hyacinthusweight** (paperweight-based) patch system. Applying `applyAllPatches` generates a working tree:
+Mili uses the **Milihyacinthus** (paperweight fork) patch system. Applying `applyAllPatches` generates a working tree:
 
 - `mili-api/` — Mili API module
 - `mili-server/src/minecraft/` — Server implementation (source after applying 121 feature patches)

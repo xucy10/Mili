@@ -78,9 +78,10 @@ jobs:
           distribution: zulu
           java-version: 25
 
-      # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
+      # xucy10/Milihyacinthus is a paperweight fork rebranded to the vanilla
+      # io.papermc.paperweight plugin ids; repo.menthamc.org is offline/parked,
       # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
-      - name: Publish Hyacinthusweight plugin to mavenLocal
+      - name: Publish Milihyacinthus (paperweight fork) to mavenLocal
         run: |
           set -eux
           git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
@@ -90,17 +91,17 @@ jobs:
           cd ..
           rm -rf hyacinthusweight-src
 
-      - name: Download Hyacinthusclip
+      - name: Download Riceear (Hyacinthusclip fork)
         run: |
           mkdir -p libs
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
-          if [ ! -s libs/hyacinthusclip.jar ]; then
-            echo "ERROR: Failed to download hyacinthusclip jar"
+          echo "Downloading riceear v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
+          if [ ! -s libs/riceear.jar ]; then
+            echo "ERROR: Failed to download riceear jar"
             exit 1
           fi
-          ls -la libs/hyacinthusclip.jar
+          ls -la libs/riceear.jar
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
