@@ -37,8 +37,10 @@ public class RegionBalancerConfig implements IConfigModule {
             启用 Tick 持续时间 PI 调节器。
             替代纯 TPS 触发的追赶机制，通过 PI 控制器动态调整 tick 间隔，
             同时限制 CPU、队列深度和 worker 利用率三大硬上限。
-            可有效防止 "越追赶越卡" 的正反馈崩溃""")
-    public static boolean governorEnabled = true;
+            可有效防止 "越追赶越卡" 的正反馈崩溃。
+            默认禁用以保留原版 tick 时序精确性，且需同时启用 region-balancer。
+            注意：启用后 AdaptiveTPSManager 将被跳过（两者互斥，避免争写 tick 间隔）""")
+    public static boolean governorEnabled = false;
 
     @ConfigInfo(name = "governor-target-interval-ns", comments = """
             目标 tick 间隔（纳秒）。

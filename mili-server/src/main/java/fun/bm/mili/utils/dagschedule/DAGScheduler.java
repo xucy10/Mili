@@ -32,6 +32,9 @@ public final class DAGScheduler {
         public static int MAX_WAVES = 16;
         /** Per-wave timeout in milliseconds. */
         public static long WAVE_TIMEOUT_MS = 50L;
+        /** Grace period after a wave timeout, so the next wave never starts
+         *  before its dependencies actually finished (bounded, never hangs). */
+        public static long WAVE_GRACE_TIMEOUT_MS = 5_000L;
         /** Use virtual threads if available (JDK 25+). */
         public static boolean USE_VIRTUAL_THREADS = true;
 
@@ -101,6 +104,10 @@ public final class DAGScheduler {
     /**
      * Submit a task to the current batch.
      *
+     * <p>Tasks accumulate in a thread-local {@link BatchCollector}; the same
+     * thread must eventually call {@link #flushBatch()}, otherwise the batch
+     * (and the {@code activeTasks} registry entry) leaks.</p>
+     *
      * @param scheduleRef  opaque key (region ref, world, etc.)
      * @param work         work to execute
      * @param dependencies task IDs this task depends on
@@ -137,7 +144,14 @@ public final class DAGScheduler {
         if (tasks.size() > Config.MAX_BATCH_SIZE) {
             LogUtils.getLogger().warn("[Mili] DAG batch too large ({} > {}), truncating",
                     tasks.size(), Config.MAX_BATCH_SIZE);
-            tasks = tasks.subList(0, Config.MAX_BATCH_SIZE);
+            // Mark dropped tasks CANCELLED and release their registry entries
+            // instead of silently leaking them in activeTasks.
+            for (DAGTask dropped : tasks.subList(Config.MAX_BATCH_SIZE, tasks.size())) {
+                dropped.forceStatus(DAGTask.Status.CANCELLED);
+                statTasksCancelled.incrementAndGet();
+                activeTasks.remove(dropped.taskId);
+            }
+            tasks = new ArrayList<>(tasks.subList(0, Config.MAX_BATCH_SIZE));
         }
 
         return executeDag(tasks);
@@ -160,29 +174,53 @@ public final class DAGScheduler {
 
             int completed = 0, failed = 0, cancelled = 0;
             boolean success = true;
+            int wavesRun = 0;
 
             for (List<DAGTask> wave : waves) {
+                wavesRun++;
                 WaveResult result = executeWave(wave);
                 completed += result.completed;
                 failed += result.failed;
                 cancelled += result.cancelled;
-                if (!result.success) success = false;
+                if (!result.success) {
+                    // Dependency ordering of the remaining waves can no longer
+                    // be guaranteed — abort rather than run out-of-order.
+                    LogUtils.getLogger().warn("[Mili] DAG wave failed, aborting remaining {} wave(s)",
+                            waves.size() - wavesRun);
+                    success = false;
+                    break;
+                }
             }
 
             long elapsed = System.nanoTime() - batchStart;
             statBatchesDispatched.incrementAndGet();
-            statWavesExecuted.addAndGet(waves.size());
+            statWavesExecuted.addAndGet(wavesRun);
             statWaveNanosSum.addAndGet(elapsed);
 
-            return new BatchResult(completed, failed, cancelled, waves.size(), success);
+            return new BatchResult(completed, failed, cancelled, wavesRun, success);
 
         } catch (Throwable ex) {
             LogUtils.getLogger().error("[Mili] DAG execution failed", ex);
+            // Only count tasks that actually reached a terminal state here;
+            // completed tasks must not be re-marked as FAILED.
+            int alreadyCompleted = 0, newlyFailed = 0;
             for (DAGTask t : tasks) {
-                t.forceStatus(DAGTask.Status.FAILED);
-                statTasksFailed.incrementAndGet();
+                if (t.getStatus() == DAGTask.Status.COMPLETED) {
+                    alreadyCompleted++;
+                } else if (!t.isTerminal()) {
+                    t.forceStatus(DAGTask.Status.FAILED);
+                    statTasksFailed.incrementAndGet();
+                    newlyFailed++;
+                }
             }
-            return new BatchResult(0, tasks.size(), 0, 0, false);
+            return new BatchResult(alreadyCompleted, newlyFailed, 0, 0, false);
+        } finally {
+            // The batch is fully terminal (or abandoned) — release the
+            // registry entries. Without this, activeTasks (and thus the
+            // pendingBatches stat) grows without bound.
+            for (DAGTask t : tasks) {
+                activeTasks.remove(t.taskId);
+            }
         }
     }
 
@@ -200,7 +238,12 @@ public final class DAGScheduler {
         Phaser phaser = new Phaser(count);
 
         for (DAGTask task : wave) {
-            if (!task.tryTransition(DAGTask.Status.PENDING, DAGTask.Status.READY)) {
+            // Accept both PENDING (normal wave dispatch) and READY (already
+            // pre-marked by notifyDependents when an earlier wave satisfied
+            // all dependencies). Rejecting READY here would skip the task
+            // forever — it would never be dispatched nor counted.
+            if (!task.tryTransition(DAGTask.Status.PENDING, DAGTask.Status.READY)
+                    && !task.isReadyForDispatch()) {
                 phaser.arrive();
                 continue;
             }
@@ -210,10 +253,14 @@ public final class DAGScheduler {
                     if (task.tryTransition(DAGTask.Status.READY, DAGTask.Status.RUNNING)) {
                         task.work.run();
                         task.completionNanos = System.nanoTime();
-                        task.forceStatus(DAGTask.Status.COMPLETED);
-                        statTasksCompleted.incrementAndGet();
-                        completed.incrementAndGet();
-                        notifyDependents(task);
+                        // CAS instead of forceStatus: a straggler force-failed
+                        // by the wave timeout must not be double-counted as
+                        // completed (its side effects are logged as failed).
+                        if (task.tryTransition(DAGTask.Status.RUNNING, DAGTask.Status.COMPLETED)) {
+                            statTasksCompleted.incrementAndGet();
+                            completed.incrementAndGet();
+                            notifyDependents(task);
+                        }
                     }
                 } catch (Throwable ex) {
                     task.failureCause = ex;
@@ -245,14 +292,43 @@ public final class DAGScheduler {
         }
 
         // Wait with timeout
+        int phase = phaser.arrive();
+        boolean timedOut = false;
         try {
-            phaser.awaitAdvanceInterruptibly(phaser.arrive(),
+            phaser.awaitAdvanceInterruptibly(phase,
                     Config.WAVE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            LogUtils.getLogger().warn("[Mili] DAG wave interrupted, forcing completion");
+            LogUtils.getLogger().warn("[Mili] DAG wave interrupted, waiting for in-flight tasks");
         } catch (TimeoutException ex) {
-            LogUtils.getLogger().warn("[Mili] DAG wave timed out after {}ms", Config.WAVE_TIMEOUT_MS);
+            timedOut = true;
+        }
+
+        if (timedOut) {
+            // Grace period: starting the next wave while this wave is still
+            // running would violate dependency ordering. Wait a bounded
+            // grace period; only then give up on the stragglers.
+            LogUtils.getLogger().warn("[Mili] DAG wave timed out after {}ms, waiting grace period of {}ms",
+                    Config.WAVE_TIMEOUT_MS, Config.WAVE_GRACE_TIMEOUT_MS);
+            try {
+                phaser.awaitAdvanceInterruptibly(phase,
+                        Config.WAVE_GRACE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            } catch (TimeoutException ex) {
+                // Force-fail stragglers so the batch terminates deterministically
+                LogUtils.getLogger().error(
+                        "[Mili] DAG wave still running after grace period, force-failing stragglers");
+                for (DAGTask task : wave) {
+                    if (!task.isTerminal()) {
+                        task.failureCause = new TimeoutException(
+                                "DAG task exceeded wave timeout + grace period");
+                        task.forceStatus(DAGTask.Status.FAILED);
+                        statTasksFailed.incrementAndGet();
+                        failed.incrementAndGet();
+                    }
+                }
+            }
         }
 
         return new WaveResult(completed.get(), failed.get(), 0, failed.get() == 0);

@@ -173,7 +173,15 @@ public final class RegionBalancer {
         dispatcher.start();
 
         // Mili start - Adaptive TPS
-        fun.bm.mili.utils.AdaptiveTPSManager.start();
+        // Mutual exclusion: when the TickDurationGovernor is enabled it owns
+        // TIME_BETWEEN_TICKS — two writers would fight every second and the
+        // effective interval would oscillate randomly.
+        if (RegionBalancerConfig.governorEnabled) {
+            com.mojang.logging.LogUtils.getClassLogger().info(
+                    "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
+        } else {
+            fun.bm.mili.utils.AdaptiveTPSManager.start();
+        }
         // Mili end - Adaptive TPS
 
         com.mojang.logging.LogUtils.getClassLogger().info(
@@ -249,6 +257,9 @@ public final class RegionBalancer {
                         if (next == null) break;
                         RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);
                         if (nextSnap.isLowLoad()) {
+                            // Consumed by the merge — decrement the depth counter
+                            // (only the put-back path below leaves it untouched)
+                            queueDepth.decrementAndGet();
                             mergeList.add(next);
                         } else {
                             taskQueue.add(next); // high-load, put back
@@ -590,6 +601,14 @@ public final class RegionBalancer {
                 Thread.currentThread().interrupt();
             }
         }
+        // Mili start - drain leftover queue tasks so the depth counter and
+        // task records don't keep a permanent offset after shutdown
+        RegionTask leftover;
+        while ((leftover = taskQueue.poll()) != null) {
+            queueDepth.decrementAndGet();
+            markTaskState(leftover, TaskState.CANCELLED, "cancelled on shutdown");
+        }
+        // Mili end
         // Mili start - shutdown task UUID registry and PI controller
         RegionTaskIdRegistry.shutdown();
         CatchUpController.shutdown();

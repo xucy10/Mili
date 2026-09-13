@@ -54,13 +54,13 @@ public final class MiliOptimizations {
             SmartRegionManager.init();
         }
 
-        // DAG 调度器（依赖感知的并行tick）
-        if (RegionBalancerConfig.dagEnabled) {
+        // DAG 调度器（依赖感知的并行tick，依赖 region-balancer）
+        if (RegionBalancerConfig.enabled && RegionBalancerConfig.dagEnabled) {
             DAGScheduler.init();
         }
 
-        // Tick 持续时间调节器（PI控制器，替代纯TPS触发）
-        if (RegionBalancerConfig.governorEnabled) {
+        // Tick 持续时间调节器（PI控制器，替代纯TPS触发，依赖 region-balancer）
+        if (RegionBalancerConfig.enabled && RegionBalancerConfig.governorEnabled) {
             TickDurationGovernor.init();
         }
 

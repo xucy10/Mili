@@ -39,16 +39,22 @@ public final class TopologicalSorter {
 
         for (DAGTask task : tasks) {
             byId.put(task.taskId, task);
-            depsByTask.put(task.taskId, new HashSet<>(task.dependencies));
         }
-        // Populate reverse edges for efficient "who depends on me" queries
+        // Only edges whose both endpoints are inside this batch participate
+        // in the sort. Cross-batch dependencies (pointing at tasks of a
+        // previous batch) are treated as already satisfied — counting them in
+        // the in-degree would make them unreachable and cause a false cycle
+        // detection. Reverse edges are populated here as well.
         for (DAGTask task : tasks) {
+            Set<Long> inBatchDeps = new HashSet<>(task.dependencies.size());
             for (Long depId : task.dependencies) {
                 DAGTask dep = byId.get(depId);
                 if (dep != null) {
+                    inBatchDeps.add(depId);
                     dep.dependents.add(task.taskId);
                 }
             }
+            depsByTask.put(task.taskId, inBatchDeps);
         }
     }
 
@@ -60,10 +66,10 @@ public final class TopologicalSorter {
      */
     @NotNull
     public List<List<DAGTask>> sort() {
-        // Compute in-degree
+        // Compute in-degree from the filtered (in-batch) dependency set
         Map<Long, AtomicInteger> inDegree = new HashMap<>(totalTasks);
-        for (DAGTask task : byId.values()) {
-            inDegree.put(task.taskId, new AtomicInteger(task.dependencies.size()));
+        for (Map.Entry<Long, Set<Long>> entry : depsByTask.entrySet()) {
+            inDegree.put(entry.getKey(), new AtomicInteger(entry.getValue().size()));
         }
 
         List<List<DAGTask>> levels = new ArrayList<>();
@@ -71,7 +77,7 @@ public final class TopologicalSorter {
         // Level 0: zero in-degree tasks
         List<DAGTask> zeroDegree = new ArrayList<>();
         for (DAGTask task : byId.values()) {
-            if (task.dependencies.isEmpty()) {
+            if (inDegree.get(task.taskId).get() == 0) {
                 zeroDegree.add(task);
             }
         }
@@ -153,7 +159,10 @@ public final class TopologicalSorter {
             if (!initialized) {
                 initialized = true;
                 for (DAGTask task : byId.values()) {
-                    if (task.dependencies.isEmpty()) {
+                    // Use the filtered in-batch dependency set, not the raw
+                    // task.dependencies (which may contain cross-batch ids)
+                    Set<Long> deps = depsByTask.get(task.taskId);
+                    if (deps == null || deps.isEmpty()) {
                         currentFrontier.add(task.taskId);
                     }
                 }
