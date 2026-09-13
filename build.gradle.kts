@@ -4,7 +4,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     java
-    id("moe.luminolmc.hyacinthusweight.patcher")
+    id("io.papermc.paperweight.patcher")
 }
 
 paperweight {

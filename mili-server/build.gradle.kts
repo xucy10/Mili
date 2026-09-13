@@ -8,7 +8,7 @@ plugins {
     `maven-publish`
     idea
     kotlin("jvm") version "2.3.21"
-    id("moe.luminolmc.hyacinthusweight.core")
+    id("io.papermc.paperweight.core")
     id("io.papermc.fill.gradle") version "1.0.10"
 }
 
@@ -19,7 +19,7 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:1.21.11+build.1")
-    hyacinthusclip(files(rootProject.layout.projectDirectory.file("libs/hyacinthusclip.jar")))
+    paperclip(files(rootProject.layout.projectDirectory.file("libs/riceear.jar")))
 }
 
 paperweight {
@@ -53,19 +53,6 @@ paperweight {
     }
 
     activeFork = mili
-
-
-    reobfPackagesToFix.addAll(
-        "co.aikar.timings",
-        "com.destroystokyo.paper",
-        "com.mojang",
-        "io.papermc.paper",
-        "ca.spottedleaf",
-        "net.kyori.adventure.bossbar",
-        "net.minecraft",
-        "org.bukkit.craftbukkit",
-        "org.spigotmc",
-    )
 
     updatingMinecraft {
         // oldPaperCommit = "c82b438b5b4ea0b230439b8e690e34708cd11ab3"
@@ -424,13 +411,7 @@ fun TaskContainer.registerRunTask(
 
 tasks.registerRunTask("runServer") {
     description = "Spin up a test server from the Mojang mapped server jar"
-    classpath(tasks.includeMappings.flatMap { it.outputJar })
-    classpath(configurations.runtimeClasspath)
-}
-
-tasks.registerRunTask("runReobfServer") {
-    description = "Spin up a test server from the reobfJar output jar"
-    classpath(tasks.reobfJar.flatMap { it.outputJar })
+    classpath(tasks.jar)
     classpath(configurations.runtimeClasspath)
 }
 
@@ -441,22 +422,12 @@ tasks.registerRunTask("runDevServer") {
 
 tasks.registerRunTask("runBundler") {
     description = "Spin up a test server from the Mojang mapped bundler jar"
-    classpath(tasks.createMojmapBundlerJar.flatMap { it.outputZip })
-    mainClass.set(null as String?)
-}
-tasks.registerRunTask("runReobfBundler") {
-    description = "Spin up a test server from the reobf bundler jar"
-    classpath(tasks.createReobfBundlerJar.flatMap { it.outputZip })
+    classpath(tasks.createBundlerJar.flatMap { it.outputZip })
     mainClass.set(null as String?)
 }
 tasks.registerRunTask("runPaperclip") {
     description = "Spin up a test server from the Mojang mapped Paperclip jar"
-    classpath(tasks.createMojmapPaperclipJar.flatMap { it.outputZip })
-    mainClass.set(null as String?)
-}
-tasks.registerRunTask("runReobfPaperclip") {
-    description = "Spin up a test server from the reobf Paperclip jar"
-    classpath(tasks.createReobfPaperclipJar.flatMap { it.outputZip })
+    classpath(tasks.createPaperclipJar.flatMap { it.outputZip })
     mainClass.set(null as String?)
 }
 
@@ -470,7 +441,7 @@ fill {
 
         downloads {
             register("server:default") {
-                file = tasks.createMojmapPaperclipJar.flatMap { it.outputZip }
+                file = tasks.createPaperclipJar.flatMap { it.outputZip }
                 nameResolver.set { project, _, version, build -> "$project-$version-$build.jar" }
             }
         }

@@ -21,35 +21,6 @@ dependencies {
 paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
     gitFilePatches = false
-    
-    val fork = forks.register("folia") {
-        rootDirectory = upstreamsDirectory().map { it.dir("folia") }
-        upstream.patchDir("paperServer") {
-            upstreamPath = "paper-server"
-            excludes = setOf("src/minecraft", "patches", "build.gradle.kts")
-            patchesDir = rootDirectory.dir("folia-server/paper-patches")
-            outputDir = rootDirectory.dir("paper-server")
-        }
-    }
-
-    val luminol = forks.register("luminol") {
-        forks = fork
-        upstream.patchRepo("paperServer") {
-            upstreamRepo = fork.patchedRepo("paperServer")
-            patchesDir = rootDirectory.dir("luminol-server/paper-patches")
-            outputDir = rootDirectory.dir("paper-server")
-        }
-
-        upstream.patchDir("foliaServer") {
-            upstreamPath = "folia-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("luminol-server/folia-patches")
-            outputDir = rootDirectory.dir("folia-server")
-        }
-    }
-
-    activeFork = luminol
-
 
     spigot {
         enabled = true
@@ -133,23 +104,7 @@ if (project.providers.gradleProperty("publishDevBundle").isPresent) {
     }
 }
 
-sourceSets {
-    main {
-        java { srcDir("../paper-server/src/main/java"); srcDir("../paper-server/src/generated/java") }
-        resources { srcDir("../paper-server/src/main/resources") }
-        java { srcDir("../folia-server/src/main/java") }
-        resources { srcDir("../folia-server/src/main/resources") }
-    }
-    test {
-        java { srcDir("../paper-server/src/test/java") }
-        resources { srcDir("../paper-server/src/test/resources") }
-        java { srcDir("../folia-server/src/test/java") }
-        resources { srcDir("../folia-server/src/test/resources") }
-    }
-}
-val log4jPlugins = sourceSets.create("log4jPlugins") {
-    java { srcDir("../paper-server/src/log4jPlugins/java") }
-}
+val log4jPlugins = sourceSets.create("log4jPlugins")
 configurations.named(log4jPlugins.compileClasspathConfigurationName) {
     extendsFrom(configurations.compileClasspath.get())
 }
@@ -172,22 +127,7 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 }
 
 dependencies {
-    implementation(project(":luminol-api")) // Luminol
-    // Luminol start - Dependenices insert
-    implementation("net.objecthunter:exp4j:0.4.8")
-    implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
-    implementation("com.electronwill.night-config:toml:3.8.3") // Night config
-    implementation("com.github.luben:zstd-jni:1.5.4-1")
-    implementation("net.openhft:zero-allocation-hashing:0.16")
-    implementation("io.github.classgraph:classgraph:4.8.158")
-    implementation("net.openhft:affinity:3.23.3")
-    // Leaves start - leaves plugin
-    implementation("org.spongepowered:configurate-gson:4.2.0-SNAPSHOT") {
-        exclude(group = "com.google.code.gson", module = "gson")
-        exclude(group = "com.google.guava", module = "guava")
-    }
-    // Leaves end - leaves plugin
-    // Luminol end
+    implementation(project(":paper-api"))
     implementation("ca.spottedleaf:concurrentutil:0.0.8")
     implementation("org.jline:jline-terminal-ffm:3.27.1") // use ffm on java 22+
     implementation("org.jline:jline-terminal-jni:3.27.1") // fall back to jni on java 21
@@ -205,7 +145,7 @@ dependencies {
     runtimeOnly(log4jPlugins.output)
     alsoShade(log4jPlugins.output)
 
-    implementation("one.pkg.velocity_rc:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT ReastLib
+    implementation("com.velocitypowered:velocity-native:3.4.0-SNAPSHOT") {
         isTransitive = false
     }
     implementation("io.netty:netty-codec-haproxy:4.2.7.Final") // Add support for proxy protocol
@@ -246,42 +186,26 @@ dependencies {
     implementation("me.lucko:spark-paper:1.10.152")
 }
 
-// Pufferfish Start
-tasks.withType<JavaCompile> {
-    val compilerArgs = options.compilerArgs
-    compilerArgs.add("--add-modules=jdk.incubator.vector")
-}
-// Pufferfish End
-
-// Luminol start - Hide unnecessary warnings
-tasks.withType<JavaCompile> {
-    val compilerArgs = options.compilerArgs
-    compilerArgs.add("-Xlint:-module")
-    compilerArgs.add("-Xlint:-removal")
-    compilerArgs.add("-Xlint:-dep-ann")
-}
-// Luminol end
-
 tasks.jar {
     manifest {
         val git = Git(rootProject.layout.projectDirectory.path)
         val mcVersion = rootProject.providers.gradleProperty("mcVersion").get()
         val build = System.getenv("BUILD_NUMBER") ?: null
-        val buildTime = Instant.now() // Always use current as build time
+        val buildTime = providers.environmentVariable("BUILD_STARTED_AT").map(Instant::parse).orElse(Instant.EPOCH).get()
         val gitHash = git.exec(providers, "rev-parse", "--short=7", "HEAD").get().trim()
         val implementationVersion = "$mcVersion-${build ?: "DEV"}-$gitHash"
         val date = git.exec(providers, "show", "-s", "--format=%ci", gitHash).get().trim()
         val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
         attributes(
             "Main-Class" to "org.bukkit.craftbukkit.Main",
-            "Implementation-Title" to "Luminol",
+            "Implementation-Title" to "Paper",
             "Implementation-Version" to implementationVersion,
             "Implementation-Vendor" to date,
-            "Specification-Title" to "Luminol",
+            "Specification-Title" to "Paper",
             "Specification-Version" to project.version,
-            "Specification-Vendor" to "LuminolMC org",
-            "Brand-Id" to "luminolmc:luminol",
-            "Brand-Name" to "Luminol",
+            "Specification-Vendor" to "Paper Team",
+            "Brand-Id" to "papermc:paper",
+            "Brand-Name" to "Paper",
             "Build-Number" to (build ?: ""),
             "Build-Time" to buildTime.toString(),
             "Git-Branch" to gitBranch,
@@ -433,7 +357,7 @@ tasks.registerRunTask("runReobfPaperclip") {
 }
 
 fill {
-    project("luminol")
+    project("paper")
     versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })
     version(paperweight.minecraftVersion)
 

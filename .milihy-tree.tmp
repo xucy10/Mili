@@ -1,0 +1,3050 @@
+{
+  "sha": "5418e3daf075fc47bada1f18b7e9a4b14ed51625",
+  "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/5418e3daf075fc47bada1f18b7e9a4b14ed51625",
+  "tree": [
+    {
+      "path": ".editorconfig",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2aa2e6f692deba30b04ea41616b57bac60c103d",
+      "size": 4054,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c2aa2e6f692deba30b04ea41616b57bac60c103d"
+    },
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9063c9d2673b8bfcf6aac5cb3c6018104095dc55",
+      "size": 255,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/9063c9d2673b8bfcf6aac5cb3c6018104095dc55"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e133ed2ebcac919ba31d95272a5d717ba811859b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e133ed2ebcac919ba31d95272a5d717ba811859b"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "464839e6a24251cf517f882e4890c68c9c59bc5e",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/464839e6a24251cf517f882e4890c68c9c59bc5e"
+    },
+    {
+      "path": ".github/workflows/deploy-snapshot.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d1e3dd1a53f87cc5e351eccf1a5c0f4eb24cb2a",
+      "size": 1182,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/9d1e3dd1a53f87cc5e351eccf1a5c0f4eb24cb2a"
+    },
+    {
+      "path": ".github/workflows/deploy.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a52a36f6606a55155391c6d92b84575f243f51f5",
+      "size": 915,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a52a36f6606a55155391c6d92b84575f243f51f5"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb5618af8c60c09d14bc1ef7d529b0eea6a17e42",
+      "size": 1005,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/eb5618af8c60c09d14bc1ef7d529b0eea6a17e42"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb55c83ab9cc09e953fe4e6fc9cb5bf4dae86616",
+      "size": 521,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cb55c83ab9cc09e953fe4e6fc9cb5bf4dae86616"
+    },
+    {
+      "path": "build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "addb5ebc464834017760abc61e9197f4bbc1a348",
+      "size": 177,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/addb5ebc464834017760abc61e9197f4bbc1a348"
+    },
+    {
+      "path": "buildSrc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3c8bd605c55dabb9fc45862e4c7ea1a9e4d18716",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3c8bd605c55dabb9fc45862e4c7ea1a9e4d18716"
+    },
+    {
+      "path": "buildSrc/build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "204fb296bdaa8b45b12e12ba4f4d03d473802ce8",
+      "size": 610,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/204fb296bdaa8b45b12e12ba4f4d03d473802ce8"
+    },
+    {
+      "path": "buildSrc/settings.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62991c1ef50a3ef0a02576ce034658b5b9676d4d",
+      "size": 185,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/62991c1ef50a3ef0a02576ce034658b5b9676d4d"
+    },
+    {
+      "path": "buildSrc/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "df010029b8f996d4e1c2573a2a250abb4e81bfb0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/df010029b8f996d4e1c2573a2a250abb4e81bfb0"
+    },
+    {
+      "path": "buildSrc/src/main",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7adc959c9cb41ac98f46d1c697a7738d6f2dfddb",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7adc959c9cb41ac98f46d1c697a7738d6f2dfddb"
+    },
+    {
+      "path": "buildSrc/src/main/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b3f20941b5ca33dd8708d1ff3b6dc69f13c19e7f",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/b3f20941b5ca33dd8708d1ff3b6dc69f13c19e7f"
+    },
+    {
+      "path": "buildSrc/src/main/kotlin/config-kotlin.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ace33a8335bc893ed2416d92cf3069312466f9f",
+      "size": 3986,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1ace33a8335bc893ed2416d92cf3069312466f9f"
+    },
+    {
+      "path": "buildSrc/src/main/kotlin/config-publish.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91c96e4e4ac776fce4c4b35be8d379126e1b9e62",
+      "size": 3987,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/91c96e4e4ac776fce4c4b35be8d379126e1b9e62"
+    },
+    {
+      "path": "buildSrc/src/main/kotlin/utils.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c8f11ec200ccd856bff157d3b501dc9713b9ada",
+      "size": 961,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1c8f11ec200ccd856bff157d3b501dc9713b9ada"
+    },
+    {
+      "path": "gradle.properties",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b2f05e417d1e54a72b0813659a0d1e1cc43dcce",
+      "size": 148,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8b2f05e417d1e54a72b0813659a0d1e1cc43dcce"
+    },
+    {
+      "path": "gradle",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e6ba395785ba58af3286519b8797ad676bb53eab",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e6ba395785ba58af3286519b8797ad676bb53eab"
+    },
+    {
+      "path": "gradle/libs.versions.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e130d14d9fcd887019fa9b911ff0d6e3aa1b354f",
+      "size": 2948,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e130d14d9fcd887019fa9b911ff0d6e3aa1b354f"
+    },
+    {
+      "path": "gradle/wrapper",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6565b178c09318424728f5fff04eff8e22a0f186",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6565b178c09318424728f5fff04eff8e22a0f186"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61285a659d17295f1de7c53e24fdf13ad755c379",
+      "size": 46175,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/61285a659d17295f1de7c53e24fdf13ad755c379"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.properties",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f38436fc6ec54c550e8afcb209cc8ad2d67926c",
+      "size": 252,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5f38436fc6ec54c550e8afcb209cc8ad2d67926c"
+    },
+    {
+      "path": "gradlew",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "adff685a0348c64b2b64f0b302f1f82b28eeaaea",
+      "size": 8618,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/adff685a0348c64b2b64f0b302f1f82b28eeaaea"
+    },
+    {
+      "path": "gradlew.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4bdd3ab8e3ccd2ac3a2bc0db0f856f16b79ef39",
+      "size": 2803,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c4bdd3ab8e3ccd2ac3a2bc0db0f856f16b79ef39"
+    },
+    {
+      "path": "license",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "336ffa2c3e2031199ab3c281b4f0cca2fa8b2bc5",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/336ffa2c3e2031199ab3c281b4f0cca2fa8b2bc5"
+    },
+    {
+      "path": "license/LGPLv2.1.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19e307187ac8b9abc086be686dc81b0f09523ef1",
+      "size": 26461,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/19e307187ac8b9abc086be686dc81b0f09523ef1"
+    },
+    {
+      "path": "license/copyright.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c78a29b4696e68357b5eed475216740a723889e1",
+      "size": 794,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c78a29b4696e68357b5eed475216740a723889e1"
+    },
+    {
+      "path": "mili-templates",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0fc19446f777119a906b04d33a5e791806ab13c7",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/0fc19446f777119a906b04d33a5e791806ab13c7"
+    },
+    {
+      "path": "mili-templates/mili-server",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9149032d4f90213582473c6216f90248726a6abf",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/9149032d4f90213582473c6216f90248726a6abf"
+    },
+    {
+      "path": "mili-templates/mili-server/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00bbbdad5d92b876518bb3a50b15236d266dcae7",
+      "size": 2874,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/00bbbdad5d92b876518bb3a50b15236d266dcae7"
+    },
+    {
+      "path": "mili-templates/mili-server/build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50e000e74bf494b5cf83c0cbc0fd731042a6cab1",
+      "size": 1908,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/50e000e74bf494b5cf83c0cbc0fd731042a6cab1"
+    },
+    {
+      "path": "mili-templates/mili-server/gradle.properties",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd9d4759cfb1f6fb42de80bda8b7dc6d0f5b5a42",
+      "size": 1026,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cd9d4759cfb1f6fb42de80bda8b7dc6d0f5b5a42"
+    },
+    {
+      "path": "mili-templates/mili-server/settings.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cebbe65466be341f4fe9b472fbf6e4239145f032",
+      "size": 345,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cebbe65466be341f4fe9b472fbf6e4239145f032"
+    },
+    {
+      "path": "paperweight-core",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b8543fc767df9e96d723b915b1b134f1e0381e77",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/b8543fc767df9e96d723b915b1b134f1e0381e77"
+    },
+    {
+      "path": "paperweight-core/build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b89f068049e12deb0dd44707fc5d5d52c3ee273c",
+      "size": 852,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b89f068049e12deb0dd44707fc5d5d52c3ee273c"
+    },
+    {
+      "path": "paperweight-core/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c242ca39c486c2931a87435599308f5d2a246c38",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/c242ca39c486c2931a87435599308f5d2a246c38"
+    },
+    {
+      "path": "paperweight-core/src/main",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ef554e34b31bfce295dbad33553842751c37d502",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ef554e34b31bfce295dbad33553842751c37d502"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "66913bb225cd19d82f6cd003d71073a21409755a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/66913bb225cd19d82f6cd003d71073a21409755a"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cc6464cfb44395a31325c82f867e4afaab37767f",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/cc6464cfb44395a31325c82f867e4afaab37767f"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5eb4ebaa63b4516c31e77bf42921ffd50bda0a60",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/5eb4ebaa63b4516c31e77bf42921ffd50bda0a60"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "67c70f4ac03ab2c3243be54003ddf41f1d0d3daf",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/67c70f4ac03ab2c3243be54003ddf41f1d0d3daf"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/PaperweightSourceGeneratorHelper.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aff3759479bddd8e6720e881a007423f48681307",
+      "size": 2074,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/aff3759479bddd8e6720e881a007423f48681307"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6e20c198c3a9f108e2034a6adee8407e4707ee32",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6e20c198c3a9f108e2034a6adee8407e4707ee32"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/JavadocTag.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "702d399df5865390145c5da2c2c56bca5bce0ecf",
+      "size": 1134,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/702d399df5865390145c5da2c2c56bca5bce0ecf"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/PaperCheckstyle.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f61a4ce5c9ab16fbc0471ecb55520672aaa7d10",
+      "size": 2966,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/4f61a4ce5c9ab16fbc0471ecb55520672aaa7d10"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/PaperCheckstyleExt.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11d0a010aa2afd737aa6b4d1be70da1836ab7c2a",
+      "size": 1560,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/11d0a010aa2afd737aa6b4d1be70da1836ab7c2a"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/PaperCheckstylePlugin.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3652faf2bccee483c2ae26bfa4a26af781d59254",
+      "size": 1295,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3652faf2bccee483c2ae26bfa4a26af781d59254"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "276f14794d27ed06d6304d03090c85c2bb7e11c8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/276f14794d27ed06d6304d03090c85c2bb7e11c8"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/tasks/MergeCheckstyleConfigs.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a3e474539efc66fd2d2d5b51eb734fd3f05560af",
+      "size": 6518,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a3e474539efc66fd2d2d5b51eb734fd3f05560af"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/checkstyle/tasks/PaperCheckstyleTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9f64662efe0beb2a9465ea11d0562384c4d7aa1",
+      "size": 3114,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a9f64662efe0beb2a9465ea11d0562384c4d7aa1"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "28fca2238989e6388921a7897dcfc483db22f245",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/28fca2238989e6388921a7897dcfc483db22f245"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/PaperweightCore.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "302430a0c3ad6da7acdb1e863a14bb67d554a7f4",
+      "size": 8620,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/302430a0c3ad6da7acdb1e863a14bb67d554a7f4"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e7b51cdff8de2b7e606dcbbdbd571b5986cdbf6b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e7b51cdff8de2b7e606dcbbdbd571b5986cdbf6b"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/ForkConfig.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "176352ca0dcfbc9e62242bcfff9cc6ffca906d9e",
+      "size": 3271,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/176352ca0dcfbc9e62242bcfff9cc6ffca906d9e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/PaperExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af3db8fd080eb97af88fefe008b334e92e665804",
+      "size": 2386,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/af3db8fd080eb97af88fefe008b334e92e665804"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/PaperweightCoreExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f540be46f316c4357c5d243db6c13a704f71798a",
+      "size": 2840,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f540be46f316c4357c5d243db6c13a704f71798a"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/PaperweightSourceGeneratorExt.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19fc030970f52b97ef1a6ce25ec9eae3237ae09b",
+      "size": 1254,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/19fc030970f52b97ef1a6ce25ec9eae3237ae09b"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/UpdatingMinecraftExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8164ffc15cf34df7b70da75a4331e7e7f44596c",
+      "size": 1025,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d8164ffc15cf34df7b70da75a4331e7e7f44596c"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/extension/UpstreamConfig.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c448db83107a2b3c45f3cf2aee1e93220acabede",
+      "size": 4582,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c448db83107a2b3c45f3cf2aee1e93220acabede"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f2b95e342753cc819518199809b749c66ce8f2ca",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f2b95e342753cc819518199809b749c66ce8f2ca"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/AllTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a859c0a6bf2adf75bc5b845474b53112f1e6f58e",
+      "size": 3071,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a859c0a6bf2adf75bc5b845474b53112f1e6f58e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/CoreTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "119f9aa412b21fcca1cb2827ecc276a4962e0b7e",
+      "size": 15738,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/119f9aa412b21fcca1cb2827ecc276a4962e0b7e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/DevBundleTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa54119e1f670113e426b252d234d7f4f291c518",
+      "size": 3751,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/fa54119e1f670113e426b252d234d7f4f291c518"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/InitialTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "54641e0f0116ec8df334eec50e6cfa061ecc774b",
+      "size": 3639,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/54641e0f0116ec8df334eec50e6cfa061ecc774b"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/MinecraftPatchingTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8de9acb5ac77c0f1f81f33a8135dd782fbbf3a57",
+      "size": 11221,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8de9acb5ac77c0f1f81f33a8135dd782fbbf3a57"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/PaperclipTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "88fc6564ad0101e9ab8778d73fe30569f43d9988",
+      "size": 5922,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/88fc6564ad0101e9ab8778d73fe30569f43d9988"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/PatchingTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9cf037393357ec908209f3ec7ca3f6b977cafc6",
+      "size": 6276,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d9cf037393357ec908209f3ec7ca3f6b977cafc6"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/taskcontainers/UpstreamConfigTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab22724d82771d71a528eec380539eb76793f14d",
+      "size": 8521,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ab22724d82771d71a528eec380539eb76793f14d"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8ed0dc60b72b2a22c82ea37955729e9f49d41255",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/8ed0dc60b72b2a22c82ea37955729e9f49d41255"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/CheckoutRepo.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb4b1d458ff3eab0ff7eb0a5780c5eb592338772",
+      "size": 3832,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/eb4b1d458ff3eab0ff7eb0a5780c5eb592338772"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/ExtractMinecraftSources.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3ffa16c351e6df0ba23aa2bba67e0d8cf531c80",
+      "size": 1703,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e3ffa16c351e6df0ba23aa2bba67e0d8cf531c80"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/FilterRepo.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af0ec63794ee668278be27fad465edf5a8cf4f0d",
+      "size": 2383,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/af0ec63794ee668278be27fad465edf5a8cf4f0d"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/ImportLibraryFiles.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "922955c898a4d61ddc3416e979ece52f8afdab99",
+      "size": 8973,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/922955c898a4d61ddc3416e979ece52f8afdab99"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/RunNestedBuild.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71a75ee27f124240e364297a9f4688629d64473f",
+      "size": 2799,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/71a75ee27f124240e364297a9f4688629d64473f"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/SetupForkMinecraftSources.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "673a0b94d44f7b573e968dad65acca1e22bff57e",
+      "size": 3435,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/673a0b94d44f7b573e968dad65acca1e22bff57e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/SetupMinecraftSources.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70110a9c32c201b9987c533ea63dab9f865489ac",
+      "size": 11165,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/70110a9c32c201b9987c533ea63dab9f865489ac"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/SetupPaperScript.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a55a7f1392e947a532ee2fbc6bc1a5b8bd1f666",
+      "size": 9795,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5a55a7f1392e947a532ee2fbc6bc1a5b8bd1f666"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "66bc731480c35f0b7ac1507d6d21e508d3035fe5",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/66bc731480c35f0b7ac1507d6d21e508d3035fe5"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/ApplyFeaturePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1e5a51c5b465487a6a6adc1dd9ba97789f3cf647",
+      "size": 5077,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1e5a51c5b465487a6a6adc1dd9ba97789f3cf647"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/ApplyFilePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43d9532420054a4e2622df3d80048f7bf3baeb04",
+      "size": 9548,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/43d9532420054a4e2622df3d80048f7bf3baeb04"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/ApplyFilePatchesFuzzy.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "091d8b7fe8499fc3f02c4d7b08fec168702b5f8e",
+      "size": 1886,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/091d8b7fe8499fc3f02c4d7b08fec168702b5f8e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/ApplySingleFilePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b54c03d68bdb8e1178f2cb3147f4a7e85077d401",
+      "size": 5587,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b54c03d68bdb8e1178f2cb3147f4a7e85077d401"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/FixupFilePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "52a7cdecb06495c0e409f10891150b794c4696b6",
+      "size": 1715,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/52a7cdecb06495c0e409f10891150b794c4696b6"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/RebuildFilePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "68c016b1d1341244393ffa3290ecdd28f27b3fb7",
+      "size": 10478,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/68c016b1d1341244393ffa3290ecdd28f27b3fb7"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patching/RebuildSingleFilePatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45cd14d5b7f806e8b6e26f1593ba0bfcb47a55af",
+      "size": 3594,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/45cd14d5b7f806e8b6e26f1593ba0bfcb47a55af"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cfa60cedf7bccce85da3a8f33ae9ee70c5e64c0b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/cfa60cedf7bccce85da3a8f33ae9ee70c5e64c0b"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/AbstractPatchRouletteTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b3b2b492674e7514ad2e9ff7d3cc57f1071a60d",
+      "size": 3230,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/2b3b2b492674e7514ad2e9ff7d3cc57f1071a60d"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/ClearPatchRouletteList.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "826f4d105a83d22660f3c740d6cf713800ef1914",
+      "size": 1222,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/826f4d105a83d22660f3c740d6cf713800ef1914"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteApi.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fc2145facec56a63bbbd558a889d905c43cdc70",
+      "size": 5814,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5fc2145facec56a63bbbd558a889d905c43cdc70"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteApply.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06866462d08dc9b450f248a97ebbb9cfefa2afe1",
+      "size": 12809,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/06866462d08dc9b450f248a97ebbb9cfefa2afe1"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteCancel.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19ed3d862ea33fa3be0f11d31473144cdd6a69c6",
+      "size": 3028,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/19ed3d862ea33fa3be0f11d31473144cdd6a69c6"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteFinish.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "85e21029e4586fa70c0b94aef736b75717a33ef2",
+      "size": 2793,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/85e21029e4586fa70c0b94aef736b75717a33ef2"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteTasks.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7340bb4aee1dfc7b30c88cc0576e2e1eb5fa16e",
+      "size": 3033,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c7340bb4aee1dfc7b30c88cc0576e2e1eb5fa16e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PushPatchRouletteList.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a280a80cc10ead9f26ddb7a08342937329b3fb25",
+      "size": 1595,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a280a80cc10ead9f26ddb7a08342937329b3fb25"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/tasks/patchroulette/ShowPatchRouletteList.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "53beab7493353a0d85ed30386ef781b3c684da4e",
+      "size": 2707,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/53beab7493353a0d85ed30386ef781b3c684da4e"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "389544e5f8306aaa3dcc9f91f9dc74a509dc800f",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/389544e5f8306aaa3dcc9f91f9dc74a509dc800f"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/util/ApplySourceATs.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1911443577d63f900b53e398a82f91f8e395fdc",
+      "size": 2777,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b1911443577d63f900b53e398a82f91f8e395fdc"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/util/CloudflareAccessManagedOAuthClient.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c307aba03ee7de0ce7120839c16f1a3b03cae288",
+      "size": 26743,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c307aba03ee7de0ce7120839c16f1a3b03cae288"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/util/project-util.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "130d91c5ddd8a10609facb19bacc17e5e359c122",
+      "size": 1492,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/130d91c5ddd8a10609facb19bacc17e5e359c122"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/core/util/utils.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "276a3d28cf0357512332b1bc8d9ef78a7ef7ec47",
+      "size": 1379,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/276a3d28cf0357512332b1bc8d9ef78a7ef7ec47"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/patcher",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "82ce28179834ce01deb2edca2814bef7700adab0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/82ce28179834ce01deb2edca2814bef7700adab0"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/patcher/PaperweightPatcher.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbfc38877aba82d257f3407fa2c39f37ade4cb98",
+      "size": 4144,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cbfc38877aba82d257f3407fa2c39f37ade4cb98"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/patcher/extension",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "51b2cdcdf47b7fbdcfe4d6f5b65403871ebb6064",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/51b2cdcdf47b7fbdcfe4d6f5b65403871ebb6064"
+    },
+    {
+      "path": "paperweight-core/src/main/kotlin/io/papermc/paperweight/patcher/extension/PaperweightPatcherExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18fbc959117c3f092bc86f4d31f78fe87dca56c5",
+      "size": 2024,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/18fbc959117c3f092bc86f4d31f78fe87dca56c5"
+    },
+    {
+      "path": "paperweight-core/src/main/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5e6b0d17ca685538f6900234c1ce7754eecfe2db",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/5e6b0d17ca685538f6900234c1ce7754eecfe2db"
+    },
+    {
+      "path": "paperweight-core/src/main/resources/META-INF",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "849cabfdec48e02f385ba61d0645efc68e3c824b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/849cabfdec48e02f385ba61d0645efc68e3c824b"
+    },
+    {
+      "path": "paperweight-core/src/main/resources/META-INF/gradle-plugins",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "41b158ce0215d5f85a222de99d793dbf9fbb77e1",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/41b158ce0215d5f85a222de99d793dbf9fbb77e1"
+    },
+    {
+      "path": "paperweight-core/src/main/resources/META-INF/gradle-plugins/io.papermc.paperweight.paper-checkstyle.properties",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5bfb6608da45c1d4ecdb42f5e5b6226f7f384bd3",
+      "size": 71,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5bfb6608da45c1d4ecdb42f5e5b6226f7f384bd3"
+    },
+    {
+      "path": "paperweight-core/src/main/resources/META-INF/gradle-plugins/io.papermc.paperweight.source-generator.properties",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a629d9eec27315c5d85291297f9a567ce7e72fa",
+      "size": 77,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0a629d9eec27315c5d85291297f9a567ce7e72fa"
+    },
+    {
+      "path": "paperweight-core/src/test",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "bf920a2803ced7f1c3809062b07538cca3bce7f7",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/bf920a2803ced7f1c3809062b07538cca3bce7f7"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6c22661a2b156ba4d2acf19c2e9b99726a092ac5",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6c22661a2b156ba4d2acf19c2e9b99726a092ac5"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7b9e1b793a330612b22a76d3f55e1d84aeaf8d6b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7b9e1b793a330612b22a76d3f55e1d84aeaf8d6b"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c2652a4ec85a43fe032839e962da14c1375aa5e8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/c2652a4ec85a43fe032839e962da14c1375aa5e8"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f87bd193c5e54f82998ed24ce463eeda8346f11e",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f87bd193c5e54f82998ed24ce463eeda8346f11e"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/FunctionalTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7ba0edc303706bbb0d45a9737056ff7f72d5595",
+      "size": 9329,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a7ba0edc303706bbb0d45a9737056ff7f72d5595"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/checkstyle",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0f164fa0c70008f5141c608cdc20eb7e17929268",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/0f164fa0c70008f5141c608cdc20eb7e17929268"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/checkstyle/PaperCheckstyleTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c10c16cfd18ad96f7912b5c5a8cba9f3bd3f7cfe",
+      "size": 1922,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c10c16cfd18ad96f7912b5c5a8cba9f3bd3f7cfe"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/checkstyle/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "afec91ef8f6660747a7ed05b36b01a0ea89075c2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/afec91ef8f6660747a7ed05b36b01a0ea89075c2"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/checkstyle/tasks/MergeCheckstyleConfigsTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06f11c9fddf3a49ebe468b7d1482226f9493deaf",
+      "size": 2111,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/06f11c9fddf3a49ebe468b7d1482226f9493deaf"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fc029113b858f5f5d94b7e574a1feebbce766be5",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/fc029113b858f5f5d94b7e574a1feebbce766be5"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2358ff3d4285ec81100622043340758878a87fca",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/2358ff3d4285ec81100622043340758878a87fca"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks/patching",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7224c73df9ca79f05dccac141026ce5b99f68c32",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7224c73df9ca79f05dccac141026ce5b99f68c32"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks/patching/ApplyFilePatchesTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d9379152560f7ea4562b4c6176b426f4671363b",
+      "size": 2062,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/4d9379152560f7ea4562b4c6176b426f4671363b"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks/patching/RebuildFilePatchesTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcc491c5942b9dbe810538be6f5537c35c86429f",
+      "size": 2725,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/dcc491c5942b9dbe810538be6f5537c35c86429f"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks/patchroulette",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5bd518bbe0839f50d78af029a1dac553e2773996",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/5bd518bbe0839f50d78af029a1dac553e2773996"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/tasks/patchroulette/PatchRouletteApplyTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9c318e5d7a21e154f661d8c3fd169acc25427de",
+      "size": 8241,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e9c318e5d7a21e154f661d8c3fd169acc25427de"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d7391df0b7b3b543ea4f61d52f5878c1a23808eb",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/d7391df0b7b3b543ea4f61d52f5878c1a23808eb"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/core/util/ApplySourceATsTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d42a662ddc0a21dff540f471183863c53048df91",
+      "size": 2928,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d42a662ddc0a21dff540f471183863c53048df91"
+    },
+    {
+      "path": "paperweight-core/src/test/kotlin/io/papermc/paperweight/util.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "199a1c1538a7fd1623e42064299a1ed0d482916e",
+      "size": 1847,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/199a1c1538a7fd1623e42064299a1ed0d482916e"
+    },
+    {
+      "path": "paperweight-core/src/test/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7c820803ff5deb87abccd01c55dbdf202ce7c59f",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7c820803ff5deb87abccd01c55dbdf202ce7c59f"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a7ff67e9e3dc44e04ca59e9c3e20d0aa1ddde69a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/a7ff67e9e3dc44e04ca59e9c3e20d0aa1ddde69a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9bb3ce66dd0e67d5b2aaa0c195e259b4713e63f1",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/9bb3ce66dd0e67d5b2aaa0c195e259b4713e63f1"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/input/base",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4deff8fd037fae46510f43516726c117217be7cb",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/4deff8fd037fae46510f43516726c117217be7cb"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/input/base/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7",
+      "size": 196,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/input/patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a9f6f1bb8f8c906138cc9f3777d7659b889fa7a8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/a9f6f1bb8f8c906138cc9f3777d7659b889fa7a8"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/input/patches/Test.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58d2f2fdb28480237c6fdabea205a11869b635dd",
+      "size": 159,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/58d2f2fdb28480237c6fdabea205a11869b635dd"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cb9cca420fbff53723ee205d8280d59f4c817045",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/cb9cca420fbff53723ee205d8280d59f4c817045"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/output/source",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ec8ce6e97e93e49a7d792dba64d0bf8696a20143",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ec8ce6e97e93e49a7d792dba64d0bf8696a20143"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/apply_patches/output/source/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb72c175b1811b9db0a95227626d4e128daa781e",
+      "size": 213,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/bb72c175b1811b9db0a95227626d4e128daa781e"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f4b93ab997db61b4a6ae3f0b9acf1d5f098f1292",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f4b93ab997db61b4a6ae3f0b9acf1d5f098f1292"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "414e92c72cc38694154a1c877947d62f6db484ec",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/414e92c72cc38694154a1c877947d62f6db484ec"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge/input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c2856c0752c6942678ac18d26e3e20989472f408",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/c2856c0752c6942678ac18d26e3e20989472f408"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge/input/base_checkstyle.xml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71b0fa1a32d5eec25f1ea8c71625aad63b7d17e2",
+      "size": 454,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/71b0fa1a32d5eec25f1ea8c71625aad63b7d17e2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge/input/project_checkstyle.xml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35f96ac08aa0e0fe6a58a1dd1a7f4c21c61e604a",
+      "size": 312,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/35f96ac08aa0e0fe6a58a1dd1a7f4c21c61e604a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge/output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "60177f31ea861af6cbea3a79b37f9645cf7a39e9",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/60177f31ea861af6cbea3a79b37f9645cf7a39e9"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/checkstyle/basicMerge/output/merged_checkstyle.xml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbfe5c162e31b00409cbb3f802daaf0102e0917b",
+      "size": 521,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/bbfe5c162e31b00409cbb3f802daaf0102e0917b"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mache",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0b2387947e0b74c754b4accdc4306ec261878653",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/0b2387947e0b74c754b4accdc4306ec261878653"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mache/mache.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1572ea46c8abf91b30d6ef9110b5066646f3cf15",
+      "size": 1810,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1572ea46c8abf91b30d6ef9110b5066646f3cf15"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mache/patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1ef65a97bf186222ea3184b1c98191b0dffa82a2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/1ef65a97bf186222ea3184b1c98191b0dffa82a2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mache/patches/Test.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee7e4b273f21249c21b34c32bcef4321d971f33f",
+      "size": 178,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ee7e4b273f21249c21b34c32bcef4321d971f33f"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0c77b5c070272d4dd48705677d2739ee27f5a719",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/0c77b5c070272d4dd48705677d2739ee27f5a719"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/bundle",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cde8b77e35e1e128711c7936970f4f2df910ddf8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/cde8b77e35e1e128711c7936970f4f2df910ddf8"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/bundle/META-INF",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0d909261b1b9571cd1c2cc1ce1521611ce281f39",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/0d909261b1b9571cd1c2cc1ce1521611ce281f39"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/bundle/META-INF/libraries.list",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e85ec5d78311c94553662c79dc53a81785f4178",
+      "size": 86,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5e85ec5d78311c94553662c79dc53a81785f4178"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/bundle/META-INF/versions.list",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c9206a7ebf6e3781a946beff8d8af8fbfc29b64",
+      "size": 23,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/6c9206a7ebf6e3781a946beff8d8af8fbfc29b64"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/bundle/version.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d31cbf41e59d27c61379a97cd4cbca20a2298671",
+      "size": 19,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d31cbf41e59d27c61379a97cd4cbca20a2298671"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/mappings.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d04b367ed5900ccf1046b93c6976fa399f8c33b",
+      "size": 917,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5d04b367ed5900ccf1046b93c6976fa399f8c33b"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/server",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b9a34194ea39a36581c0c266e3c359e11ff7c056",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/b9a34194ea39a36581c0c266e3c359e11ff7c056"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/server/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd1a4bcebfc31c1bbce436bd7cdf2f6b4d493031",
+      "size": 273,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/bd1a4bcebfc31c1bbce436bd7cdf2f6b4d493031"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/server/test.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0ae716dbe4c32b2cd01ff3fced7c9c6c6961ca3",
+      "size": 21,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d0ae716dbe4c32b2cd01ff3fced7c9c6c6961ca3"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/version.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcc4205045eb166e58ea69f77c222a8f22e2b62b",
+      "size": 229,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/dcc4205045eb166e58ea69f77c222a8f22e2b62b"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/fake_mojang/version_manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "afe0cfcd69d54b2adad4d5bc1be7a9c99e8b745a",
+      "size": 222,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/afe0cfcd69d54b2adad4d5bc1be7a9c99e8b745a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c5f6d98757243c9291f9370e750bbcc587179b63",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/c5f6d98757243c9291f9370e750bbcc587179b63"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/.editorconfig",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "42953013c8644324d68c9028fb6fef67d511b5fd",
+      "size": 41,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/42953013c8644324d68c9028fb6fef67d511b5fd"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/.gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ae0eecb35faae1fb314b0748bb02cf2de132269",
+      "size": 27,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8ae0eecb35faae1fb314b0748bb02cf2de132269"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/build-data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "073c29885e76186c1e592d84941fc1e1f4d83b7c",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/073c29885e76186c1e592d84941fc1e1f4d83b7c"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/build-data/expected.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4d941bfcac08655470b447161e950cd384e06ac",
+      "size": 223,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a4d941bfcac08655470b447161e950cd384e06ac"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/build-data/fake.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec24867b74eb0eadb39d263dd6447b011c74ddbf",
+      "size": 180,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ec24867b74eb0eadb39d263dd6447b011c74ddbf"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/build-data/paper.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3f36a48dc71c958e6a369fb5ff16051a340f8fa",
+      "size": 157,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c3f36a48dc71c958e6a369fb5ff16051a340f8fa"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/build.gradle",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f460a6862c665b2ee16ff17c06f6f5160ed6d74e",
+      "size": 218,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f460a6862c665b2ee16ff17c06f6f5160ed6d74e"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7c0ef6be916d5cdc7a9c8c3cc83fac64f6aa244b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7c0ef6be916d5cdc7a9c8c3cc83fac64f6aa244b"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/expected",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a260567efc6f33641aea4cbd48fe6bcbd517fed2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/a260567efc6f33641aea4cbd48fe6bcbd517fed2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/expected/0001-Feature.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d91209a38f5219adc8ce050ef277bf93d2457a0",
+      "size": 541,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/7d91209a38f5219adc8ce050ef277bf93d2457a0"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/expected/Test.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fff1639a24cb71768f3f06dbfeaa8c8fbe284b3d",
+      "size": 277,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/fff1639a24cb71768f3f06dbfeaa8c8fbe284b3d"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/features",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "33c802dbcc4f7f536b207b84f799100df9d5d5a0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/33c802dbcc4f7f536b207b84f799100df9d5d5a0"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/features/0001-Feature.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ca08d0473d2eee0428ccccbce0d3ebb3e36f964",
+      "size": 542,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8ca08d0473d2eee0428ccccbce0d3ebb3e36f964"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3fa295ca5a935a72d4a953e20692297d51c81818",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3fa295ca5a935a72d4a953e20692297d51c81818"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/resources/test.json.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a29ad924c07103d99c80259e071f3eb00e885c5a",
+      "size": 91,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a29ad924c07103d99c80259e071f3eb00e885c5a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/sources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "88e4d223739d830d690b57e8e09bb71d3a8282c6",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/88e4d223739d830d690b57e8e09bb71d3a8282c6"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/fake-patches/sources/Test.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a524a2f10f799a5a7f62760bb944d736d41a6f06",
+      "size": 198,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a524a2f10f799a5a7f62760bb944d736d41a6f06"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "995c6aeb47a2ff07e4ee27e7db8a130e7d1b00e6",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/995c6aeb47a2ff07e4ee27e7db8a130e7d1b00e6"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/0002-Remove-rotten-apples.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2e9623a8d30c58fc52f728af2bfc43eaf43e70a",
+      "size": 1030,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b2e9623a8d30c58fc52f728af2bfc43eaf43e70a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/Main.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5400a8330ca23e3635140e4f17d2ff38ceabfa2",
+      "size": 1065,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e5400a8330ca23e3635140e4f17d2ff38ceabfa2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/dev-imports.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ebe8c2f26353666a0062b9be5454e6bd4305d1ba",
+      "size": 28,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ebe8c2f26353666a0062b9be5454e6bd4305d1ba"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/org",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6997d1ead07c9d65151b622838cfeddf8a9454b2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6997d1ead07c9d65151b622838cfeddf8a9454b2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/org/alcibiade",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6ed18cbe021f12c7318d4f19c5bd2d98dc939608",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6ed18cbe021f12c7318d4f19c5bd2d98dc939608"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/org/alcibiade/asciiart",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "61d728162dfe7ea4c73e5ce1f79bb7698d1932c2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/61d728162dfe7ea4c73e5ce1f79bb7698d1932c2"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/org/alcibiade/asciiart/widget",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "798c977d103895a2505873246f6c47628e48df4e",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/798c977d103895a2505873246f6c47628e48df4e"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/lib-patches/org/alcibiade/asciiart/widget/PictureWidget.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9bece5582440605d67b9f0a49185a8a6e1fbab9",
+      "size": 974,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d9bece5582440605d67b9f0a49185a8a6e1fbab9"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/settings.gradle",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40b7985e6770c724cc243f1e4144349773273013",
+      "size": 456,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/40b7985e6770c724cc243f1e4144349773273013"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-api",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f8842bb41b02d44024682bf30c47c08d6d513b5d",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f8842bb41b02d44024682bf30c47c08d6d513b5d"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-api/build.gradle",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e306a7b6be71a9af9fe1d1b9a31150cdd1a4815",
+      "size": 34,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0e306a7b6be71a9af9fe1d1b9a31150cdd1a4815"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "de17e9e3d850b811fe963b828090bb94839b382c",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/de17e9e3d850b811fe963b828090bb94839b382c"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/build.gradle",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2065f984ad1096ed0b9e4043b4c78192f28263c",
+      "size": 1214,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a2065f984ad1096ed0b9e4043b4c78192f28263c"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "704c1cfecf06871e70f9ab1193550d0fb22fe070",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/704c1cfecf06871e70f9ab1193550d0fb22fe070"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/features",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d8509b83bda2eecfafa6e0abbe76c900704e6a13",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/d8509b83bda2eecfafa6e0abbe76c900704e6a13"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/features/0001-something.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "75f088852b798fdf3234db3b48e6046193d4a780",
+      "size": 1099,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/75f088852b798fdf3234db3b48e6046193d4a780"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "dc00d9572b3bc53dec663745c1a7faabd56115e6",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/dc00d9572b3bc53dec663745c1a7faabd56115e6"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/resources/version.json.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad1f75bc4e8b7bce67df491b2606deaa56bd042a",
+      "size": 243,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ad1f75bc4e8b7bce67df491b2606deaa56bd042a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/sources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f08db898b0b9322d4981b35d596e14697dd8b93a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f08db898b0b9322d4981b35d596e14697dd8b93a"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/sources/net",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e3038bb8fbffd5a6fd16f6cc02fc9799c85e16ce",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e3038bb8fbffd5a6fd16f6cc02fc9799c85e16ce"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/sources/net/minecraft",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d123ec81f10091e725961a2d077774fed3b2c5a8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/d123ec81f10091e725961a2d077774fed3b2c5a8"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/sources/net/minecraft/core",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ed7d4d790be89ea0e79e7a5a8e4ed646f2ca2f5f",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ed7d4d790be89ea0e79e7a5a8e4ed646f2ca2f5f"
+    },
+    {
+      "path": "paperweight-core/src/test/resources/functional_test/test-server/patches/sources/net/minecraft/core/Rotations.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bec3870aeb29349cd516a3e3f350007ce86d338f",
+      "size": 291,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/bec3870aeb29349cd516a3e3f350007ce86d338f"
+    },
+    {
+      "path": "paperweight-lib",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "43aceff60aa48281942b5b1c28fbe6e80de54f04",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/43aceff60aa48281942b5b1c28fbe6e80de54f04"
+    },
+    {
+      "path": "paperweight-lib/build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "99717f9a59ec237a7f73453a12183458395d76e5",
+      "size": 1422,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/99717f9a59ec237a7f73453a12183458395d76e5"
+    },
+    {
+      "path": "paperweight-lib/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7908b67cd1e46f4e461b8231c93ade86ccb42e8a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/7908b67cd1e46f4e461b8231c93ade86ccb42e8a"
+    },
+    {
+      "path": "paperweight-lib/src/main",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "962c45acbabc5df2f476703b6cf691220e43d9ea",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/962c45acbabc5df2f476703b6cf691220e43d9ea"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b79a27e97f2505dd194399cac29b4cdef0e23201",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/b79a27e97f2505dd194399cac29b4cdef0e23201"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6f232cd48aa799e1b0b277fb6cc5da8d01cb6c28",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6f232cd48aa799e1b0b277fb6cc5da8d01cb6c28"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "753f8be62fb1da09612c5e4e9e6d4d054e6508e9",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/753f8be62fb1da09612c5e4e9e6d4d054e6508e9"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ce69d557c9ff0e291d47dff22a2cdb9bdc3d4521",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ce69d557c9ff0e291d47dff22a2cdb9bdc3d4521"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates/io/papermc/paperweight/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "79ea1572962743907cbf669bb6326143541be66b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/79ea1572962743907cbf669bb6326143541be66b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin-templates/io/papermc/paperweight/util/LibraryVersions.kt.peb",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "975f6754e8b61af9e95b16e370cca799b7a0d213",
+      "size": 1096,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/975f6754e8b61af9e95b16e370cca799b7a0d213"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6e31e7604ca1bc668027c737e170075f78cb5d57",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6e31e7604ca1bc668027c737e170075f78cb5d57"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "715034e803060b3f4326e42cac23e248f8f49eb3",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/715034e803060b3f4326e42cac23e248f8f49eb3"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "33b82251f0e23248917e6d6dea4552b025621ac0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/33b82251f0e23248917e6d6dea4552b025621ac0"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8e9516b49b9e6b827065ac59b9fb45402f49f5cb",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/8e9516b49b9e6b827065ac59b9fb45402f49f5cb"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/DownloadService.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47fcfad0e7e56a5eccfdbe297ec11be6f061455c",
+      "size": 12402,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/47fcfad0e7e56a5eccfdbe297ec11be6f061455c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/PaperweightException.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c8ccdde838af3682ffec4b6b7b8bd3f5b7f6209",
+      "size": 1061,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/9c8ccdde838af3682ffec4b6b7b8bd3f5b7f6209"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/attribute",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "71f87dad9e3b593fd07ef978cb26949b036b3809",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/71f87dad9e3b593fd07ef978cb26949b036b3809"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/attribute/DevBundleOutput.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4c2d2db79dded635834e8abf32cba0ae778ea26",
+      "size": 1272,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e4c2d2db79dded635834e8abf32cba0ae778ea26"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/attribute/MacheOutput.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c0717db52e285e3b0f3f960719bdefb405bad1b",
+      "size": 1247,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8c0717db52e285e3b0f3f960719bdefb405bad1b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "471b6e1c2ae5effb41873fdaf890676728ba9c75",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/471b6e1c2ae5effb41873fdaf890676728ba9c75"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ApplyAccessTransform.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af5b7dd78a3b5f6b15760633fbc45c2a5a92f8d3",
+      "size": 7878,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/af5b7dd78a3b5f6b15760633fbc45c2a5a92f8d3"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/BaseTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d86288e2278811042d649a2e114285d605e09e92",
+      "size": 1554,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d86288e2278811042d649a2e114285d605e09e92"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CleanupMappings.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45bac17cfcf2ce3d610fcc70f69c0de27cbde815",
+      "size": 4940,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/45bac17cfcf2ce3d610fcc70f69c0de27cbde815"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CloneRepo.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c1d28d8af6d89932c532e87c6f5b6b6912bdb018",
+      "size": 2229,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c1d28d8af6d89932c532e87c6f5b6b6912bdb018"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CollectATsFromPatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2bccdafd83166c441f081e397d4497dfabd3b852",
+      "size": 3103,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/2bccdafd83166c441f081e397d4497dfabd3b852"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ControllableOutputTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87e7185e2898bc52d2e61415f0a64f377cb687cb",
+      "size": 1624,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/87e7185e2898bc52d2e61415f0a64f377cb687cb"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CreateBundlerJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbddce589fe5b0809dcc7ef8157317d3809d6e39",
+      "size": 8904,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cbddce589fe5b0809dcc7ef8157317d3809d6e39"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CreateDiffOutput.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5707b52b10841ad3388ec4af46df9a7a5119e8ab",
+      "size": 2030,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5707b52b10841ad3388ec4af46df9a7a5119e8ab"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/CreatePaperclipJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93510cf2acbd2fd0fb5c88a932161845866e2fc9",
+      "size": 12497,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/93510cf2acbd2fd0fb5c88a932161845866e2fc9"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/DownloadServerJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f13ee7d7d7bf525901fb241df1794f9b6efaf10",
+      "size": 1611,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/6f13ee7d7d7bf525901fb241df1794f9b6efaf10"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ExtractFromBundler.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96b7308bad9a157cecc7b86859abd58db2edf851",
+      "size": 4321,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/96b7308bad9a157cecc7b86859abd58db2edf851"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/GenerateDevBundle.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4c40f6429f108807cd855a3572634af0bdff5ff",
+      "size": 7524,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e4c40f6429f108807cd855a3572634af0bdff5ff"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/GenerateMappings.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6075b731e3d2ed118b5f15a90eed8cdda455e90c",
+      "size": 10492,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/6075b731e3d2ed118b5f15a90eed8cdda455e90c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/MergeAccessTransforms.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "710426ef7c1bda2a539c0e455ba962a2181f5c8b",
+      "size": 2228,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/710426ef7c1bda2a539c0e455ba962a2181f5c8b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/RebuildGitPatches.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cdf40ae3f5b04cec7c87d3085e95c664e96876fb",
+      "size": 5947,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/cdf40ae3f5b04cec7c87d3085e95c664e96876fb"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/RemapJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e624247958af7b73b2c2c57be2fd8c063d56d10a",
+      "size": 7461,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e624247958af7b73b2c2c57be2fd8c063d56d10a"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ScanJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f3107b283ca2692bfd4a218f93b5e3a847873580",
+      "size": 6253,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f3107b283ca2692bfd4a218f93b5e3a847873580"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ScanJarForBadCalls.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "900837921befb4429be6261d3c8521f7c07001c8",
+      "size": 5119,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/900837921befb4429be6261d3c8521f7c07001c8"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ScanJarForOldGeneratedCode.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bafce79170144d566ebb3c22b3de373d25f7e70",
+      "size": 3310,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3bafce79170144d566ebb3c22b3de373d25f7e70"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/ZippedTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "55a14333e78fc14689558a90dbfd2b33130e7b1b",
+      "size": 2031,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/55a14333e78fc14689558a90dbfd2b33130e7b1b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/download-task.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3dfc7b54922681645c6773a8f75717fdd32d3232",
+      "size": 6344,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3dfc7b54922681645c6773a8f75717fdd32d3232"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/java-launcher.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b7046074bc1156392075bd503bbbdda8a5b963c",
+      "size": 1891,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0b7046074bc1156392075bd503bbbdda8a5b963c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/mache",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6e9653d0324895f5e51fa89aefaa752b0fda1992",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/6e9653d0324895f5e51fa89aefaa752b0fda1992"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/mache/DecompileJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33d469e2ea866d79b92ee0ceb48bae53193efd2b",
+      "size": 3400,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/33d469e2ea866d79b92ee0ceb48bae53193efd2b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/tasks/mache/RunCodebook.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1a2ea78c4aafd32edb73ff7904452998ad2f500",
+      "size": 4036,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a1a2ea78c4aafd32edb73ff7904452998ad2f500"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e0b754bfda551a3ad0de01482113effba16c57c6",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e0b754bfda551a3ad0de01482113effba16c57c6"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/ClassNodeCache.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb3c35e553f3a9a949346c3cba2a46cb3237d40a",
+      "size": 1558,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/eb3c35e553f3a9a949346c3cba2a46cb3237d40a"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/ClassNodeCacheImpl.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12ee43f2e5e3d3d4332c8a58e1767551ead47914",
+      "size": 3188,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/12ee43f2e5e3d3d4332c8a58e1767551ead47914"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/JarProcessing.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9118e1ef8eb339c4f6ab0c4ef843305eee18ea6",
+      "size": 3416,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a9118e1ef8eb339c4f6ab0c4ef843305eee18ea6"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/MappingFormats.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "330a24fe951f2820ac66923c588ebe70c187c7db",
+      "size": 1263,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/330a24fe951f2820ac66923c588ebe70c187c7db"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/asm.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e15f624ed1d947dc652167ac448acf546a44e49b",
+      "size": 4573,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e15f624ed1d947dc652167ac448acf546a44e49b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/at.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac10fb04c9f80b3509d6d585d301d99f67782426",
+      "size": 2313,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ac10fb04c9f80b3509d6d585d301d99f67782426"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/constants",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b6ad1ccd102efd23e122c668be31ee9fa29a9e93",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/b6ad1ccd102efd23e122c668be31ee9fa29a9e93"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/constants/constants.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25b7e34087cb00a501ead99fb810a8ae0de071b5",
+      "size": 6474,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/25b7e34087cb00a501ead99fb810a8ae0de071b5"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fa0cf9a8739784badc0f26a8a5fe2ae1a28f68a2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/fa0cf9a8739784badc0f26a8a5fe2ae1a28f68a2"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/BuildDataInfo.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e531f1735d7e7f69e01bf73b717e4c939e55742",
+      "size": 1216,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3e531f1735d7e7f69e01bf73b717e4c939e55742"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/FileEntry.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "374ebce5d5a4fd1a8549dce0d0388fdfe380dc41",
+      "size": 1925,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/374ebce5d5a4fd1a8549dce0d0388fdfe380dc41"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/LibraryChange.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "42bcbd632b33d7732aab8a37f1219aafd766a0a1",
+      "size": 1034,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/42bcbd632b33d7732aab8a37f1219aafd766a0a1"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/MavenArtifact.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0551ebf4614d05e48ac1acd8df79af3ee7fb2c22",
+      "size": 4581,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0551ebf4614d05e48ac1acd8df79af3ee7fb2c22"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/MinecraftManifest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7633ba720ed3b6d51c49d4476d6fe4120f95e5c",
+      "size": 1773,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f7633ba720ed3b6d51c49d4476d6fe4120f95e5c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/ModuleId.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2e91f4be22810e4eba53c09d78cb67ec98ac346c",
+      "size": 2604,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/2e91f4be22810e4eba53c09d78cb67ec98ac346c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1e46c3a037d1c90dd4bb63edafd894bbe5efb33b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/1e46c3a037d1c90dd4bb63edafd894bbe5efb33b"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache/MacheAdditionalDependencies.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "417d99c1092f05bb544c7930aa6747e29c35a690",
+      "size": 1048,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/417d99c1092f05bb544c7930aa6747e29c35a690"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache/MacheDependencies.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7aadb40410b5034b8c1109e993ca52886d480720",
+      "size": 1140,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/7aadb40410b5034b8c1109e993ca52886d480720"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache/MacheMeta.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee8c0f445b9b77f977ab472f96b235e39f722c25",
+      "size": 3277,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ee8c0f445b9b77f977ab472f96b235e39f722c25"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache/MacheRepository.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2f8b47855e424aa646906282aad8d717220b8d0",
+      "size": 1014,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b2f8b47855e424aa646906282aad8d717220b8d0"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/data/mache/MavenArtifact.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33c4d35c2b0c562c0e71405d7b166040b03b0507",
+      "size": 1228,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/33c4d35c2b0c562c0e71405d7b166040b03b0507"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/dependencies.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edcc39ac65bbbed1b0d458c75191b855c9b39073",
+      "size": 2042,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/edcc39ac65bbbed1b0d458c75191b855c9b39073"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/durations.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0155d48fb5107a5531c1bd7830240a9dbca6109f",
+      "size": 2872,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0155d48fb5107a5531c1bd7830240a9dbca6109f"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/extensions.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fdae0ee3cd1f64bd4a2eb9318d32daea52428b66",
+      "size": 1823,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/fdae0ee3cd1f64bd4a2eb9318d32daea52428b66"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/file-lock.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a34bfe8618ef74161d0feb71006b5bb52e6c8223",
+      "size": 5708,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a34bfe8618ef74161d0feb71006b5bb52e6c8223"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/file.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f905e1234d2fca5fa4ad54ede8e5367902882de",
+      "size": 7716,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1f905e1234d2fca5fa4ad54ede8e5367902882de"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/filter-jar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91b7c715163625ab24fcf2d201095e9b76a9caf1",
+      "size": 1737,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/91b7c715163625ab24fcf2d201095e9b76a9caf1"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/git.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2fa76bdc68f54e4bdc8096edaefe14942a0da39c",
+      "size": 9901,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/2fa76bdc68f54e4bdc8096edaefe14942a0da39c"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/jar-runner.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "355b1e8aae81af7fb9f96988e15eab9d4484d078",
+      "size": 3394,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/355b1e8aae81af7fb9f96988e15eab9d4484d078"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/nio.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0e3942f7b769ae3cb3c970020f98a85a9697651",
+      "size": 2737,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d0e3942f7b769ae3cb3c970020f98a85a9697651"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/relocation.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86a46b13c70b271e8852a1afb5b231abff0f7281",
+      "size": 1469,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/86a46b13c70b271e8852a1afb5b231abff0f7281"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/utils.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "df117c9c60b531f25309e0c5ab001a707729d6e8",
+      "size": 17560,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/df117c9c60b531f25309e0c5ab001a707729d6e8"
+    },
+    {
+      "path": "paperweight-lib/src/main/kotlin/io/papermc/paperweight/util/zip.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "768effefb94bff158f6853dda163219a48562a30",
+      "size": 2790,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/768effefb94bff158f6853dda163219a48562a30"
+    },
+    {
+      "path": "paperweight-lib/src/main/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c3d6f6756858ad49ede6639ed84c28ec6a7e431b",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/c3d6f6756858ad49ede6639ed84c28ec6a7e431b"
+    },
+    {
+      "path": "paperweight-lib/src/main/resources/post-rewrite.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8918da8778159f44a9dddff4dc0d0af20c422da9",
+      "size": 499,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/8918da8778159f44a9dddff4dc0d0af20c422da9"
+    },
+    {
+      "path": "paperweight-lib/src/test",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1528fa6f4de5ffcc50053ee6fbdad1251c2b488a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/1528fa6f4de5ffcc50053ee6fbdad1251c2b488a"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e5c6ba191fa609aee2255c30b26728cd144da4fa",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e5c6ba191fa609aee2255c30b26728cd144da4fa"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "76d0b54707251589f4971fcfaaa915f9a297a4be",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/76d0b54707251589f4971fcfaaa915f9a297a4be"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "418dc3abb83d4aebd78ff2a7175ecbeb8d76fe28",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/418dc3abb83d4aebd78ff2a7175ecbeb8d76fe28"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e4c9a56cdddd9011b73fe248b40356eabcbfd4fe",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e4c9a56cdddd9011b73fe248b40356eabcbfd4fe"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/tasks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "75d45441b1d7c2b874c4eff42dab9ba2f7bbd6f8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/75d45441b1d7c2b874c4eff42dab9ba2f7bbd6f8"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/tasks/ApplyAccessTransformTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b534103feb61bff116cbf9d8cb61a3aa16f30ac9",
+      "size": 3075,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b534103feb61bff116cbf9d8cb61a3aa16f30ac9"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/tasks/TaskTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b2cbc07c7c66f955d6008d3ebf9c7adad361cc8",
+      "size": 6997,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/2b2cbc07c7c66f955d6008d3ebf9c7adad361cc8"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2e5277a69c5253fc6ef24fa51d818dfc2901ce78",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/2e5277a69c5253fc6ef24fa51d818dfc2901ce78"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/util/ATTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "922edc26e3e449d80f5ac80d455fe6e238a57d55",
+      "size": 1988,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/922edc26e3e449d80f5ac80d455fe6e238a57d55"
+    },
+    {
+      "path": "paperweight-lib/src/test/kotlin/io/papermc/paperweight/util/FileUtilsTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "955df6233a8cc198b645d0dd9adeba039f7ba8fd",
+      "size": 2533,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/955df6233a8cc198b645d0dd9adeba039f7ba8fd"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f7d12c3e5f506d56c70b5edb34808d392ec11e0e",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f7d12c3e5f506d56c70b5edb34808d392ec11e0e"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ed8089446877bdd159dbfc0a084404f7235fc539",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ed8089446877bdd159dbfc0a084404f7235fc539"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform/input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8190f5712e6149f9428d7defde4508571ed2ec2e",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/8190f5712e6149f9428d7defde4508571ed2ec2e"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform/input/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7",
+      "size": 196,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform/input/ats.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "693b10bf2cc20d76dce47e4f417bbba18cdc260a",
+      "size": 199,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/693b10bf2cc20d76dce47e4f417bbba18cdc260a"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform/output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5ce8c456aef695cc139d35841d5f474efe2102e2",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/5ce8c456aef695cc139d35841d5f474efe2102e2"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_access_transform/output/output.javap",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77a6ccfa6ee2d81a7d241cffaeb98d32ac9dc925",
+      "size": 549,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/77a6ccfa6ee2d81a7d241cffaeb98d32ac9dc925"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d899c678c2a1d874ab3d22ca9365a5ec98505192",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/d899c678c2a1d874ab3d22ca9365a5ec98505192"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "661744495c479d66ee59c7f66697a651683fae4c",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/661744495c479d66ee59c7f66697a651683fae4c"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/input/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7",
+      "size": 196,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/input/Unrelated.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c821a33ff48348c170652813ce2ceaa98d8f9255",
+      "size": 21,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c821a33ff48348c170652813ce2ceaa98d8f9255"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/input/ats.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "693b10bf2cc20d76dce47e4f417bbba18cdc260a",
+      "size": 199,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/693b10bf2cc20d76dce47e4f417bbba18cdc260a"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cea6c9187fdbe80f92ac022b8070df314df6aa98",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/cea6c9187fdbe80f92ac022b8070df314df6aa98"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/output/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "869744fb825a7da44eaee52b1803a28df0daa585",
+      "size": 202,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/869744fb825a7da44eaee52b1803a28df0daa585"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/apply_source_at/output/Unrelated.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c821a33ff48348c170652813ce2ceaa98d8f9255",
+      "size": 21,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c821a33ff48348c170652813ce2ceaa98d8f9255"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4e4da6d2b53fc7785d90d224059a0ff39b848979",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/4e4da6d2b53fc7785d90d224059a0ff39b848979"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "30089d8586b979d293e17701fa00860bd359cc66",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/30089d8586b979d293e17701fa00860bd359cc66"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input/ats.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c46fe9b712f00c4e3832ed02bddc4a717f8b237d",
+      "size": 135,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c46fe9b712f00c4e3832ed02bddc4a717f8b237d"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input/base",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4deff8fd037fae46510f43516726c117217be7cb",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/4deff8fd037fae46510f43516726c117217be7cb"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input/base/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7",
+      "size": 196,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b8cb9b8ab8dc8d7b92908d1fd44810cc0b5fffa7"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input/source",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aef82f5c6692004343ee55341618bb6c46afb583",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/aef82f5c6692004343ee55341618bb6c46afb583"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/input/source/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1e61ad8fcbc713ca38cef79e80b281e13870f4bc",
+      "size": 289,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1e61ad8fcbc713ca38cef79e80b281e13870f4bc"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "809e17c23f69c8abd4b7dbacfb1c6ec12189e883",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/809e17c23f69c8abd4b7dbacfb1c6ec12189e883"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/ats.at",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b42803600305b1031915d5f7e813ee236841675",
+      "size": 197,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3b42803600305b1031915d5f7e813ee236841675"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/base",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "400b1a221837766ac6b0e5de1d26a40f88f25a00",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/400b1a221837766ac6b0e5de1d26a40f88f25a00"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/base/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd852a16212522df2b6c59088f81114c278f76cb",
+      "size": 196,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/fd852a16212522df2b6c59088f81114c278f76cb"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/patches",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2a298dca14885bd969c343bcfc5520bfcf85712d",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/2a298dca14885bd969c343bcfc5520bfcf85712d"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/patches/Test.java.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaa46dd447007079514117511ac003eacfc5a4c9",
+      "size": 166,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/aaa46dd447007079514117511ac003eacfc5a4c9"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/source",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3a51f160cbe0aac63579a81c57d29fd1be9334f0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3a51f160cbe0aac63579a81c57d29fd1be9334f0"
+    },
+    {
+      "path": "paperweight-lib/src/test/resources/rebuild_patches/output/source/Test.java",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2d35e4355f0d281e2e3372265590f23a1d3d732",
+      "size": 213,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a2d35e4355f0d281e2e3372265590f23a1d3d732"
+    },
+    {
+      "path": "paperweight-userdev",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3f00a6e2919be96e85d537e4019dfd90d4a790a8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3f00a6e2919be96e85d537e4019dfd90d4a790a8"
+    },
+    {
+      "path": "paperweight-userdev/build.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "391576bed44c7fb44a9d51ecadf746042b41265a",
+      "size": 546,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/391576bed44c7fb44a9d51ecadf746042b41265a"
+    },
+    {
+      "path": "paperweight-userdev/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f8fac5e70c8ef532aba7fa6392157272ea8c78a8",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/f8fac5e70c8ef532aba7fa6392157272ea8c78a8"
+    },
+    {
+      "path": "paperweight-userdev/src/main",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9e9dc791e8c0dccfe75d09298346ec5424cdf447",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/9e9dc791e8c0dccfe75d09298346ec5424cdf447"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4b99c86d88bfd2e42bda66c5f5e3bf769b00d5bd",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/4b99c86d88bfd2e42bda66c5f5e3bf769b00d5bd"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "87b25ae5e68997e6735767f15d77acab9498a5fd",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/87b25ae5e68997e6735767f15d77acab9498a5fd"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3e8753c1a1573afb4940da9b3c8844ad76b7fb8a",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3e8753c1a1573afb4940da9b3c8844ad76b7fb8a"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4c5995ce0968f7f982818d9d302239fac61a99e5",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/4c5995ce0968f7f982818d9d302239fac61a99e5"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "26096e2a929906c1e16ccde23c81c62da3d67baf",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/26096e2a929906c1e16ccde23c81c62da3d67baf"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/PaperweightUser.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7560c2cbadcfb6a838f3e5c059ff7bb859755694",
+      "size": 16905,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/7560c2cbadcfb6a838f3e5c059ff7bb859755694"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/PaperweightUserDependenciesExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "702a339ea4fb6cb22dda8e0b325f330118918f2f",
+      "size": 8953,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/702a339ea4fb6cb22dda8e0b325f330118918f2f"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/PaperweightUserExtension.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "44684cb90dd31116a0221f160d6752707219c9ca",
+      "size": 3438,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/44684cb90dd31116a0221f160d6752707219c9ca"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/ReobfArtifactConfiguration.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f23d6f4596178e1ac1bf64bdfb7bb3c6e3c784da",
+      "size": 3861,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f23d6f4596178e1ac1bf64bdfb7bb3c6e3c784da"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/attribute",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8b681d796332fcc9339d08c3d46db465b5452779",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/8b681d796332fcc9339d08c3d46db465b5452779"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/attribute/Obfuscation.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ff2ac56452ce8dcb8d88a173320502e63ad0751",
+      "size": 1643,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1ff2ac56452ce8dcb8d88a173320502e63ad0751"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "484fc2b74aeee4d6b9ab354cdc22145dd96a01d9",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/484fc2b74aeee4d6b9ab354cdc22145dd96a01d9"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/JunitExclusionRule.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3610646f55897a7c7062646ea88f774abb8e6f0b",
+      "size": 1581,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/3610646f55897a7c7062646ea88f774abb8e6f0b"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "03476e1cea644d343c7eedf93245a7e6e15e1adf",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/03476e1cea644d343c7eedf93245a7e6e15e1adf"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action/CacheManager.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4256ccde6cbb93c9c0ee1bed05de670670bde6f3",
+      "size": 5806,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/4256ccde6cbb93c9c0ee1bed05de670670bde6f3"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action/WorkDispatcher.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91e3d4c8019e56b6889b082688f558126d00b634",
+      "size": 1578,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/91e3d4c8019e56b6889b082688f558126d00b634"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action/WorkDispatcherImpl.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc4236276ae3ac31dd8f5fd3d9771397b668064f",
+      "size": 4990,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/bc4236276ae3ac31dd8f5fd3d9771397b668064f"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action/WorkGraph.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "730f1676004f8b9255106b63538d628bc8f78e47",
+      "size": 8737,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/730f1676004f8b9255106b63538d628bc8f78e47"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/action/values.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40c17d4b776faf78fb9d3c8c08e81b6f0218a58b",
+      "size": 5911,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/40c17d4b776faf78fb9d3c8c08e81b6f0218a58b"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e95a50fd0edc186deeab9f7b91700bd6cba3edbc",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/e95a50fd0edc186deeab9f7b91700bd6cba3edbc"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/DevBundles.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e2421ca81575b859ada89f6fdf390a17c8899ce0",
+      "size": 2880,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e2421ca81575b859ada89f6fdf390a17c8899ce0"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/SetupHandler.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e8a6ff73a23c2d1ba4e7a5c14d7a2a8b2adb5b2",
+      "size": 6674,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5e8a6ff73a23c2d1ba4e7a5c14d7a2a8b2adb5b2"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/SetupHandlerImpl.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1f34c7aa346b5296c8d8ce6ca40e1a01361b894",
+      "size": 9484,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f1f34c7aa346b5296c8d8ce6ca40e1a01361b894"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/UserdevSetup.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41154f8d1b7df758d1746846ee4572b2ee61b4d8",
+      "size": 4022,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/41154f8d1b7df758d1746846ee4572b2ee61b4d8"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/UserdevSetupTask.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a6b0c565817417c5a82179deaefca3ba7409457",
+      "size": 4611,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0a6b0c565817417c5a82179deaefca3ba7409457"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1a204033c3bc091920268d0b718403799fe155e4",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/1a204033c3bc091920268d0b718403799fe155e4"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/AccessTransformMinecraftAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8aa566bf6d47a3ca429e2b0046f8bf496d369c3",
+      "size": 2278,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/f8aa566bf6d47a3ca429e2b0046f8bf496d369c3"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/ApplyDevBundlePatchesAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee72c6b61357903c05740f45b848b12483818ccc",
+      "size": 4629,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ee72c6b61357903c05740f45b848b12483818ccc"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/DecompileMinecraftAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "99c3e87f4ad2d18744cf1603d2d29521424b5e4b",
+      "size": 4550,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/99c3e87f4ad2d18744cf1603d2d29521424b5e4b"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/ExtractFromBundlerAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a2ae7eaf6a2dfb9ecd76250d98e2fc745be7cd9",
+      "size": 1753,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/9a2ae7eaf6a2dfb9ecd76250d98e2fc745be7cd9"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/FilterPaperShadowJarAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2d1f595e5455dbda0c6d810df51e5a4a046ff9b",
+      "size": 3900,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/b2d1f595e5455dbda0c6d810df51e5a4a046ff9b"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/FilterVanillaJarAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30ef74366d311dbfd81142ce2eb976c75e531e43",
+      "size": 1565,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/30ef74366d311dbfd81142ce2eb976c75e531e43"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/FixMinecraftJarAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "724b3080e3e2dcca4074b90bf161166580181bbe",
+      "size": 2124,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/724b3080e3e2dcca4074b90bf161166580181bbe"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/GenerateMappingsAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c3e77ac1eb6ce41ef1be5e278dfaff9a02d9046",
+      "size": 2554,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/4c3e77ac1eb6ce41ef1be5e278dfaff9a02d9046"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/RemapMinecraftAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "107f90ac883c9bfbd34e1a508fc0c0282fbfe1ce",
+      "size": 2747,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/107f90ac883c9bfbd34e1a508fc0c0282fbfe1ce"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/RunCodebookAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d69a42d6d9202d751c04b5ae0de5d28dc0861ac5",
+      "size": 2702,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d69a42d6d9202d751c04b5ae0de5d28dc0861ac5"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/RunPaperclipAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c20393243197c0e353878c2b05ca7b8b1edb0a9f",
+      "size": 4331,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c20393243197c0e353878c2b05ca7b8b1edb0a9f"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/RunRemappingCodebookAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41e5d572b362066b0eb3eadceaed8cadca64ca34",
+      "size": 2846,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/41e5d572b362066b0eb3eadceaed8cadca64ca34"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/SetupMacheSourcesAction.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "018029e7753752a2aa119d14584e077a3263e5f3",
+      "size": 3606,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/018029e7753752a2aa119d14584e077a3263e5f3"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/VanillaServerDownloads.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10d69d6a4e0344a1a1e3d98f21bddd57aaa82e86",
+      "size": 3981,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/10d69d6a4e0344a1a1e3d98f21bddd57aaa82e86"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/action/VanillaServerJarDownload.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a04bb6a138a730e48bbf972fcea0b1c463dad76",
+      "size": 3484,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/1a04bb6a138a730e48bbf972fcea0b1c463dad76"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v2",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "488322bff778a7a660701ebef41eb818a054b9b0",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/488322bff778a7a660701ebef41eb818a054b9b0"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v2/DevBundleV2.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af71e5fb4d64411e736af3964e10bf381bd82ae9",
+      "size": 1779,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/af71e5fb4d64411e736af3964e10bf381bd82ae9"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v2/SetupHandlerImplV2.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34377702feeceda8632706aab4501e00046e1856",
+      "size": 11507,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/34377702feeceda8632706aab4501e00046e1856"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v5",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "73604497fa7002dde34b02ebd8f82505dc0fdd97",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/73604497fa7002dde34b02ebd8f82505dc0fdd97"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v5/DevBundleV5.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad3e94fd3a6edfc81cdff303d94c587f54559938",
+      "size": 1880,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/ad3e94fd3a6edfc81cdff303d94c587f54559938"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v5/SetupHandlerImplV5.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69cf54b609d8cc9e8c27433b82e596d52525c058",
+      "size": 11189,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/69cf54b609d8cc9e8c27433b82e596d52525c058"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v7",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "06defeee35e37dec48668a57a60d42ff15de89f4",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/06defeee35e37dec48668a57a60d42ff15de89f4"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v7/DevBundleV7.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48dda242b25fd8939cea6bc96de1ed89f770b9ab",
+      "size": 1284,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/48dda242b25fd8939cea6bc96de1ed89f770b9ab"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/setup/v7/SetupHandlerImplV7.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c74081dde761c81ba2a7f2df7ed153478ed29b8",
+      "size": 10246,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/4c74081dde761c81ba2a7f2df7ed153478ed29b8"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/util",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "952dc88d71eff9e18456822cefb58f8bee33a810",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/952dc88d71eff9e18456822cefb58f8bee33a810"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/util/FixJar.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7600c3c70e12ae6e521d0ceeba3e882fe452fa4b",
+      "size": 6289,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/7600c3c70e12ae6e521d0ceeba3e882fe452fa4b"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/util/ParameterAnnotationFixer.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9bebffe3a5b8f434a79c1dd6c81ed67aa836cb8",
+      "size": 3658,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/e9bebffe3a5b8f434a79c1dd6c81ed67aa836cb8"
+    },
+    {
+      "path": "paperweight-userdev/src/main/kotlin/io/papermc/paperweight/userdev/internal/util/utils.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b04d623e1f8e79e0b8d724ff56c81c8bfac4de1",
+      "size": 4931,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/6b04d623e1f8e79e0b8d724ff56c81c8bfac4de1"
+    },
+    {
+      "path": "paperweight-userdev/src/test",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3ea552fe27a1a373b3de9e47da7d938e1f538d0d",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3ea552fe27a1a373b3de9e47da7d938e1f538d0d"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ad6077c81ecdfc50461f12511e289c75d89e0bab",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/ad6077c81ecdfc50461f12511e289c75d89e0bab"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "316b6d47d261f4f358e42ff41b4ba86295631cb9",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/316b6d47d261f4f358e42ff41b4ba86295631cb9"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "54046362b7b922d4daffbb6618eb08c545a500bd",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/54046362b7b922d4daffbb6618eb08c545a500bd"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "bfd59cdafd0aa1ba2dfadca7df4ed4cba7721934",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/bfd59cdafd0aa1ba2dfadca7df4ed4cba7721934"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight/userdev",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3c2a1ba4d42a388e24c5e71f5a0c0a5e69dc8677",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/3c2a1ba4d42a388e24c5e71f5a0c0a5e69dc8677"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight/userdev/PaperweightUserTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d621ba131537691c552481aad6d3fc076579cbde",
+      "size": 1697,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/d621ba131537691c552481aad6d3fc076579cbde"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight/userdev/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8b3edf7a3a9b28b08833114f912c7e5d441f8fe7",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/8b3edf7a3a9b28b08833114f912c7e5d441f8fe7"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight/userdev/internal/action",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "91ee3b2dc89de9f15b3c42ca36fe18ccd0d8b814",
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/trees/91ee3b2dc89de9f15b3c42ca36fe18ccd0d8b814"
+    },
+    {
+      "path": "paperweight-userdev/src/test/kotlin/io/papermc/paperweight/userdev/internal/action/WorkDispatcherTest.kt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5935f5e6cedbededd9e5637c9c670500ddbe563",
+      "size": 4251,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/c5935f5e6cedbededd9e5637c9c670500ddbe563"
+    },
+    {
+      "path": "readme.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a357a42c123e3ffb080bf7237e23a25231de6fc1",
+      "size": 2513,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/a357a42c123e3ffb080bf7237e23a25231de6fc1"
+    },
+    {
+      "path": "renovate.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5db72dd6a94fc07d18b0e6c0cf76e67ce982f1f9",
+      "size": 114,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/5db72dd6a94fc07d18b0e6c0cf76e67ce982f1f9"
+    },
+    {
+      "path": "settings.gradle.kts",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b9f62eae622b8c91e2716ac54c9596e81af3c08",
+      "size": 244,
+      "url": "https://api.github.com/repos/xucy10/Milihyacinthus/git/blobs/0b9f62eae622b8c91e2716ac54c9596e81af3c08"
+    }
+  ],
+  "truncated": false
+}

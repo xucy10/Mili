@@ -16,7 +16,7 @@ import me.earthme.luminol.enums.EnumConfigCategory;
         comments = """
                 定时检查 GitHub Releases 是否有新版本 jar。
                 下载文件暂存于 auto_update/mili 并写入 auto_update/core.path，
-                Hyacinthusclip 可在下次重启时使用。
+                Riceear 可在下次重启时使用。
                 
                 注意：完整配置选项应在 luminol 配置系统 >> misc >> auto_update 中编辑"""
 )

@@ -58,8 +58,14 @@ public final class CatchUpController {
         // Hard limits — these are ceilings the controller CANNOT exceed
         public static int MAX_CATCHUP_TICKS = 20;
         public static long MAX_TICK_DURATION_BUDGET_NS = 40_000_000L; // 40ms per tick
+        /** Fraction (0..1] of the CPU budget above which catch-up is denied.
+         *  Independent from {@code MAX_WORKER_UTILIZATION} — conflating the
+         *  CPU-budget threshold with the worker-utilization limit was a bug. */
+        public static double CPU_BUDGET_EXHAUST_FRACTION = 0.9;
         public static int MAX_QUEUE_DEPTH = 500;
         public static double MAX_WORKER_UTILIZATION = 0.9; // 90%
+        /** Fraction (0..1] of the queue budget above which catch-up is denied. */
+        public static double QUEUE_BUDGET_EXHAUST_FRACTION = 0.8;
 
         // Integral anti-windup
         public static double INTEGRAL_DECAY = 0.95;
@@ -167,7 +173,7 @@ public final class CatchUpController {
             cpuBudgetFraction = Math.min(1.0,
                     (double) obs.avgTickDurationNanos() / Config.MAX_TICK_DURATION_BUDGET_NS);
         }
-        boolean cpuBudgetExhausted = cpuBudgetFraction >= Config.MAX_WORKER_UTILIZATION;
+        boolean cpuBudgetExhausted = cpuBudgetFraction >= Config.CPU_BUDGET_EXHAUST_FRACTION;
 
         // --- Budget 2: Queue Depth ---
         double queueBudgetFraction = 1.0;
@@ -175,7 +181,7 @@ public final class CatchUpController {
             queueBudgetFraction = Math.min(1.0,
                     (double) obs.queueDepth() / Config.MAX_QUEUE_DEPTH);
         }
-        boolean queueBudgetExhausted = queueBudgetFraction >= 0.8;
+        boolean queueBudgetExhausted = queueBudgetFraction >= Config.QUEUE_BUDGET_EXHAUST_FRACTION;
 
         // --- Budget 3: Worker Utilization ---
         double workerUtilization = 0.0;
@@ -241,8 +247,8 @@ public final class CatchUpController {
                 1.0 - lastCpuBudgetFraction,
                 1.0 - lastQueueBudgetFraction,
                 1.0 - lastWorkerUtilization,
-                lastCpuBudgetFraction >= Config.MAX_WORKER_UTILIZATION,
-                lastQueueBudgetFraction >= 0.8,
+                lastCpuBudgetFraction >= Config.CPU_BUDGET_EXHAUST_FRACTION,
+                lastQueueBudgetFraction >= Config.QUEUE_BUDGET_EXHAUST_FRACTION,
                 lastWorkerUtilization >= Config.MAX_WORKER_UTILIZATION
         );
     }

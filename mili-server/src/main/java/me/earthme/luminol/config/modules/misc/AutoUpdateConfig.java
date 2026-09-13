@@ -18,7 +18,7 @@ import java.util.Set;
         comments = """
                 Checks GitHub Releases for newer Luminol jars on a schedule.
                 Downloads are staged under auto_update/luminol and written to auto_update/core.path,
-                which Hyacinthusclip can consume on the next restart.
+                which Riceear can consume on the next restart.
                 If target_jar_path is set, Luminol will also try to replace that launcher jar directly."""
 )
 public class AutoUpdateConfig implements IConfigModule {
@@ -34,7 +34,7 @@ public class AutoUpdateConfig implements IConfigModule {
     @ConfigInfo(name = "target_jar_path", comments = """
             Optional launcher jar path to replace after a successful download.
             Leave this blank to keep the downloaded jar staged in auto_update/luminol
-            and let Hyacinthusclip switch to it through auto_update/core.path on restart.""")
+            and let Riceear switch to it through auto_update/core.path on restart.""")
     public static String targetJarPath = "";
 
     @DoNotLoad

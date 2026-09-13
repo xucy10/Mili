@@ -147,7 +147,15 @@ public final class RegionBalancer {
         dispatcher.start();
 
         // Mili start - Adaptive TPS
-        fun.bm.mili.utils.AdaptiveTPSManager.start();
+        // Mutual exclusion: when the TickDurationGovernor is enabled it owns
+        // TIME_BETWEEN_TICKS — two writers would fight every second and the
+        // effective interval would oscillate randomly.
+        if (RegionBalancerConfig.governorEnabled) {
+            com.mojang.logging.LogUtils.getClassLogger().info(
+                    "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
+        } else {
+            fun.bm.mili.utils.AdaptiveTPSManager.start();
+        }
         // Mili end - Adaptive TPS
 
         // Mili start - PI controller for catch-up limiting
@@ -222,6 +230,9 @@ public final class RegionBalancer {
                         if (next == null) break;
                         RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);
                         if (nextSnap.isLowLoad()) {
+                            // Consumed by the merge — decrement the depth counter
+                            // (only the put-back path below leaves it untouched)
+                            queueDepth.decrementAndGet();
                             mergeList.add(next);
                         } else {
                             taskQueue.add(next); // high-load, put back
@@ -264,9 +275,13 @@ public final class RegionBalancer {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
+                // Mili start - fix: catch Throwable (not just Exception) to prevent dispatcher thread death
+                // An Error (e.g. OOM) would kill the dispatcher thread permanently,
+                // causing all future submit() calls to queue forever without execution.
                 com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer dispatch loop error", ex);
+                        "RegionBalancer dispatch loop error (survived)", ex);
+                // Mili end
             }
         }
     }
@@ -327,13 +342,27 @@ public final class RegionBalancer {
      */
     public static void submitAndWait(Object scheduleRef, long tickCount, Runnable work) {
         if (!RegionBalancerConfig.enabled || workerPool == null) {
-            work.run();
+            // Mili start - fix: catch exceptions in fallback synchronous execution
+            try {
+                work.run();
+            } catch (Throwable ex) {
+                com.mojang.logging.LogUtils.getClassLogger().error(
+                        "RegionBalancer submitAndWait fallback failed", ex);
+            }
+            // Mili end
             return;
         }
 
         RegionLoadMonitor.beforeTick(scheduleRef);
         final long begin = System.nanoTime();
-        work.run(); // execute on the calling thread to preserve region context
+        // Mili start - fix: catch exceptions to prevent crash propagation
+        try {
+            work.run(); // execute on the calling thread to preserve region context
+        } catch (Throwable ex) {
+            com.mojang.logging.LogUtils.getClassLogger().error(
+                    "RegionBalancer submitAndWait execution failed", ex);
+        }
+        // Mili end
         RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
         markTicked(scheduleRef);
     }
@@ -396,7 +425,14 @@ public final class RegionBalancer {
         record.updatedNanos = System.nanoTime();
 
         if (!RegionBalancerConfig.enabled || workerPool == null) {
-            record.work.run();
+            // Mili start - fix: catch exceptions in fallback retry execution
+            try {
+                record.work.run();
+            } catch (Throwable ex) {
+                com.mojang.logging.LogUtils.getClassLogger().error(
+                        "RegionBalancer retry fallback failed", ex);
+            }
+            // Mili end
             record.state = TaskState.COMPLETED;
             record.trace = "completed:retry";
             return true;
@@ -491,6 +527,14 @@ public final class RegionBalancer {
                 Thread.currentThread().interrupt();
             }
         }
+        // Mili start - drain leftover queue tasks so the depth counter and
+        // task records don't keep a permanent offset after shutdown
+        RegionTask leftover;
+        while ((leftover = taskQueue.poll()) != null) {
+            queueDepth.decrementAndGet();
+            markTaskState(leftover, TaskState.CANCELLED, "cancelled on shutdown");
+        }
+        // Mili end
         // Mili start - shutdown PI controller
         CatchUpController.shutdown();
         // Mili end

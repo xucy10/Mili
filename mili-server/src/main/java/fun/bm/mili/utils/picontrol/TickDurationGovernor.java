@@ -182,7 +182,7 @@ public final class TickDurationGovernor {
                     1.0 - (allowedCatchup * 0.02)); // Each catchup tick saves 2%
             targetInterval = (long) (currentIntervalNs.get() * intervalReductionFactor);
             targetInterval = Math.max(Config.MIN_INTERVAL_NS, targetInterval);
-            // Don't go below target if we have headroom
+            // Allow slight over-speed (up to 1ms below target) while catching up
             targetInterval = Math.max(Config.TARGET_INTERVAL_NS - 1_000_000L, targetInterval);
         } else if (obs.avgTickDurationNanos() > Config.MIN_INTERVAL_NS * 0.9) {
             // Detected pressure — governing
@@ -227,16 +227,20 @@ public final class TickDurationGovernor {
         int activeWorkers = RegionBalancer.activeWorkers();
         int totalWorkers = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
 
-        // Estimate ticks behind from current interval deviation
+        // Estimate ticks behind from current interval deviation.
+        // interval > target means we are ticking slower than 20 TPS and
+        // accumulating a debt; interval < target means we are already running
+        // fast — that must never be reported as "behind" (the old inverted
+        // signal kept the governor in CATCHING_UP forever).
         long targetInterval = Config.TARGET_INTERVAL_NS;
         long currentInterval = currentIntervalNs.get();
         long ticksBehind = 0;
-        if (currentInterval < targetInterval) {
-            // We're running slower than target — compute how many ticks we owe
-            long perTickDeficit = targetInterval - currentInterval;
-            if (perTickDeficit > 0) {
-                ticksBehind = Math.min(20, Config.TARGET_INTERVAL_NS / perTickDeficit);
-            }
+        if (currentInterval > targetInterval) {
+            // Debt expressed as "ticks owed per 20 ticks": e.g. 60ms vs a
+            // 50ms target means each tick overshoots by 20% → 4 ticks owed.
+            long perTickOvershoot = currentInterval - targetInterval;
+            ticksBehind = Math.min(CatchUpController.Config.MAX_CATCHUP_TICKS,
+                    perTickOvershoot * 20 / targetInterval);
         }
 
         return new CatchUpController.Observation(

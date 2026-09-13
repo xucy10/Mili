@@ -10,8 +10,10 @@ pluginManagement {
     }
 
     plugins {
-        id("moe.luminolmc.hyacinthusweight.patcher") version weightVersion
-        id("moe.luminolmc.hyacinthusweight.core") version weightVersion
+        // Milihyacinthus (paperweight fork) has been rebranded to the vanilla
+        // io.papermc.paperweight plugin ids as of commit 5418e3d
+        id("io.papermc.paperweight.patcher") version weightVersion
+        id("io.papermc.paperweight.core") version weightVersion
     }
 }
 
