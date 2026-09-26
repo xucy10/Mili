@@ -7,7 +7,7 @@ plugins {
     `java-library`
     `maven-publish`
     idea
-    id("moe.luminolmc.hyacinthusweight.core")
+    id("io.papermc.paperweight.core")
     id("io.papermc.fill.gradle") version "1.0.12"
 }
 
@@ -15,7 +15,7 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:26.2+build.1")
-    hyacinthusclip("moe.luminolmc:hyacinthusclip:${providers.gradleProperty("clipVersion").get()}")
+    paperclip("io.papermc:paperclip:3.0.4")
 }
 
 paperweight {

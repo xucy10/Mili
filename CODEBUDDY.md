@@ -122,7 +122,7 @@ Minecraft（原版）
 
 ## 关键配置文件
 
-- **`gradle.properties`**：项目版本 `26.2-R0.1-SNAPSHOT`、MC 版本 `26.2`、`foliaRef=57f643f`、`weightVersion=2.0.15`
+- **`gradle.properties`**：项目版本 `26.2-R0.1-SNAPSHOT`、MC 版本 `26.2`、`foliaRef=57f643f`、`weightVersion=2.0.0-SNAPSHOT`
 - **`mili-server/build.gradle.kts`**：服务器构建核心
 - **`mili-rust/src/rust/Cargo.toml`**：Rust edition 2024，`panic=unwind` + `overflow-checks=true`
 

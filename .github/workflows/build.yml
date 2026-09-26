@@ -72,6 +72,19 @@ jobs:
           git status --porcelain --untracked-files=all || true
           ls -la .gradle/caches || true
 
+      # Fail fast on malformed patches. A hand-edited hunk body whose `@@ -a,b +c,d @@`
+      # counts are stale makes `git am` abort with "corrupt patch at ...", which is
+      # expensive to debug after the full patch pipeline has already run.
+      # Only the two directories whose patches are actually applied are checked strictly.
+      # `todo/` and `unpatched/` are parking areas and are deliberately not applied, so a
+      # work-in-progress patch there must not fail the build.
+      - name: Validate patch files
+        run: |
+          set -eux
+          python3 scripts/check_patch_hunks.py \
+            mili-server/minecraft-patches/features \
+            mili-server/paper-patches/features
+
       - name: Set up JDK
         uses: actions/setup-java@v6
         with:
@@ -90,17 +103,20 @@ jobs:
           cd ..
           rm -rf hyacinthusweight-src
 
-      - name: Download Hyacinthusclip
+      # The old `hyacinthusclip(...)` configuration is gone from the rebranded fork; the
+      # launcher jar is now consumed through `paperclip(files(libs/riceear.jar))`, and the
+      # release asset was renamed from hyacinthusclip-<v>.jar to riceear-<v>.jar.
+      - name: Download Riceear (Hyacinthusclip fork)
         run: |
           mkdir -p libs
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
-          if [ ! -s libs/hyacinthusclip.jar ]; then
-            echo "ERROR: Failed to download hyacinthusclip jar"
+          echo "Downloading riceear v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
+          if [ ! -s libs/riceear.jar ]; then
+            echo "ERROR: Failed to download riceear jar"
             exit 1
           fi
-          ls -la libs/hyacinthusclip.jar
+          ls -la libs/riceear.jar
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable

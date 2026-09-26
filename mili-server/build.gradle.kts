@@ -8,7 +8,7 @@ plugins {
     `maven-publish`
     idea
     kotlin("jvm") version "2.3.21"
-    id("moe.luminolmc.hyacinthusweight.core")
+    id("io.papermc.paperweight.core")
     id("io.papermc.fill.gradle") version "1.0.12"
 }
 
@@ -20,7 +20,10 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:26.2+build.1")
-    hyacinthusclip(files(rootProject.layout.projectDirectory.file("libs/hyacinthusclip.jar")))
+    // Mili - use the Riceear launcher (Hyacinthusclip fork) from libs/ instead of upstream paperclip.
+    // The rebranded paperweight fork exposes this as `paperclip(...)` again; the old
+    // `hyacinthusclip(...)` configuration no longer exists on the plugin.
+    paperclip(files(rootProject.layout.projectDirectory.file("libs/riceear.jar")))
 }
 
 paperweight {
