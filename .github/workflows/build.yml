@@ -220,37 +220,55 @@ jobs:
         run: ./gradlew applyAllPatches --no-configuration-cache
 
       # paperweight applies patches in place, so after a failure the partially patched tree is
-      # still on disk. Dumping the region a failing patch targets is enough to tell the two
-      # possible causes apart without a local build environment:
-      #   * the change is already present  -> the patch directory is registered at two stages
-      #     and the second application is a duplicate
-      #   * the change is absent           -> the hunk context drifted (target tree moved on)
-      # It also captures the real surrounding lines needed to rewrite such a hunk.
+      # still on disk. This distinguishes the two possible causes and captures the real
+      # surrounding lines needed to rewrite a hunk whose context drifted:
+      #   * the change is already present  -> the patch series is registered at two stages and
+      #     this second application is a duplicate
+      #   * the change is absent           -> the hunk context drifted as the target tree moved
+      # Note: `find` must not be depth limited - the Minecraft sources live at
+      # <fork>/src/minecraft/java/net/... which is deeper than a naive limit.
       - name: Dump patch failure context
         if: failure()
         run: |
           set -ux
-          echo "=== candidate source trees on disk ==="
-          find . -maxdepth 8 -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -10 || true
+          echo "=== 1. every DedicatedServer.java on disk ==="
+          find . -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -20 || true
 
-          for f in $(find . -maxdepth 8 -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -3); do
-            echo "===== $f : lines 218-268 ====="
-            sed -n '218,268p' "$f" || true
-            echo "----- marker lines in $f -----"
-            grep -n 'loadConfigFiles\|initializeGlobalConfiguration\|initializeWorldDefaultsConfiguration\|spark.enableEarlyIfRequested\|convertOldUsers' "$f" || echo '(none found)'
+          echo "=== 2. target region + markers ==="
+          for f in $(find . -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -2); do
+            echo "===== $f : lines 195-285 ====="
+            sed -n '195,285p' "$f" || true
+            echo "----- markers in $f -----"
+            grep -n 'loadConfigFiles\|initializeGlobalConfiguration\|initializeWorldDefaultsConfiguration\|spark.enableEarlyIfRequested\|Paper end - initialize global' "$f" || echo '(no markers found)'
           done
 
-          for f in $(find . -maxdepth 8 -name Main.java -path '*/server/Main.java' -not -path './.git/*' 2>/dev/null | head -3); do
-            echo "===== $f : lines 100-122 ====="
-            sed -n '100,122p' "$f" || true
-            grep -n 'initConfigs\|loadConfigFiles' "$f" || echo '(none found)'
+          echo "=== 3. reject files ==="
+          find . -name '*.rej' -not -path './.git/*' 2>/dev/null | head -10 || true
+
+          echo "=== 4. is the change already committed in the patch target repo? ==="
+          if [ -d folia-server/.git ] || [ -f folia-server/.git ]; then
+            echo "--- git log ---"
+            git -C folia-server log --oneline -3 2>&1 | head -5 || true
+            echo "--- loadConfigFiles in HEAD? ---"
+            git -C folia-server grep -c 'loadConfigFiles' HEAD -- '*DedicatedServer.java' 2>/dev/null || echo '(not found in HEAD)'
+            echo "--- initConfigs in HEAD? ---"
+            git -C folia-server grep -c 'initConfigs' HEAD -- '*/Main.java' 2>/dev/null || echo '(not found in HEAD)'
+            echo "--- working tree modifications ---"
+            git -C folia-server status --short 2>/dev/null | head -20 || true
+          else
+            echo "folia-server is not a git repo"
+          fi
+
+          echo "=== 5. Main.java markers ==="
+          for f in $(find . -name Main.java -path '*net/minecraft/server/Main.java' -not -path './.git/*' 2>/dev/null | head -3); do
+            echo "--- $f ---"
+            grep -n 'initConfigs\|loadConfigFiles' "$f" || echo '(no markers)'
           done
 
-          echo "=== leftover git am state ==="
-          for r in $(find . -maxdepth 10 -type d -name 'rebase-apply' 2>/dev/null | head -3); do
-            echo "--- $r ---"
-            ls -la "$r" 2>/dev/null || true
-            sed -n '1,60p' "$r/patch" 2>/dev/null || true
+          echo "=== 6. leftover git am series ==="
+          for r in $(find . -maxdepth 10 -type d -name 'rebase-apply' 2>/dev/null | head -2); do
+            echo "--- $r : file count ---"
+            ls "$r" 2>/dev/null | wc -l || true
           done
 
       - name: Verify Generated Source
