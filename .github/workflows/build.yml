@@ -221,6 +221,25 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
 
+      # The foliaServer patchDir in mili-server/build.gradle.kts is deliberately inert: paperweight
+      # derives a "minecraft" patchDir for the fork and that is what applies
+      # mili-server/minecraft-patches. Pointing both at the same directory applied the series twice
+      # and the second pass always failed on patch 0001.
+      #
+      # An inert stage and a working one both end with a green applyAllPatches, so assert that the
+      # hooks actually landed. Without this, a regression here ships a jar with none of Mili's
+      # patches and no visible error.
+      - name: Verify Mili patches reached the generated sources
+        run: |
+          set -eux
+          DS=mili-server/src/minecraft/java/net/minecraft/server/dedicated/DedicatedServer.java
+          MAIN=mili-server/src/minecraft/java/net/minecraft/server/Main.java
+          test -f "$DS"
+          test -f "$MAIN"
+          grep -n 'loadConfigFiles' "$DS"
+          grep -n 'initConfigs' "$MAIN"
+          echo "OK: Luminol/Mili hooks are present in the generated Minecraft sources"
+
       - name: Verify Generated Source
         run: |
           echo "=== Checking generated API source dirs ==="
