@@ -219,6 +219,40 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
 
+      # paperweight applies patches in place, so after a failure the partially patched tree is
+      # still on disk. Dumping the region a failing patch targets is enough to tell the two
+      # possible causes apart without a local build environment:
+      #   * the change is already present  -> the patch directory is registered at two stages
+      #     and the second application is a duplicate
+      #   * the change is absent           -> the hunk context drifted (target tree moved on)
+      # It also captures the real surrounding lines needed to rewrite such a hunk.
+      - name: Dump patch failure context
+        if: failure()
+        run: |
+          set -ux
+          echo "=== candidate source trees on disk ==="
+          find . -maxdepth 8 -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -10 || true
+
+          for f in $(find . -maxdepth 8 -name DedicatedServer.java -not -path './.git/*' 2>/dev/null | head -3); do
+            echo "===== $f : lines 218-268 ====="
+            sed -n '218,268p' "$f" || true
+            echo "----- marker lines in $f -----"
+            grep -n 'loadConfigFiles\|initializeGlobalConfiguration\|initializeWorldDefaultsConfiguration\|spark.enableEarlyIfRequested\|convertOldUsers' "$f" || echo '(none found)'
+          done
+
+          for f in $(find . -maxdepth 8 -name Main.java -path '*/server/Main.java' -not -path './.git/*' 2>/dev/null | head -3); do
+            echo "===== $f : lines 100-122 ====="
+            sed -n '100,122p' "$f" || true
+            grep -n 'initConfigs\|loadConfigFiles' "$f" || echo '(none found)'
+          done
+
+          echo "=== leftover git am state ==="
+          for r in $(find . -maxdepth 10 -type d -name 'rebase-apply' 2>/dev/null | head -3); do
+            echo "--- $r ---"
+            ls -la "$r" 2>/dev/null || true
+            sed -n '1,60p' "$r/patch" 2>/dev/null || true
+          done
+
       - name: Verify Generated Source
         run: |
           echo "=== Checking generated source dirs ==="
