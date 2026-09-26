@@ -50,7 +50,29 @@ paperweight {
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch", "build.gradle.kts.empty.patch")
-            patchesDir = rootDirectory.dir("mili-server/minecraft-patches")
+            // Mili start - do NOT point this at mili-server/minecraft-patches.
+            //
+            // The fork already applies that directory: paperweight derives a "minecraft" patchDir
+            // for the fork, which is what applies this patch set (its task is the one that prints
+            // "Applying: Rebrand to Luminol ...") and why the results end up in
+            // mili-server/src/minecraft/java.
+            //
+            // Registering the same directory here applied the whole series a second time, and the
+            // second pass cannot succeed: by then an earlier patch had already rewritten one of
+            // patch 0001's context lines - 0056 (force-disable spark) turns
+            //   this.server.spark.enableEarlyIfRequested(); // Paper - spark
+            // into
+            //   if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol ...
+            // so 0001's hunk no longer matched, and the 3-way fallback had no pre-image blob to
+            // work with, aborting with "Repository lacks necessary blobs to fall back on 3-way
+            // merge".
+            //
+            // This stage is therefore deliberately inert. The CI verifies right after
+            // applyAllPatches that the hooks really did reach the generated sources, so if that
+            // ever stops being true the build fails loudly instead of silently shipping a jar
+            // without them.
+            patchesDir = rootDirectory.dir("mili-server/folia-patches")
+            // Mili end
             outputDir = rootDirectory.dir("folia-server")
         }
     }
