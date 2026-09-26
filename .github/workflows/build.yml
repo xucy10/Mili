@@ -34,7 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+      # Must stay in sync with rustStagedName() and RustBridge: the staged names are
+      # mili_optimizer.dll, libmili_optimizer.so and libmili_optimizer_aarch64.so.
+      # The *-musl triplets produce none of those - cargo reports success but emits no
+      # artifact, and aarch64 would land on the generic .so name and overwrite x86_64 -
+      # which is why the shipped jar only ever contained the .dll.
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -119,7 +124,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -171,8 +176,12 @@ jobs:
 
       - name: Build Rust Optimizer (cross targets)
         env:
-          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          # aarch64-linux-gnu-gcc is what links the aarch64 *gnu* target (installed by
+          # "Install system cross toolchains"). The variable used to be named
+          # CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER, so it never applied to the
+          # target that was actually being built.
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
           set -eux
           export PATH="$PATH:$HOME/.cargo/bin"
@@ -182,27 +191,26 @@ jobs:
 
       - name: Verify Rust Optimizer Binary
         run: |
-          echo "=== Listing staged output ==="
-          ls -la mili-rust/build/rust/ 2>/dev/null || true
-          echo "=== Listing cargo-target ==="
-          find mili-rust/build/cargo-target -type f \( -name "*.so" -o -name "*.dll" \) 2>/dev/null || true
-          
-          mkdir -p mili-rust/build/rust
-          for f in mili-rust/build/cargo-target/*/release/libmili_optimizer.so \
-                   mili-rust/build/cargo-target/*/release/mili_optimizer.so; do
-            if [ -f "$f" ]; then
-              cp "$f" mili-rust/build/rust/mili_optimizer.so
-              echo "Copied $f -> mili-rust/build/rust/mili_optimizer.so"
-              break
+          set -eux
+          echo "=== Staged native libraries ==="
+          ls -la mili-rust/build/rust/
+          echo "=== Raw cargo output ==="
+          find mili-rust/build/cargo-target -type f \( -name "*.so" -o -name "*.dll" -o -name "*.dylib" \) 2>/dev/null || true
+
+          # Every platform the jar claims to support must be present. This check used to be
+          # a single OR across .so and .dll, so a build that produced only the Windows dll
+          # passed here while Linux shipped with no native library at all.
+          missing=0
+          for lib in mili_optimizer.dll libmili_optimizer.so libmili_optimizer_aarch64.so; do
+            if [ -f "mili-rust/build/rust/$lib" ]; then
+              echo "OK: $lib ($(stat -c%s "mili-rust/build/rust/$lib") bytes)"
+            else
+              echo "MISSING: mili-rust/build/rust/$lib"
+              missing=1
             fi
           done
-          
-          if [ -f "mili-rust/build/rust/mili_optimizer.so" ] || [ -f "mili-rust/build/rust/libmili_optimizer.so" ] || \
-             [ -f "mili-rust/build/rust/mili_optimizer.dll" ] || [ -f "mili-rust/build/rust/libmili_optimizer.dll" ]; then
-            echo "Rust optimizer binary exists"
-            ls -la mili-rust/build/rust/
-          else
-            echo "Rust optimizer binary missing"
+          if [ "$missing" -ne 0 ]; then
+            echo "FATAL: incomplete native library set - see the cargo output above"
             exit 1
           fi
 
@@ -316,8 +324,29 @@ jobs:
             if [ "${MILI_COUNT}" -lt 20 ]; then
               echo "WARN: suspiciously few fun/bm/mili classes - verify the patch set was applied"
             fi
+
+            # The Rust JNI library is the one artifact whose absence is invisible at
+            # runtime: RustBridge just falls back to pure Java. Assert the native
+            # libraries are really packaged, for every supported platform.
+            echo ""
+            echo "=== Rust native libraries packaged into the jar ==="
+            RUST_JAR=$(ls mili-rust/build/libs/mili-rust-*.jar 2>/dev/null | grep -v -- '-sources\|-javadoc' | head -1 || true)
+            if [ -z "$RUST_JAR" ]; then
+              echo "FATAL: mili-rust module jar not found"
+              exit 1
+            fi
+            echo "module jar: $RUST_JAR"
+            for lib in mili_optimizer.dll libmili_optimizer.so libmili_optimizer_aarch64.so; do
+              if unzip -l "$RUST_JAR" | grep -q "rust/$lib"; then
+                echo "OK: rust/$lib"
+              else
+                echo "FATAL: rust/$lib is missing from $RUST_JAR"
+                exit 1
+              fi
+            done
           else
             echo "WARN: No server JAR found at $JAR_PATH"
+            exit 1
           fi
 
       - name: Check for Pending Patch Rebuild

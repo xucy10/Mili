@@ -28,22 +28,31 @@ fun rustTargets(): List<String> {
     }
 }
 
-// cdylib output file name and staged name for a given target
-fun rustLibNames(target: String): Pair<String, String> {
-    val built = when {
-        target.contains("windows") -> "mili_optimizer.dll"
-        target.contains("darwin") -> "libmili_optimizer.dylib"
-        else -> "libmili_optimizer.so"
-    }
-    val staged = when {
-        target.contains("windows") -> "mili_optimizer.dll"
-        target == "aarch64-unknown-linux-gnu" -> "libmili_optimizer_aarch64.so"
-        target.contains("linux") -> "libmili_optimizer.so"
-        target == "aarch64-apple-darwin" -> "libmili_optimizer.dylib"
-        target.contains("darwin") -> "libmili_optimizer_x86_64.dylib"
-        else -> "libmili_optimizer_${target}.so"
-    }
-    return built to staged
+// cdylib file name cargo emits for a given target.
+fun rustBuiltName(target: String): String = when {
+    target.contains("windows") -> "mili_optimizer.dll"
+    target.contains("darwin") -> "libmili_optimizer.dylib"
+    else -> "libmili_optimizer.so"
+}
+
+// Name the library is staged under inside the jar. RustBridge looks these up by exact name,
+// so this mapping and its candidate lists must stay in lockstep:
+//   Windows       -> mili_optimizer.dll
+//   Linux x86_64  -> libmili_optimizer.so
+//   Linux aarch64 -> libmili_optimizer_aarch64.so
+//   macOS aarch64 -> libmili_optimizer.dylib
+//   macOS x86_64  -> libmili_optimizer_x86_64.dylib
+//
+// Matching on the architecture rather than on one exact triple matters. Matching only
+// "aarch64-unknown-linux-gnu" meant aarch64-unknown-linux-musl fell through to the generic
+// name: the two Linux builds then overwrote each other, and aarch64 could never find its file.
+fun rustStagedName(target: String): String = when {
+    target.contains("windows") -> "mili_optimizer.dll"
+    target.contains("aarch64") && target.contains("linux") -> "libmili_optimizer_aarch64.so"
+    target.contains("linux") -> "libmili_optimizer.so"
+    target.contains("aarch64") && target.contains("darwin") -> "libmili_optimizer.dylib"
+    target.contains("darwin") -> "libmili_optimizer_x86_64.dylib"
+    else -> "libmili_optimizer_${target}.so"
 }
 
 tasks.register("addRustTargets") {
@@ -81,43 +90,37 @@ tasks.register("buildRustBinariesAll") {
     doLast {
         val nativeTargets = rustTargets()
 
-        // Detect available cargo subcommand: prefer zigbuild, fall back to build
-        val useZigbuild = try {
+        // Detect available cargo subcommand: prefer zigbuild, fall back to build.
+        // The reason for falling back is logged: for a long time the probe failed on CI
+        // while cargo-zigbuild was in fact installed, and nothing said so.
+        val zigbuildProbe = try {
             val probe = ProcessBuilder("cargo", "zigbuild", "--version").apply {
                 redirectErrorStream(true)
                 directory(rustSrcDir)
             }.start()
-            probe.inputStream.bufferedReader().readText()
-            probe.waitFor() == 0
+            val probeOut = probe.inputStream.bufferedReader().readText().trim()
+            val probeExit = probe.waitFor()
+            if (probeExit == 0) null else "`cargo zigbuild --version` exited $probeExit: $probeOut"
         } catch (e: Exception) {
-            false
+            "`cargo zigbuild --version` could not start: ${e.message}"
         }
+        val useZigbuild = zigbuildProbe == null
 
-        // If cargo-zigbuild not on PATH, try to find it in ~/.cargo/bin
-        var cargoCmd = "cargo"
+        val cargoCmd = "cargo"
         val subcommand = if (useZigbuild) "zigbuild" else "build"
+        logger.lifecycle("Using cargo $subcommand for cross-compilation (zigbuild available: $useZigbuild)")
         if (!useZigbuild) {
-            // Check common cargo bin locations
-            val homeDir = System.getProperty("user.home")
-            val cargoBin = File(homeDir, ".cargo/bin/cargo-zigbuild")
-            if (cargoBin.exists() && cargoBin.canExecute()) {
-                logger.lifecycle("Found cargo-zigbuild at ${cargoBin.absolutePath}")
-                // Use cargo with explicit zigbuild subcommand - cargo finds installed extensions
-            }
-            // Also check if PATH has cargo bin
-            val pathEnv = System.getenv("PATH") ?: ""
-            if (!pathEnv.contains(".cargo/bin")) {
-                val cargoBinDir = File(homeDir, ".cargo/bin")
-                if (cargoBinDir.isDirectory) {
-                    // Prepend cargo bin to PATH for subsequent processes
-                    val newPath = cargoBinDir.absolutePath + File.pathSeparator + pathEnv
-                    // We can't easily modify the process environment for all subsequent calls,
-                    // but we can set it per-process
-                }
-            }
+            logger.lifecycle(
+                "  reason: $zigbuildProbe" +
+                    "\n  plain `cargo build` needs a working linker per target; the *-gnu " +
+                    "triplets used here rely on the runner's cross gcc toolchain."
+            )
         }
 
-        logger.lifecycle("Using cargo $subcommand for cross-compilation (zigbuild available: $useZigbuild)")
+        // A target whose artifact never appears must fail the build. Treating it as a
+        // warning is how this project shipped a jar containing only the Windows dll while
+        // CI stayed green - cargo can report success and still emit nothing.
+        val failures = mutableListOf<String>()
 
         for (target in nativeTargets) {
             logger.lifecycle("Building Rust target: $target")
@@ -163,11 +166,36 @@ tasks.register("buildRustBinariesAll") {
             val proc = pb.start()
             val output = proc.inputStream.bufferedReader().readText()
             val exitCode = proc.waitFor()
-            if (exitCode != 0) {
-                logger.warn("Cargo $subcommand failed for $target (skipping):\n$output")
-            } else {
-                logger.lifecycle("Cargo $subcommand succeeded for $target")
+            val expected = File(cargoTargetDir, "$target/release/${rustBuiltName(target)}")
+            when {
+                exitCode != 0 -> {
+                    failures += "$target: cargo exited $exitCode\n${output.trim()}"
+                    logger.error("Cargo $subcommand failed for $target:\n$output")
+                }
+                !expected.isFile -> {
+                    // Seen with the *-musl triplets: cargo exits 0 and emits nothing.
+                    // Without this check the target is silently absent from the jar.
+                    failures += "$target: cargo exited 0 but produced no artifact at " +
+                        "${expected.absolutePath}\n${output.trim()}"
+                    logger.error(
+                        "Cargo $subcommand reported success for $target but " +
+                            "${expected.absolutePath} does not exist:\n$output"
+                    )
+                }
+                else -> {
+                    logger.lifecycle(
+                        "Cargo $subcommand succeeded for $target -> ${expected.name} " +
+                            "(${expected.length()} bytes)"
+                    )
+                }
             }
+        }
+
+        if (failures.isNotEmpty()) {
+            throw GradleException(
+                "Failed to build the native library for ${failures.size} target(s):\n\n" +
+                    failures.joinToString("\n\n")
+            )
         }
     }
 }
@@ -185,15 +213,39 @@ tasks.register("stageRustBinary") {
     doLast {
         rustBuildDir.mkdirs()
 
+        val missing = mutableListOf<String>()
+        val takenNames = mutableMapOf<String, String>()
+
         for (target in rustTargets()) {
-            val (builtName, stagedName) = rustLibNames(target)
+            val builtName = rustBuiltName(target)
+            val stagedName = rustStagedName(target)
+
+            // Two targets sharing a staged name means one silently overwrites the other,
+            // and the jar ends up missing a platform. Fail instead.
+            val previous = takenNames.put(stagedName, target)
+            if (previous != null && previous != target) {
+                throw GradleException(
+                    "Targets $previous and $target both stage to '$stagedName'; " +
+                        "rustStagedName() must map every target to a unique name."
+                )
+            }
+
             val builtLib = File(cargoTargetDir, "$target/release/$builtName")
-            if (builtLib.exists()) {
+            if (builtLib.isFile) {
                 builtLib.copyTo(File(rustBuildDir, stagedName), overwrite = true)
                 logger.lifecycle("Staged: $stagedName (${builtLib.length()} bytes) from $target")
             } else {
-                logger.warn("Native library not found for $target: ${builtLib.absolutePath}")
+                missing += "$target (expected ${builtLib.absolutePath})"
             }
+        }
+
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Native library missing for ${missing.size} target(s):\n  " +
+                    missing.joinToString("\n  ") +
+                    "\nThe jar would ship without them. See the buildRustBinariesAll output " +
+                    "above for the cargo error."
+            )
         }
 
         // Fallback: also build for host platform if cross-compile didn't cover it
