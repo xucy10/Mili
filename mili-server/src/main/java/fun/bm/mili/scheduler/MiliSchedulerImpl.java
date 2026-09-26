@@ -34,6 +34,17 @@ public final class MiliSchedulerImpl implements MiliScheduler {
     private static volatile long defaultBudgetNanos = RegionBudget.NORMAL_BUDGET_NANOS;
     private static volatile SchedulerState state = SchedulerState.NEW;
 
+    /** Rate limit for the "drain refused, thread does not own the region" warning. */
+    private static final long FOREIGN_DRAIN_WARN_INTERVAL_MILLIS = 5000L;
+    private static final AtomicLong LAST_FOREIGN_DRAIN_WARN = new AtomicLong(0L);
+
+    /**
+     * Mili start - fix: a transaction whose submission was {@code DEFERRED} now stays live
+     * until it is actually drained, so it needs an upper bound — otherwise a target region
+     * that never ticks leaks its transactions forever.
+     */
+    private static final long TRANSACTION_MAX_AGE_NANOS = 5_000_000_000L; // 5s
+
     private MiliSchedulerImpl() {}
 
     public static MiliSchedulerImpl instance() {
@@ -43,7 +54,13 @@ public final class MiliSchedulerImpl implements MiliScheduler {
     // ---------- lifecycle ----------
 
     public static void init() {
-        init(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
+        // Mili start - fix: the shared worker pool now has exactly one size authority.
+        // RegionBalancerConfig.getThreadPoolSize() is it.  Previously this method hard-coded
+        // CPU/2 while that config advertised (and never applied) CPU*2, and AsyncPathfinder —
+        // which runs earlier, from config loading — sized the very same pool from
+        // `async-pathfinding.thread-count`, silently winning the race.
+        init(fun.bm.mili.config.modules.experiment.RegionBalancerConfig.getThreadPoolSize());
+        // Mili end
     }
 
     /**
@@ -349,14 +366,34 @@ public final class MiliSchedulerImpl implements MiliScheduler {
     @Override
     public int drainOwned(Object region, long budgetNanos) {
         if (region == null) return 0;
+        if (!RegionOwnership.isOwnedByCurrentThread(region)) {
+            // Mili start - fix: this used to register the caller as the region's owner
+            // ("learn the owner the first time we see this region tick").  That converted
+            // an unprovable ownership question into a permanent claim — whatever thread
+            // reached this path once was afterwards treated as the region's legal execution
+            // thread, which also let submitAndWait() run foreign-region work inline.
+            // Ownership must now be *proven* by the resolver installed from the Folia hook;
+            // otherwise the work stays where it is and the region's real owner drains it.
+            warnForeignDrain(region);
+            return 0;
+        }
+        return drainTrusted(region, budgetNanos);
+    }
+
+    /**
+     * Drain path for a caller that is known to be the region's owning thread by
+     * construction (the Folia region tick hook).  It skips the ownership probe instead of
+     * guessing it — see {@link #drainOwned(Object, long)}.
+     */
+    public int drainOwnedTrusted(Object region, long budgetNanos) {
+        if (region == null) return 0;
+        return drainTrusted(region, budgetNanos);
+    }
+
+    private int drainTrusted(Object region, long budgetNanos) {
         MiliRegionRuntime runtime = runtimeFor(region);
         if (runtime == null) return 0;
         if (!runtime.state().allowsExecution()) return 0;
-        if (!RegionOwnership.isOwnedByCurrentThread(region)) {
-            // Learn the owner the first time we see this region tick, so later
-            // isOwnedByCurrentThread() calls resolve without the reflective probe.
-            RegionOwnership.markOwner(region, Thread.currentThread());
-        }
 
         long deadline = System.nanoTime() + Math.max(1L, budgetNanos);
         int executed = 0;
@@ -379,6 +416,8 @@ public final class MiliSchedulerImpl implements MiliScheduler {
                 executed++;
                 long elapsed = System.nanoTime() - begin;
                 runtime.metrics().onExecuted(elapsed);
+                // Single point of accounting: the per-task cost is what the budget is for.
+                // (The region tick hook used to charge the whole drain window a second time.)
                 runtime.budget().consume(elapsed);
             } catch (Throwable t) {
                 runtime.metrics().onCancelled();
@@ -388,6 +427,17 @@ public final class MiliSchedulerImpl implements MiliScheduler {
             }
         }
         return executed;
+    }
+
+    /** Rate-limited warning for a drain attempt from a thread that does not own the region. */
+    private static void warnForeignDrain(Object region) {
+        long now = System.currentTimeMillis();
+        long last = LAST_FOREIGN_DRAIN_WARN.get();
+        if (now - last < FOREIGN_DRAIN_WARN_INTERVAL_MILLIS) return;
+        if (!LAST_FOREIGN_DRAIN_WARN.compareAndSet(last, now)) return;
+        com.mojang.logging.LogUtils.getClassLogger().warn(
+                "[Mili] drainOwned refused: calling thread does not own region {}",
+                RegionIdRegistry.peek(region));
     }
 
     /**
@@ -426,7 +476,13 @@ public final class MiliSchedulerImpl implements MiliScheduler {
         retryDeferred();
 
         // 3. Refresh per-region budgets from the controller (fix.md §15).
+        //    Deliberately does NOT open a tick: the tick boundary belongs to the region
+        //    thread, not to this 50ms round (see RegionBudget#beginTick(long)).
         BudgetController.apply(REGIONS.values());
+
+        // 4. Bound the lifetime of cross-region transactions that were deferred and never
+        //    drained (fix.md §9 / §11).
+        CrossRegionTransaction.sweepStale(TRANSACTION_MAX_AGE_NANOS);
     }
 
     private void retryDeferred() {

@@ -17,6 +17,12 @@ public final class MiliRegionRuntime implements RegionRuntime {
     private final RegionMetrics metrics;
     private final SchedulerDebt debt;
     private final AtomicLong lastTickNanos = new AtomicLong(System.nanoTime());
+    /**
+     * Mili start - fix: monotonic tick counter for this region, handed to
+     * {@link RegionBudget#beginTick(long)} so the budget can tell a genuine new tick apart
+     * from a duplicate/stale call.
+     */
+    private final AtomicLong tickSeq = new AtomicLong(0L);
 
     private volatile RegionState state = RegionState.ACTIVE;
 
@@ -40,6 +46,12 @@ public final class MiliRegionRuntime implements RegionRuntime {
     public long lastTickNanos() { return lastTickNanos.get(); }
 
     public void markTicked() { lastTickNanos.set(System.nanoTime()); }
+
+    /**
+     * Next tick epoch for this region.  Must be called by the region's owning thread at the
+     * start of its tick, before any work is charged against the budget.
+     */
+    public long nextTickEpoch() { return tickSeq.incrementAndGet(); }
 
     /**
      * Move {@code ACTIVE -> DEACTIVATING}. Idempotent.

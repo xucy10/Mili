@@ -162,6 +162,12 @@ public final class RegionBalancer {
 
         // fix.md §2.1 — ownership first.
         if (RegionOwnership.isOwnedByCurrentThread(scheduleRef)) {
+            // Mili start - fix: this is the *only* producer of RegionLoadMonitor samples, and
+            // it is correct only because `work` is the region tick itself (see submit()'s
+            // contract: "the actual tick work (must call the original tickRegion)").  The
+            // recorded value is therefore the whole tick, which is exactly what
+            // RegionLoadMonitor's metric contract requires — it must not be the cost of one
+            // task inside the tick.
             RegionLoadMonitor.beforeTick(scheduleRef);
             long begin = System.nanoTime();
             try {
@@ -171,6 +177,7 @@ public final class RegionBalancer {
                 RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
                 markTicked(scheduleRef);
             }
+            // Mili end
         }
 
         long taskUid = TASK_SEQ.incrementAndGet();
@@ -268,7 +275,12 @@ public final class RegionBalancer {
     public static boolean retryTask(long taskUid) {
         TaskHandle handle = TaskController.get(taskUid);
         if (handle == null) return false;
-        if (handle.state() == TaskState.CANCELLED || handle.state() == TaskState.RUNNING) return false;
+        if (handle.state() == TaskState.CANCELLED || handle.state() == TaskState.RUNNING
+                || handle.state() == TaskState.CANCELLING) {
+            // Mili start - fix: CANCELLING means "cancel requested, body still exiting" —
+            // re-submitting that work would resurrect a task the caller already killed.
+            return false;
+        }
 
         if (!isActive()) {
             REJECTED.incrementAndGet();

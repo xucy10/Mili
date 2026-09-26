@@ -11,8 +11,39 @@ import java.util.concurrent.atomic.AtomicLongArray;
 
 /**
  * Region load monitor.
+ * <p>
  * Tracks per-region tick duration using a sliding window to compute average load.
  * Thread-safe: all operations are lock-free (atomic arrays).
+ * <p>
+ * <b>Metric contract (M4 decision — do not silently redefine).</b>
+ * The sample fed to {@link #afterTick(Object, long)} is the duration of the <b>whole
+ * region tick</b>: every world the region owns, plus the scheduler's own overhead.  In
+ * other words a per-region MSPT.  It is <b>not</b> "how long Mili spent working", and it
+ * must never be handed the cost of a Mili drain.  Three pieces of existing code depend on
+ * this reading:
+ * <ul>
+ *   <li>{@link AdaptiveTPSManager} feeds {@code loadFactor} straight into
+ *       {@code TickRegionScheduler.TIME_BETWEEN_TICKS}, scaled from a 50&nbsp;ms / 20&nbsp;TPS
+ *       base.  A "Mili work only" figure would make the server slow its <i>own</i> tick
+ *       cadence according to how busy an unrelated queue happened to be.</li>
+ *   <li>The default thresholds — {@code low-load-threshold-ms = 2} and
+ *       {@code high-load-threshold-ms = 20} — are only meaningful as MSPT: 20&nbsp;ms is
+ *       40&nbsp;% of a tick (genuinely heavy), 2&nbsp;ms means the region has nothing to do.</li>
+ *   <li>{@link SmartRegionManager} treats {@code loadFactor < 0.1} as "severely
+ *       underloaded, worth migrating or merging" — again a judgement about the whole tick.</li>
+ * </ul>
+ * Mili's own drain cost is a <i>separate</i> metric and already has a home:
+ * {@code MiliRegionRuntime.debt().recordTick(elapsed)} inside
+ * {@link fun.bm.mili.scheduler.FoliaSchedulerAdapter#onRegionTick}.  The two must not be
+ * conflated.
+ * <p>
+ * <b>Where the sample must come from.</b> The only legal producer is a bracket around the
+ * region tick itself — {@link RegionBalancer#submitAndWait} when it owns that tick, or a
+ * Minecraft-side hook that wraps the tick.  Folia owns the tick loop today, so this monitor
+ * currently has <b>no</b> producer and reports zeros.  Those zeros are the honest answer;
+ * do not paper over the gap by wiring in a metric that means something else, because the
+ * consumers above act on the number (lowering TPS, migrating regions) rather than merely
+ * displaying it.
  */
 public class RegionLoadMonitor {
 
@@ -107,17 +138,24 @@ public class RegionLoadMonitor {
 
     /**
      * Called before a region tick starts.
+     * <p>
+     * Records nothing: the sample is handed over as a single value in
+     * {@link #afterTick(Object, long)}, so no begin/end pair is needed.  Kept because the
+     * tick bracket is symmetric and a future producer may want the start hook.
      */
     public static void beforeTick(Object schedule) {
         if (!RegionBalancerConfig.enabled) return;
-        // Nothing to record here; timestamp is captured in afterTick
+        // Nothing to record here; the elapsed time is supplied to afterTick.
     }
 
     /**
      * Called after a region tick completes.
      *
-     * @param schedule the region schedule
-     * @param elapsedNanos total time spent in this tick
+     * @param schedule     the region schedule
+     * @param elapsedNanos wall-clock time spent in this tick for the <b>whole</b> region
+     *                     — see the metric contract on this class.  This must <b>not</b> be
+     *                     the cost of a Mili drain; that figure belongs to
+     *                     {@code MiliRegionRuntime.debt().recordTick(...)}.
      */
     public static void afterTick(Object schedule, long elapsedNanos) {
         if (!RegionBalancerConfig.enabled) return;

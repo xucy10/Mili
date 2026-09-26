@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * A scheduled unit of work and its lifecycle controller.
@@ -36,6 +37,16 @@ public final class TaskHandle {
 
     /** Work folded into this handle by the merge backpressure path (fix.md §3). */
     private final List<Runnable> mergedWork = new ArrayList<>(2);
+
+    /**
+     * Mili start - fix: the state field was a plain {@code volatile} that every transition
+     * wrote directly, so {@code cancel()} and {@code complete()} could overwrite each other
+     * (a cancelled task could be reported {@code COMPLETED} and vice versa).  All
+     * transitions now go through this updater; the field stays {@code volatile} so the
+     * lock-free {@link #state()} reader and the updater agree on visibility.
+     */
+    private static final AtomicReferenceFieldUpdater<TaskHandle, TaskState> STATE =
+            AtomicReferenceFieldUpdater.newUpdater(TaskHandle.class, TaskState.class, "state");
 
     private volatile TaskState state = TaskState.QUEUED;
     /** Thread currently executing this task, or null. Written by the worker before it runs the body. */
@@ -69,22 +80,26 @@ public final class TaskHandle {
 
     /**
      * Attempt to claim the task for execution.
+     * <p>
+     * Mili start - fix: the claim is a CAS, so a task cancelled while still {@code QUEUED}
+     * can never be started afterwards.  The executing thread and start timestamp are
+     * published <i>before</i> the CAS so that a concurrent {@code cancel()} always sees a
+     * thread to interrupt; if the CAS loses, both are rolled back because the body will
+     * never run.
      *
      * @return {@code false} if the task was already claimed, cancelled or finished
      */
     public boolean tryStart() {
-        if (state != TaskState.QUEUED) return false;
         executingThread = Thread.currentThread();
         startNanos = System.nanoTime();
-        state = TaskState.RUNNING;
-        return true;
+        if (STATE.compareAndSet(this, TaskState.QUEUED, TaskState.RUNNING)) {
+            return true;
+        }
+        executingThread = null;
+        startNanos = 0L;
+        return false;
     }
 
-    /**
-     * Run the task body with cancellation semantics.
-     *
-     * @return {@code true} if the body ran to completion
-     */
     /**
      * Fold {@code extra} into this already-queued task instead of enqueueing it
      * separately (fix.md §3 "MERGED" backpressure branch).
@@ -107,6 +122,11 @@ public final class TaskHandle {
         }
     }
 
+    /**
+     * Run the task body with cancellation semantics.
+     *
+     * @return {@code true} if the body ran to completion
+     */
     public boolean runBody() {
         if (!tryStart()) return false;
         try {
@@ -142,8 +162,20 @@ public final class TaskHandle {
     }
 
     /**
-     * Cancel the task for real: flip the token, interrupt the executing thread and move
-     * the state to {@link TaskState#CANCELLED}.
+     * Cancel the task for real: flip the token, interrupt the executing thread and drive
+     * the state towards {@link TaskState#CANCELLED}.
+     * <p>
+     * Mili start - fix: cancellation of a <i>running</i> task is a two-step handshake.
+     * <ul>
+     *   <li>{@code QUEUED -> CANCELLED}: CAS, the body will never start.</li>
+     *   <li>{@code RUNNING -> CANCELLING}: CAS, waiters are released immediately so
+     *       {@code submitAndWait} returns without burning its whole timeout, but the
+     *       terminal {@code CANCELLED} is only published by the body's own
+     *       {@link #complete(TaskState)}.  That is the first instant Mili can prove the
+     *       task stopped touching protected state.</li>
+     *   <li>Anything already terminal is never overwritten, so a cancelled task can no
+     *       longer be relabelled {@code COMPLETED} by a racing writer.</li>
+     * </ul>
      *
      * @return {@code true} if this call performed the cancellation
      */
@@ -159,26 +191,74 @@ public final class TaskHandle {
             thread.interrupt();
         }
 
-        if (state == TaskState.QUEUED || state == TaskState.RUNNING) {
-            state = TaskState.CANCELLED;
+        for (;;) {
+            TaskState current = state;
+            if (current.isTerminal()) {
+                // Already terminal: never overwrite, but still release waiters.
+                completion.countDown();
+                return false;
+            }
+            if (current == TaskState.CANCELLING) {
+                completion.countDown();
+                return false;
+            }
+            TaskState next = current == TaskState.QUEUED
+                    ? TaskState.CANCELLED
+                    : TaskState.CANCELLING;
+            if (STATE.compareAndSet(this, current, next)) {
+                if (next == TaskState.CANCELLED) {
+                    endNanos = System.nanoTime();
+                }
+                completion.countDown();
+                return true;
+            }
+            // Lost the race: re-read and decide again.
+        }
+    }
+
+    /**
+     * Mark the task as merged into another task (fix.md §3 backpressure).
+     * <p>
+     * Mili start - fix: only a task that is still {@code QUEUED} may be marked merged.
+     * The old implementation wrote the state unconditionally, which let a rejected /
+     * cancelled task be relabelled {@code MERGED} and report work that had in fact been
+     * dropped.
+     *
+     * @return {@code true} if this call performed the merge transition
+     */
+    public boolean markMerged() {
+        if (STATE.compareAndSet(this, TaskState.QUEUED, TaskState.MERGED)) {
             endNanos = System.nanoTime();
             completion.countDown();
             return true;
         }
-        // Already terminal: still make sure waiters are released.
+        // Already finished or already merged: keep waiters unblocked.
         completion.countDown();
         return false;
     }
 
-    /** Mark the task as merged into another task (fix.md §3 backpressure). */
-    public void markMerged() {
-        state = TaskState.MERGED;
-        endNanos = System.nanoTime();
-        completion.countDown();
-    }
-
+    /**
+     * Publish the body's terminal state.
+     * <p>
+     * Mili start - fix: only {@code RUNNING}/{@code CANCELLING} may be finished, and a
+     * cancellation request always wins over the body's own verdict — a body that returns
+     * normally after its token was flipped must not be reported {@code COMPLETED}.
+     *
+     * @param terminal the state to publish when the task was not cancelled meanwhile
+     */
     public void complete(TaskState terminal) {
-        state = terminal;
+        for (;;) {
+            TaskState current = state;
+            if (current != TaskState.RUNNING && current != TaskState.CANCELLING) {
+                break;
+            }
+            TaskState next = (current == TaskState.CANCELLING || token.isCancelled())
+                    ? TaskState.CANCELLED
+                    : terminal;
+            if (STATE.compareAndSet(this, current, next)) {
+                break;
+            }
+        }
         endNanos = System.nanoTime();
         executingThread = null;
         completion.countDown();

@@ -43,7 +43,7 @@
  
  
      updatingMinecraft {
-@@ -103,10 +_,14 @@
+@@ -103,10 +_,15 @@
      main {
          java { srcDir("../paper-server/src/main/java"); srcDir("../paper-server/src/generated/java") }
          resources { srcDir("../paper-server/src/main/resources") }

@@ -17,7 +17,10 @@ public class AsyncPathfindingConfig implements IConfigModule {
     public static boolean enabled = false;
 
     @ConfigInfo(name = "thread-count", comments = """
-            寻路线程池大小""")
+            同时进行的异步寻路请求上限。
+            寻路任务运行在 Mili 的全局共享工作线程池上（该池归调度器所有，大小由
+            region_balancer.thread-pool-size 决定）。本项只限制并发寻路请求数，
+            不决定线程池大小。""")
     public static int threadCount = 2;
 
     @ConfigInfo(name = "max-queue-size", comments = """

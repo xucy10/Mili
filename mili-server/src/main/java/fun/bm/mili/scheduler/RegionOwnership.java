@@ -13,13 +13,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Ownership is resolved in this order:
  * <ol>
- *   <li>a resolver registered by the Mili Folia hooks (authoritative),</li>
+ *   <li>a resolver registered by the Mili Folia hooks (authoritative — its answer is final),</li>
  *   <li>the owner thread Mili recorded when it dispatched region work,</li>
  *   <li>reflective probe for {@code isOwnedByCurrentRegion()} / {@code isOwnedByCurrentThread()}.</li>
  * </ol>
  * If nothing can prove ownership the answer is {@code false} — the safe direction,
  * because "false" routes the work into the region's own queue instead of running it
  * on a thread that demonstrably does not own the region.
+ * <p>
+ * Mili start - fix: the caller of this method must never "make the answer true" by
+ * registering itself as the owner.  Doing so turns an unprovable question into a permanent
+ * claim and is what made {@code drainOwned} able to run foreign-region work.
  */
 public final class RegionOwnership {
 
@@ -81,10 +85,14 @@ public final class RegionOwnership {
 
         Resolver r = resolver;
         if (r != null) {
+            // Mili start - fix: once an authoritative resolver is installed its answer is
+            // final.  Previously an exception fell through to the weaker heuristics, which
+            // could still answer "true" on a guess — so a broken probe silently widened
+            // ownership instead of narrowing it.  Failing closed is the only safe direction.
             try {
                 return r.isOwnedByCurrentThread(region);
             } catch (Throwable ignored) {
-                // fall through to the weaker strategies
+                return false;
             }
         }
 

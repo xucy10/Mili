@@ -17,6 +17,19 @@ which is exactly what silently happens when someone edits a patch body by hand
 Usage:
     python scripts/check_patch_hunks.py <dir-or-file> [<dir-or-file> ...]
 
+With no arguments the minecraft/paper patch directories plus the paperweight
+`build.gradle.kts.patch` are checked.
+
+Two header dialects are accepted:
+
+    @@ -oldStart,oldCount +newStart,newCount @@   standard unified diff
+    @@ -oldStart,oldCount +_,newCount @@          paperweight: "_" means
+                                                  "same as the other side"
+
+`_` matters here: paperweight writes build.gradle.kts.patch with `+_,count`
+headers, which plain `git apply` rejects. Validating the counts still catches the
+real corruption, so the script understands both dialects.
+
 Exit code 0 = all clean, 1 = at least one mismatch.
 """
 
@@ -26,7 +39,8 @@ import re
 import sys
 from pathlib import Path
 
-HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+# The start line number may be "_" (paperweight's "same as the other side" placeholder).
+HUNK_RE = re.compile(r"^@@ -(\d+|_)(?:,(\d+))? \+(\d+|_)(?:,(\d+))? @@")
 
 # Markers that terminate a hunk body. Anything else belongs to the body, including
 # lines that merely *look* like file headers ("--- ", "+++ ") — those can legitimately
@@ -109,11 +123,18 @@ def check_file(path: Path) -> list[str]:
             j += 1
 
         if old_actual != old_expected or new_actual != new_expected:
+            # Rebuild the header with real line numbers, substituting the other side for "_".
+            old_start = m.group(1)
+            new_start = m.group(3)
+            if old_start == "_" and new_start != "_":
+                old_start = new_start
+            elif new_start == "_" and old_start != "_":
+                new_start = old_start
             problems.append(
                 f"{path}:{header_line_no}: hunk header says "
                 f"-{old_expected} +{new_expected} but body has "
                 f"-{old_actual} +{new_actual}  ->  should be "
-                f"@@ -{m.group(1)},{old_actual} +{m.group(3)},{new_actual} @@"
+                f"@@ -{old_start},{old_actual} +{new_start},{new_actual} @@"
             )
         i = j
 
@@ -134,7 +155,11 @@ def iter_patch_files(targets: list[str]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    targets = argv[1:] or ["mili-server/minecraft-patches", "mili-server/paper-patches"]
+    targets = argv[1:] or [
+        "mili-server/minecraft-patches",
+        "mili-server/paper-patches",
+        "mili-server/build.gradle.kts.patch",
+    ]
     files = iter_patch_files(targets)
     if not files:
         print("no patch files found")

@@ -18,6 +18,8 @@ public final class RegionBudget {
 
     private final AtomicLong budgetNanos = new AtomicLong(NORMAL_BUDGET_NANOS);
     private final AtomicLong usedNanos = new AtomicLong(0L);
+    /** Mili start - fix: monotonic tick counter, see {@link #beginTick(long)}. */
+    private final AtomicLong tickEpoch = new AtomicLong(0L);
 
     public RegionBudget() {
         this(NORMAL_BUDGET_NANOS);
@@ -39,12 +41,50 @@ public final class RegionBudget {
         return usedNanos.get();
     }
 
-    /** Reset the consumed counter at the start of every tick. */
-    public void beginTick() {
-        usedNanos.set(0L);
+    /**
+     * Open the tick with the given epoch, resetting the consumed counter.
+     * <p>
+     * Mili start - fix: the tick boundary used to be a no-argument {@code beginTick()} that
+     * any thread could call, and the background {@code Mili-Scheduler-Driver} thread called
+     * it for every region every 50&nbsp;ms.  A 50&nbsp;ms scheduler round is <b>not</b> a
+     * region tick boundary: it could clear {@code usedNanos} while the region thread was
+     * still inside its tick, so work done in that tick was never charged and
+     * {@link #exhausted()} could never trip.
+     * <p>
+     * The boundary is now expressed as an epoch.  Only a strictly newer epoch resets the
+     * counter, so the call is idempotent within a tick and a duplicate or stale call from
+     * another thread becomes a harmless no-op instead of a cross-thread write.
+     * <p>
+     * Invariant: {@link #consume(long)} may only be called on the owning region thread and
+     * only after a successful {@code beginTick(epoch)} for the current tick.
+     *
+     * @param epoch monotonically increasing tick number of the owning region
+     * @return {@code true} if this call performed the reset
+     */
+    public boolean beginTick(long epoch) {
+        for (;;) {
+            long seen = tickEpoch.get();
+            if (epoch <= seen) return false;
+            if (tickEpoch.compareAndSet(seen, epoch)) {
+                usedNanos.set(0L);
+                return true;
+            }
+        }
     }
 
-    /** Charge consumed time against the budget. */
+    /** Highest tick epoch accepted by {@link #beginTick(long)}. */
+    public long tickEpoch() {
+        return tickEpoch.get();
+    }
+
+    /**
+     * Charge consumed time against the budget.
+     * <p>
+     * Must be called on the region's owning thread, within the tick opened by
+     * {@link #beginTick(long)}.  Charging the same work twice (for example per task
+     * <i>and</i> for the whole drain window) inflates {@link #utilisation()} and makes the
+     * PI controller shrink the budget for no reason.
+     */
     public void consume(long nanos) {
         usedNanos.addAndGet(Math.max(0L, nanos));
     }

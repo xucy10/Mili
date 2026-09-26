@@ -2,9 +2,9 @@ package fun.bm.mili.chunk;
 
 import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,7 +19,10 @@ public final class MiliChunkSystem {
     // Mili start - fix: use AtomicBoolean for thread-safe init/shutdown
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     // Mili end
-    private static BukkitTask mainThreadTask;
+    // Mili start - fix: Folia migration — the maintenance pass is driven by a
+    // GlobalRegionScheduler ScheduledTask instead of a legacy BukkitTask.
+    private static volatile ScheduledTask mainRegionTask;
+    // Mili end
     private static ScheduledExecutorService asyncExecutor;
 
     private static final ConcurrentHashMap<World, WorldChunkData> worldData = new ConcurrentHashMap<>();
@@ -55,12 +58,22 @@ public final class MiliChunkSystem {
             registerWorld(world);
         }
 
-        mainThreadTask = Bukkit.getScheduler().runTaskTimer(
+        // Mili start - fix: Folia migration. Bukkit.getScheduler() throws
+        // UnsupportedOperationException under Folia, so the 1-tick maintenance pass moves to the
+        // global region scheduler. The body only reads and dispatches region work — see #tick.
+        mainRegionTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
                 plugin,
-                MiliChunkSystem::tick,
+                task -> {
+                    if (!initialized.get()) {
+                        task.cancel();
+                        return;
+                    }
+                    tick(plugin);
+                },
                 1L,
                 1L
         );
+        // Mili end
 
         asyncExecutor.scheduleAtFixedRate(
                 asyncProcessor::processQueue,
@@ -80,9 +93,9 @@ public final class MiliChunkSystem {
         if (!initialized.compareAndSet(true, false)) return;
         // Mili end
 
-        if (mainThreadTask != null) {
-            mainThreadTask.cancel();
-            mainThreadTask = null;
+        if (mainRegionTask != null) {
+            mainRegionTask.cancel();
+            mainRegionTask = null;
         }
 
         if (asyncExecutor != null) {
@@ -104,7 +117,14 @@ public final class MiliChunkSystem {
         LogUtils.getLogger().info("[Mili] MiliChunkSystem shutdown complete");
     }
 
-    private static void tick() {
+    // Mili start - fix: Folia migration. This pass runs on the global region thread. It is
+    // deliberately limited to reads plus dispatch:
+    //   - ChunkHotnessUpdater: reads player positions and the loaded-chunk list only;
+    //   - ChunkLifecycleManager: selects candidates here, but performs the keep-alive check and
+    //     Chunk#unload() on the region that owns each chunk (unload asserts region ownership);
+    //   - ChunkViewDistanceOptimizer: World#setViewDistance is a world-level setting applied
+    //     through the chunk system with no region assertion, so it stays on this thread.
+    private static void tick(org.bukkit.plugin.Plugin plugin) {
         long startNanos = System.nanoTime();
 
         try {
@@ -113,7 +133,7 @@ public final class MiliChunkSystem {
                 WorldChunkData data = entry.getValue();
 
                 ChunkHotnessUpdater.update(world, data);
-                ChunkLifecycleManager.manage(world, data, totalChunkUnloads);
+                ChunkLifecycleManager.manage(world, data, totalChunkUnloads, plugin);
                 ChunkViewDistanceOptimizer.optimize(world, data);
             }
         } catch (Throwable e) {
@@ -128,6 +148,7 @@ public final class MiliChunkSystem {
             );
         }
     }
+    // Mili end
 
     public static void registerWorld(World world) {
         worldData.computeIfAbsent(world, w -> new WorldChunkData(w));

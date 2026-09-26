@@ -25,9 +25,47 @@ import java.util.logging.Logger;
 public final class MiliOptimizations {
     private static final Logger LOGGER = Logger.getLogger("Mili");
 
+    /**
+     * Mili start - fix: exactly one lifecycle entry point, and it must be idempotent.
+     * <p>
+     * The entry point used to be an external bootstrap patch that injected into
+     * {@code DedicatedServer} right after the config files were loaded — i.e. <b>before the
+     * worlds existed</b>.  That patch has been retired in favour of the self-bootstrap in
+     * {@code FoliaSchedulerAdapter#isRunning()}, which runs on the first region tick and
+     * therefore <i>after</i> world load (world-scanning subsystems such as
+     * {@code VillagerOptimizer} used to receive an empty world list).
+     * <p>
+     * The guard lives here, not at the call site, so that a retried bootstrap can never
+     * double-start a subsystem.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean INITIALIZED =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    // Mili end
+
+    /**
+     * Mili start - fix: shutdown used to be dead code (zero callers) and is now reachable
+     * from the JVM shutdown hook registered in {@link #init(Plugin)}; it must therefore be
+     * idempotent — the hook and any future explicit caller must not tear down twice.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean SHUTDOWN =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    // Mili end
+
     private MiliOptimizations() {}
 
     public static void init(Plugin plugin) {
+        // Mili start - fix: idempotent entry point (see INITIALIZED).  This is also where
+        // the shutdown hook is registered: shutdown() previously had zero callers anywhere
+        // in the repository, so the runtime was never torn down in an orderly way.  The
+        // hook goes in immediately after the CAS so even a partially failed init gets a
+        // best-effort cleanup; shutdown() is idempotent, so double invocation is safe.
+        if (!INITIALIZED.compareAndSet(false, true)) {
+            LOGGER.fine("[Mili] Optimizations already initialized; duplicate init ignored");
+            return;
+        }
+        Runtime.getRuntime().addShutdownHook(
+                new Thread(MiliOptimizations::shutdown, "Mili-Optimizations-Shutdown"));
+        // Mili end
         // Mili start - unified runtime: scheduler + worker pool must be up before any
         // subsystem that submits region work (fix.md §19 phase 1).
         fun.bm.mili.scheduler.FoliaSchedulerAdapter.init();
@@ -69,6 +107,12 @@ public final class MiliOptimizations {
     }
 
     public static void shutdown() {
+        // Mili start - fix: idempotent (see SHUTDOWN).
+        if (!SHUTDOWN.compareAndSet(false, true)) {
+            LOGGER.fine("[Mili] Optimizations already shut down; duplicate shutdown ignored");
+            return;
+        }
+        // Mili end
         AsyncKeepaliveManager.shutdown(); // Mili - graceful shutdown of async keepalive scheduler
         // Mili start - fix: only shutdown subsystems that were initialized (config enabled)
         if (ChunkSystemConfig.enabled) {

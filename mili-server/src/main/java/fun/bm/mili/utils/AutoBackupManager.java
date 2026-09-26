@@ -30,6 +30,24 @@ public class AutoBackupManager {
     private static volatile String lastBackupResult = "None";
     // Mili end
 
+    // Mili start - fix: Folia migration plus a latent NPE fix.
+    // The old code scheduled notifications through Bukkit.getScheduler() — which Folia disables
+    // at runtime — using Bukkit.getPluginManager().getPlugin("Mili"), which returns null because
+    // Mili is a server core rather than a registered Bukkit plugin. Every notify attempt
+    // therefore threw inside doBackup() and was swallowed by the surrounding catch(Throwable).
+    // The built-in NullPlugin keeps isEnabled() == true, which is all the Folia schedulers need.
+    private static final me.earthme.luminol.utils.NullPlugin SCHEDULER_PLUGIN =
+            new me.earthme.luminol.utils.NullPlugin();
+
+    private static void broadcastOnGlobalThread(net.kyori.adventure.text.Component message) {
+        try {
+            Bukkit.getGlobalRegionScheduler().run(SCHEDULER_PLUGIN, task -> Bukkit.broadcast(message));
+        } catch (Throwable ignored) {
+            // server shutting down; notifications are best-effort
+        }
+    }
+    // Mili end
+
     // Mili start - fix: start() 中 running=true 在 scheduler 创建之前设置，stop() 可在两者间被调用导致竞态
     public static synchronized void start() {
         if (running) return;
@@ -102,15 +120,10 @@ public class AutoBackupManager {
     }
 
     private static void doBackup(@Nullable String specificWorld) throws IOException {
-        // Mili start - fix: doBackup 从异步线程调用 Bukkit.broadcast() 等非线程安全 Bukkit API
-        org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("Mili");
-        // Mili end
         if (AutoBackupConfig.notifyPlayers) {
-            // Mili start - fix: 将 Bukkit API 调用调度到主线程执行
-            final org.bukkit.plugin.Plugin p = plugin;
-            Bukkit.getScheduler().runTask(p, () ->
-                    Bukkit.broadcast(net.kyori.adventure.text.Component.text(
-                            "[Mili] World backup in progress...", net.kyori.adventure.text.format.NamedTextColor.YELLOW)));
+            // Mili start - fix: Folia migration — broadcast from the global region thread
+            broadcastOnGlobalThread(net.kyori.adventure.text.Component.text(
+                    "[Mili] World backup in progress...", net.kyori.adventure.text.format.NamedTextColor.YELLOW));
             // Mili end
         }
 
@@ -159,12 +172,9 @@ public class AutoBackupManager {
             String msg = specificWorld != null
                     ? "[Mili] Backup complete! World: " + specificWorld + " (" + formatSize(totalSize) + ")"
                     : "[Mili] Backup complete! All worlds (" + formatSize(totalSize) + ")";
-            // Mili start - fix: 将 Bukkit API 调用调度到主线程执行
-            final org.bukkit.plugin.Plugin p = plugin;
-            final String fmsg = msg;
-            Bukkit.getScheduler().runTask(p, () ->
-                    Bukkit.broadcast(net.kyori.adventure.text.Component.text(
-                            fmsg, net.kyori.adventure.text.format.NamedTextColor.GREEN)));
+            // Mili start - fix: Folia migration — broadcast from the global region thread
+            broadcastOnGlobalThread(net.kyori.adventure.text.Component.text(
+                    msg, net.kyori.adventure.text.format.NamedTextColor.GREEN));
             // Mili end
         }
 

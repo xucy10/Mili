@@ -3,12 +3,10 @@ From: Mili Maintainers
 Date: Sat, 26 Sep 2026 09:15:00 +0800
 Subject: [PATCH] Bootstrap Mili optimization subsystems
 
-STATUS: STAGED - DO NOT MOVE INTO features/ UNTIL BLOCKER BELOW IS RESOLVED.
-
 fun.bm.mili.MiliOptimizations.init() is the only lifecycle entry point for the
 whole Mili optimization stack (MiliChunkSystem, VillagerOptimizer, RegionBalancer,
-SmartRegionManager, NetworkOptimizer, TechnicalMCOptimizer, LagRemover). It has
-zero call sites in the entire repository, so none of those subsystems ever run.
+SmartRegionManager, NetworkOptimizer, TechnicalMCOptimizer, LagRemover). It had
+zero call sites in the entire repository, so none of those subsystems ever ran.
 
 This patch wires it next to the existing ConfigManager.loadConfigFiles() hook
 (ordering matters: config must be populated before the `enabled` flags are read).
@@ -16,36 +14,40 @@ This patch wires it next to the existing ConfigManager.loadConfigFiles() hook
 The hook passes org.leavesmc.leaves.plugin.MinecraftInternalPlugin.INSTANCE, the
 same dummy plugin instance Leaves already uses for its internal scheduled tasks.
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! BLOCKER - MUST BE FIXED BEFORE ENABLING THIS PATCH                   !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! The subsystems reached from init() still use Paper's legacy scheduler,!!
-!! which Folia disables at runtime (throws on call):                    !!
-!!   - fun/bm/mili/utils/LagRemover.java          BukkitRunnable x3     !!
-!!       LagRemover.init() is invoked UNCONDITIONALLY, so it runs even  !!
-!!       when every other subsystem is disabled by config.              !!
-!!   - fun/bm/mili/utils/TPSTracker.java          BukkitRunnable        !!
-!!   - fun/bm/mili/villager/VillagerOptimizer.java BukkitRunnable       !!
-!!   - fun/bm/mili/chunk/MiliChunkSystem.java     Bukkit.getScheduler() !!
-!!   - fun/bm/mili/utils/AutoBackupManager.java   Bukkit.getScheduler() !!
-!!                                                                      !!
-!! Migrating them is NOT mechanical: LagRemover and VillagerOptimizer   !!
-!! iterate Bukkit.getWorlds() and mutate entities from the global       !!
-!! scheduler, which is a region-thread-safety violation under Folia.    !!
-!! They need to be redesigned around per-region scheduling before this  !!
-!! patch can be moved into features/.                                   !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+FORMER BLOCKER - NOW RESOLVED.
+
+The subsystems reached from init() used to schedule through Paper's legacy
+scheduler, which Folia disables at runtime (every call throws):
+
+  - fun/bm/mili/utils/LagRemover.java            BukkitRunnable x3
+      LagRemover.init() is invoked UNCONDITIONALLY, so it runs even when every
+      other subsystem is disabled by config.
+  - fun/bm/mili/utils/TPSTracker.java            BukkitRunnable
+  - fun/bm/mili/villager/VillagerOptimizer.java  BukkitRunnable
+  - fun/bm/mili/chunk/MiliChunkSystem.java       Bukkit.getScheduler()
+  - fun/bm/mili/utils/AutoBackupManager.java     Bukkit.getScheduler() x2
+
+All five were migrated to the Folia schedulers (GlobalRegionScheduler,
+RegionScheduler, EntityScheduler). Migrating them was not mechanical: LagRemover
+and VillagerOptimizer iterated Bukkit.getWorlds() and mutated entities from the
+global scheduler, which is a region-thread-safety violation under Folia. Chunk
+unloads, view-distance changes and every entity/villager mutation are now
+dispatched to the scheduler of the region or entity that owns the target.
+
+This hunk is rebased against the text as it stands after
+0056-Force-disable-builtin-spark-plugin.patch, which rewrites the line that
+follows it. 0001-Rebrand-to-Luminol.patch adds the line it follows.
+
 
 diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
-index 1ad4704523a3d90414ac514488207b1b5def9afd..0000000000000000000000000000000000000000 100644
+index f8d0af6473aa3e32408b85a868fb807d9da510e6..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -238,7 +238,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
-         this.paperConfigurations.initializeGlobalConfiguration(this.registryAccess());
+@@ -240,6 +240,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
 +        fun.bm.mili.MiliOptimizations.init(org.leavesmc.leaves.plugin.MinecraftInternalPlugin.INSTANCE); // Mili - bootstrap optimization subsystems
-         this.server.spark.enableEarlyIfRequested(); // Paper - spark
+         if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
          if (this.convertOldUsers()) {

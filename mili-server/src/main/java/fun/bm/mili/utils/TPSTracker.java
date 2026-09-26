@@ -1,6 +1,8 @@
 package fun.bm.mili.utils;
 
-import org.bukkit.scheduler.BukkitRunnable;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -23,23 +25,46 @@ public final class TPSTracker {
     private static final AtomicInteger tickCount = new AtomicInteger(0);
     private static volatile double currentTPS = 20.0;
 
+    // Mili start - fix: Folia migration. Paper's legacy scheduler is disabled at runtime under
+    // Folia (Bukkit.getScheduler() throws UnsupportedOperationException, and BukkitRunnable is
+    // backed by it). The global region ticks at 20 TPS, which is exactly the clock this tracker
+    // measures, so the sampler is driven from the global region scheduler instead.
+    private static volatile ScheduledTask tickTask;
+    // Mili end
+
     private TPSTracker() {}
 
-    public static void init(org.bukkit.plugin.Plugin plugin) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                int count = tickCount.getAndIncrement();
-                int idx = count & TICK_HISTORY_MASK;
-                long now = System.currentTimeMillis();
-                long old = ticks.getAndSet(idx, now);
-                if (old > 0) {
-                    runningSum.addAndGet(now - old);
-                }
-                currentTPS = calculateTPS(100);
+    public static void init(Plugin plugin) {
+        if (plugin == null) return;
+        // Mili start - fix: make init idempotent; the previous code stacked a new timer on
+        // every repeated call, each one advancing tickCount and writing the ring buffer.
+        ScheduledTask previous = tickTask;
+        tickTask = null;
+        if (previous != null) {
+            previous.cancel();
+        }
+        // Mili end
+        tickTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            int count = tickCount.getAndIncrement();
+            int idx = count & TICK_HISTORY_MASK;
+            long now = System.currentTimeMillis();
+            long old = ticks.getAndSet(idx, now);
+            if (old > 0) {
+                runningSum.addAndGet(now - old);
             }
-        }.runTaskTimer(plugin, 1L, 1L);
+            currentTPS = calculateTPS(100);
+        }, 1L, 1L);
     }
+
+    // Mili start - fix: expose shutdown so the repeating global task can be released on stop
+    public static void shutdown() {
+        ScheduledTask task = tickTask;
+        tickTask = null;
+        if (task != null) {
+            task.cancel();
+        }
+    }
+    // Mili end
 
     public static double getTPS() {
         return currentTPS;

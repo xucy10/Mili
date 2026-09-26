@@ -15,7 +15,8 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:26.2+build.1")
-    paperclip("io.papermc:paperclip:3.0.4")
+    // Mili - use the Riceear launcher (Hyacinthusclip fork) from libs/ instead of upstream paperclip
+    paperclip(files(rootProject.layout.projectDirectory.file("libs/riceear.jar")))
 }
 
 paperweight {

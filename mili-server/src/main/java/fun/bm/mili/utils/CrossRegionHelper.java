@@ -58,13 +58,22 @@ public class CrossRegionHelper {
         public final long id;
         public final long sourceRegionId;
         public final long targetRegionId;
-        public final RegionizedWorldData sourceRegion;
-        public final RegionizedWorldData targetRegion;
+        /**
+         * Mili start - fix: these used to be typed {@code RegionizedWorldData}, which is
+         * what {@code level.getCurrentWorldData()} returns — but the target side is resolved
+         * through the regionizer and yields a {@code ThreadedRegion}, a completely unrelated
+         * final class.  The target therefore never satisfied the old
+         * {@code instanceof RegionizedWorldData} guard, so no cross-region event was ever
+         * dispatched.  The canonical identity is the region (see {@link RegionResolver}),
+         * kept opaque here.
+         */
+        public final Object sourceRegion;
+        public final Object targetRegion;
         public final long tickStamp;
         /** Task UUID for cross-region parameter passing traceability. */
         public final UUID taskUuid;
 
-        protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
+        protected Event(Object src, Object tgt, long tick) {
             this.id = eventIdGen.incrementAndGet();
             this.sourceRegion = src;
             this.targetRegion = tgt;
@@ -75,7 +84,7 @@ public class CrossRegionHelper {
         }
 
         /** Constructor for events carrying a pre-existing task UUID (passthrough). */
-        protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick, UUID existingTaskUuid) {
+        protected Event(Object src, Object tgt, long tick, UUID existingTaskUuid) {
             this.id = eventIdGen.incrementAndGet();
             this.sourceRegion = src;
             this.targetRegion = tgt;
@@ -101,7 +110,7 @@ public class CrossRegionHelper {
         public final Direction dir;
 
         public RedstoneSignal(BlockPos pos, BlockPos neighbor, Direction dir,
-                              RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
+                              Object src, Object tgt, long tick) {
             super(src, tgt, tick);
             this.pos = pos;
             this.neighbor = neighbor;
@@ -115,7 +124,7 @@ public class CrossRegionHelper {
         public final DamageSource damageSource;
 
         public EntityDamageSync(UUID sourceUUID, UUID targetUUID, DamageSource ds,
-                                RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
+                                Object src, Object tgt, long tick) {
             super(src, tgt, tick);
             this.sourceUUID = sourceUUID;
             this.targetUUID = targetUUID;
@@ -126,8 +135,8 @@ public class CrossRegionHelper {
     public static class EntityEnterRegion extends Event {
         public final UUID entityUUID;
 
-        public EntityEnterRegion(UUID entityUUID, RegionizedWorldData src,
-                                 RegionizedWorldData tgt, long tick) {
+        public EntityEnterRegion(UUID entityUUID, Object src,
+                                 Object tgt, long tick) {
             super(src, tgt, tick);
             this.entityUUID = entityUUID;
         }
@@ -136,8 +145,8 @@ public class CrossRegionHelper {
     public static class EntityLeaveRegion extends Event {
         public final UUID entityUUID;
 
-        public EntityLeaveRegion(UUID entityUUID, RegionizedWorldData src,
-                                 RegionizedWorldData tgt, long tick) {
+        public EntityLeaveRegion(UUID entityUUID, Object src,
+                                 Object tgt, long tick) {
             super(src, tgt, tick);
             this.entityUUID = entityUUID;
         }
@@ -248,17 +257,25 @@ public class CrossRegionHelper {
      * <p>
      * The target is resolved from the <b>neighbour</b> position through the regionizer,
      * which is what makes this actually cross-region (fix.md §10).
+     * <p>
+     * Mili start - fix: the target no longer has to be a {@code RegionizedWorldData}.  The
+     * regionizer returns the region itself, so the old
+     * {@code instanceof RegionizedWorldData} guard rejected every resolved target and this
+     * method silently did nothing.  Both sides now come from {@link RegionResolver} and are
+     * compared as region identity.
      */
     public static void submitRedstoneCrossRegion(ServerLevel level, BlockPos pos,
                                                  BlockPos neighbor, Direction dir) {
         if (!CrossRegionHelperConfig.enabled || level == null || neighbor == null) return;
 
-        RegionizedWorldData srcRegion = level.getCurrentWorldData();
+        Object srcRegion = RegionResolver.currentTickRegion();
         if (srcRegion == null) return;
 
-        Object resolved = RegionResolver.regionAtBlock(level, neighbor);
-        if (!(resolved instanceof RegionizedWorldData tgtRegion)) return;
-        if (srcRegion == tgtRegion) return; // genuinely not cross-region
+        Object tgtRegion = RegionResolver.regionAtBlock(level, neighbor);
+        if (tgtRegion == null || srcRegion == tgtRegion) {
+            // Unresolvable target, or genuinely not cross-region.
+            return;
+        }
 
         submit(new RedstoneSignal(pos, neighbor, dir, srcRegion, tgtRegion, level.getGameTime()));
     }
@@ -272,12 +289,11 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || source == null ||
                 target == null || damageSource == null) return;
 
-        RegionizedWorldData srcRegion = source.level().getCurrentWorldData();
+        Object srcRegion = RegionResolver.currentTickRegion();
         if (srcRegion == null) return;
 
-        Object resolved = resolveRegionOf(target.level(), target.blockPosition());
-        if (!(resolved instanceof RegionizedWorldData tgtRegion)) return;
-        if (srcRegion == tgtRegion) return;
+        Object tgtRegion = resolveRegionOf(target.level(), target.blockPosition());
+        if (tgtRegion == null || srcRegion == tgtRegion) return;
 
         submit(new EntityDamageSync(source.getUUID(), target.getUUID(),
                 damageSource, srcRegion, tgtRegion, tick));
@@ -294,7 +310,7 @@ public class CrossRegionHelper {
     /**
      * Consume pending events addressed to a region, keyed by its stable id.
      */
-    public static ConcurrentLinkedQueue<Event> consumePending(RegionizedWorldData target) {
+    public static ConcurrentLinkedQueue<Event> consumePending(Object target) {
         if (!CrossRegionHelperConfig.enabled || target == null) return null;
         return consumePending(RegionIdRegistry.idOf(target));
     }
@@ -313,11 +329,17 @@ public class CrossRegionHelper {
     /** Called from the region tick hook (patch 0111). */
     public static ConcurrentLinkedQueue<Event> onRegionTick(ServerLevel level,
                                                             RegionizedWorldData data) {
-        if (!CrossRegionHelperConfig.enabled || data == null) return null;
-        return consumePending(data);
+        if (!CrossRegionHelperConfig.enabled) return null;
+        // Mili start - fix: pending events are keyed by region id, and the id of the
+        // RegionizedWorldData handed in by the hook is not the id the events were routed
+        // with (events carry the region itself, see Event).  Keys never matched, so nothing
+        // was ever delivered.  Ask for the region this thread is actually ticking.
+        Object region = RegionResolver.currentTickRegion();
+        if (region == null) region = data;
+        return consumePending(region);
     }
 
-    public static int pendingCount(RegionizedWorldData region) {
+    public static int pendingCount(Object region) {
         if (region == null) return 0;
         return pendingCount(RegionIdRegistry.peek(region));
     }
@@ -332,7 +354,7 @@ public class CrossRegionHelper {
     }
 
     /** Find the source region for a task UUID (traceability helper). */
-    public static RegionizedWorldData findSourceRegionForTaskUuid(UUID taskUuid) {
+    public static Object findSourceRegionForTaskUuid(UUID taskUuid) {
         if (taskUuid == null) return null;
         for (Event event : inboundQueue) {
             if (taskUuid.equals(event.taskUuid)) {
@@ -361,7 +383,7 @@ public class CrossRegionHelper {
      * Region teardown: drop pending work and cancel transactions targeting this region
      * so nothing is left pointing at a dead region (fix.md §9 / §11).
      */
-    public static void onRegionUnload(RegionizedWorldData data) {
+    public static void onRegionUnload(Object data) {
         if (data == null) return;
         long regionId = RegionIdRegistry.peek(data);
         if (regionId != 0L) {

@@ -41,10 +41,23 @@ public class AsyncPathfinder {
 
     private static volatile boolean enabled = false;
 
+    /**
+     * Mili start - fix: bounds how many snapshot captures / A* runs may be in flight at
+     * once.  This is what {@code async-pathfinding.thread-count} now means.
+     * <p>
+     * It deliberately does <b>not</b> size {@link WorkerRuntime}: that pool is global and
+     * owned by the scheduler, so sizing it from this config silently overrode the
+     * scheduler's own worker count (see WorkerRuntime's ownership note).  Concurrency of
+     * this subsystem is this subsystem's business; the pool's size is not.
+     */
+    private static volatile java.util.concurrent.Semaphore pathConcurrency;
+
     private static final AtomicInteger queuedTasks = new AtomicInteger();
     private static final AtomicInteger completedTasks = new AtomicInteger();
     private static final AtomicInteger failedTasks = new AtomicInteger();
     private static final AtomicInteger rejectedOffThread = new AtomicInteger();
+    private static final AtomicInteger rejectedSaturated = new AtomicInteger();
+    private static final AtomicInteger rejectedNoRuntime = new AtomicInteger();
     private static final AtomicLong totalComputeTime = new AtomicLong();
 
     /** Horizontal/vertical radius of the captured volume, in blocks. */
@@ -189,6 +202,16 @@ public class AsyncPathfinder {
             return CompletableFuture.completedFuture(null);
         }
 
+        // Mili start - fix: the worker pool belongs to the scheduler (see WorkerRuntime).
+        // This method used to create it, so merely enabling async pathfinding silently
+        // resized the shared pool to `async-pathfinding.thread-count`.  Now this config only
+        // bounds concurrency; when the runtime is not up we decline and let the caller keep
+        // its vanilla pathfinding rather than submitting into a closed pool.
+        if (!WorkerRuntime.isRunning()) {
+            rejectedNoRuntime.incrementAndGet();
+            return CompletableFuture.completedFuture(null);
+        }
+
         Level level = mob.level();
         BlockPos start = mob.blockPosition();
 
@@ -197,24 +220,40 @@ public class AsyncPathfinder {
             return CompletableFuture.completedFuture(null);
         }
 
-        PathSnapshot snapshot = PathSnapshot.capture(level, start, radius);
-        if (snapshot == null) {
+        // Take the permit before the (expensive) snapshot capture so a saturated pipeline
+        // does not pay for a volume it is about to discard.
+        java.util.concurrent.Semaphore permits = pathConcurrency;
+        if (permits == null || !permits.tryAcquire()) {
+            rejectedSaturated.incrementAndGet();
             return CompletableFuture.completedFuture(null);
         }
-
-        PathRequest request = new PathRequest(start, target.immutable(), snapshot, DEFAULT_MAX_EXPANSIONS);
-        queuedTasks.incrementAndGet();
-
-        CompletableFuture<PathResult> future = WorkerRuntime.submitPure(() -> compute(request));
-        return future.whenComplete((result, error) -> {
-            queuedTasks.decrementAndGet();
-            if (error != null) {
-                failedTasks.incrementAndGet();
-            } else {
-                completedTasks.incrementAndGet();
-                if (result != null) totalComputeTime.addAndGet(result.computeNanos() / 1_000_000L);
+        try {
+            PathSnapshot snapshot = PathSnapshot.capture(level, start, radius);
+            if (snapshot == null) {
+                permits.release();
+                return CompletableFuture.completedFuture(null);
             }
-        });
+
+            PathRequest request = new PathRequest(start, target.immutable(), snapshot, DEFAULT_MAX_EXPANSIONS);
+            queuedTasks.incrementAndGet();
+
+            CompletableFuture<PathResult> future = WorkerRuntime.submitPure(() -> compute(request));
+            return future.whenComplete((result, error) -> {
+                permits.release();
+                queuedTasks.decrementAndGet();
+                if (error != null) {
+                    failedTasks.incrementAndGet();
+                } else {
+                    completedTasks.incrementAndGet();
+                    if (result != null) totalComputeTime.addAndGet(result.computeNanos() / 1_000_000L);
+                }
+            });
+        } catch (Throwable t) {
+            // Never leak the permit: exhausting it would silently disable async pathfinding.
+            permits.release();
+            return CompletableFuture.completedFuture(null);
+        }
+        // Mili end
     }
 
     /**
@@ -364,9 +403,16 @@ public class AsyncPathfinder {
 
     public static synchronized void setEnabled(boolean v) {
         enabled = v;
-        if (v) {
-            WorkerRuntime.init(Math.max(1, AsyncPathfindingConfig.threadCount));
-        }
+        // Mili start - fix: no longer creates the worker pool.  The pool is owned by the
+        // scheduler (see WorkerRuntime's ownership note) and cannot be resized after
+        // creation; sizing it from this config used to override the scheduler's own worker
+        // count.  `thread-count` now bounds *this* subsystem's concurrency instead, which
+        // is what its name always claimed to do.
+        pathConcurrency = v
+                ? new java.util.concurrent.Semaphore(Math.max(1, AsyncPathfindingConfig.threadCount))
+                : null;
+        // Mili end
+        // Disabling does NOT stop the pool: it is shared with the scheduler, which still needs it.
     }
 
     public static boolean isEnabled() {
@@ -376,10 +422,13 @@ public class AsyncPathfinder {
     public static Map<String, Object> getStats() {
         Map<String, Object> stats = new java.util.LinkedHashMap<>();
         stats.put("Enabled", enabled);
+        stats.put("Concurrency Limit", Math.max(1, AsyncPathfindingConfig.threadCount));
         stats.put("Queued", queuedTasks.get());
         stats.put("Completed", completedTasks.get());
         stats.put("Failed", failedTasks.get());
         stats.put("RejectedOffThread", rejectedOffThread.get());
+        stats.put("RejectedSaturated", rejectedSaturated.get());
+        stats.put("RejectedNoRuntime", rejectedNoRuntime.get());
         int total = completedTasks.get() + failedTasks.get();
         stats.put("Avg Compute (ms)", total > 0
                 ? String.format("%.1f", (double) totalComputeTime.get() / total) : "0");

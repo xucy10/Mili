@@ -25,7 +25,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,8 +40,10 @@ public final class VillagerOptimizer implements Listener {
     private static volatile VillagerOptimizer instance;
     // Mili end
 
-    // Mili start - fix: 定时任务在 shutdown 中从不取消，导致任务泄漏
-    private static org.bukkit.scheduler.BukkitTask processTask;
+    // Mili start - fix: 定时任务在 shutdown 中从不取消，导致任务泄漏。
+    // Folia migration: the task is now a region-scheduler ScheduledTask instead of a
+    // legacy BukkitTask (Bukkit.getScheduler() throws under Folia).
+    private static volatile ScheduledTask processTask;
     // Mili end
 
     private final Plugin plugin;
@@ -94,29 +96,58 @@ public final class VillagerOptimizer implements Listener {
         Plugin activePlugin = instance.getPlugin();
         Bukkit.getPluginManager().registerEvents(instance, activePlugin);
 
-        // Scan existing villagers
+        // Mili start - fix: Folia migration. addVillager() mutates the villager
+        // (setAware / potion effect / PDC), which must happen on the region thread owning the
+        // villager. The scan itself is a read, but every registration is dispatched per entity.
+        // MiliOptimizations.init() now self-bootstraps from the first region tick (see
+        // FoliaSchedulerAdapter#isRunning), i.e. after world load, so this scan does see the
+        // worlds; ChunkLoadEvent remains the path for chunks that load later.
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Villager villager) {
-                    instance.addVillager(villager);
+                    instance.onOwningThread(villager, () -> instance.addVillager(villager));
                 }
             }
         }
+        // Mili end
 
-        // Mili start - fix: 保存定时任务引用以便在 shutdown 中取消
-        // Start chunk processing task
-        processTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (instance != null) {
-                    instance.processChunks();
-                }
+        // Mili start - fix: 保存定时任务引用以便在 shutdown 中取消；Folia migration:
+        // the legacy BukkitRunnable timer is replaced by the global region scheduler.
+        // The body only scans and dispatches, it never touches a villager directly.
+        processTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(activePlugin, task -> {
+            VillagerOptimizer active = instance;
+            if (active == null || active.shuttingDown) {
+                task.cancel();
+                return;
             }
-        }.runTaskTimer(activePlugin, 5L, 5L);
+            active.processChunks();
+        }, 5L, 5L);
         // Mili end
 
         activePlugin.getLogger().info("[Mili] VillagerOptimizer initialized");
     }
+
+    // Mili start - fix: Folia migration helper — run a villager mutation on the region thread
+    // that owns the villager. A villager that is already retired is dropped from tracking.
+    private void onOwningThread(Villager villager, Runnable action) {
+        if (villager == null) return;
+        try {
+            // Fully qualified: Mili has its own fun.bm.mili.scheduler.EntityScheduler, and
+            // lenient imports would make this ambiguous.
+            io.papermc.paper.threadedregions.scheduler.EntityScheduler scheduler = villager.getScheduler();
+            if (scheduler == null) {
+                removeVillager(villager);
+                return;
+            }
+            scheduler.run(getPlugin(), task -> {
+                if (shuttingDown || instance == null) return;
+                action.run();
+            }, () -> removeVillager(villager));
+        } catch (Throwable ignored) {
+            // villager retired between the scan and the dispatch
+        }
+    }
+    // Mili end
 
     private Plugin getPlugin() {
         return plugin;
@@ -312,17 +343,11 @@ public final class VillagerOptimizer implements Listener {
                 it.remove();
                 continue;
             }
-
-            for (Entity entity : chunk.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    if (inactiveVillagers.contains(villager)) {
-                        // Re-check if villager should be active
-                        if (shouldBeActive(villager)) {
-                            activate(villager);
-                        }
-                    }
-                }
-            }
+            // Mili start - fix: Folia migration — Chunk#getEntities() and every villager mutation
+            // must run on the region owning the chunk, so the whole pass is dispatched instead of
+            // executed on this (global) thread.
+            dispatchChunkScan(chunk);
+            // Mili end
             it.remove();
         }
 
@@ -332,9 +357,16 @@ public final class VillagerOptimizer implements Listener {
                 removeVillager(villager);
                 continue;
             }
-            if (!shouldBeActive(villager)) {
-                lobotomize(villager);
-            }
+            // Mili start - fix: Folia migration — re-evaluate and lobotomize on the owning region
+            // thread; isValid()/isDead() are plain reads used only to prune the tracking set.
+            onOwningThread(villager, () -> {
+                if (!villager.isValid() || villager.isDead()) {
+                    removeVillager(villager);
+                } else if (!shouldBeActive(villager)) {
+                    lobotomize(villager);
+                }
+            });
+            // Mili end
         }
 
         // Process inactive villagers (restocking)
@@ -343,9 +375,39 @@ public final class VillagerOptimizer implements Listener {
                 removeVillager(villager);
                 continue;
             }
-            tryRestock(villager);
+            // Mili start - fix: Folia migration — restock() writes the PDC and the recipe list,
+            // so it runs on the owning region thread too.
+            onOwningThread(villager, () -> {
+                if (!villager.isValid() || villager.isDead()) {
+                    removeVillager(villager);
+                } else {
+                    tryRestock(villager);
+                }
+            });
+            // Mili end
         }
     }
+
+    // Mili start - fix: Folia migration helper — re-scan a changed chunk on the region that owns
+    // it, so Chunk#getEntities() and the resulting activate()/lobotomize() are region-local.
+    private void dispatchChunkScan(Chunk chunk) {
+        if (chunk == null) return;
+        try {
+            Bukkit.getRegionScheduler().run(getPlugin(), chunk.getWorld(), chunk.getX(), chunk.getZ(), task -> {
+                if (shuttingDown || instance == null) return;
+                for (Entity entity : chunk.getEntities()) {
+                    if (entity instanceof Villager villager
+                            && inactiveVillagers.contains(villager)
+                            && shouldBeActive(villager)) {
+                        activate(villager);
+                    }
+                }
+            });
+        } catch (Throwable ignored) {
+            // world unloaded between the scan and the dispatch
+        }
+    }
+    // Mili end
 
     private boolean shouldBeActive(Villager villager) {
         String name = "";

@@ -52,11 +52,18 @@ public final class RegionWorkQueue {
      * <p>
      * A task already past its deadline is rejected outright — enqueueing work that can
      * only be cancelled a moment later just wastes capacity.
+     * <p>
+     * Mili start - fix: the past-deadline branch used to call {@code markMerged()}, which
+     * relabelled a piece of work that was never merged into anything (the merge path
+     * lives in {@code MiliSchedulerImpl.tryMergeInto}).  The handle therefore ended up
+     * terminal — and reported as {@code MERGED} — before the caller's follow-up
+     * {@code cancel("rejected")} could run, so the drop was invisible in metrics.  It is
+     * now cancelled for real with the reason that caused it.
      */
     public SubmissionResult offer(TaskHandle handle) {
         if (handle == null) return SubmissionResult.REJECTED;
         if (handle.isPastDeadline(System.nanoTime())) {
-            handle.markMerged(); // terminal, no capacity consumed
+            handle.cancel("past-deadline");
             return SubmissionResult.REJECTED;
         }
         if (isFull()) {

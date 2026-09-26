@@ -13,6 +13,19 @@ public enum TaskState {
     UNKNOWN,
     QUEUED,
     RUNNING,
+    /**
+     * Cancellation has been requested for a task that is already running and the waiters
+     * have been released, but the task body has not returned yet.
+     * <p>
+     * Mili start - fix: this state exists because {@code cancel()} used to flip a running
+     * task straight to {@link #CANCELLED} while {@code complete()} could overwrite it with
+     * {@link #COMPLETED} — both were plain field writes, so the winner was undefined.
+     * {@code CANCELLING} is the "cancel requested, body still exiting" window; only the
+     * body's own {@code complete()} may move it to {@link #CANCELLED}, which is the first
+     * moment Mili can prove the task stopped mutating protected state.
+     */
+    CANCELLING,
+    /** Not queued separately: the work was folded into an already-queued equivalent task. */
     MERGED,
     COMPLETED,
     FAILED,
@@ -21,5 +34,10 @@ public enum TaskState {
 
     public boolean isTerminal() {
         return this == COMPLETED || this == FAILED || this == CANCELLED || this == MERGED;
+    }
+
+    /** Whether the task is still occupying the scheduler (queued, running or exiting). */
+    public boolean isLive() {
+        return !isTerminal() && this != UNKNOWN;
     }
 }

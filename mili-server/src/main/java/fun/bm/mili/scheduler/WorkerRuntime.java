@@ -19,10 +19,21 @@ import java.util.function.Supplier;
  * {@code Mob}, {@code Level}, {@code Chunk}, {@code Entity} or {@code Region} state —
  * that would bypass region ownership.  Minecraft state mutation is always committed
  * back on the region's owning thread.
+ * <p>
+ * Mili start - fix: <b>ownership.</b> There is exactly one pool, and exactly one size
+ * authority for it: {@code MiliSchedulerImpl.init()} reads
+ * {@code RegionBalancerConfig.getThreadPoolSize()}.  No other subsystem may create it —
+ * {@link #init(int)} exists for the scheduler and for tests.  Once the pool exists it
+ * cannot be resized, so a later {@code init()} with a different size is discarded, and that
+ * discard is logged rather than silent, because a size mismatch means the caller has the
+ * wrong mental model of who owns this pool.
  */
 public final class WorkerRuntime {
 
     private WorkerRuntime() {}
+
+    private static final org.slf4j.Logger LOG =
+            com.mojang.logging.LogUtils.getClassLogger();
 
     private static volatile ExecutorService pool;
     private static volatile Semaphore inFlight;
@@ -73,9 +84,22 @@ public final class WorkerRuntime {
     }
 
     public static synchronized void init(int threads) {
-        if (pool != null) return;
-        shutdown = false;
         int size = Math.max(1, threads);
+        if (pool != null) {
+            // Mili start - fix: this used to be a silent no-op.  A second initializer asking
+            // for a different size is a real defect — it means some other subsystem believes
+            // it owns the pool — so the discarded request is reported instead of hidden.
+            // (The original instance of that was AsyncPathfinder sizing the pool from
+            // `async-pathfinding.thread-count`; it no longer creates the pool at all.)
+            if (size != WORKER_COUNT.get()) {
+                LOG.warn("[Mili] WorkerRuntime is already running with {} worker(s); the request "
+                                + "for {} was ignored — the pool is owned by the scheduler and cannot "
+                                + "be resized after creation.",
+                        WORKER_COUNT.get(), size);
+            }
+            return;
+        }
+        shutdown = false;
         WORKER_COUNT.set(size);
         THREAD_NAMER.set(0);
         inFlight = new Semaphore(Math.max(1, size * 8));

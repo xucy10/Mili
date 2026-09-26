@@ -54,12 +54,20 @@ public final class BudgetController {
         return next;
     }
 
-    /** Apply the current budget to every region runtime. */
+    /**
+     * Apply the current budget to every region runtime.
+     * <p>
+     * Mili start - fix: this used to call {@code runtime.budget().beginTick()} as well.
+     * It is invoked from the background {@code Mili-Scheduler-Driver} thread every 50&nbsp;ms,
+     * so it reset the consumed counter of every region from a thread that owns none of
+     * them — and 50&nbsp;ms is not a region tick boundary.  The tick boundary now belongs to
+     * {@link RegionBudget#beginTick(long)}, which only the region's own tick may open; here
+     * we only publish the new allowance.
+     */
     public static void apply(Collection<MiliRegionRuntime> runtimes) {
         long budget = currentBudgetNanos;
         for (MiliRegionRuntime runtime : runtimes) {
             runtime.budget().setBudgetNanos(budget);
-            runtime.budget().beginTick();
         }
     }
 

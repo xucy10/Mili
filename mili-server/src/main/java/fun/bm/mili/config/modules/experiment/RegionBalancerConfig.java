@@ -16,10 +16,12 @@ public class RegionBalancerConfig implements IConfigModule {
             注意：默认禁用以保留原版 tick 时序精确性，启用前请确认不影响跨区域红石机器""")
     public static boolean enabled = false;
 
+    @HotReloadUnsupported
     @ConfigInfo(name = "thread-pool-size", comments = """
-            区域 tick 的工作线程数量。
-            默认为 CPU 核心数 * 2。设为 0 则自动检测。
-            """)
+            Mili 全局工作线程池的线程数。
+            0 = 自动（CPU 核心数 / 2，至少 2）。
+            注意：该池是全局共享的——区域 tick 任务与异步寻路共用——创建后无法调整大小，
+            因此修改后需重启生效。""")
     public static int threadPoolSize = 0;
 
     @ConfigInfo(name = "history-window-size", comments = "用于负载计算平均的最近 tick 数量")
@@ -46,7 +48,18 @@ public class RegionBalancerConfig implements IConfigModule {
     @ConfigInfo(name = "merge-batch-hard-limit", comments = "低负载区域合并批次的硬上限")
     public static int mergeBatchHardLimit = 8;
 
+    /**
+     * The single authoritative size for Mili's shared worker pool.
+     * <p>
+     * Mili start - fix: this used to return "CPU * 2" while {@code MiliSchedulerImpl}
+     * hard-coded "CPU / 2", and neither consulted the other — so the user-configured value
+     * was never applied to anything.  {@code MiliSchedulerImpl.init()} now calls this,
+     * which makes it the one place the pool size is decided, and the default is aligned
+     * with what the scheduler actually used to do.
+     */
     public static int getThreadPoolSize() {
-        return threadPoolSize > 0 ? threadPoolSize : Runtime.getRuntime().availableProcessors() * 2;
+        return threadPoolSize > 0
+                ? threadPoolSize
+                : Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
     }
 }
