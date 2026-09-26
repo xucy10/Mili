@@ -47,7 +47,31 @@ paperweight {
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
+            // Mili start - do NOT "fix" this path. It is deliberately non-existent.
+            //
+            // The obvious reading is that this is a typo and should point at
+            // mili-server/minecraft-patches, where the hand-written patches actually live.
+            // It is not, and changing it breaks the build.
+            //
+            // The fork already applies that directory: paperweight derives a "minecraft"
+            // patchDir for the fork and that is what applies this patch set - its task is the
+            // one that prints "Applying: Rebrand to Luminol ...", and why the results land in
+            // mili-server/src/minecraft/java. Registering the same directory here applied the
+            // whole series a second time, and the second pass cannot succeed: by then an
+            // earlier patch has already rewritten one of patch 0001's context lines -
+            // 0056 (force-disable spark) turns
+            //   this.server.spark.enableEarlyIfRequested(); // Paper - spark
+            // into
+            //   if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol
+            // so 0001's hunk no longer matches, and `git am -3` aborts with "Repository lacks
+            // necessary blobs to fall back on 3-way merge".
+            //
+            // An inert stage and a working one both end with a green applyAllPatches, which is
+            // why the CI step "Verify Mili patches reached the generated sources" exists: it
+            // asserts the hooks really landed, so a regression here fails loudly instead of
+            // shipping a jar with none of Mili's patches and no visible error.
             patchesDir = rootDirectory.dir("mili-server/folia-patches")
+            // Mili end
             outputDir = rootDirectory.dir("folia-server")
         }
     }

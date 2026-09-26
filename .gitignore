@@ -23,3 +23,6 @@ mili-rust/src/rust/target
 # Paperweight auto-clones Minecraft resources/data into these dirs during build
 # They contain their own .git repos which get mistaken for submodules
 mili-server/src/minecraft/resources
+
+# Agent working state (task list, local notes). Useful locally, not project source.
+.workbuddy/
