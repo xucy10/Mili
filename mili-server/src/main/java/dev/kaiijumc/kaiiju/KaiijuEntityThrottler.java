@@ -17,21 +17,26 @@
 
 package dev.kaiijumc.kaiiju;
 
+import fun.bm.mili.scheduler.EntityTickDecision;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.world.entity.Entity;
 
+/**
+ * Entity tick limiter.
+ * <p>
+ * fix.md §12: {@code tickLimiterShouldSkip} is on the entity tick hot path, so it must
+ * not allocate. It previously returned a freshly built {@code EntityThrottlerReturn} for
+ * every entity every tick; it now returns an {@code int} verdict from
+ * {@link EntityTickDecision} ({@code TICK}/{@code SKIP}/{@code REMOVE}), which is
+ * allocation-free.
+ */
 public class KaiijuEntityThrottler {
     private static class TickInfo {
         int currentTick;
         int continueFrom;
         int toTick;
         int toRemove;
-    }
-
-    public static class EntityThrottlerReturn {
-        public boolean skip;
-        public boolean remove;
     }
 
     private final Object2ObjectOpenHashMap<KaiijuEntityLimits.EntityLimit, TickInfo> entityLimitTickInfoMap = new Object2ObjectOpenHashMap<>();
@@ -42,39 +47,38 @@ public class KaiijuEntityThrottler {
         }
     }
 
-    public EntityThrottlerReturn tickLimiterShouldSkip(Entity entity) {
-        EntityThrottlerReturn retVal = new EntityThrottlerReturn();
-        if (entity.isRemoved()) return retVal;
+    /**
+     * Decide what to do with this entity this tick.
+     *
+     * @return {@link EntityTickDecision#TICK}, {@link EntityTickDecision#SKIP} or
+     *         {@link EntityTickDecision#REMOVE}; zero allocation (fix.md §12)
+     */
+    public int tickLimiterShouldSkip(Entity entity) {
+        if (entity.isRemoved()) return EntityTickDecision.TICK;
         KaiijuEntityLimits.EntityLimit entityLimit = KaiijuEntityLimits.getEntityLimit(entity);
 
-        if (entityLimit != null) {
-            TickInfo tickInfo = entityLimitTickInfoMap.computeIfAbsent(entityLimit, el -> {
-                TickInfo newTickInfo = new TickInfo();
-                newTickInfo.toTick = entityLimit.limit();
-                return newTickInfo;
-            });
-
-            tickInfo.currentTick++;
-            if (tickInfo.currentTick <= tickInfo.toRemove && entityLimit.removal() > 0) {
-                retVal.skip = false;
-                retVal.remove = true;
-                return retVal;
-            }
-
-            if (tickInfo.currentTick < tickInfo.continueFrom) {
-                retVal.skip = true;
-                return retVal;
-            }
-            if (tickInfo.currentTick - tickInfo.continueFrom < tickInfo.toTick) {
-                retVal.skip = false;
-                return retVal;
-            }
-            retVal.skip = true;
-            return retVal;
-        } else {
-            retVal.skip = false;
-            return retVal;
+        if (entityLimit == null) {
+            return EntityTickDecision.TICK;
         }
+
+        TickInfo tickInfo = entityLimitTickInfoMap.computeIfAbsent(entityLimit, el -> {
+            TickInfo newTickInfo = new TickInfo();
+            newTickInfo.toTick = entityLimit.limit();
+            return newTickInfo;
+        });
+
+        tickInfo.currentTick++;
+        if (tickInfo.currentTick <= tickInfo.toRemove && entityLimit.removal() > 0) {
+            return EntityTickDecision.REMOVE;
+        }
+
+        if (tickInfo.currentTick < tickInfo.continueFrom) {
+            return EntityTickDecision.SKIP;
+        }
+        if (tickInfo.currentTick - tickInfo.continueFrom < tickInfo.toTick) {
+            return EntityTickDecision.TICK;
+        }
+        return EntityTickDecision.SKIP;
     }
 
     public void tickLimiterFinish(RegionizedWorldData regionizedWorldData) {

@@ -35,7 +35,7 @@ public final class AutoUpdateHelper {
     private final Logger LOGGER = LogUtils.getClassLogger();
     private final Gson GSON = new Gson();
 
-    private final String GITHUB_API_BASE = "https://api.github.com/repos/LuminolMC/Luminol";
+    private final String GITHUB_API_BASE = "https://api.github.com/repos/xucy10/Mili";
     private final Path AUTO_UPDATE_DIR = Path.of("auto_update");
     private final Path CORE_PATH_FILE = AUTO_UPDATE_DIR.resolve("core.path");
     private final Path LUMINOL_UPDATE_DIR = AUTO_UPDATE_DIR.resolve("luminol");

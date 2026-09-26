@@ -1,617 +1,345 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
-import fun.bm.mili.utils.picontrol.CatchUpController;
-import org.jetbrains.annotations.NotNull;
+import fun.bm.mili.scheduler.RegionOwnership;
+import fun.bm.mili.scheduler.SubmissionResult;
+import fun.bm.mili.scheduler.TaskController;
+import fun.bm.mili.scheduler.TaskHandle;
+import fun.bm.mili.scheduler.TaskState;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Adaptive Region Balancer.
  * <p>
- * Replaces the per-region dedicated-thread model with a fixed-size thread pool
- * and priority-based scheduling.  Regions are ticked according to their
- * real-time load: heavy regions get more CPU time, idle regions are deferred.
+ * Replaces the per-region dedicated-thread model with priority-based admission into the
+ * Mili runtime.  Regions are prioritised by their real-time load: heavy regions get
+ * scheduled first, idle regions are deferred or merged.
  * <p>
- * <b>Design invariant:</b> this class does NOT touch game state.  It only
- * schedules {@code Runnable} tasks that wrap the original Folia tick logic.
- * All game logic continues to run on the region's own thread context.
+ * <b>Design invariant (fix.md §2, §3, §6):</b> region tick work mutates Minecraft state,
+ * so it may only run on the thread that owns the region.  This class therefore never
+ * hands region work to its own worker threads and never falls back to "the caller runs
+ * it".  When work cannot be scheduled the answer is a {@link SubmissionResult}.
+ * <pre>
+ *     Caller -> Mili Scheduler -> Region Queue -> (region's owning thread) -> Execute
+ * </pre>
+ * Pure, snapshot-based computation is the only thing allowed on
+ * {@code WorkerRuntime}; it never touches game state.
  */
 public final class RegionBalancer {
 
     private RegionBalancer() {}
 
-    // ---------- Task model ----------
-
-    public enum TaskState {
-        UNKNOWN,
-        QUEUED,
-        RUNNING,
-        MERGED,
-        COMPLETED,
-        FAILED,
-        CANCELLED
-    }
-
-    private static final class TaskRecord {
-        final long taskUid;
-        final UUID taskUuid; // Mili - globally unique task UUID for cross-region parameter passing
-        final Object scheduleRef;
-        final Runnable work;
-        final long tickCount;
-        volatile TaskState state = TaskState.QUEUED;
-        volatile String trace = "queued";
-        volatile int retryCount;
-        volatile boolean cancelRequested;
-        volatile long updatedNanos;
-
-        TaskRecord(long taskUid, UUID taskUuid, Object scheduleRef, Runnable work, long tickCount) {
-            this.taskUid = taskUid;
-            this.taskUuid = taskUuid;
-            this.scheduleRef = scheduleRef;
-            this.work = work;
-            this.tickCount = tickCount;
-            this.updatedNanos = System.nanoTime();
-        }
-    }
-
     /**
-     * A single region tick invocation.
+     * Hard bound on the pending task table. fix.md §3: capacity pressure must produce
+     * DEFERRED / MERGED / REJECTED, never a synchronous fallback.
      */
-    public static final class RegionTask implements Comparable<RegionTask> {
-        // Region schedule reference (opaque, only used as a key)
-        final Object scheduleRef;
-        // The actual work: calls schedule.tickRegion(...)
-        final Runnable work;
-        // Rust-backed task UID for diagnostics and thread-side processing context.
-        final long taskUid;
-        // Mili start - globally unique task UUID for cross-region parameter passing
-        final UUID taskUuid;
-        // Mili end
-        // When this task was first queued
-        final long enqueueNanos;
-        // Estimated priority at enqueue time (updated when re-scored)
-        volatile double priority;
-        // How many ticks behind
-        final long tickCount;
-        // Monotonically increasing sequence to break ties (FIFO)
-        final long seq;
+    private static final int MAX_QUEUE_CAPACITY = 4096;
 
-        RegionTask(Object scheduleRef, Runnable work, long tickCount, long seq) {
-            this(scheduleRef, work, tickCount, seq, nextTaskUid(), nextTaskUuid());
-        }
-
-        private RegionTask(Object scheduleRef, Runnable work, long tickCount, long seq, long taskUid) {
-            this(scheduleRef, work, tickCount, seq, taskUid, nextTaskUuid());
-        }
-
-        // Mili start - retry constructor: reuses existing taskUuid (no duplicate UUID)
-        private RegionTask(Object scheduleRef, Runnable work, long tickCount, long seq, long taskUid, UUID taskUuid) {
-            this.scheduleRef = scheduleRef;
-            this.work = work;
-            this.tickCount = tickCount;
-            this.enqueueNanos = System.nanoTime();
-            this.priority = 0.0;
-            this.seq = seq;
-            this.taskUid = taskUid;
-            this.taskUuid = taskUuid;
-        }
-        // Mili end
-
-        @Override
-        public int compareTo(@NotNull RegionTask o) {
-            // Higher priority first
-            int cmp = Double.compare(o.priority, this.priority);
-            if (cmp != 0) return cmp;
-            // Tie-break by sequence (older first to avoid starvation)
-            return Long.compare(this.seq, o.seq);
-        }
-    }
+    /** Bounded wait used by {@link #submitAndWait}. */
+    private static final long DEFAULT_WAIT_MILLIS = 50L;
 
     // ---------- State ----------
 
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
-    private static volatile ExecutorService workerPool;
-    // Bounded queue to prevent OOM under extreme load.
-    // When full, submit() rejects and falls back to synchronous execution.
-    private static final int MAX_QUEUE_CAPACITY = 4000;
-    private static final PriorityBlockingQueue<RegionTask> taskQueue =
-            new PriorityBlockingQueue<>(256);
-    private static final ConcurrentHashMap<Integer, AtomicLong> lastTickTime =
-            new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Long, TaskRecord> taskRecords = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Long, RegionTask> pendingTasks = new ConcurrentHashMap<>();
-    // Lock-free queue depth counter (avoids PriorityBlockingQueue.size() O(n) cost)
-    private static final AtomicInteger queueDepth = new AtomicInteger(0);
-    // Overflow counter — tasks rejected because queue was full
-    private static final LongAdder queueOverflowCount = new LongAdder();
-    private static final AtomicLong sequence = new AtomicLong(0);
     private static final AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    // Mili start - fix: periodic cleanup of completed task records to prevent OOM
-    private static final long TASK_RECORD_TTL_NS = 60_000_000_000L; // 60 seconds
-    private static volatile long lastRecordCleanupNanos = 0;
-    private static final long RECORD_CLEANUP_INTERVAL_NS = 30_000_000_000L; // 30 seconds
-    // Mili end
+    private static final AtomicLong TASK_SEQ = new AtomicLong(0);
+
+    private static final AtomicLong ACCEPTED = new AtomicLong();
+    private static final AtomicLong MERGED = new AtomicLong();
+    private static final AtomicLong DEFERRED = new AtomicLong();
+    private static final AtomicLong REJECTED = new AtomicLong();
+    private static final AtomicLong TIMED_OUT = new AtomicLong();
 
     /**
-     * Initialize the balancer.  Safe to call multiple times; idempotent.
+     * Initialize the balancer. Safe to call multiple times; idempotent.
      */
     public static void init() {
         if (!RegionBalancerConfig.enabled) return;
         if (initialized.getAndSet(true)) return;
 
-        // Mili start - initialize task UUID registry
+        shutdown.set(false);
+
+        // Task UUID registry (kept for cross-region parameter passing).
         RegionTaskIdRegistry.init();
-        // Mili end
 
-        // Mili start - PI controller for catch-up limiting
-        CatchUpController.init();
-        // Mili end
+        // The runtime that actually schedules and drains region work.
+        fun.bm.mili.scheduler.MiliSchedulerImpl.init();
 
-        // Mili start - DAG scheduler and governor config sync
-        syncDagAndGovernorConfig();
-        // Mili end
-
-        int poolSize = RegionBalancerConfig.getThreadPoolSize();
-        workerPool = Executors.newFixedThreadPool(poolSize, r -> {
-            Thread t = new Thread(r, "RegionBalancer-Worker");
-            t.setDaemon(true);
-            return t;
-        });
-
-        // Start a scheduler thread that continuously pulls tasks from the queue
-        // and submits them to the worker pool.  The worker pool handles actual
-        // execution; this thread only does dispatching.
-        Thread dispatcher = new Thread(RegionBalancer::dispatchLoop, "RegionBalancer-Dispatcher");
-        dispatcher.setDaemon(true);
-        dispatcher.start();
-
-        // Mili start - Adaptive TPS
-        // Mutual exclusion: when the TickDurationGovernor is enabled it owns
-        // TIME_BETWEEN_TICKS — two writers would fight every second and the
-        // effective interval would oscillate randomly.
-        if (RegionBalancerConfig.governorEnabled) {
-            com.mojang.logging.LogUtils.getClassLogger().info(
-                    "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
-        } else {
-            fun.bm.mili.utils.AdaptiveTPSManager.start();
-        }
-        // Mili end - Adaptive TPS
+        // Adaptive TPS tracking.
+        AdaptiveTPSManager.start();
 
         com.mojang.logging.LogUtils.getClassLogger().info(
-                "RegionBalancer initialized with {} worker threads", poolSize);
-    }
-
-    private static final AtomicLong taskUidGen = new AtomicLong(0);
-
-    private static long nextTaskUid() {
-        return taskUidGen.incrementAndGet();
-    }
-
-    // Mili start - UUID allocation via RegionTaskIdRegistry
-    private static UUID nextTaskUuid() {
-        return RegionTaskIdRegistry.allocateAndRegister("region-tick", null);
-    }
-    // Mili end
-
-    static MergePolicy getRustMergePolicy() {
-        return MergePolicy.defaultPolicy();
-    }
-
-    private static int getRustNetworkHint(int defaultBatch) {
-        return defaultBatch;
-    }
-
-    private static final class MergePolicy {
-        final int batchSize;
-        final int maxMergeCount;
-        final boolean allowAggressiveMerging;
-
-        private MergePolicy(int batchSize, int maxMergeCount, boolean allowAggressiveMerging) {
-            this.batchSize = batchSize;
-            this.maxMergeCount = maxMergeCount;
-            this.allowAggressiveMerging = allowAggressiveMerging;
-        }
-
-        static MergePolicy defaultPolicy() {
-            return new MergePolicy(4, 4, false);
-        }
-    }
-
-    private static void dispatchLoop() {
-        while (!shutdown.get()) {
-            try {
-                RegionTask task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
-                if (task == null) continue;
-                queueDepth.decrementAndGet();
-
-                // Re-score priority right before execution to avoid starvation
-                long overdue = System.nanoTime() - task.enqueueNanos;
-                double starvationBoost = Math.min(0.3, overdue / 100_000_000.0); // 100ms cap
-                task.priority += starvationBoost;
-
-                // Mili start - Region dynamic merge: batch low-load regions
-                RegionLoadMonitor.RegionLoadSnapshot snap = RegionLoadMonitor.getSnapshot(task.scheduleRef);
-                if (snap.isLowLoad()) {
-                    List<RegionTask> mergeList = new ArrayList<>();
-                    mergeList.add(task);
-                    MergePolicy policy = getRustMergePolicy();
-                    int mergeBatchSize = Math.min(
-                            RegionBalancerConfig.mergeBatchHardLimit,
-                            policy.allowAggressiveMerging
-                                    ? Math.max(policy.batchSize, 2)
-                                    : Math.min(RegionBalancerConfig.mergeBatchSoftLimit, policy.batchSize)
-                    );
-                    mergeBatchSize = Math.max(mergeBatchSize, getRustNetworkHint(mergeBatchSize));
-                    if (snap.avgTickNanos() <= RegionBalancerConfig.lowLoadThresholdMs * 1_000_000.0 * 0.5) {
-                        mergeBatchSize = Math.max(mergeBatchSize, Math.min(RegionBalancerConfig.mergeBatchHardLimit, policy.maxMergeCount));
-                    }
-                    while (mergeList.size() < mergeBatchSize) {
-                        RegionTask next = taskQueue.poll();
-                        if (next == null) break;
-                        RegionLoadMonitor.RegionLoadSnapshot nextSnap = RegionLoadMonitor.getSnapshot(next.scheduleRef);
-                        if (nextSnap.isLowLoad()) {
-                            // Consumed by the merge — decrement the depth counter
-                            // (only the put-back path below leaves it untouched)
-                            queueDepth.decrementAndGet();
-                            mergeList.add(next);
-                        } else {
-                            taskQueue.add(next); // high-load, put back
-                            break;
-                        }
-                    }
-                    if (mergeList.size() > 1) {
-                        final List<Runnable> works = new ArrayList<>();
-                        for (RegionTask t : mergeList) works.add(t.work);
-                        workerPool.execute(() -> {
-                            for (Runnable w : works) {
-                                try {
-                                    w.run();
-                                }
-                                catch (Throwable ex) {
-                                    com.mojang.logging.LogUtils.getClassLogger().error(
-                                            "Merged region task failed", ex);
-                                }
-                            }
-                            for (RegionTask t : mergeList) {
-                                markTaskState(t, TaskState.COMPLETED, "completed");
-                            }
-                        });
-                        continue;
-                    }
-                }
-                // Mili end - Region dynamic merge
-
-                workerPool.execute(() -> {
-                    try {
-                        markTaskState(task, TaskState.RUNNING, "running");
-                        task.work.run();
-                        markTaskState(task, TaskState.COMPLETED, "completed");
-                    } catch (Throwable ex) {
-                        markTaskState(task, TaskState.FAILED, "failed");
-                        com.mojang.logging.LogUtils.getClassLogger().error(
-                                "RegionBalancer task failed", ex);
-                    }
-                });
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Throwable ex) {
-                // Mili start - fix: catch Throwable (not just Exception) to prevent dispatcher thread death
-                // An Error (e.g. OOM) would kill the dispatcher thread permanently,
-                // causing all future submit() calls to queue forever without execution.
-                com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer dispatch loop error (survived)", ex);
-                // Mili end
-            }
-        }
+                "RegionBalancer initialized (Mili runtime scheduler)");
     }
 
     // ---------- Public API ----------
 
     /**
      * Submit a region tick task.
+     * <p>
+     * fix.md §3: this never executes {@code work} on the calling thread.  A full queue
+     * yields {@link SubmissionResult#DEFERRED} or {@link SubmissionResult#REJECTED}.
      *
      * @param scheduleRef the region schedule (used as a key)
      * @param tickCount   how many ticks to run
      * @param work        the actual tick work (must call the original tickRegion)
+     * @return what the scheduler decided
      */
-    public static void submit(Object scheduleRef, long tickCount, Runnable work) {
-        if (!RegionBalancerConfig.enabled || workerPool == null) {
-            // Mili start - fix: catch exceptions in fallback synchronous execution to prevent server crash
-            try {
-                work.run();
-            } catch (Throwable ex) {
-                com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer fallback synchronous execution failed", ex);
-            }
-            // Mili end
-            return;
+    public static SubmissionResult submit(Object scheduleRef, long tickCount, Runnable work) {
+        if (work == null) return SubmissionResult.REJECTED;
+
+        if (!isActive()) {
+            // Feature disabled: there is no balancer at all, so the caller keeps its
+            // original behaviour. This is the config-off path, NOT backpressure.
+            runUnbalanced(work, "disabled");
+            return SubmissionResult.ACCEPTED;
         }
 
-        // Bounded queue: reject when full to prevent OOM
-        if (queueDepth.get() >= MAX_QUEUE_CAPACITY) {
-            queueOverflowCount.increment();
-            // Fallback to synchronous execution — safer than unbounded queue growth
-            try {
-                work.run();
-            } catch (Throwable ex) {
-                com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer overflow-fallback execution failed", ex);
+        long taskUid = TASK_SEQ.incrementAndGet();
+        UUID taskUuid = RegionTaskIdRegistry.allocateAndRegister("region-tick", scheduleRef);
+
+        // Backpressure before admission (fix.md §3).
+        if (TaskController.liveCount() >= MAX_QUEUE_CAPACITY) {
+            SubmissionResult merged = tryMerge(scheduleRef, work);
+            if (merged == SubmissionResult.MERGED) {
+                MERGED.incrementAndGet();
+                RegionTaskIdRegistry.unregister(taskUuid);
+                return SubmissionResult.MERGED;
             }
-            return;
+            DEFERRED.incrementAndGet();
+            RegionTaskIdRegistry.unregister(taskUuid);
+            return SubmissionResult.DEFERRED;
         }
 
-        int key = System.identityHashCode(scheduleRef);
-        AtomicLong lastTick = lastTickTime.computeIfAbsent(key, k -> new AtomicLong(0));
-        long last = lastTick.get();
+        SubmissionResult result = fun.bm.mili.scheduler.MiliSchedulerImpl.instance()
+                .trySubmit(scheduleRef, wrap(taskUid, taskUuid, work), mergeKey(scheduleRef, tickCount));
 
-        double priority = RegionLoadMonitor.computePriority(scheduleRef, last);
-
-        RegionTask task = new RegionTask(scheduleRef, work, tickCount, sequence.incrementAndGet());
-        task.priority = priority;
-        registerTask(task);
-        taskQueue.add(task);
-        queueDepth.incrementAndGet();
+        switch (result) {
+            case ACCEPTED -> ACCEPTED.incrementAndGet();
+            case MERGED -> {
+                MERGED.incrementAndGet();
+                RegionTaskIdRegistry.unregister(taskUuid);
+            }
+            case DEFERRED -> {
+                DEFERRED.incrementAndGet();
+                RegionTaskIdRegistry.unregister(taskUuid);
+            }
+            default -> {
+                REJECTED.incrementAndGet();
+                RegionTaskIdRegistry.unregister(taskUuid);
+            }
+        }
+        return result;
     }
 
     /**
      * Submit a region tick task and block until it completes.
-     * This is the "real thread pool scheduling" entry point:
-     * the per-region dedicated thread hands off the tick work to the
-     * shared thread pool and waits for it to finish.
+     * <p>
+     * fix.md §2.1: the decision is made by asking whether the calling thread is the
+     * region's current legal execution thread.
+     * <pre>
+     *     if (region.isOwnedByCurrentThread()) { work.run(); return; }
+     *     scheduler.submit(region, work)  ...  bounded wait
+     * </pre>
+     * On timeout the task is <b>cancelled</b> (token + interrupt). It is never executed
+     * inline on a thread that does not own the region.
+     *
+     * @return {@code true} if the work ran to completion
      */
-    public static void submitAndWait(Object scheduleRef, long tickCount, Runnable work) {
-        if (!RegionBalancerConfig.enabled || workerPool == null) {
-            // Mili start - fix: catch exceptions in fallback synchronous execution
-            try {
-                work.run();
-            } catch (Throwable ex) {
-                com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer submitAndWait fallback failed", ex);
-            }
-            // Mili end
-            return;
-        }
+    public static boolean submitAndWait(Object scheduleRef, long tickCount, Runnable work) {
+        if (work == null) return false;
 
-        RegionLoadMonitor.beforeTick(scheduleRef);
-        final long begin = System.nanoTime();
-        // Mili start - fix: catch exceptions to prevent crash propagation
-        try {
-            work.run(); // execute on the calling thread to preserve region context
-        } catch (Throwable ex) {
-            com.mojang.logging.LogUtils.getClassLogger().error(
-                    "RegionBalancer submitAndWait execution failed", ex);
-        }
-        // Mili end
-        RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
-        markTicked(scheduleRef);
-    }
-
-    private static void registerTask(RegionTask task) {
-        // Mili start - update Registry state for this task UUID
-        RegionTaskIdRegistry.updateState(task.taskUuid, "queued");
-        // Mili end
-        TaskRecord record = taskRecords.computeIfAbsent(task.taskUid, id ->
-                new TaskRecord(id, task.taskUuid, task.scheduleRef, task.work, task.tickCount));
-        record.state = TaskState.QUEUED;
-        record.trace = "queued:" + task.seq;
-        record.updatedNanos = System.nanoTime();
-        pendingTasks.put(task.taskUid, task);
-    }
-
-    private static void markTaskState(RegionTask task, TaskState state, String trace) {
-        TaskRecord record = taskRecords.computeIfAbsent(task.taskUid, id ->
-                new TaskRecord(id, task.taskUuid, task.scheduleRef, task.work, task.tickCount));
-        record.state = state;
-        record.trace = trace + ":" + task.seq;
-        record.updatedNanos = System.nanoTime();
-        // Mili start - update Registry state and unregister on terminal states
-        RegionTaskIdRegistry.updateState(task.taskUuid, state.name().toLowerCase(java.util.Locale.ROOT));
-        if (state == TaskState.COMPLETED || state == TaskState.FAILED || state == TaskState.CANCELLED) {
-            pendingTasks.remove(task.taskUid);
-            RegionTaskIdRegistry.unregister(task.taskUuid);
-        }
-        // Mili end
-        // Mili start - fix: periodic cleanup of stale task records to prevent OOM
-        maybeCleanupStaleTaskRecords();
-        // Mili end
-    }
-
-    public static TaskState getTaskState(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        return record != null ? record.state : TaskState.UNKNOWN;
-    }
-
-    // Mili start - get task UUID by taskUid
-    public static UUID getTaskUuid(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        return record != null ? record.taskUuid : null;
-    }
-    // Mili end
-
-    public static String getTaskTrace(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        return record != null ? record.trace : "unknown";
-    }
-
-    public static boolean cancelTask(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        if (record == null) {
-            return false;
-        }
-        record.cancelRequested = true;
-        record.state = TaskState.CANCELLED;
-        record.trace = "cancelled";
-        record.updatedNanos = System.nanoTime();
-        pendingTasks.remove(taskUid);
-        // Mili start - unregister from global UUID registry
-        RegionTaskIdRegistry.unregister(record.taskUuid);
-        // Mili end
-        return true;
-    }
-
-    public static boolean retryTask(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        if (record == null || record.cancelRequested || record.state == TaskState.CANCELLED) {
-            return false;
-        }
-        if (record.state == TaskState.RUNNING) {
-            return false;
-        }
-        record.retryCount++;
-        record.cancelRequested = false;
-        record.state = TaskState.QUEUED;
-        record.trace = "retried:" + record.retryCount;
-        record.updatedNanos = System.nanoTime();
-
-        // Mili start - re-register UUID for retry (no duplicate — reuse existing)
-        RegionTaskIdRegistry.register(record.taskUuid, "region-tick-retry", record.scheduleRef);
-        // Mili end
-
-        if (!RegionBalancerConfig.enabled || workerPool == null) {
-            // Mili start - fix: catch exceptions in fallback retry execution
-            try {
-                record.work.run();
-            } catch (Throwable ex) {
-                com.mojang.logging.LogUtils.getClassLogger().error(
-                        "RegionBalancer retry fallback failed", ex);
-            }
-            // Mili end
-            record.state = TaskState.COMPLETED;
-            record.trace = "completed:retry";
-            // Mili start - unregister on inline completion
-            RegionTaskIdRegistry.unregister(record.taskUuid);
-            // Mili end
+        if (!isActive()) {
+            runUnbalanced(work, "disabled");
             return true;
         }
 
-        // Mili start - retry reuses the same taskUuid (no new UUID allocated)
-        RegionTask retryTask = new RegionTask(record.scheduleRef, record.work, record.tickCount, sequence.incrementAndGet(), taskUid, record.taskUuid);
-        // Mili end
-        retryTask.priority = RegionLoadMonitor.computePriority(record.scheduleRef, System.nanoTime());
-        registerTask(retryTask);
-        taskQueue.add(retryTask);
-        return true;
+        // fix.md §2.1 — ownership first.
+        if (RegionOwnership.isOwnedByCurrentThread(scheduleRef)) {
+            RegionLoadMonitor.beforeTick(scheduleRef);
+            long begin = System.nanoTime();
+            try {
+                work.run();
+                return true;
+            } finally {
+                RegionLoadMonitor.afterTick(scheduleRef, System.nanoTime() - begin);
+                markTicked(scheduleRef);
+            }
+        }
+
+        long taskUid = TASK_SEQ.incrementAndGet();
+        UUID taskUuid = RegionTaskIdRegistry.allocateAndRegister("region-tick", scheduleRef);
+        Runnable wrapped = wrap(taskUid, taskUuid, work);
+
+        boolean completed = fun.bm.mili.scheduler.MiliSchedulerImpl.instance()
+                .submitAndWait(scheduleRef, wrapped, DEFAULT_WAIT_MILLIS, TimeUnit.MILLISECONDS);
+
+        if (!completed) {
+            // Bounded wait expired: the task was cancelled for real (fix.md §4).
+            TIMED_OUT.incrementAndGet();
+            RegionTaskIdRegistry.updateState(taskUuid, "cancelled");
+        }
+        RegionTaskIdRegistry.unregister(taskUuid);
+        return completed;
+    }
+
+    private static boolean isActive() {
+        return RegionBalancerConfig.enabled && initialized.get() && !shutdown.get();
+    }
+
+    /** Feature-off path: run inline because no balancer exists at all. */
+    private static void runUnbalanced(Runnable work, String reason) {
+        try {
+            work.run();
+        } catch (Throwable ex) {
+            com.mojang.logging.LogUtils.getClassLogger().error(
+                    "RegionBalancer inline execution failed (" + reason + ")", ex);
+        }
+    }
+
+    private static Runnable wrap(long taskUid, UUID taskUuid, Runnable work) {
+        return () -> {
+            RegionTaskIdRegistry.updateState(taskUuid, "running");
+            try {
+                work.run();
+                RegionTaskIdRegistry.updateState(taskUuid, "completed");
+            } catch (Throwable t) {
+                RegionTaskIdRegistry.updateState(taskUuid, "failed");
+                throw t;
+            }
+        };
+    }
+
+    private static Object mergeKey(Object scheduleRef, long tickCount) {
+        return "region-tick:" + fun.bm.mili.scheduler.RegionIdRegistry.idOf(scheduleRef) + ":" + tickCount;
+    }
+
+    /** Fold work into an equivalent pending task when the queue is saturated. */
+    private static SubmissionResult tryMerge(Object scheduleRef, Runnable work) {
+        long regionId = fun.bm.mili.scheduler.RegionIdRegistry.idOf(scheduleRef);
+        for (TaskHandle handle : TaskController.liveTasksForRegion(regionId)) {
+            if (handle.tryMerge(work)) {
+                return SubmissionResult.MERGED;
+            }
+        }
+        return SubmissionResult.REJECTED;
+    }
+
+    // ---------- Diagnostics ----------
+
+    public static TaskState getTaskState(long taskUid) {
+        TaskHandle handle = TaskController.get(taskUid);
+        return handle != null ? handle.state() : TaskState.UNKNOWN;
+    }
+
+    public static UUID getTaskUuid(long taskUid) {
+        TaskHandle handle = TaskController.get(taskUid);
+        return handle != null ? handle.taskUuid() : null;
+    }
+
+    public static String getTaskTrace(long taskUid) {
+        TaskHandle handle = TaskController.get(taskUid);
+        if (handle == null) return "unknown";
+        return handle.state().name().toLowerCase(java.util.Locale.ROOT) + ":" + handle.regionId();
+    }
+
+    /**
+     * Cancel a task for real: token flipped, executing thread interrupted, state moved to
+     * CANCELLED (fix.md §4 and §5).
+     */
+    public static boolean cancelTask(long taskUid) {
+        TaskHandle handle = TaskController.get(taskUid);
+        if (handle == null) return false;
+        boolean cancelled = handle.cancel("cancelled-by-balancer");
+        if (cancelled) TaskController.release(handle);
+        return cancelled;
+    }
+
+    /**
+     * Retry a task. Unlike the previous implementation this never runs the work inline —
+     * a retry is just another submission and obeys the same backpressure rules.
+     */
+    public static boolean retryTask(long taskUid) {
+        TaskHandle handle = TaskController.get(taskUid);
+        if (handle == null) return false;
+        if (handle.state() == TaskState.CANCELLED || handle.state() == TaskState.RUNNING) return false;
+
+        if (!isActive()) {
+            REJECTED.incrementAndGet();
+            return false;
+        }
+
+        SubmissionResult result = fun.bm.mili.scheduler.MiliSchedulerImpl.instance()
+                .trySubmit(handle.region(), handle.work(), mergeKey(handle.region(), 0L));
+        if (result == SubmissionResult.ACCEPTED || result == SubmissionResult.MERGED) {
+            ACCEPTED.incrementAndGet();
+            return true;
+        }
+        REJECTED.incrementAndGet();
+        return false;
     }
 
     public static void clearTaskTrace(long taskUid) {
-        TaskRecord record = taskRecords.get(taskUid);
-        if (record != null) {
-            record.trace = "cleared";
-        }
+        TaskController.release(TaskController.get(taskUid));
     }
-
-    // Mili start - fix: periodic cleanup of stale task records to prevent OOM
-    private static void maybeCleanupStaleTaskRecords() {
-        long now = System.nanoTime();
-        long last = lastRecordCleanupNanos;
-        if (now - last < RECORD_CLEANUP_INTERVAL_NS) return;
-        lastRecordCleanupNanos = now;
-
-        taskRecords.entrySet().removeIf(entry -> {
-            TaskRecord rec = entry.getValue();
-            return (rec.state == TaskState.COMPLETED || rec.state == TaskState.FAILED || rec.state == TaskState.CANCELLED)
-                    && (now - rec.updatedNanos > TASK_RECORD_TTL_NS);
-        });
-    }
-    // Mili end
 
     public static void markTicked(Object scheduleRef) {
         if (!RegionBalancerConfig.enabled) return;
-        int key = System.identityHashCode(scheduleRef);
-        AtomicLong last = lastTickTime.get(key);
-        if (last != null) {
-            last.set(System.nanoTime());
-        }
+        fun.bm.mili.scheduler.MiliRegionRuntime runtime =
+                fun.bm.mili.scheduler.MiliSchedulerImpl.runtimeFor(scheduleRef);
+        if (runtime != null) runtime.markTicked();
     }
 
     public static int pendingTasks() {
-        // Use O(1) atomic counter instead of O(n) PriorityBlockingQueue.size()
-        return Math.max(0, queueDepth.get());
+        return TaskController.liveCount();
     }
 
     public static int activeWorkers() {
-        if (workerPool instanceof ThreadPoolExecutor tpe) {
-            return tpe.getActiveCount();
-        }
-        return -1;
+        return fun.bm.mili.scheduler.WorkerRuntime.poolSize();
+    }
+
+    /** Run one scheduler round. Called by the runtime driver / perf commands. */
+    public static void tick() {
+        if (!isActive()) return;
+        fun.bm.mili.scheduler.MiliSchedulerImpl.instance().tick();
     }
 
     /**
-     * Sync config values to subsystem statics.
-     * Called after config load, before subsystem init.
+     * Drain everything queued for a region. Only legal on the region's owning thread.
      */
-    private static void syncDagAndGovernorConfig() {
-        // DAG scheduler config
-        fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_BATCH_SIZE = RegionBalancerConfig.dagBatchSize;
-        fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_WAVES = RegionBalancerConfig.dagMaxWaves;
-
-        // Governor config
-        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.TARGET_INTERVAL_NS = RegionBalancerConfig.governorTargetIntervalNs;
-        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.MIN_INTERVAL_NS = RegionBalancerConfig.governorMinIntervalNs;
-        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.MAX_INTERVAL_NS = RegionBalancerConfig.governorMaxIntervalNs;
-        fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.ENABLED = RegionBalancerConfig.governorEnabled;
-
-        // PI controller config
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.KP = RegionBalancerConfig.piKp;
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.KI = RegionBalancerConfig.piKi;
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_CATCHUP_TICKS = RegionBalancerConfig.piMaxCatchup;
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_TICK_DURATION_BUDGET_NS = RegionBalancerConfig.piCpuBudgetMs * 1_000_000L;
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_QUEUE_DEPTH = RegionBalancerConfig.piMaxQueueDepth;
-        fun.bm.mili.utils.picontrol.CatchUpController.Config.MAX_WORKER_UTILIZATION = RegionBalancerConfig.piMaxWorkerUtil;
+    public static int drainOwned(Object scheduleRef, long budgetNanos) {
+        if (!isActive()) return 0;
+        return fun.bm.mili.scheduler.MiliSchedulerImpl.instance()
+                .drainOwned(scheduleRef, budgetNanos);
     }
 
-    /**
-     * Get performance statistics for the region balancer.
-     */
+    /** Get performance statistics for the region balancer. */
     public static Map<String, Object> getStats() {
-        Map<String, Object> stats = new LinkedHashMap<>();
+        Map<String, Object> stats = new java.util.LinkedHashMap<>();
         stats.put("pending_tasks", pendingTasks());
         stats.put("active_workers", activeWorkers());
         stats.put("initialized", initialized.get());
         stats.put("shutdown", shutdown.get());
-        stats.put("queue_overflows", queueOverflowCount.sum());
-        // Mili start - include UUID registry and PI controller stats
+        stats.put("accepted", ACCEPTED.get());
+        stats.put("merged", MERGED.get());
+        stats.put("deferred", DEFERRED.get());
+        stats.put("rejected", REJECTED.get());
+        stats.put("timed_out", TIMED_OUT.get());
         stats.putAll(RegionTaskIdRegistry.getStats());
-        stats.put("catch_up_controller", CatchUpController.getStats());
-        // Mili end
         return stats;
     }
 
-    /**
-     * Shutdown the balancer.
-     */
+    /** Shutdown the balancer. */
     public static void shutdown() {
         shutdown.set(true);
-        if (workerPool != null) {
-            workerPool.shutdown();
-            try {
-                if (!workerPool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                    workerPool.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                workerPool.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
-        // Mili start - drain leftover queue tasks so the depth counter and
-        // task records don't keep a permanent offset after shutdown
-        RegionTask leftover;
-        while ((leftover = taskQueue.poll()) != null) {
-            queueDepth.decrementAndGet();
-            markTaskState(leftover, TaskState.CANCELLED, "cancelled on shutdown");
-        }
-        // Mili end
-        // Mili start - shutdown task UUID registry and PI controller
+        initialized.set(false);
+        fun.bm.mili.scheduler.MiliSchedulerImpl.shutdown();
         RegionTaskIdRegistry.shutdown();
-        CatchUpController.shutdown();
-        // Mili end
     }
 }

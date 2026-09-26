@@ -165,7 +165,7 @@ Mili/
 ├── mili-api/                  # Mili API 模块
 │   └── src/main/java/         #   Bot、Photographer、事件 API
 ├── mili-server/               # Mili 服务端核心
-│   ├── minecraft-patches/     #   补丁文件（121 个 features/ + resources/ + sources/）
+│   ├── minecraft-patches/     #   补丁文件（124 个 features/ + resources/ + sources/）
 │   └── src/main/
 │       └── java/fun/bm/mili/  #   Java 源码
 │           ├── bridge/        #     区块-区域桥接
@@ -224,7 +224,11 @@ Mili 提供两套 TOML 配置文件：
 
 ## 补丁工作流
 
-Mili 使用 **Milihyacinthus**（paperweight fork）补丁系统管理 121 个 feature 补丁：
+Mili 使用 **Milihyacinthus**（paperweight fork）补丁系统管理 124 个 feature 补丁：
+
+> ⚠️ **生成源码位置已变更**：迁移到 Folia 后，`applyAllPatches` 的产物不再落在
+> `mili-server/src/minecraft/`，而是写入 `folia-server/`（子模块工作副本）与 `paper-server/`。
+> 下述步骤 1 中的路径请按实际生成位置确认后再操作。
 
 1. 在 `mili-server/src/minecraft/` 或 `mili-api/` 中修改代码
 2. 提交变更：`git commit -m "描述"`

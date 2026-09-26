@@ -34,9 +34,10 @@ index de3c39d8d98bbfa5fc0a9243ef3adf9b19a466e9..8e7112091619e8223b990a334d39e995
                                      }
 +                                    // Kaiiju start
 +                                    if (dev.kaiijumc.kaiiju.KaiijuEntityLimits.enabled) {
-+                                        dev.kaiijumc.kaiiju.KaiijuEntityThrottler.EntityThrottlerReturn throttle = regionizedWorldData.entityThrottler.tickLimiterShouldSkip(entity);
-+                                        if (throttle.remove && !entity.hasCustomName()) entity.remove(Entity.RemovalReason.DISCARDED);
-+                                        if (throttle.skip) return;
++                                        // Kaiiju - allocation-free verdict: 0 = TICK, 1 = SKIP, 2 = REMOVE
++                                        final int throttleVerdict = regionizedWorldData.entityThrottler.tickLimiterShouldSkip(entity);
++                                        if (throttleVerdict == fun.bm.mili.scheduler.EntityTickDecision.REMOVE && !entity.hasCustomName()) entity.remove(Entity.RemovalReason.DISCARDED);
++                                        if (throttleVerdict == fun.bm.mili.scheduler.EntityTickDecision.SKIP) return;
 +                                    }
 +                                    // Kaiiju end
  

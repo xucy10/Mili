@@ -38,11 +38,11 @@ git config --global core.longpaths true
 Mili 使用 **Milihyacinthus**（xucy10 维护的 paperweight fork）补丁系统，仓库在应用补丁后生成工作树目录：
 
 - `mili-api/` — Mili API 模块
-- `mili-server/src/minecraft/` — 服务器实现（应用 121 个 feature 补丁后的源码）
+- `mili-server/src/minecraft/` — 服务器实现（应用 124 个 feature 补丁后的源码）
 - `folia-server/` — Folia 子模块（上游，不直接修改）
 
 这些目录中的修改通过 `.patch` 文件管理：
-- 补丁文件位于 `mili-server/minecraft-patches/features/`（121 个）
+- 补丁文件位于 `mili-server/minecraft-patches/features/`（124 个）
 - 每次修改源码后需要重建补丁文件
 
 ## 如何添加新补丁

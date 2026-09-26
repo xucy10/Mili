@@ -194,7 +194,7 @@ Mili/
 ├── mili-api/                  # Mili API module
 │   └── src/main/java/         #   Bot, Photographer, event API
 ├── mili-server/               # Mili server core
-│   ├── minecraft-patches/     #   Patch files (121 features/ + resources/ + sources/)
+│   ├── minecraft-patches/     #   Patch files (124 features/ + resources/ + sources/)
 │   └── src/main/
 │       └── java/fun/bm/mili/  #   Java source
 │           ├── bridge/        #     Chunk-region bridge
@@ -251,7 +251,11 @@ Config categories:
 
 ## Patch Workflow
 
-Mili uses the **Milihyacinthus** (paperweight fork) patch system with 121 feature patches:
+Mili uses the **Milihyacinthus** (paperweight fork) patch system with 124 feature patches:
+
+> ⚠️ **Generated source location changed**: after the Folia rebase, `applyAllPatches` no longer
+> writes into `mili-server/src/minecraft/`; it writes into `folia-server/` (the submodule working
+> copy) and `paper-server/`. Verify the actual output location before following step 1 below.
 
 1. Modify code in `mili-server/src/minecraft/` or `mili-api/`
 2. Commit changes: `git commit -m "description"`

@@ -38,10 +38,10 @@ git config --global core.longpaths true
 Mili uses the **Milihyacinthus** (paperweight fork) patch system. Applying `applyAllPatches` generates a working tree:
 
 - `mili-api/` — Mili API module
-- `mili-server/src/minecraft/` — Server implementation (source after applying 121 feature patches)
+- `mili-server/src/minecraft/` — Server implementation (source after applying 124 feature patches)
 - `folia-server/` — Folia submodule (upstream, do not modify directly)
 
-Patches are managed as `.patch` files in `mili-server/minecraft-patches/features/` (121 patches). Changes to the working tree must be converted back to patch files before pushing.
+Patches are managed as `.patch` files in `mili-server/minecraft-patches/features/` (124 patches). Changes to the working tree must be converted back to patch files before pushing.
 
 ## Adding a New Patch
 

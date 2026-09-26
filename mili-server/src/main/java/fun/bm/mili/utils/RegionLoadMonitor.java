@@ -1,8 +1,10 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
+import fun.bm.mili.scheduler.RegionIdRegistry;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -67,9 +69,10 @@ public class RegionLoadMonitor {
             long min = Long.MAX_VALUE;
             boolean foundValid = false; // Mili - fix: track whether any valid sample was found
 
-            int startIdx = (writeIndex.get() - count + history.length()) % history.length();
+            // Mili start - fix: floorMod keeps the index valid when writeIndex has wrapped
+            int startIdx = Math.floorMod(writeIndex.get() - count, history.length());
             for (int i = 0; i < count; i++) {
-                int idx = (startIdx + i) % history.length();
+                int idx = Math.floorMod(startIdx + i, history.length());
                 long v = history.get(idx);
                 if (v <= 0) continue;
                 foundValid = true; // Mili
@@ -93,12 +96,13 @@ public class RegionLoadMonitor {
         }
     }
 
-    // Key: RegionSchedule hashCode (each region schedule is a unique instance)
-    private static final java.util.concurrent.ConcurrentHashMap<Integer, RegionStats> STATS =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    // Mili start - fix: key by the stable region id instead of System.identityHashCode.
+    // identityHashCode is not unique and is not shared with the scheduler / metrics /
+    // cross-region / entity-budget subsystems (fix.md §8).
+    private static final ConcurrentHashMap<Long, RegionStats> STATS = new ConcurrentHashMap<>();
 
-    private static int keyOf(Object schedule) {
-        return System.identityHashCode(schedule);
+    private static long keyOf(Object schedule) {
+        return RegionIdRegistry.idOf(schedule);
     }
 
     /**
@@ -168,11 +172,21 @@ public class RegionLoadMonitor {
         return result;
     }
 
-    public static java.util.Map<Integer, RegionLoadSnapshot> getAllSnapshotMap() {
-        java.util.Map<Integer, RegionLoadSnapshot> result = new java.util.LinkedHashMap<>();
-        for (java.util.Map.Entry<Integer, RegionStats> entry : STATS.entrySet()) {
+    public static java.util.Map<Long, RegionLoadSnapshot> getAllSnapshotMap() {
+        java.util.Map<Long, RegionLoadSnapshot> result = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<Long, RegionStats> entry : STATS.entrySet()) {
             result.put(entry.getKey(), entry.getValue().snapshot());
         }
         return result;
+    }
+
+    /** Number of regions tracked. Used by the lifecycle teardown checks. */
+    public static int trackedRegions() {
+        return STATS.size();
+    }
+
+    /** Drop every tracked region; used on shutdown (fix.md §9). */
+    public static void clear() {
+        STATS.clear();
     }
 }

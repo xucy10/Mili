@@ -6,14 +6,11 @@ build
 /run
 **/bin/
 *.class
-/lophine-server/build.gradle.kts
-/lophine-api/build.gradle.kts
-/lophine-server/src/minecraft
+# Lophine 分支产物，迁移完成后已无对应模块
 /mili-server/src/minecraft
 /paper-server
 /paper-api
 /paper-api-generator
-/lophine-src
 
 .idea/
 .vscode/

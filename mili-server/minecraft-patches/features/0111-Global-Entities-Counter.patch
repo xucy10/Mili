@@ -96,7 +96,7 @@ diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/
 index 8f742e14781e34b30d5d44b602e730031b24e594..508b58584d77aed0ddfc26e53dfa4198999575e4 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -817,6 +817,22 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -817,6 +817,30 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
      }
  
      public void tick(BooleanSupplier haveTime, final io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
@@ -116,6 +116,14 @@ index 8f742e14781e34b30d5d44b602e730031b24e594..508b58584d77aed0ddfc26e53dfa4198
 +            }
 +        }
 +        // Mili end - Cross Region Helper
++        // Mili start - Mili runtime: drain this region's queue on the thread that owns it
++        if (fun.bm.mili.scheduler.FoliaSchedulerAdapter.isRunning()) {
++            io.papermc.paper.threadedregions.RegionizedWorldData data = this.getCurrentWorldData();
++            if (data != null) {
++                fun.bm.mili.scheduler.FoliaSchedulerAdapter.onRegionTick(data);
++            }
++        }
++        // Mili end - Mili runtime
          final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = this.getCurrentWorldData(); // Folia - regionised ticking
          final ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle foliaProfiler = io.papermc.paper.threadedregions.TickRegionScheduler.getProfiler(); // Folia - profiler
          ProfilerFiller profiler = Profiler.get();

@@ -7,7 +7,7 @@ This file provides guidance to CodeBuddy / AI code assistants when working with 
 **Mili** 是直接基于 [Folia](https://github.com/PaperMC/Folia) 的 Minecraft 26.2 服务端核心，使用 Java 25 + Rust（edition 2024）构建。目标是在 Folia 并发调度环境下提供更稳定、可配置的服务器运行时。
 
 **版本**：`26.2-R0.1-SNAPSHOT`
-**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Milihyacinthus 补丁系统（121 个 feature 补丁）
+**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Milihyacinthus 补丁系统（124 个 feature 补丁）
 **上游**：Folia `57f643f`（`foliaRef` in `gradle.properties`）
 
 > Mili 原为 Lophine/Luminol 衍生分支，现已直接基于 Folia。Luminol 已删库。
@@ -62,14 +62,17 @@ cargo test --release     # 28 tests
 Mili/
 ├── mili-api/          # 对外公开 API（Bot、Photographer、事件）
 ├── mili-server/       # 服务器核心
-│   ├── minecraft-patches/features/  # 121 个补丁文件
+│   ├── minecraft-patches/features/  # 124 个补丁文件
 │   └── src/main/java/fun/bm/mili/   # Java 源码
 ├── mili-rust/         # Rust 原生优化模块
 │   ├── src/main/java/ #   JNI Java 侧（RustBridge.java, TomlConfigData.java）
 │   └── src/rust/src/  #   Rust 源码（4 个 .rs 文件）
-├── folia-server/      # Folia 子模块（上游，不修改）
-└── folia-api/         # Folia API（不修改）
+├── folia-server/      # Folia 上游子模块（应用 minecraft-patches 后得到 folia-server 源码，勿直接提交）
+└── luminol-api/       # 遗留 Luminol/Pufferfish/Leaves API，由 mili-api 以 srcDir 方式并入（非独立 Gradle 模块）
 ```
+
+> **注意**：仓库**不存在**独立的 `folia-api/` 目录。Folia API 源码来自 `folia-server` 子模块内部。
+> `mili-api/build.gradle.kts` 里仍写有 `../paper-api` / `../folia-api` 两个 srcDir，但当前没有任何构建任务会生成这两个目录 —— 属已知缺口（见 `docs/COMPONENT_COUPLING_PLAN.md` 3.1）。
 
 ### Java 包结构（`fun.bm.mili`）
 

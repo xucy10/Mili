@@ -20,6 +20,7 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:26.2+build.1")
+    // Mili - use the Riceear launcher (Hyacinthusclip fork) from libs/ instead of upstream paperclip
     paperclip(files(rootProject.layout.projectDirectory.file("libs/riceear.jar")))
 }
 
@@ -48,8 +49,8 @@ paperweight {
 
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
-            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/folia-patches")
+            excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch", "build.gradle.kts.empty.patch")
+            patchesDir = rootDirectory.dir("mili-server/minecraft-patches")
             outputDir = rootDirectory.dir("folia-server")
         }
     }

@@ -38,7 +38,7 @@ Mili 使用 **Milihyacinthus**（xucy10 维护的 paperweight fork）补丁系�
 | `mili-api` / `mili-server` | Mili 自己的 API 与核心补丁/源码 |
 | `mili-rust` | Rust 原生优化模块 |
 
-补丁文件位于 `mili-server/minecraft-patches/features/`，共 **121 个** feature 补丁。
+补丁文件位于 `mili-server/minecraft-patches/features/`，共 **124 个** feature 补丁。
 
 ---
 

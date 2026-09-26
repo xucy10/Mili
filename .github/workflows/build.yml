@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -106,7 +106,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -158,8 +158,8 @@ jobs:
 
       - name: Build Rust Optimizer (cross targets)
         env:
-          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
         run: |
           set -eux
           export PATH="$PATH:$HOME/.cargo/bin"
@@ -208,72 +208,73 @@ jobs:
 
       - name: Verify Generated Source
         run: |
-          echo "=== Checking generated API source dirs ==="
-          for d in paper-api folia-api mili-api paper-server folia-server mili-server; do
+          echo "=== Checking generated source dirs ==="
+          # folia-server is a submodule working copy: patches are applied directly into it,
+          # so it is always present on disk. Only the pure-generated outputs are listed here.
+          for d in paper-server paper-api folia-api; do
             if [ -d "$d" ] && [ "$(ls -A $d 2>/dev/null)" ]; then
               echo "OK: $d/ exists ($(find $d -name '*.java' | wc -l) java files)"
             else
-              echo "MISSING: $d/"
+              echo "MISSING: $d/ (not produced by any registered upstream - see known gap)"
             fi
           done
 
       - name: Inject Kotlin Config
         run: python3 scripts/inject_kotlin.py
 
-      - name: Kaiiju Entity Throttle Validation
-        run: |
-          echo "=== Kaiiju Port: verifying entity throttler ==="
-          for f in "MiliEntityThrottler.java" "MiliEntityLimitsConfig.java" "AsyncPathfindingExecutor.java"; do
-            path="mili-server/src/main/java/fun/bm/mili/kaiiju/$f"
-            if [ -f "$path" ]; then
-              echo "OK: $f ($(wc -l < $path) lines)"
-            else
-              echo "WARN: $f not found"
-            fi
-          done
-
-      - name: Verify CIS Source Files
-        run: |
-          CIS_DIR="mili-server/src/main/java/fun/bm/mili/scheduler"
-          COUNT=0
-          for f in "$CIS_DIR"/*.java "$CIS_DIR"/border/*.java "$CIS_DIR"/group/*.java; do
-            if [ -f "$f" ]; then
-              LINES=$(wc -l < "$f")
-              echo "  CIS: $(basename $f) (${LINES} lines)"
-              COUNT=$((COUNT + 1))
-            fi
-          done
-          echo "Total CIS source files: ${COUNT}"
+        # NOTE: the previous "Kaiiju Entity Throttle Validation" and "Verify CIS Source Files"
+        # steps were removed. They asserted files under mili-server/src/main/java/fun/bm/mili/kaiiju
+        # and .../fun/bm/mili/scheduler that have never existed in this repository, yet they only
+        # printed WARN lines - a permanently green check guarding nothing. Re-add them only once
+        # the corresponding components are actually implemented, and make them fail the build.
 
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
 
-      - name: Post-Build CIS Smoke Test
+      - name: Post-Build Jar Smoke Test
         run: |
           JAR_PATH="mili-server/build/libs"
-          echo "=== CIS Smoke Test ==="
-          if ls "$JAR_PATH"/*-paperclip-*.jar 1>/dev/null 2>&1; then
-            JAR=$(ls "$JAR_PATH"/*-paperclip-*.jar | head -1)
+          echo "=== Jar Smoke Test ==="
+          JAR=""
+          for candidate in "$JAR_PATH"/*-paperclip-*.jar "$JAR_PATH"/*-mojmap-*.jar; do
+            [ -f "$candidate" ] && JAR="$candidate" && break
+          done
+          if [ -n "$JAR" ]; then
             JAR_SIZE=$(stat -c%s "$JAR" 2>/dev/null || stat --format=%s "$JAR" 2>/dev/null || echo "unknown")
-            echo "OK: JAR built — $JAR (${JAR_SIZE} bytes)"
+            echo "OK: JAR built - $JAR (${JAR_SIZE} bytes)"
             echo ""
-            echo "=== Available Feature Flags (config-driven) ==="
-            echo "  CIS:               ChunkIndependentConfig.enabled"
-            echo "  Kaiiju Throttler:  MiliEntityLimitsConfig.enabled"
-            echo "  Async Pathfinding: ChunkIndependentConfig.enabled"
-            echo ""
+            echo "=== Mili classes packaged into the jar ==="
+            MILI_COUNT=$(unzip -l "$JAR" 2>/dev/null | grep -c 'fun/bm/mili/' || echo 0)
+            echo "fun/bm/mili classes found: ${MILI_COUNT}"
+            # The Mili/Luminol feature patches are what pull these classes into server code.
+            # If applyAllPatches silently skipped a patch set, this count drops to near zero.
+            if [ "${MILI_COUNT}" -lt 20 ]; then
+              echo "WARN: suspiciously few fun/bm/mili classes - verify the patch set was applied"
+            fi
           else
-            echo "WARN: No paperclip JAR found at $JAR_PATH"
+            echo "WARN: No server JAR found at $JAR_PATH"
           fi
 
       - name: Check for Pending Patch Rebuild
         run: |
-          # Patched sources under mili-server/src/minecraft are untracked in the main repo,
-          # so plain `git diff` never reports them; check untracked files too.
+          # Patched sources were historically generated under mili-server/src/minecraft.
+          # After the Folia rebase they are applied into the folia-server submodule working
+          # copy instead, which is why the old path check silently stopped reporting anything.
+          PENDING=0
           if git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | grep -q "mili-server/src/minecraft/"; then
-            echo "WARN: Patched source has uncommitted changes — run 'rebuildPatches' to generate patch files"
+            echo "WARN: mili-server/src/minecraft has uncommitted changes"
             git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | head -50
-          else
+            PENDING=1
+          fi
+          # Inside the submodule, untracked files are what indicate a missing rebuild.
+          SUBDIRTY=$(cd folia-server 2>/dev/null && git status --porcelain --untracked-files=all | wc -l || echo 0)
+          echo "folia-server working copy: ${SUBDIRTY} modified/untracked entries"
+          if [ "${SUBDIRTY}" -gt 0 ]; then
+            echo "WARN: applied patches produced changes that were not folded back into patch files"
+            (cd folia-server && git status --porcelain --untracked-files=all | head -50)
+            PENDING=1
+          fi
+          if [ "${PENDING}" -eq 0 ]; then
             echo "OK: No pending patch rebuild needed"
           fi
 
