@@ -28,13 +28,23 @@ import java.util.concurrent.atomic.AtomicLong;
  *   <li><b>No duplicate registration:</b> {@link #register(UUID, TaskMeta)}
  *       returns {@code false} if the UUID is already registered, preventing
  *       silent data corruption. {@link #registerOrThrow} throws for hard failures.</li>
- *   <li><b>Bounded memory:</b> A scheduled cleaner evicts entries older than
- *       {@link #ENTRY_TTL_MS} every {@link #CLEANUP_INTERVAL_MS}, preventing
- *       leaks from tasks that completed without calling {@link #unregister}.</li>
+ *   <li><b>Bounded memory:</b> A scheduled cleaner evicts entries whose
+ *       {@link TaskMeta#updatedAt last update} is older than {@link #ENTRY_TTL_MS},
+ *       every {@link #CLEANUP_INTERVAL_MS}, preventing leaks from tasks that
+ *       completed without calling {@link #unregister}.</li>
  *   <li><b>Shutdown-safe:</b> {@link #shutdown()} stops the cleaner and clears
  *       all state. Subsequent {@link #allocateAndRegister} calls return a
  *       fresh UUID but skip registration (no-op).</li>
  * </ul>
+ *
+ * <p><b>Capacity is a soft limit, not a hard cap.</b> {@link #MAX_ACTIVE_ENTRIES}
+ * is checked against {@code REGISTRY.size()} and then inserted — a classic
+ * check-then-act, which several threads can pass simultaneously. Making it strict
+ * would require a lock on the hottest registration path to defend against an
+ * overshoot bounded by the number of concurrent callers, which is not a trade
+ * worth making. The limit therefore exists to bound memory and to surface a
+ * pathological producer via {@code total_rejected_full}, not to be an exact
+ * ceiling. Anything that needs an exact guarantee must not rely on this.
  */
 public final class RegionTaskIdRegistry {
 
@@ -45,12 +55,28 @@ public final class RegionTaskIdRegistry {
     private static final int MAX_REGEN_ATTEMPTS = 8;
     private static final long ENTRY_TTL_MS = 120_000;       // 2 minutes
     private static final long CLEANUP_INTERVAL_MS = 30_000;  // 30 seconds
+    /**
+     * Soft limit on active entries. See the class javadoc: this bounds memory,
+     * it is not an exact ceiling.
+     */
     private static final int MAX_ACTIVE_ENTRIES = 50_000;
+
+    /** Minimum spacing between "registry is full" warnings, so a full registry cannot flood the log. */
+    private static final long FULL_WARN_INTERVAL_MS = 10_000;
 
     // -------------------- State --------------------
 
+    /**
+     * Single source of truth for registered tasks.
+     * <p>
+     * This used to be two maps — {@code REGISTRY} plus a parallel
+     * {@code CREATION_TIME} — updated separately. Nothing made the pair atomic, so
+     * a reader could see an entry in one and not the other, and the eviction pass
+     * only ever walked the second map. The creation timestamp now lives on
+     * {@link TaskMeta}, which removes the whole class of inconsistency rather than
+     * guarding against it.
+     */
     private static final ConcurrentHashMap<UUID, TaskMeta> REGISTRY = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<UUID, Long> CREATION_TIME = new ConcurrentHashMap<>();
 
     private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
     private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
@@ -64,6 +90,7 @@ public final class RegionTaskIdRegistry {
     private static final AtomicLong totalCollisions = new AtomicLong(0);
     private static final AtomicLong totalRejectedFull = new AtomicLong(0);
     private static final AtomicLong totalRejectedDuplicate = new AtomicLong(0);
+    private static volatile long lastFullWarnAt = 0L;
 
     // -------------------- Lifecycle --------------------
 
@@ -114,7 +141,6 @@ public final class RegionTaskIdRegistry {
 
         int cleared = REGISTRY.size();
         REGISTRY.clear();
-        CREATION_TIME.clear();
 
         LogUtils.getLogger().info("[Mili] RegionTaskIdRegistry shutdown (cleared {} entries)", cleared);
     }
@@ -138,49 +164,57 @@ public final class RegionTaskIdRegistry {
      * @return the allocated UUID
      */
     public static @NotNull UUID allocateAndRegister(@NotNull String taskType, @Nullable Object scheduleRef) {
-        UUID uuid = allocateUniqueUuid();
-
         if (SHUTDOWN.get()) {
-            // Registry is shutting down — return UUID without registration
-            return uuid;
+            // Registry is shutting down — return a UUID without registration.
+            return UUID.randomUUID();
         }
 
-        // Bounded check: reject if too many active entries
+        // Soft limit: bound memory and surface a runaway producer. See the class
+        // javadoc for why this is deliberately not an exact ceiling.
         if (REGISTRY.size() >= MAX_ACTIVE_ENTRIES) {
             totalRejectedFull.incrementAndGet();
-            LogUtils.getLogger().warn("[Mili] RegionTaskIdRegistry full ({}), skipping registration for {}",
-                    MAX_ACTIVE_ENTRIES, uuid);
-            return uuid;
+            warnFull(taskType);
+            return UUID.randomUUID();
         }
 
-        TaskMeta meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
-        TaskMeta existing = REGISTRY.putIfAbsent(uuid, meta);
-        if (existing != null) {
-            // Collision — should be astronomically rare, but handle it
-            totalCollisions.incrementAndGet();
-            LogUtils.getLogger().warn("[Mili] UUID collision detected: {} (already registered as '{}')",
-                    uuid, existing.taskType);
-            // Regenerate and retry
-            for (int i = 0; i < MAX_REGEN_ATTEMPTS; i++) {
-                uuid = allocateUniqueUuid();
-                meta = new TaskMeta(uuid, taskType, scheduleRef, System.currentTimeMillis());
-                if (REGISTRY.putIfAbsent(uuid, meta) == null) {
-                    break;
-                }
+        long now = System.currentTimeMillis();
+
+        // Single loop for the happy path and the collision path.
+        //
+        // The previous version handled collisions with a separate retry block that
+        // broke out of the loop on success and then re-tested
+        // `REGISTRY.containsKey(uuid)` — which was, of course, now true — so a
+        // successful retry fell into the "give up" branch and returned before
+        // recording the entry's creation time. Every recovered collision therefore
+        // produced an entry that the eviction pass could never see: a small but
+        // permanent leak on a path whose entire purpose is recovery.
+        for (int attempt = 0; attempt <= MAX_REGEN_ATTEMPTS; attempt++) {
+            UUID uuid = UUID.randomUUID();
+            if (attempt > 0) {
                 totalCollisions.incrementAndGet();
             }
-            // If still colliding after retries, use the last UUID without registration
-            // (effectively untracked, but the task can still run)
-            if (REGISTRY.containsKey(uuid)) {
-                LogUtils.getLogger().error("[Mili] Failed to register UUID after {} attempts, task will run untracked", MAX_REGEN_ATTEMPTS);
+            TaskMeta meta = new TaskMeta(uuid, taskType, scheduleRef, now);
+            if (REGISTRY.putIfAbsent(uuid, meta) == null) {
+                totalAllocated.incrementAndGet();
+                totalRegistered.incrementAndGet();
                 return uuid;
             }
         }
 
-        CREATION_TIME.put(uuid, System.currentTimeMillis());
-        totalAllocated.incrementAndGet();
-        totalRegistered.incrementAndGet();
-        return uuid;
+        LogUtils.getLogger().error(
+                "[Mili] Failed to register UUID after {} attempts, task will run untracked",
+                MAX_REGEN_ATTEMPTS);
+        return UUID.randomUUID();
+    }
+
+    private static void warnFull(String taskType) {
+        long now = System.currentTimeMillis();
+        long last = lastFullWarnAt;
+        if (now - last < FULL_WARN_INTERVAL_MS) return;
+        lastFullWarnAt = now;
+        LogUtils.getLogger().warn(
+                "[Mili] RegionTaskIdRegistry at its soft limit ({}), skipping registration for '{}'",
+                MAX_ACTIVE_ENTRIES, taskType);
     }
 
     /**
@@ -205,7 +239,6 @@ public final class RegionTaskIdRegistry {
             totalRejectedDuplicate.incrementAndGet();
             return false; // already registered — duplicate
         }
-        CREATION_TIME.put(uuid, System.currentTimeMillis());
         totalRegistered.incrementAndGet();
         return true;
     }
@@ -231,12 +264,37 @@ public final class RegionTaskIdRegistry {
      */
     public static boolean unregister(@NotNull UUID uuid) {
         TaskMeta removed = REGISTRY.remove(uuid);
-        CREATION_TIME.remove(uuid);
         if (removed != null) {
             totalUnregistered.incrementAndGet();
             return true;
         }
         return false;
+    }
+
+    /**
+     * Unregister every task belonging to {@code scheduleRef}.
+     * <p>
+     * This is the region-destroy hook (fix.md §15): when a region goes away, the
+     * tasks it owned must go with it. Without this, a region churning in and out
+     * leaves its task entries to expire on the TTL, so a busy server holds
+     * thousands of entries for regions that no longer exist.
+     *
+     * @return how many entries were removed
+     */
+    public static int unregisterByScheduleRef(@Nullable Object scheduleRef) {
+        if (scheduleRef == null) return 0;
+        int removed = 0;
+        for (Map.Entry<UUID, TaskMeta> entry : REGISTRY.entrySet()) {
+            if (scheduleRef.equals(entry.getValue().scheduleRef)) {
+                if (REGISTRY.remove(entry.getKey(), entry.getValue())) {
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            totalUnregistered.addAndGet(removed);
+        }
+        return removed;
     }
 
     /**
@@ -296,27 +354,37 @@ public final class RegionTaskIdRegistry {
 
     // -------------------- Internal --------------------
 
-    private static UUID allocateUniqueUuid() {
-        return UUID.randomUUID();
-    }
-
+    /**
+     * Evict entries that have not been touched for {@link #ENTRY_TTL_MS}.
+     * <p>
+     * Two corrections over the previous version, both of which caused live tasks
+     * to be evicted:
+     * <ul>
+     *   <li>the age is measured from {@link TaskMeta#updatedAt}, not from creation.
+     *       A long-running task that keeps reporting progress is not stale, and
+     *       treating it as stale dropped tracking for a task that was still
+     *       running. The {@code updatedAt} field already existed for exactly this
+     *       purpose and was simply never read.</li>
+     *   <li>only clearly-finished states are evictable. Matching on
+     *       {@code !"running"} meant any other in-progress label — {@code queued},
+     *       {@code retrying}, a future state nobody has thought of yet — was
+     *       eligible for eviction while still live.</li>
+     * </ul>
+     */
     private static void evictStaleEntries() {
         try {
             long now = System.currentTimeMillis();
             int evicted = 0;
 
-            Iterator<Map.Entry<UUID, Long>> it = CREATION_TIME.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry<UUID, Long> entry = it.next();
-                if (now - entry.getValue() > ENTRY_TTL_MS) {
-                    UUID uuid = entry.getKey();
-                    TaskMeta meta = REGISTRY.get(uuid);
-                    // Don't evict running tasks — only stale queued/completed ones
-                    if (meta != null && !"running".equals(meta.state)) {
-                        REGISTRY.remove(uuid);
-                        it.remove();
-                        evicted++;
-                    }
+            for (Map.Entry<UUID, TaskMeta> entry : REGISTRY.entrySet()) {
+                TaskMeta meta = entry.getValue();
+                if (!isEvictable(meta.state)) continue;
+
+                long lastTouched = Math.max(meta.updatedAt, meta.createdAt);
+                if (now - lastTouched <= ENTRY_TTL_MS) continue;
+
+                if (REGISTRY.remove(entry.getKey(), meta)) {
+                    evicted++;
                 }
             }
 
@@ -330,6 +398,21 @@ public final class RegionTaskIdRegistry {
             LogUtils.getLogger().error("[Mili] RegionTaskIdRegistry cleanup error", t);
         }
         // Mili end
+    }
+
+    /**
+     * Whether a task in {@code state} may be evicted on TTL.
+     * <p>
+     * Allow-list rather than deny-list on purpose: an unknown state must be
+     * treated as still live, so that adding a state later cannot silently start
+     * dropping running tasks.
+     */
+    private static boolean isEvictable(String state) {
+        if (state == null) return false;
+        return switch (state) {
+            case "completed", "failed", "cancelled", "timed_out", "merged" -> true;
+            default -> false;
+        };
     }
 
     // -------------------- Stats --------------------

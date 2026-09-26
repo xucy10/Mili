@@ -1,6 +1,11 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.CrossRegionHelperConfig;
+import fun.bm.mili.scheduler.CrossRegionTransaction;
+import fun.bm.mili.scheduler.EntityScheduler;
+import fun.bm.mili.scheduler.RegionIdRegistry;
+import fun.bm.mili.scheduler.RegionResolver;
+import fun.bm.mili.scheduler.SchedulerLog;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -11,10 +16,56 @@ import net.minecraft.world.entity.LivingEntity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
+/**
+ * Cross-region event routing.
+ *
+ * <h2>What was wrong</h2>
+ *
+ * <p><b>1. The target region was never resolved (fix.md §12).</b> The old body of
+ * {@link #submitRedstoneCrossRegion} read:
+ *
+ * <pre>
+ *     RegionizedWorldData srcRegion = level.getCurrentWorldData();
+ *     RegionizedWorldData tgtRegion = level.getCurrentWorldData();   // same expression
+ *     if (srcRegion == tgtRegion) return;                            // therefore always true
+ * </pre>
+ *
+ * Both sides were the <em>current</em> region, so the guard was always true and the
+ * method could never emit anything. The {@code neighbor} coordinate — the one piece
+ * of information that identifies the target — was stored on the event and never
+ * read. Source and target are now resolved independently: the source from the
+ * executing context, the target from the neighbour's own coordinates via the
+ * regioniser.
+ *
+ * <p><b>2. Events pinned dead regions.</b> {@code pendingByRegion} was a
+ * {@code ConcurrentHashMap<RegionizedWorldData, ...>} — a <em>strong</em> reference
+ * to the region as a map key. {@code onRegionUnload} existed to remove them but had
+ * no callers anywhere in the repository, so any region that ever received a
+ * cross-region event stayed reachable, dragging its whole
+ * {@code RegionizedWorldData} graph (neighbour updater, block ticks, wire handler,
+ * …) with it. Routing is now keyed by the stable {@link RegionIdRegistry} id, so
+ * the queue holds no reference to any region.
+ *
+ * <p><b>3. Nothing tracked delivery.</b> An event dropped on a full queue was
+ * indistinguishable from one that was applied. Each routed event carries a
+ * {@link CrossRegionTransaction}, so a stranded event is visible and a region being
+ * destroyed can sever everything aimed at it.
+ *
+ * <h2>Scope</h2>
+ * This class is responsible for "produced → handed to the target region's tick".
+ * Applying the payload is the target region's business. A transaction therefore
+ * commits when the event is drained by {@link #consumePending}, not when the world
+ * mutation lands — that keeps the tracked span honest instead of claiming credit
+ * for work this class does not do.
+ */
 public class CrossRegionHelper {
 
     private static final AtomicLong eventIdGen = new AtomicLong(0);
@@ -22,50 +73,65 @@ public class CrossRegionHelper {
     private static final LongAdder eventsDropped = new LongAdder();
     private static final LongAdder batchesDispatched = new LongAdder();
     private static final LongAdder regionQueueOverflows = new LongAdder();
+    private static final LongAdder localSkipped = new LongAdder();
+    /** Target positions that could not be resolved. Never silently misrouted. */
+    private static final LongAdder unresolvedTargets = new LongAdder();
 
     private static final int BATCH_SIZE = 64;
 
     public abstract static class Event {
         public final long id;
-        public final RegionizedWorldData sourceRegion;
-        public final RegionizedWorldData targetRegion;
+        /** Stable ids, not region references: nothing here may pin a region. */
+        public final long sourceRegionId;
+        public final long targetRegionId;
         public final long tickStamp;
-        // Mili start - task UUID for cross-region parameter passing traceability
         public final UUID taskUuid;
-        // Mili end
+        /** Routing transaction, committed when the event reaches the target region. */
+        public final CrossRegionTransaction transaction;
 
-        protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
+        protected Event(long srcRegionId, long tgtRegionId, long tick) {
             this.id = eventIdGen.incrementAndGet();
-            this.sourceRegion = src;
-            this.targetRegion = tgt;
+            this.sourceRegionId = srcRegionId;
+            this.targetRegionId = tgtRegionId;
             this.tickStamp = tick;
-            // Mili start - allocate UUID for this cross-region event
-            this.taskUuid = RegionTaskIdRegistry.allocateAndRegister("cross-region-event", src);
-            // Mili end
+            this.taskUuid = RegionTaskIdRegistry.allocateAndRegister("cross-region-event", null);
+            this.transaction = CrossRegionTransaction.begin(srcRegionId, tgtRegionId, "cross-region-event");
+            if (this.transaction != null) {
+                this.transaction.markEnqueued();
+            }
         }
-
-        // Mili start - constructor for events with a pre-existing task UUID (e.g. passthrough from RegionBalancer)
-        protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick, UUID existingTaskUuid) {
-            this.id = eventIdGen.incrementAndGet();
-            this.sourceRegion = src;
-            this.targetRegion = tgt;
-            this.tickStamp = tick;
-            this.taskUuid = existingTaskUuid;
-        }
-        // Mili end
     }
 
     public static class RedstoneSignal extends Event {
-        public final BlockPos pos;
-        public final BlockPos neighbor;
+        // Coordinates rather than BlockPos: the event survives on the dispatcher
+        // thread, and an immutable snapshot of a position is what a cross-thread
+        // handoff should carry.
+        public final int posX;
+        public final int posY;
+        public final int posZ;
+        public final int neighborX;
+        public final int neighborY;
+        public final int neighborZ;
         public final Direction dir;
 
         public RedstoneSignal(BlockPos pos, BlockPos neighbor, Direction dir,
-                              RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
-            super(src, tgt, tick);
-            this.pos = pos;
-            this.neighbor = neighbor;
+                              long srcRegionId, long tgtRegionId, long tick) {
+            super(srcRegionId, tgtRegionId, tick);
+            this.posX = pos.getX();
+            this.posY = pos.getY();
+            this.posZ = pos.getZ();
+            this.neighborX = neighbor.getX();
+            this.neighborY = neighbor.getY();
+            this.neighborZ = neighbor.getZ();
             this.dir = dir;
+        }
+
+        public BlockPos pos() {
+            return new BlockPos(posX, posY, posZ);
+        }
+
+        public BlockPos neighbor() {
+            return new BlockPos(neighborX, neighborY, neighborZ);
         }
     }
 
@@ -75,8 +141,8 @@ public class CrossRegionHelper {
         public final DamageSource damageSource;
 
         public EntityDamageSync(UUID sourceUUID, UUID targetUUID, DamageSource ds,
-                                RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
-            super(src, tgt, tick);
+                                long srcRegionId, long tgtRegionId, long tick) {
+            super(srcRegionId, tgtRegionId, tick);
             this.sourceUUID = sourceUUID;
             this.targetUUID = targetUUID;
             this.damageSource = ds;
@@ -86,9 +152,8 @@ public class CrossRegionHelper {
     public static class EntityEnterRegion extends Event {
         public final UUID entityUUID;
 
-        public EntityEnterRegion(UUID entityUUID, RegionizedWorldData src,
-                                 RegionizedWorldData tgt, long tick) {
-            super(src, tgt, tick);
+        public EntityEnterRegion(UUID entityUUID, long srcRegionId, long tgtRegionId, long tick) {
+            super(srcRegionId, tgtRegionId, tick);
             this.entityUUID = entityUUID;
         }
     }
@@ -96,9 +161,8 @@ public class CrossRegionHelper {
     public static class EntityLeaveRegion extends Event {
         public final UUID entityUUID;
 
-        public EntityLeaveRegion(UUID entityUUID, RegionizedWorldData src,
-                                 RegionizedWorldData tgt, long tick) {
-            super(src, tgt, tick);
+        public EntityLeaveRegion(UUID entityUUID, long srcRegionId, long tgtRegionId, long tick) {
+            super(srcRegionId, tgtRegionId, tick);
             this.entityUUID = entityUUID;
         }
     }
@@ -107,7 +171,8 @@ public class CrossRegionHelper {
     private static final BlockingQueue<Event> inboundQueue =
             new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
 
-    private static final ConcurrentHashMap<RegionizedWorldData, ConcurrentLinkedQueue<Event>>
+    /** Keyed by stable region id. Holds no reference to any region. */
+    private static final ConcurrentHashMap<Long, ConcurrentLinkedQueue<Event>>
             pendingByRegion = new ConcurrentHashMap<>();
 
     private static volatile boolean running = false;
@@ -115,72 +180,81 @@ public class CrossRegionHelper {
 
     private static Thread dispatcherThread;
 
+    // ---------- Lifecycle ----------
+
     public static void init() {
         if (running) return;
         running = true;
 
         dispatcherThread = new Thread(() -> {
-        com.mojang.logging.LogUtils.getClassLogger().info("[Mili] CrossRegionHelper started");
+            SchedulerLog.info("CrossRegionHelper started");
 
-        while (running) {
-            try {
-                Event event = inboundQueue.poll(
-                        CrossRegionHelperConfig.queuePollTimeoutMs, TimeUnit.MILLISECONDS);
+            while (running) {
+                try {
+                    Event event = inboundQueue.poll(
+                            CrossRegionHelperConfig.queuePollTimeoutMs, TimeUnit.MILLISECONDS);
 
-                if (event == null) continue;
+                    if (event == null) continue;
 
-                dispatchToTarget(event);
+                    dispatchToTarget(event);
 
-                int batchCount = 1;
-                while (batchCount < BATCH_SIZE) {
-                    Event next = inboundQueue.poll();
-                    if (next == null) break;
-                    dispatchToTarget(next);
-                    batchCount++;
+                    int batchCount = 1;
+                    while (batchCount < BATCH_SIZE) {
+                        Event next = inboundQueue.poll();
+                        if (next == null) break;
+                        dispatchToTarget(next);
+                        batchCount++;
+                    }
+                    if (batchCount > 1) {
+                        batchesDispatched.increment();
+                    }
+                    eventsProcessed.add(batchCount);
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Throwable e) {
+                    // Mili start - fix: catch Throwable (not just Exception) to prevent
+                    // dispatcher thread death on Error (e.g. StackOverflowError)
+                    SchedulerLog.warn("CrossRegionHelper dispatch error: %s", e);
+                    // Mili end
                 }
-                if (batchCount > 1) {
-                    batchesDispatched.increment();
-                }
-                eventsProcessed.add(batchCount);
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Throwable e) {
-                // Mili start - fix: catch Throwable (not just Exception) to prevent dispatcher thread death on Error (e.g. StackOverflowError)
-                com.mojang.logging.LogUtils.getClassLogger()
-                        .warn("[Mili] CrossRegionHelper dispatch error", e);
             }
-        }
 
-        com.mojang.logging.LogUtils.getClassLogger().info("[Mili] CrossRegionHelper stopped");
-    }, "Mili-CrossRegion");
+            SchedulerLog.info("CrossRegionHelper stopped");
+        }, "Mili-CrossRegion");
 
         dispatcherThread.setDaemon(true);
         dispatcherThread.setPriority(Thread.NORM_PRIORITY - 1);
         dispatcherThread.start();
     }
 
+    public static boolean isRunning() {
+        return running;
+    }
+
     private static void dispatchToTarget(Event event) {
-        if (event.targetRegion == null) {
-            // Mili start - fix: unregister UUID when event has no target region
+        if (event.targetRegionId == RegionIdRegistry.UNKNOWN) {
             RegionTaskIdRegistry.unregister(event.taskUuid);
-            // Mili end
+            if (event.transaction != null) {
+                event.transaction.cancel("unknown target region");
+            }
             return;
         }
 
         ConcurrentLinkedQueue<Event> queue = pendingByRegion.computeIfAbsent(
-                event.targetRegion, k -> new ConcurrentLinkedQueue<>());
+                event.targetRegionId, k -> new ConcurrentLinkedQueue<>());
 
         int maxPending = CrossRegionHelperConfig.maxPendingEventsPerRegion;
 
         if (queue.size() >= maxPending) {
-            // Mili start - fix: unregister UUID for the evicted event before dropping it
             Event evicted = queue.poll();
             if (evicted != null) {
                 RegionTaskIdRegistry.unregister(evicted.taskUuid);
+                if (evicted.transaction != null) {
+                    evicted.transaction.cancel("region queue overflow");
+                }
             }
-            // Mili end
             regionQueueOverflows.increment();
         }
 
@@ -191,61 +265,166 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || event == null) return;
 
         if (!inboundQueue.offer(event)) {
-            // Mili start - fix: unregister UUID for the dropped event to prevent registry leak
             RegionTaskIdRegistry.unregister(event.taskUuid);
-            // Mili end
+            if (event.transaction != null) {
+                event.transaction.cancel("inbound queue full");
+            }
             eventsDropped.increment();
             long now = System.currentTimeMillis();
             if (now - lastDropWarning > 5000) {
                 lastDropWarning = now;
-                com.mojang.logging.LogUtils.getClassLogger()
-                        .warn("[Mili] CrossRegionHelper queue full, dropping events (suppressing for 5s)");
+                SchedulerLog.warn("CrossRegionHelper queue full, dropping events (suppressing for 5s)");
             }
         }
     }
 
+    // ---------- Region resolution ----------
+
+    /**
+     * Resolve the region that owns a block position.
+     *
+     * <p>This is the piece that was missing. Returning {@code null} is a
+     * deliberate, load-bearing outcome: callers must <b>skip</b> the cross-region
+     * operation rather than falling back to the current region, because that
+     * fallback is precisely the bug — a "cross-region" write that silently lands on
+     * the source, or worse, gets executed by the source's thread.
+     *
+     * @return the owning region data, or {@code null} if it cannot be resolved
+     *         (unloaded chunk, no region yet, server mid-shutdown)
+     */
+    public static RegionizedWorldData regionAt(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) return null;
+        try {
+            int chunkX = pos.getX() >> 4;
+            int chunkZ = pos.getZ() >> 4;
+
+            // The regioniser is the only component that can answer "which region
+            // owns this coordinate?" without running on that region's thread, which
+            // is exactly what routing needs.
+            var region = level.regioniser.getRegionAtUnsynchronised(chunkX, chunkZ);
+            if (region == null) return null;
+            return region.getData().regionData;
+        } catch (Throwable t) {
+            // Never let a lookup failure escape into a tick. Callers treat null as
+            // "do not route", which is the safe direction.
+            SchedulerLog.debug("CrossRegionHelper region lookup failed for %s in %s: %s", pos, level, t);
+            return null;
+        }
+    }
+
+    // ---------- Scheduler integration ----------
+
+    /**
+     * Publish this class's position lookup to the scheduler.
+     * <p>
+     * The scheduler core cannot resolve coordinates itself — that needs the Folia
+     * regioniser, which is a Minecraft type. Installing the locator here means
+     * every region-resolution decision in the process goes through one
+     * implementation, so the "which region owns this?" answer cannot drift between
+     * the scheduler and the cross-region router.
+     */
+    public static void installSchedulerLocator() {
+        RegionResolver.install((level, blockX, blockZ) -> {
+            if (!(level instanceof ServerLevel serverLevel)) return null;
+            return regionAt(serverLevel, new BlockPos(blockX, 0, blockZ));
+        });
+    }
+
+    // ---------- Producers ----------
+    /**
+     * Route a redstone update to the region owning {@code neighbor}.
+     *
+     * @see #regionAt(ServerLevel, BlockPos) for why an unresolved target is skipped
+     */
     public static void submitRedstoneCrossRegion(ServerLevel level, BlockPos pos,
-                                                  BlockPos neighbor, Direction dir) {
-        if (!CrossRegionHelperConfig.enabled || level == null) return;
+                                                 BlockPos neighbor, Direction dir) {
+        if (!CrossRegionHelperConfig.enabled || level == null
+                || pos == null || neighbor == null) return;
 
         RegionizedWorldData srcRegion = level.getCurrentWorldData();
         if (srcRegion == null) return;
+        long srcRegionId = RegionIdRegistry.idOf(srcRegion);
 
-        RegionizedWorldData tgtRegion = level.getCurrentWorldData();
-        if (tgtRegion == null) return;
-        if (srcRegion == tgtRegion) return; // not cross-region, skip
+        // The target is resolved from the neighbour's own coordinates. The old code
+        // read level.getCurrentWorldData() a second time here, which made
+        // `srcRegion == tgtRegion` unconditionally true and the method a no-op.
+        RegionizedWorldData tgtRegion = regionAt(level, neighbor);
+        if (tgtRegion == null) {
+            unresolvedTargets.increment();
+            return;
+        }
+        long tgtRegionId = RegionIdRegistry.idOf(tgtRegion);
 
-        submit(new RedstoneSignal(pos, neighbor, dir, srcRegion, tgtRegion, level.getGameTime()));
+        if (srcRegionId == tgtRegionId) {
+            // Genuinely not cross-region: the neighbour is in this region, so the
+            // caller's own update path already handles it.
+            localSkipped.increment();
+            return;
+        }
+
+        submit(new RedstoneSignal(pos, neighbor, dir, srcRegionId, tgtRegionId, level.getGameTime()));
     }
 
+    /**
+     * Route damage from {@code source} to {@code target}.
+     * <p>
+     * The source region comes from the executing context; the target region is
+     * resolved from the target entity's own position. Using
+     * {@code target.level().getCurrentWorldData()} — as the previous version did —
+     * asks for the <em>current thread's</em> region data, so a target entity in
+     * another region produced the same value as the source and the event was
+     * silently dropped by the equality guard.
+     */
     public static void submitDamageCrossRegion(LivingEntity source, LivingEntity target,
-                                                DamageSource damageSource, long tick) {
-        if (!CrossRegionHelperConfig.enabled || source == null ||
-                target == null || damageSource == null) return;
+                                               DamageSource damageSource, long tick) {
+        if (!CrossRegionHelperConfig.enabled || source == null
+                || target == null || damageSource == null) return;
 
-        RegionizedWorldData srcRegion = source.level().getCurrentWorldData();
-        RegionizedWorldData tgtRegion = target.level().getCurrentWorldData();
+        if (!(source.level() instanceof ServerLevel sourceLevel)) return;
+        RegionizedWorldData srcRegion = sourceLevel.getCurrentWorldData();
+        if (srcRegion == null) return;
+        long srcRegionId = RegionIdRegistry.idOf(srcRegion);
 
-        if (srcRegion == null || tgtRegion == null) return;
-        if (srcRegion == tgtRegion) return;
+        if (!(target.level() instanceof ServerLevel targetLevel)) return;
+        RegionizedWorldData tgtRegion = regionAt(targetLevel, target.blockPosition());
+        if (tgtRegion == null) {
+            unresolvedTargets.increment();
+            return;
+        }
+        long tgtRegionId = RegionIdRegistry.idOf(tgtRegion);
+
+        if (srcRegionId == tgtRegionId) {
+            localSkipped.increment();
+            return;
+        }
 
         submit(new EntityDamageSync(source.getUUID(), target.getUUID(),
-                damageSource, srcRegion, tgtRegion, tick));
+                damageSource, srcRegionId, tgtRegionId, tick));
     }
+
+    // ---------- Consumers ----------
 
     public static ConcurrentLinkedQueue<Event> consumePending(RegionizedWorldData target) {
         if (!CrossRegionHelperConfig.enabled || target == null) return null;
-        ConcurrentLinkedQueue<Event> queue = pendingByRegion.remove(target);
-        // Mili start - unregister task UUIDs for consumed events
+        long regionId = RegionIdRegistry.peek(target);
+        if (regionId == RegionIdRegistry.UNKNOWN) return null;
+
+        ConcurrentLinkedQueue<Event> queue = pendingByRegion.remove(regionId);
         if (queue != null) {
             for (Event event : queue) {
                 RegionTaskIdRegistry.unregister(event.taskUuid);
+                // The event has reached the target region's tick. As far as this
+                // class is responsible for it, the routing transaction is done.
+                if (event.transaction != null) {
+                    event.transaction.markExecuting();
+                    event.transaction.commit();
+                }
             }
         }
-        // Mili end
         return queue;
     }
 
+    /** Called from the target region's tick. */
     public static ConcurrentLinkedQueue<Event> onRegionTick(ServerLevel level,
                                                             RegionizedWorldData data) {
         if (!CrossRegionHelperConfig.enabled || data == null) return null;
@@ -253,36 +432,54 @@ public class CrossRegionHelper {
     }
 
     public static int pendingCount(RegionizedWorldData region) {
-        ConcurrentLinkedQueue<Event> q = pendingByRegion.get(region);
+        if (region == null) return 0;
+        long regionId = RegionIdRegistry.peek(region);
+        if (regionId == RegionIdRegistry.UNKNOWN) return 0;
+        ConcurrentLinkedQueue<Event> q = pendingByRegion.get(regionId);
         return q != null ? q.size() : 0;
     }
 
-    public static int inboundQueueSize() { return inboundQueue.size(); }
+    public static int inboundQueueSize() {
+        return inboundQueue.size();
+    }
 
-    // Mili start - find events associated with a task UUID
     /**
-     * Find the source region for a given task UUID.
-     * Useful for region schedulers to trace where a cross-region event originated.
+     * Drop everything queued for a region.
+     * <p>
+     * Wired into the region destroy sequence via
+     * {@code FoliaSchedulerAdapter.installLifecycleHooks}, so this runs when a
+     * region goes away instead of never.
      */
-    public static RegionizedWorldData findSourceRegionForTaskUuid(UUID taskUuid) {
-        if (taskUuid == null) return null;
-        // Check inbound queue
-        for (Event event : inboundQueue) {
-            if (taskUuid.equals(event.taskUuid)) {
-                return event.sourceRegion;
-            }
-        }
-        // Check pending by region
-        for (ConcurrentLinkedQueue<Event> queue : pendingByRegion.values()) {
-            for (Event event : queue) {
-                if (taskUuid.equals(event.taskUuid)) {
-                    return event.sourceRegion;
+    public static void onRegionUnload(RegionizedWorldData data) {
+        if (data == null) return;
+        onRegionUnload(RegionIdRegistry.peek(data));
+    }
+
+    /** Drop everything queued for a region id. Used by the lifecycle hook. */
+    public static void onRegionUnload(long regionId) {
+        if (regionId == RegionIdRegistry.UNKNOWN) return;
+
+        ConcurrentLinkedQueue<Event> removed = pendingByRegion.remove(regionId);
+        if (removed != null && !removed.isEmpty()) {
+            for (Event event : removed) {
+                RegionTaskIdRegistry.unregister(event.taskUuid);
+                if (event.transaction != null) {
+                    event.transaction.cancel("target region unloaded");
                 }
             }
+            SchedulerLog.debug("Dropped %d event(s) for unloaded %s",
+                    removed.size(), RegionIdRegistry.labelOf(regionId));
         }
-        return null;
+
+        // The region's entity budget goes with it (fix.md §14): one scheduler per
+        // region is only bounded if the region destroys it.
+        EntityScheduler.release(regionId);
     }
-    // Mili end
+
+    /** Number of regions with queued events. Diagnostics and leak checks. */
+    public static int trackedRegions() {
+        return pendingByRegion.size();
+    }
 
     public static int totalPendingAcrossRegions() {
         int total = 0;
@@ -292,19 +489,22 @@ public class CrossRegionHelper {
         return total;
     }
 
-    public static void onRegionUnload(RegionizedWorldData data) {
-        if (data != null) {
-            ConcurrentLinkedQueue<Event> removed = pendingByRegion.remove(data);
-            if (removed != null && !removed.isEmpty()) {
-                // Mili start - unregister task UUIDs for dropped events
-                for (Event event : removed) {
-                    RegionTaskIdRegistry.unregister(event.taskUuid);
-                }
-                // Mili end
-                com.mojang.logging.LogUtils.getClassLogger()
-                        .debug("[Mili] Dropped {} events for unloaded region", removed.size());
+    /**
+     * Find the source region id for a task UUID.
+     *
+     * @return the source region id, or {@link RegionIdRegistry#UNKNOWN}
+     */
+    public static long findSourceRegionIdForTaskUuid(UUID taskUuid) {
+        if (taskUuid == null) return RegionIdRegistry.UNKNOWN;
+        for (Event event : inboundQueue) {
+            if (taskUuid.equals(event.taskUuid)) return event.sourceRegionId;
+        }
+        for (ConcurrentLinkedQueue<Event> queue : pendingByRegion.values()) {
+            for (Event event : queue) {
+                if (taskUuid.equals(event.taskUuid)) return event.sourceRegionId;
             }
         }
+        return RegionIdRegistry.UNKNOWN;
     }
 
     public static Map<String, Object> getStats() {
@@ -317,13 +517,9 @@ public class CrossRegionHelper {
         stats.put("events_dropped", eventsDropped.sum());
         stats.put("batches_dispatched", batchesDispatched.sum());
         stats.put("region_queue_overflows", regionQueueOverflows.sum());
-
-        long totalEventsProcessed = 0;
-        for (ConcurrentLinkedQueue<Event> q : pendingByRegion.values()) {
-            totalEventsProcessed += q.size();
-        }
-        stats.put("total_events_in_queues", totalEventsProcessed);
-
+        stats.put("local_skipped", localSkipped.sum());
+        stats.put("unresolved_targets", unresolvedTargets.sum());
+        stats.putAll(CrossRegionTransaction.stats());
         return stats;
     }
 
@@ -336,22 +532,27 @@ public class CrossRegionHelper {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            dispatcherThread = null;
         }
 
-        // Mili start - unregister task UUIDs for all remaining events
         for (Event event : inboundQueue) {
             RegionTaskIdRegistry.unregister(event.taskUuid);
+            if (event.transaction != null) {
+                event.transaction.cancel("shutdown");
+            }
         }
         for (ConcurrentLinkedQueue<Event> queue : pendingByRegion.values()) {
             for (Event event : queue) {
                 RegionTaskIdRegistry.unregister(event.taskUuid);
+                if (event.transaction != null) {
+                    event.transaction.cancel("shutdown");
+                }
             }
         }
-        // Mili end
 
         inboundQueue.clear();
         pendingByRegion.clear();
 
-        com.mojang.logging.LogUtils.getClassLogger().info("[Mili] CrossRegionHelper shutdown");
+        SchedulerLog.info("CrossRegionHelper shutdown");
     }
 }

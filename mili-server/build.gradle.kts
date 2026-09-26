@@ -49,7 +49,11 @@ paperweight {
         upstream.patchDir("foliaServer") {
             upstreamPath = "folia-server"
             excludes = setOf("src/minecraft", "paper-patches", "minecraft-patches", "build.gradle.kts", "build.gradle.kts.patch")
-            patchesDir = rootDirectory.dir("mili-server/folia-patches")
+            // Mili start - fix: the patch directory was "mili-server/folia-patches", which does not
+            // exist. The 124 hand-written patches live in "mili-server/minecraft-patches", so the
+            // whole patch set was silently excluded from the build.
+            patchesDir = rootDirectory.dir("mili-server/minecraft-patches")
+            // Mili end
             outputDir = rootDirectory.dir("folia-server")
         }
     }

@@ -86,6 +86,20 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理多层
 
 ## 5. Folia 稳定性与并发修复
 
+> **勘误（调度改造后）**：下表中关于 **Region Balancer** 与 **Smart Region Manager** 的描述
+> 是改造前的实现，已不再准确。
+>
+> - `RegionBalancer` 现在只是 `fun.bm.mili.scheduler` 的**薄外观**：它自建的共享线程池、
+>   无界优先级队列、派发线程和任务记录表**已全部删除**。region tick **不再在共享线程池上
+>   执行**——在 Folia 下，池线程不是 region 的属主线程，在那里跑 tick 等于跨 region 写入。
+> - `RegionBalancer.submitAndWait()` 过去无条件在调用线程上执行工作（即使调用者属于另一个
+>   region），这一点已修正为 ownership 优先。
+> - `Smart Region Manager` 的迁移逻辑目前**仍是** `sleep → mark success` 的模拟实现，
+>   其统计不反映任何真实迁移。
+>
+> 完整设计、fix.md 逐条对照、验证状态与未完成项见
+> [`SCHEDULER_ARCHITECTURE.md`](SCHEDULER_ARCHITECTURE.md)。
+
 ### 5.1 区域调度与负载均衡
 
 | 功能 | 说明 | 实现 |

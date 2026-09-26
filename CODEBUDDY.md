@@ -7,7 +7,7 @@ This file provides guidance to CodeBuddy / AI code assistants when working with 
 **Mili** 是直接基于 [Folia](https://github.com/PaperMC/Folia) 的 Minecraft 26.2 服务端核心，使用 Java 25 + Rust（edition 2024）构建。目标是在 Folia 并发调度环境下提供更稳定、可配置的服务器运行时。
 
 **版本**：`26.2-R0.1-SNAPSHOT`
-**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统（121 个 feature 补丁）
+**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统（124 个 feature 补丁）
 **上游**：Folia `57f643f`（`foliaRef` in `gradle.properties`）
 
 > Mili 原为 Lophine/Luminol 衍生分支，现已直接基于 Folia。Luminol 已删库。
@@ -36,6 +36,9 @@ This file provides guidance to CodeBuddy / AI code assistants when working with 
 # Java 编译
 ./gradlew :mili-server:compileJava
 
+# 调度核心独立验证（不需要 apply 补丁，零 classpath javac + 行为自检）
+bash scripts/scheduler-verify/run.sh
+
 # Rust clippy + test
 cd mili-rust/src/rust
 cargo clippy --release   # 必须 0 warning
@@ -62,11 +65,13 @@ cargo test --release     # 28 tests
 Mili/
 ├── mili-api/          # 对外公开 API（Bot、Photographer、事件）
 ├── mili-server/       # 服务器核心
-│   ├── minecraft-patches/features/  # 121 个补丁文件
+│   ├── minecraft-patches/features/  # 124 个补丁文件
 │   └── src/main/java/fun/bm/mili/   # Java 源码
 ├── mili-rust/         # Rust 原生优化模块
 │   ├── src/main/java/ #   JNI Java 侧（RustBridge.java, TomlConfigData.java）
 │   └── src/rust/src/  #   Rust 源码（4 个 .rs 文件）
+├── scripts/
+│   └── scheduler-verify/  # 调度核心独立验证（run.sh + SchedulerSelfCheck.java）
 ├── folia-server/      # Folia 子模块（上游，不修改）
 └── folia-api/         # Folia API（不修改）
 ```
@@ -75,6 +80,7 @@ Mili/
 
 | 包 | 说明 |
 |---|------|
+| `scheduler` | 调度核心（**纯 Java，零 NMS 依赖**）：`MiliScheduler` / `RegionRuntime` / `TaskHandle` / `CancellationToken` / `SubmissionResult` / `RegionOwnership` / `RegionIdRegistry` / `RegionLifecycle` / `CrossRegionTransaction` / `EntityScheduler`。详见 `docs/SCHEDULER_ARCHITECTURE.md` |
 | `bridge` | 区块-区域桥接（ChunkRegionBridge） |
 | `carpet` | Carpet 兼容层（规则同步、计算器兼容、生成优化兼容） |
 | `chunk` | 区块系统（生命周期管理、异步处理、热度追踪、视距优化） |

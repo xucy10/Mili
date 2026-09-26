@@ -1,8 +1,10 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
+import fun.bm.mili.scheduler.RegionIdRegistry;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -11,6 +13,14 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * Region load monitor.
  * Tracks per-region tick duration using a sliding window to compute average load.
  * Thread-safe: all operations are lock-free (atomic arrays).
+ * <p>
+ * Regions are keyed by their stable {@link RegionIdRegistry} id. The previous
+ * implementation keyed by {@code System.identityHashCode(region)} — a 32-bit
+ * value that is not unique and not shared with the scheduler, metrics or
+ * cross-region routing. Two regions landing on the same hash silently shared one
+ * statistics window (so a loaded region could inherit an idle region's numbers
+ * and be scheduled accordingly), and because the key was an {@code Integer} with
+ * no way back to the region, the entry could never be cleaned up.
  */
 public class RegionLoadMonitor {
 
@@ -93,12 +103,18 @@ public class RegionLoadMonitor {
         }
     }
 
-    // Key: RegionSchedule hashCode (each region schedule is a unique instance)
-    private static final java.util.concurrent.ConcurrentHashMap<Integer, RegionStats> STATS =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    /** Keyed by the stable region id from {@link RegionIdRegistry}. */
+    private static final ConcurrentHashMap<Long, RegionStats> STATS = new ConcurrentHashMap<>();
 
-    private static int keyOf(Object schedule) {
-        return System.identityHashCode(schedule);
+    /**
+     * Stable key for a region.
+     * <p>
+     * Uses {@link RegionIdRegistry#peek} rather than {@code idOf}: a monitor that
+     * is asked about a region nobody registered should report "no data", not
+     * quietly allocate an identity for it.
+     */
+    private static long keyOf(Object schedule) {
+        return RegionIdRegistry.peek(schedule);
     }
 
     /**
@@ -119,7 +135,10 @@ public class RegionLoadMonitor {
         if (!RegionBalancerConfig.enabled) return;
         if (schedule == null) return;
 
-        RegionStats stats = STATS.computeIfAbsent(keyOf(schedule), k ->
+        long regionId = RegionIdRegistry.idOf(schedule);
+        if (regionId == RegionIdRegistry.UNKNOWN) return;
+
+        RegionStats stats = STATS.computeIfAbsent(regionId, k ->
                 new RegionStats(RegionBalancerConfig.historyWindowSize));
         stats.record(elapsedNanos);
     }
@@ -151,10 +170,34 @@ public class RegionLoadMonitor {
 
     /**
      * Cleanup stats for a removed region schedule.
+     * <p>
+     * Previous behaviour: this method existed but had no callers anywhere in the
+     * repository, so a server that churned regions accumulated one statistics
+     * window per region that had ever ticked. It is now wired into the region
+     * destroy sequence through {@link #removeById(long)}.
      */
     public static void remove(Object schedule) {
         if (schedule == null) return;
-        STATS.remove(keyOf(schedule));
+        long regionId = keyOf(schedule);
+        if (regionId != RegionIdRegistry.UNKNOWN) {
+            STATS.remove(regionId);
+        }
+    }
+
+    /** Cleanup by stable id — used by the region destroy hook. */
+    public static void removeById(long regionId) {
+        if (regionId == RegionIdRegistry.UNKNOWN) return;
+        STATS.remove(regionId);
+    }
+
+    /** Number of regions currently tracked. Diagnostics; used to verify cleanup works. */
+    public static int trackedRegions() {
+        return STATS.size();
+    }
+
+    /** Drop all statistics. Shutdown only. */
+    public static void clear() {
+        STATS.clear();
     }
 
     /**
@@ -168,9 +211,9 @@ public class RegionLoadMonitor {
         return result;
     }
 
-    public static java.util.Map<Integer, RegionLoadSnapshot> getAllSnapshotMap() {
-        java.util.Map<Integer, RegionLoadSnapshot> result = new java.util.LinkedHashMap<>();
-        for (java.util.Map.Entry<Integer, RegionStats> entry : STATS.entrySet()) {
+    public static java.util.Map<Long, RegionLoadSnapshot> getAllSnapshotMap() {
+        java.util.Map<Long, RegionLoadSnapshot> result = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<Long, RegionStats> entry : STATS.entrySet()) {
             result.put(entry.getKey(), entry.getValue().snapshot());
         }
         return result;
