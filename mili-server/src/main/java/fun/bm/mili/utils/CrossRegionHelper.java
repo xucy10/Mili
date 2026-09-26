@@ -7,6 +7,7 @@ import fun.bm.mili.scheduler.RegionIdRegistry;
 import fun.bm.mili.scheduler.RegionResolver;
 import fun.bm.mili.scheduler.SchedulerLog;
 import io.papermc.paper.threadedregions.RegionizedWorldData;
+import io.papermc.paper.threadedregions.TickRegionScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -289,25 +290,48 @@ public class CrossRegionHelper {
      * fallback is precisely the bug — a "cross-region" write that silently lands on
      * the source, or worse, gets executed by the source's thread.
      *
-     * @return the owning region data, or {@code null} if it cannot be resolved
+     * @return the owning region, or {@code null} if it cannot be resolved
      *         (unloaded chunk, no region yet, server mid-shutdown)
      */
-    public static RegionizedWorldData regionAt(ServerLevel level, BlockPos pos) {
+    public static Object regionAt(ServerLevel level, BlockPos pos) {
         if (level == null || pos == null) return null;
         try {
-            int chunkX = pos.getX() >> 4;
-            int chunkZ = pos.getZ() >> 4;
-
             // The regioniser is the only component that can answer "which region
             // owns this coordinate?" without running on that region's thread, which
             // is exactly what routing needs.
-            var region = level.regioniser.getRegionAtUnsynchronised(chunkX, chunkZ);
-            if (region == null) return null;
-            return region.getData().regionData;
+            //
+            // Note what is returned: the *region*, not its RegionizedWorldData. The
+            // two are interchangeable as identities here, and the region is reachable
+            // from both directions (a position resolves to it, and
+            // TickRegionScheduler.getCurrentRegion() hands back the same object type
+            // for the region the caller is already running in), whereas walking from
+            // a region to its world data needs an accessor on TickRegionData that is
+            // not part of the public surface this project compiles against.
+            return level.regioniser.getRegionAtUnsynchronised(pos.getX() >> 4, pos.getZ() >> 4);
         } catch (Throwable t) {
             // Never let a lookup failure escape into a tick. Callers treat null as
             // "do not route", which is the safe direction.
             SchedulerLog.debug("CrossRegionHelper region lookup failed for %s in %s: %s", pos, level, t);
+            return null;
+        }
+    }
+
+    /**
+     * The region the calling thread is currently ticking.
+     * <p>
+     * This is the source side of every cross-region decision, and it is deliberately
+     * the <em>same object type</em> that {@link #regionAt} returns for the target
+     * side: two region references can then be compared with {@code ==}, which is the
+     * only comparison that actually answers "are these the same region?".
+     *
+     * @return the current region, or {@code null} outside a region tick (for example
+     *         on the global region's thread or a non-server thread)
+     */
+    public static Object currentRegion() {
+        try {
+            return TickRegionScheduler.getCurrentRegion();
+        } catch (Throwable t) {
+            // Called from a thread Folia does not consider a tick thread.
             return null;
         }
     }
@@ -341,28 +365,29 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || level == null
                 || pos == null || neighbor == null) return;
 
-        RegionizedWorldData srcRegion = level.getCurrentWorldData();
+        // Source: the region this thread is already ticking.
+        Object srcRegion = currentRegion();
         if (srcRegion == null) return;
-        long srcRegionId = RegionIdRegistry.idOf(srcRegion);
 
-        // The target is resolved from the neighbour's own coordinates. The old code
-        // read level.getCurrentWorldData() a second time here, which made
+        // Target: resolved from the neighbour's own coordinates. The old code read
+        // level.getCurrentWorldData() a second time here, which made
         // `srcRegion == tgtRegion` unconditionally true and the method a no-op.
-        RegionizedWorldData tgtRegion = regionAt(level, neighbor);
+        Object tgtRegion = regionAt(level, neighbor);
         if (tgtRegion == null) {
             unresolvedTargets.increment();
             return;
         }
-        long tgtRegionId = RegionIdRegistry.idOf(tgtRegion);
 
-        if (srcRegionId == tgtRegionId) {
+        if (srcRegion == tgtRegion) {
             // Genuinely not cross-region: the neighbour is in this region, so the
             // caller's own update path already handles it.
             localSkipped.increment();
             return;
         }
 
-        submit(new RedstoneSignal(pos, neighbor, dir, srcRegionId, tgtRegionId, level.getGameTime()));
+        submit(new RedstoneSignal(pos, neighbor, dir,
+                RegionIdRegistry.idOf(srcRegion), RegionIdRegistry.idOf(tgtRegion),
+                level.getGameTime()));
     }
 
     /**
@@ -380,33 +405,38 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || source == null
                 || target == null || damageSource == null) return;
 
-        if (!(source.level() instanceof ServerLevel sourceLevel)) return;
-        RegionizedWorldData srcRegion = sourceLevel.getCurrentWorldData();
+        Object srcRegion = currentRegion();
         if (srcRegion == null) return;
-        long srcRegionId = RegionIdRegistry.idOf(srcRegion);
 
         if (!(target.level() instanceof ServerLevel targetLevel)) return;
-        RegionizedWorldData tgtRegion = regionAt(targetLevel, target.blockPosition());
+        Object tgtRegion = regionAt(targetLevel, target.blockPosition());
         if (tgtRegion == null) {
             unresolvedTargets.increment();
             return;
         }
-        long tgtRegionId = RegionIdRegistry.idOf(tgtRegion);
 
-        if (srcRegionId == tgtRegionId) {
+        if (srcRegion == tgtRegion) {
             localSkipped.increment();
             return;
         }
 
         submit(new EntityDamageSync(source.getUUID(), target.getUUID(),
-                damageSource, srcRegionId, tgtRegionId, tick));
+                damageSource, RegionIdRegistry.idOf(srcRegion), RegionIdRegistry.idOf(tgtRegion), tick));
     }
 
     // ---------- Consumers ----------
 
-    public static ConcurrentLinkedQueue<Event> consumePending(RegionizedWorldData target) {
-        if (!CrossRegionHelperConfig.enabled || target == null) return null;
-        long regionId = RegionIdRegistry.peek(target);
+    /**
+     * Drain everything queued for a region.
+     * <p>
+     * Takes the region reference itself and never the world data: identity has to be
+     * the same kind of object on both sides of the comparison, and the id is derived
+     * with {@link RegionIdRegistry#peek} so a region nobody registered reports "no
+     * queue" rather than being handed a fresh identity.
+     */
+    public static ConcurrentLinkedQueue<Event> consumePending(Object region) {
+        if (!CrossRegionHelperConfig.enabled || region == null) return null;
+        long regionId = RegionIdRegistry.peek(region);
         if (regionId == RegionIdRegistry.UNKNOWN) return null;
 
         ConcurrentLinkedQueue<Event> queue = pendingByRegion.remove(regionId);
@@ -424,19 +454,31 @@ public class CrossRegionHelper {
         return queue;
     }
 
-    /** Called from the target region's tick. */
+    /**
+     * Called from the target region's tick.
+     * <p>
+     * The {@code RegionizedWorldData} argument is retained because the injection
+     * point passes it, but identity comes from the current region instead — see
+     * {@link #currentRegion()}.
+     */
     public static ConcurrentLinkedQueue<Event> onRegionTick(ServerLevel level,
                                                             RegionizedWorldData data) {
-        if (!CrossRegionHelperConfig.enabled || data == null) return null;
-        return consumePending(data);
+        if (!CrossRegionHelperConfig.enabled) return null;
+        return consumePending(currentRegion());
     }
 
-    public static int pendingCount(RegionizedWorldData region) {
+    /** Pending event count for a region. */
+    public static int pendingCount(Object region) {
         if (region == null) return 0;
         long regionId = RegionIdRegistry.peek(region);
         if (regionId == RegionIdRegistry.UNKNOWN) return 0;
         ConcurrentLinkedQueue<Event> q = pendingByRegion.get(regionId);
         return q != null ? q.size() : 0;
+    }
+
+    /** Pending event count for the calling thread's own region. */
+    public static int pendingCountHere() {
+        return pendingCount(currentRegion());
     }
 
     public static int inboundQueueSize() {
@@ -450,9 +492,9 @@ public class CrossRegionHelper {
      * {@code FoliaSchedulerAdapter.installLifecycleHooks}, so this runs when a
      * region goes away instead of never.
      */
-    public static void onRegionUnload(RegionizedWorldData data) {
-        if (data == null) return;
-        onRegionUnload(RegionIdRegistry.peek(data));
+    public static void onRegionUnload(Object region) {
+        if (region == null) return;
+        onRegionUnload(RegionIdRegistry.peek(region));
     }
 
     /** Drop everything queued for a region id. Used by the lifecycle hook. */

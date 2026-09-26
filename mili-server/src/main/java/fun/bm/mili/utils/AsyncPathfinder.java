@@ -7,7 +7,9 @@ import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -198,6 +200,20 @@ public final class AsyncPathfinder {
 
         public BlockPos min() {
             return new BlockPos(minX, minY, minZ);
+        }
+
+        // Accessors for the origin corner. {@code indexOf} flattens world coordinates
+        // into the snapshot array and needs the origin, so these are not just convenience.
+        public int minX() {
+            return minX;
+        }
+
+        public int minY() {
+            return minY;
+        }
+
+        public int minZ() {
+            return minZ;
         }
 
         /** Whether a world block position is inside this snapshot. */
@@ -549,5 +565,25 @@ public final class AsyncPathfinder {
 
     public static long totalCaptureTimeMillis() {
         return totalCaptureTime.get() / 1_000_000L;
+    }
+
+    /**
+     * Snapshot for {@code /mili perf}.
+     * <p>
+     * Kept even though the individual counters above are public: the perf command
+     * prints a labelled table and every other subsystem exposes the same shape, so a
+     * missing {@code getStats()} here would mean the async pathfinder silently
+     * disappeared from the report.
+     */
+    public static Map<String, Object> getStats() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", enabled);
+        out.put("queued_tasks", queuedTasks.get());
+        out.put("completed_tasks", completedTasks.get());
+        out.put("rejected_tasks", rejectedTasks.get());
+        out.put("failed_tasks", failedTasks.get());
+        out.put("total_compute_ms", totalComputeTime.get() / 1_000_000L);
+        out.put("total_capture_ms", totalCaptureTime.get() / 1_000_000L);
+        return out;
     }
 }

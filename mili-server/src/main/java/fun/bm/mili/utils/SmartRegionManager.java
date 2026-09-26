@@ -20,7 +20,7 @@ public final class SmartRegionManager {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     // Mili end
 
-    private static final ConcurrentHashMap<Integer, RegionProfile> regionProfiles = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, RegionProfile> regionProfiles = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedQueue<RegionMigrationTask> migrationQueue = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<RegionMigrationTask> taskPool = new ConcurrentLinkedQueue<>();
     private static final int maxPoolSize = 50;
@@ -90,9 +90,9 @@ public final class SmartRegionManager {
 
     private static void analyzeRegions() {
         try {
-            for (java.util.Map.Entry<Integer, RegionLoadMonitor.RegionLoadSnapshot> entry
+            for (java.util.Map.Entry<Long, RegionLoadMonitor.RegionLoadSnapshot> entry
                     : RegionLoadMonitor.getAllSnapshotMap().entrySet()) {
-                Integer regionKey = entry.getKey();
+                Long regionKey = entry.getKey();
                 RegionLoadMonitor.RegionLoadSnapshot snapshot = entry.getValue();
 
                 RegionProfile profile = regionProfiles.computeIfAbsent(
@@ -150,7 +150,7 @@ public final class SmartRegionManager {
         }
     }
 
-    private static void scheduleMigration(Integer regionKey, RegionProfile profile) {
+    private static void scheduleMigration(Long regionKey, RegionProfile profile) {
         if (migrationQueue.size() > 50) return;
 
         RegionMigrationTask task = taskPool.poll();
@@ -162,16 +162,16 @@ public final class SmartRegionManager {
         migrationQueue.add(task);
     }
 
-    public static void registerRegion(Integer regionKey) {
+    public static void registerRegion(Long regionKey) {
         regionProfiles.computeIfAbsent(regionKey, k -> new RegionProfile(k));
     }
 
-    public static void unregisterRegion(Integer regionKey) {
+    public static void unregisterRegion(Long regionKey) {
         regionProfiles.remove(regionKey);
     }
 
     @Nullable
-    public static RegionProfile getProfile(Integer regionKey) {
+    public static RegionProfile getProfile(Long regionKey) {
         return regionProfiles.get(regionKey);
     }
 
@@ -196,7 +196,7 @@ public final class SmartRegionManager {
     }
 
     public static final class RegionProfile {
-        final Integer regionKey;
+        final Long regionKey;
         final AtomicReference<RegionLoadMonitor.RegionLoadSnapshot> currentSnapshot =
                 new AtomicReference<>(new RegionLoadMonitor.RegionLoadSnapshot(0, 0, 0, 0.0, false, true));
 
@@ -208,7 +208,7 @@ public final class SmartRegionManager {
         volatile long lastMigrationAttempt = 0;
         volatile int consecutiveFailures = 0;
 
-        RegionProfile(Integer regionKey) {
+        RegionProfile(Long regionKey) {
             this.regionKey = regionKey;
         }
 
@@ -291,13 +291,13 @@ public final class SmartRegionManager {
     }
 
     private static class RegionMigrationTask {
-        Integer regionKey;
+        Long regionKey;
         RegionProfile profile;
         // Mili start - task UUID for cross-region migration tracking
         UUID taskUuid;
         // Mili end
 
-        RegionMigrationTask(Integer regionKey, RegionProfile profile) {
+        RegionMigrationTask(Long regionKey, RegionProfile profile) {
             this.regionKey = regionKey;
             this.profile = profile;
             // Mili start - allocate UUID on creation
@@ -305,7 +305,7 @@ public final class SmartRegionManager {
             // Mili end
         }
 
-        void reset(Integer regionKey, RegionProfile profile) {
+        void reset(Long regionKey, RegionProfile profile) {
             // Mili start - unregister old UUID before reusing the task object
             if (this.taskUuid != null) {
                 RegionTaskIdRegistry.unregister(this.taskUuid);
