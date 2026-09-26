@@ -1,64 +1,45 @@
 # CODEBUDDY.md
 
-This file provides guidance to CodeBuddy Code when working with code in this repository.
+This file provides guidance to CodeBuddy / AI code assistants when working with code in this repository.
 
 ## 项目概述
 
-**Mili** 是 [Lophine](https://github.com/LuminolMC/Lophine) 的一个衍生分支，基于 Java 21 + Kotlin + Rust 构建的 Minecraft 1.21.11 服务器软件。目标是在 Folia 并发调度环境下提供更稳定、可配置的服务器运行时。
+**Mili** 是直接基于 [Folia](https://github.com/PaperMC/Folia) 的 Minecraft 26.2 服务端核心，使用 Java 25 + Rust（edition 2024）构建。目标是在 Folia 并发调度环境下提供更稳定、可配置的服务器运行时。
 
-**版本**：`1.21.11-R0.1-SNAPSHOT`  
-**构建工具**：Gradle（Kotlin DSL）+ [Hyacinthusweight](https://github.com/LuminolMC/Hyacinthusweight) 补丁系统
+**版本**：`26.2-R0.1-SNAPSHOT`
+**构建工具**：Gradle 9.4.1（Kotlin DSL）+ Hyacinthusweight 补丁系统（121 个 feature 补丁）
+**上游**：Folia `57f643f`（`foliaRef` in `gradle.properties`）
+
+> Mili 原为 Lophine/Luminol 衍生分支，现已直接基于 Folia。Luminol 已删库。
 
 ---
 
 ## 常用命令
 
-### 首次构建（必须先执行）
+### 构建
 
 ```bash
-./gradlew applyAllPatches
-```
 
-### 构建产物
+# 首次构建（必须）
+./gradlew applyAllPatches --no-configuration-cache --no-build-cache
 
-```bash
-# 开发用（Mojang 映射，调试友好）
+# 构建 Paperclip JAR
 ./gradlew :mili-server:createMojmapPaperclipJar
 
-# 生产用（混淆映射）
-./gradlew :mili-server:createReobfPaperclipJar
-
-# Bundler JAR
-./gradlew :mili-server:createMojmapBundlerJar
+# Rust 原生库
+./gradlew :mili-rust:stageRustBinary
 ```
 
-构建产物位于 `mili-server/build/libs/`。
-
-### 运行服务器
+### 编译验证
 
 ```bash
-# 直接运行（无需 JAR，开发调试用）
-./gradlew :mili-server:runDevServer
+# Java 编译
+./gradlew :mili-server:compileJava
 
-# 从 JAR 运行
-./gradlew :mili-server:runServer
-```
-
-### 测试
-
-```bash
-# 运行全部测试
-./gradlew test
-
-# 运行单模块测试
-./gradlew :mili-server:test
-./gradlew :mili-api:test
-```
-
-### 代码检查
-
-```bash
-./gradlew check
+# Rust clippy + test
+cd mili-rust/src/rust
+cargo clippy --release   # 必须 0 warning
+cargo test --release     # 28 tests
 ```
 
 ### 补丁管理
@@ -67,16 +48,8 @@ This file provides guidance to CodeBuddy Code when working with code in this rep
 # 应用全部补丁
 ./gradlew applyAllPatches
 
-# 修改源文件后重建补丁（提交前必须执行）
-./gradlew :mili-server:rebuildPatches
-./gradlew :mili-api:rebuildPatches
-```
-
-### Rust 组件
-
-```bash
-# 编译 Rust 优化器二进制文件
-./gradlew :mili-rust:stageRustBinary
+# 修改源文件后重建补丁
+./gradlew :mili-server:rebuildAllServerPatches
 ```
 
 ---
@@ -86,66 +59,72 @@ This file provides guidance to CodeBuddy Code when working with code in this rep
 ### 模块结构
 
 ```
-Mili
-├── mili-api/          # 对外公开 API（插件开发者使用）
-├── mili-server/       # 服务器核心实现（补丁 + 自定义逻辑）
-├── mili-rust/         # Rust 性能优化模块（JNI/进程通信）
-├── luminol-api/       # 上游 Luminol API（不直接修改）
-├── luminol-server/    # 上游 Luminol 服务端（不直接修改）
-├── folia-api/         # 上游 Folia API（不直接修改）
-├── folia-server/      # 上游 Folia 服务端（不直接修改）
-├── paper-api/         # 上游 Paper API（不直接修改）
-└── paper-server/      # 上游 Paper 服务端（不直接修改）
+Mili/
+├── mili-api/          # 对外公开 API（Bot、Photographer、事件）
+├── mili-server/       # 服务器核心
+│   ├── minecraft-patches/features/  # 121 个补丁文件
+│   └── src/main/java/fun/bm/mili/   # Java 源码
+├── mili-rust/         # Rust 原生优化模块
+│   ├── src/main/java/ #   JNI Java 侧（RustBridge.java, TomlConfigData.java）
+│   └── src/rust/src/  #   Rust 源码（4 个 .rs 文件）
+├── folia-server/      # Folia 子模块（上游，不修改）
+└── folia-api/         # Folia API（不修改）
 ```
+
+### Java 包结构（`fun.bm.mili`）
+
+| 包 | 说明 |
+|---|------|
+| `bridge` | 区块-区域桥接（ChunkRegionBridge） |
+| `carpet` | Carpet 兼容层（规则同步、计算器兼容、生成优化兼容） |
+| `chunk` | 区块系统（生命周期管理、异步处理、热度追踪、视距优化） |
+| `command` | 命令系统（`/counter` 等） |
+| `config` | 配置模块（function/experiment/optimizations/fixes/misc/carpet） |
+| `metrics` | bStats 统计 |
+| `portal` | 传送门管理（配对、原子写入、NPE 防护） |
+| `protocol` | 协议兼容（CarpetLogger、TISCM） |
+| `rust` | Rust JNI Java 侧工具类（RustSpan, RustCow, RustScope, RustResult, RustOption, RustArena） |
+| `utils` | 工具类（区域调度、网络优化、内存管理、村民、并发数据结构等） |
+| `villager` | 村民优化器 |
+
+### Rust 模块（`mili-rust/src/rust/src/`）
+
+| 文件 | 功能 | JNI 交互 |
+|------|------|----------|
+| `config.rs` | TOML 配置读写 | JSON string 批量传输 |
+| `entity_cull.rs` | 实体视锥剔除 | DirectByteBuffer 零拷贝，Rayon 并行 |
+| `frustum.rs` | 视锥体构建与测试 | 值传递（float 数组） |
+| `jni_bridge.rs` | JNI 导出函数 | 批量处理，catch_unwind 防止 panic 传播 |
+
+**交互方式**：JNI 原生库直接调用（`System.loadLibrary("mili_optimizer")`），非子进程通信。Rust 二进制不可用时自动回退纯 Java。
+
+**edition 2024 约束**：
+- `#[no_mangle]` → `#[unsafe(no_mangle)]`
+- unsafe fn 内部必须显式 `unsafe` 块
+- `catch_unwind` 需用 `AssertUnwindSafe` 包装 `JNIEnv`
 
 ### 继承链
 
-Mili 基于多层 fork 构建，补丁依次叠加：
-
 ```
 Minecraft（原版）
-  └── Paper（基础服务端框架）
-        └── Folia（多线程并发调度）
-              └── Luminol（性能优化 fork）
-                    └── Mili（本项目）
+  └── Paper（服务端框架）
+        └── Folia（区域多线程调度）
+              └── Mili（本项目）
 ```
-
-### 补丁系统
-
-自定义代码通过补丁文件管理，位于：
-
-- `mili-server/paper-patches/features/`（7 个补丁，对 Paper 层的修改）
-- `mili-server/luminol-patches/features/`（5 个补丁，对 Luminol 层的修改）
-- `mili-server/minecraft-patches/`（底层 Minecraft 调整）
-- `mili-api/paper-patches/features/`（API 层补丁）
-
-**修改服务器逻辑的工作流**：
-1. 编辑 `mili-server/src/minecraft/` 下的源文件
-2. 执行 `./gradlew :mili-server:rebuildPatches` 重新生成 `.patch` 文件
-3. 将补丁文件纳入 git 提交
-
-### mili-rust 模块
-
-Rust 优化器通过**子进程通信**（非 JNI 库）与 Java 交互：
-
-| Rust 文件 | 功能 |
-|-----------|------|
-| `chunk.rs` | 区块坐标转换、区域计算 |
-| `nbt.rs` | NBT 数据格式解析 |
-| `protocol.rs` | 网络包合并成本计算 |
-| `scheduler.rs` | 调度任务优化（使用 Rayon 并行库） |
-| `varint.rs` | VarInt/VarLong 编解码 |
-
-Java 入口：`mili-rust/src/main/java/org/mili/rust/RustOptimizer.java`。若 Rust 二进制不可用，自动回退到纯 Java 实现。
 
 ---
 
 ## 关键配置文件
 
-- **`gradle.properties`**：项目版本、Minecraft 版本、上游 commit SHA（`luminolRef`）、发布标志（`release=1` 预发布，`release=2` 正式版）
-- **`settings.gradle.kts`**：子模块声明，注册 Hyacinthusweight 插件
-- **`mili-server/build.gradle.kts`**：服务器构建核心，包含 fork 链声明、源集聚合、运行任务配置
-- **`mili-rust/src/rust/Cargo.toml`**：Rust 依赖，使用 Rayon 做并行计算
+- **`gradle.properties`**：项目版本 `26.2-R0.1-SNAPSHOT`、MC 版本 `26.2`、`foliaRef=57f643f`、`weightVersion=2.0.15`
+- **`mili-server/build.gradle.kts`**：服务器构建核心
+- **`mili-rust/src/rust/Cargo.toml`**：Rust edition 2024，`panic=unwind` + `overflow-checks=true`
+
+---
+
+## 修复标记约定
+
+所有代码修复使用 `// Mili start - fix:` / `// Mili end` 注释标记（Rust 侧同理）。
 
 ---
 
@@ -153,21 +132,8 @@ Java 入口：`mili-rust/src/main/java/org/mili/rust/RustOptimizer.java`。若 R
 
 | 依赖 | 版本 |
 |------|------|
-| JDK | 21+ |
-| Rust | stable toolchain |
-| Git | 2.0+ |
+| JDK | 25+（路径：`C:\Users\Administrator\Downloads\jdk-25_windows-x64_bin\jdk-25.0.4`） |
+| Rust | stable (edition 2024) |
+| Git | 2.0+（Windows 启用长路径） |
 
-构建时建议分配 ≥ 4GB 内存（`JAVA_OPTS="-Xmx4G"`）。
-
----
-
-## API 依赖（插件开发）
-
-```gradle
-repositories {
-    // 使用项目提供的 Maven 仓库
-}
-dependencies {
-    compileOnly("fun.bm.mili:mili-api:<version>")
-}
-```
+构建时建议分配 >= 4GB 内存。

@@ -8,24 +8,26 @@ plugins {
     `maven-publish`
     idea
     kotlin("jvm") version "2.3.21"
-    id("io.papermc.paperweight.core")
-    id("io.papermc.fill.gradle") version "1.0.10"
+    id("moe.luminolmc.hyacinthusweight.core")
+    id("io.papermc.fill.gradle") version "1.0.12"
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
+
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
-    mache("io.papermc:mache:1.21.11+build.1")
-    paperclip(files(rootProject.layout.projectDirectory.file("libs/riceear.jar")))
+    mache("io.papermc:mache:26.2+build.1")
+    hyacinthusclip(files(rootProject.layout.projectDirectory.file("libs/hyacinthusclip.jar")))
 }
 
 paperweight {
     minecraftVersion = providers.gradleProperty("mcVersion")
+    filterPatches = false
     gitFilePatches = false
-    
+
     val folia = forks.register("folia") {
         rootDirectory = upstreamsDirectory().map { it.dir("folia") }
         upstream.patchDir("paperServer") {
@@ -55,7 +57,7 @@ paperweight {
     activeFork = mili
 
     updatingMinecraft {
-        // oldPaperCommit = "c82b438b5b4ea0b230439b8e690e34708cd11ab3"
+        // oldPaperCommit = "d4fe85375af18bfa88f44d7c1e6a61904ae550cc"
     }
 }
 
@@ -124,6 +126,7 @@ sourceSets {
         resources { srcDir("../paper-server/src/main/resources") }
         java { srcDir("../folia-server/src/main/java") }
         resources { srcDir("../folia-server/src/main/resources") }
+        java { srcDir("../mili-rust/src/main/java") } // Mili - Rust bridge (TomlConfigData, RustBridge)
         java { srcDir("src/main/java") }
         resources { srcDir("src/main/resources") }
     }
@@ -160,10 +163,10 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 
 dependencies {
     implementation(project(":mili-api")) // Mili
-    implementation(project(":mili-rust"))
+    runtimeOnly(project(":mili-rust")) // Mili - package Rust native libraries (rust/*.dll|so|dylib) into the final jar
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
-    implementation("io.netty:netty-all:4.2.9.Final") // used for io_uring
+    implementation("io.netty:netty-all:4.2.15.Final") // used for io_uring
     implementation("com.electronwill.night-config:toml:3.8.3") // Night config
     implementation("com.github.luben:zstd-jni:1.5.4-1")
     implementation("net.openhft:zero-allocation-hashing:0.16")
@@ -176,7 +179,7 @@ dependencies {
     }
     // Leaves end - leaves plugin
     // Luminol end
-    implementation("ca.spottedleaf:concurrentutil:0.0.8")
+    implementation("ca.spottedleaf:leafpile:1.0.0")
     implementation("org.jline:jline-terminal-ffm:3.27.1") // use ffm on java 22+
     implementation("org.jline:jline-terminal-jni:3.27.1") // fall back to jni on java 21
     implementation("net.minecrell:terminalconsoleappender:1.3.0")
@@ -188,17 +191,17 @@ dependencies {
       all its classes to check if they are plugins.
       Scanning takes about 1-2 seconds so adding this speeds up the server start.
      */
-    implementation("org.apache.logging.log4j:log4j-core:2.24.1")
-    log4jPlugins.annotationProcessorConfigurationName("org.apache.logging.log4j:log4j-core:2.24.1") // Needed to generate meta for our Log4j plugins
+    implementation("org.apache.logging.log4j:log4j-core:2.26.0")
+    log4jPlugins.annotationProcessorConfigurationName("org.apache.logging.log4j:log4j-core:2.26.0") // Needed to generate meta for our Log4j plugins
     runtimeOnly(log4jPlugins.output)
     alsoShade(log4jPlugins.output)
 
-    implementation("com.velocitypowered:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT official artifact (one.pkg.velocity_rc fork only lives on the defunct repo.menthamc.org)
+    implementation("com.velocitypowered:velocity-native:3.4.0-SNAPSHOT") { // VelocityNT ReastLib
         isTransitive = false
     }
-    implementation("io.netty:netty-codec-haproxy:4.2.7.Final") // Add support for proxy protocol
-    implementation("org.apache.logging.log4j:log4j-iostreams:2.24.1")
-    implementation("org.ow2.asm:asm-commons:9.8")
+    implementation("io.netty:netty-codec-haproxy:4.2.16.Final") // Add support for proxy protocol
+    implementation("org.apache.logging.log4j:log4j-iostreams:2.26.0")
+    implementation("org.ow2.asm:asm-commons:9.9.1")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
 
     // Deps that were previously in the API but have now been moved here for backwards compat, eventually to be removed
@@ -210,45 +213,19 @@ dependencies {
         isTransitive = false // includes junit
     }
 
-    testImplementation("io.github.classgraph:classgraph:4.8.179") // For mob goal test
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
-    testImplementation("org.junit.platform:junit-platform-suite-engine:1.12.2")
+    testImplementation("io.github.classgraph:classgraph:4.8.184") // For mob goal test
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
+    testImplementation("org.junit.platform:junit-platform-suite-engine:6.0.3")
     testImplementation("org.hamcrest:hamcrest:2.2")
-    testImplementation("org.mockito:mockito-core:5.14.1")
-    mockitoAgent("org.mockito:mockito-core:5.14.1") { isTransitive = false } // Configure mockito agent that is needed in newer java versions
-    testImplementation("org.ow2.asm:asm-tree:9.8")
-    testImplementation("org.junit-pioneer:junit-pioneer:2.2.0") // CartesianTest
-
-    implementation("net.neoforged:srgutils:1.0.9") // Mappings handling
-    implementation("net.neoforged:AutoRenamingTool:2.0.3") // Remap plugins
-
-    // Remap reflection
-    val reflectionRewriterVersion = "0.0.3"
-    implementation("io.papermc:reflection-rewriter:$reflectionRewriterVersion")
-    implementation("io.papermc:reflection-rewriter-runtime:$reflectionRewriterVersion")
-    implementation("io.papermc:reflection-rewriter-proxy-generator:$reflectionRewriterVersion")
+    testImplementation("org.mockito:mockito-core:5.22.0")
+    mockitoAgent("org.mockito:mockito-core:5.22.0") { isTransitive = false } // Configure mockito agent that is needed in newer java versions
+    testImplementation("org.ow2.asm:asm-tree:9.9.1")
+    testImplementation("org.junit-pioneer:junit-pioneer:2.3.0") // CartesianTest
 
     // Spark
     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
     implementation("me.lucko:spark-paper:1.10.152")
-}
-
-tasks.named<Jar>("jar") {
-    dependsOn(":mili-rust:stageRustBinary")
-    from(project(":mili-rust").layout.buildDirectory.dir("rust")) {
-        into("rust")
-    }
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    isReproducibleFileOrder = true
-    isPreserveFileTimestamps = false
-
-    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
-    exclude("META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/maven/**")
-    exclude("META-INF/versions/**")
-    exclude("META-INF/*.md")
-    exclude("**/*.md", "**/module-info.class")
 }
 
 // Pufferfish Start
@@ -266,6 +243,7 @@ tasks.withType<JavaCompile> {
     compilerArgs.add("-Xlint:-dep-ann")
 }
 // Luminol end
+
 
 tasks.jar {
     manifest {
@@ -303,19 +281,31 @@ tasks.compileTestJava {
     options.compilerArgs.add("-parameters")
 }
 
+tasks.named<JavaCompile>(log4jPlugins.compileJavaTaskName) {
+    options.compilerArgs.addAll(
+        listOf(
+            "-Alog4j.graalvm.groupId=${project.group}",
+            "-Alog4j.graalvm.artifactId=${project.name}"
+        )
+    )
+}
+
 // Bump compile tasks to 1GB memory to avoid OOMs
 tasks.withType<JavaCompile>().configureEach {
     options.forkOptions.memoryMaximumSize = "1G"
 }
 
-// Mili - inject bstats plugin id from env var or Gradle property into mili.properties
-tasks.processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    val bstatsId = System.getenv("BSTATS_PLUGIN_ID")
-        ?: providers.gradleProperty("bstatsPluginId").getOrElse("0")
-    filesMatching("mili.properties") {
-        expand("bstats_plugin_id" to bstatsId)
+// Mili - multiple resource source sets (paper-server/folia-server/mili) may contain
+// files with the same name (e.g. mili.properties); let the later source set win
+tasks.withType<ProcessResources>().configureEach {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    // Mili start - substitute the bstats_plugin_id placeholder in mili.properties at build time
+    // CI passes -PbstatsPluginId (secrets.BSTATS_PLUGIN_ID); missing/blank falls back to 0 (bStats disabled)
+    val bstatsPluginId = providers.gradleProperty("bstatsPluginId").getOrElse("0").trim().ifEmpty { "0" }
+    filesMatching("**/mili.properties") {
+        expand("bstats_plugin_id" to bstatsPluginId)
     }
+    // Mili end
 }
 
 val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {
@@ -380,8 +370,9 @@ fun TaskContainer.registerRunTask(
         .dir(providers.gradleProperty("paper.runWorkDir").getOrElse("run"))
         .asFile
     javaLauncher.set(project.javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(21))
-        vendor.set(JvmVendorSpec.JETBRAINS)
+        languageVersion.set(JavaLanguageVersion.of(25))
+        // TODO - JB runtime 25 has issues with spark rn
+        // vendor.set(JvmVendorSpec.JETBRAINS)
     })
     jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 
@@ -397,6 +388,9 @@ fun TaskContainer.registerRunTask(
         systemProperty("disable.watchdog", true)
     }
     systemProperty("io.papermc.paper.suppress.sout.nags", true)
+    systemProperty("paper.maxChatCommandInputSize", 32767)
+    systemProperty("paper.disableMigrationDelay", true)
+    systemProperty("paper.updatingMinecraft", providers.gradleProperty("updatingMinecraft").getOrElse("false").toBoolean())
 
     val memoryGb = providers.gradleProperty("paper.runMemoryGb").getOrElse("2")
     minHeapSize = "${memoryGb}G"
@@ -437,7 +431,7 @@ fill {
     version(paperweight.minecraftVersion)
 
     build {
-        channel = BuildChannel.STABLE
+        channel = providers.gradleProperty("channel").map { BuildChannel.valueOf(it.uppercase()) }
 
         downloads {
             register("server:default") {

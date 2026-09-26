@@ -31,10 +31,10 @@ concurrency:
 
 jobs:
   build-and-cross:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+      RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -45,11 +45,16 @@ jobs:
       - name: Repair submodules & paperweight cache (prevent corrupted upstreams)
         run: |
           set -eux
+
           git submodule deinit -f --all || true
+
           rm -rf .git/modules || true
+
           git submodule init
           git submodule sync --recursive
+
           git submodule update --init --recursive --force
+
           git submodule foreach --recursive '
             echo "=== Submodule: $name ==="
             if git rev-parse --is-shallow-repository >/dev/null 2>&1 && [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
@@ -60,46 +65,47 @@ jobs:
             git reset --hard || true
             git clean -fdx || true
           '
+
           rm -rf .gradle/caches/paperweight || true
           rm -rf .gradle/caches/paperweight/upstreams || true
+
           git status --porcelain --untracked-files=all || true
           ls -la .gradle/caches || true
 
       - name: Set up JDK
-        uses: actions/setup-java@v6 
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 25
 
-      # xucy10/Milihyacinthus is a paperweight fork rebranded to the vanilla
-      # io.papermc.paperweight plugin ids; repo.menthamc.org is offline/parked,
+      # repo.menthamc.org (the original home of the hyacinthusweight plugin) is offline/parked,
       # so the plugin must be published to mavenLocal from source before any gradle task can resolve it.
-      - name: Publish Milihyacinthus (paperweight fork) to mavenLocal
+      - name: Publish Hyacinthusweight plugin to mavenLocal
         run: |
           set -eux
-          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git milihyacinthus-src
-          cd milihyacinthus-src
+          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git hyacinthusweight-src
+          cd hyacinthusweight-src
           chmod +x gradlew
-          ./gradlew publishToMavenLocal --no-daemon 
+          ./gradlew publishToMavenLocal --no-daemon
           cd ..
-          rm -rf milihyacinthus-src
+          rm -rf hyacinthusweight-src
 
-      - name: Download Riceear (Hyacinthusclip fork)
+      - name: Download Hyacinthusclip
         run: |
           mkdir -p libs
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          echo "Downloading riceear v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
-          if [ ! -s libs/riceear.jar ]; then
-            echo "ERROR: Failed to download riceear jar"
+          echo "Downloading hyacinthusclip v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/hyacinthusclip-${CLIP_VERSION}.jar" -o libs/hyacinthusclip.jar
+          if [ ! -s libs/hyacinthusclip.jar ]; then
+            echo "ERROR: Failed to download hyacinthusclip jar"
             exit 1
           fi
-          ls -la libs/riceear.jar
+          ls -la libs/hyacinthusclip.jar
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
 
       - name: Install Zig
         uses: goto-bus-stop/setup-zig@v2
@@ -110,6 +116,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mingw-w64
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           sudo apt-get install -y clang lld build-essential pkg-config curl git
           sudo apt-get install -y libssl-dev zlib1g-dev
 
@@ -129,6 +136,7 @@ jobs:
             echo "WARN: cargo-zigbuild not available"
           fi
           which x86_64-w64-mingw32-gcc || echo "mingw not found in PATH"
+          which aarch64-linux-gnu-gcc || echo "aarch64 cross-gcc not found in PATH"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -139,7 +147,6 @@ jobs:
           git config --global user.name "Mili CI"
           git config --global advice.mergeConflict false
           git config --global init.defaultBranch main
-          git config --global gc.autoDetach false
 
       - name: Clean build artifacts
         run: |
@@ -148,14 +155,15 @@ jobs:
           rm -rf .gradle/caches/paperweight
           rm -rf .gradle/configuration-cache
 
-      - name: Build Rust Optimizer (cross targets via Gradle)
+      - name: Build Rust Optimizer (cross targets)
         env:
-          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
-          CC_x86_64_pc_windows_gnu: x86_64-w64-mingw32-gcc
-          CXX_x86_64_pc_windows_gnu: x86_64-w64-mingw32-g++
+          RUST_TARGETS: x86_64-pc-windows-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
         run: |
           set -eux
           export PATH="$PATH:$HOME/.cargo/bin"
+          export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
+          export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
           ./gradlew :mili-rust:stageRustBinary --no-configuration-cache
 
       - name: Verify Rust Optimizer Binary
@@ -183,51 +191,6 @@ jobs:
             echo "Rust optimizer binary missing"
             exit 1
           fi
-
-      # >>> 关键修改：Gradle 生成的 so 依赖高版本 glibc，这里用 cargo-zigbuild 强制链接到 glibc 2.28
-      - name: Rebuild x86_64 Linux Rust library with glibc 2.28 compatibility
-        run: |
-          set -eux
-          export PATH="$PATH:$HOME/.cargo/bin"
-
-          RUST_SRC="mili-rust/src/rust"
-          if [ ! -f "$RUST_SRC/Cargo.toml" ]; then
-            RUST_SRC="mili-rust"
-          fi
-          cd "$RUST_SRC"
-
-          echo "=== Building x86_64-unknown-linux-gnu.2.28 with cargo-zigbuild ==="
-          rustup target add x86_64-unknown-linux-gnu
-          cargo zigbuild --target x86_64-unknown-linux-gnu.2.28 --release
-
-          # cargo-zigbuild 输出路径包含版本后缀
-          GNU_SO="$PWD/target/x86_64-unknown-linux-gnu.2.28/release/libmili_optimizer.so"
-          if [ ! -f "$GNU_SO" ]; then
-            # 兼容旧版 cargo-zigbuild 可能不带后缀的路径
-            GNU_SO="$PWD/target/x86_64-unknown-linux-gnu/release/libmili_optimizer.so"
-          fi
-
-          if [ -f "$GNU_SO" ]; then
-            echo "=== Build succeeded: $GNU_SO ==="
-            STAGE_DIR="$PWD/../../build/rust"
-            mkdir -p "$STAGE_DIR"
-            
-            # Java 端加载时查找 libmili_optimizer.so，同时保留 mili_optimizer.so 以防万一
-            cp "$GNU_SO" "$STAGE_DIR/libmili_optimizer.so"
-            cp "$GNU_SO" "$STAGE_DIR/mili_optimizer.so"
-            
-            echo "=== Replaced staged library ==="
-            ls -la "$STAGE_DIR/"
-            
-            echo "=== Verifying glibc dependency (should show <= GLIBC_2.28) ==="
-            file "$STAGE_DIR/libmili_optimizer.so" || true
-            objdump -T "$STAGE_DIR/libmili_optimizer.so" | grep -oE 'GLIBC_[0-9.]+' | sort -V | uniq || true
-          else
-            echo "ERROR: build did not produce libmili_optimizer.so"
-            find "$PWD/target" -name "libmili_optimizer.so" 2>/dev/null || true
-            exit 1
-          fi
-      # <<< 关键修改结束
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -281,33 +244,8 @@ jobs:
           done
           echo "Total CIS source files: ${COUNT}"
 
-
-      - name: Replace staged Rust native after Gradle staging
-        run: |
-          set -eux
-
-          echo "=== Replacing staged Rust native ==="
-
-          SO=mili-rust/src/rust/target/x86_64-unknown-linux-gnu/release/libmili_optimizer.so
-
-          if [ ! -f "$SO" ]; then
-            echo "Missing $SO"
-            exit 1
-          fi
-
-          cp "$SO" mili-rust/build/rust/libmili_optimizer.so
-          cp "$SO" mili-rust/build/rust/mili_optimizer.so
-
-          echo "=== Verify final staged native ==="
-
-          objdump -T mili-rust/build/rust/libmili_optimizer.so \
-          | grep -oE 'GLIBC_[0-9.]+' \
-          | sort -V \
-          | uniq
-
       - name: Build Paperclip Jar
         run: ./gradlew :mili-server:createPaperclipJar --no-configuration-cache -PbstatsPluginId=${{ secrets.BSTATS_PLUGIN_ID }}
-
 
       - name: Post-Build CIS Smoke Test
         run: |
@@ -329,6 +267,8 @@ jobs:
 
       - name: Check for Pending Patch Rebuild
         run: |
+          # Patched sources under mili-server/src/minecraft are untracked in the main repo,
+          # so plain `git diff` never reports them; check untracked files too.
           if git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | grep -q "mili-server/src/minecraft/"; then
             echo "WARN: Patched source has uncommitted changes — run 'rebuildPatches' to generate patch files"
             git status --porcelain --untracked-files=all -- mili-server/src/minecraft/ | head -50

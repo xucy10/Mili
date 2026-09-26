@@ -11,11 +11,7 @@ import net.minecraft.world.entity.LivingEntity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -34,13 +30,29 @@ public class CrossRegionHelper {
         public final RegionizedWorldData sourceRegion;
         public final RegionizedWorldData targetRegion;
         public final long tickStamp;
+        // Mili start - task UUID for cross-region parameter passing traceability
+        public final UUID taskUuid;
+        // Mili end
 
         protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick) {
             this.id = eventIdGen.incrementAndGet();
             this.sourceRegion = src;
             this.targetRegion = tgt;
             this.tickStamp = tick;
+            // Mili start - allocate UUID for this cross-region event
+            this.taskUuid = RegionTaskIdRegistry.allocateAndRegister("cross-region-event", src);
+            // Mili end
         }
+
+        // Mili start - constructor for events with a pre-existing task UUID (e.g. passthrough from RegionBalancer)
+        protected Event(RegionizedWorldData src, RegionizedWorldData tgt, long tick, UUID existingTaskUuid) {
+            this.id = eventIdGen.incrementAndGet();
+            this.sourceRegion = src;
+            this.targetRegion = tgt;
+            this.tickStamp = tick;
+            this.taskUuid = existingTaskUuid;
+        }
+        // Mili end
     }
 
     public static class RedstoneSignal extends Event {
@@ -134,7 +146,8 @@ public class CrossRegionHelper {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // Mili start - fix: catch Throwable (not just Exception) to prevent dispatcher thread death on Error (e.g. StackOverflowError)
                 com.mojang.logging.LogUtils.getClassLogger()
                         .warn("[Mili] CrossRegionHelper dispatch error", e);
             }
@@ -149,7 +162,12 @@ public class CrossRegionHelper {
     }
 
     private static void dispatchToTarget(Event event) {
-        if (event.targetRegion == null) return;
+        if (event.targetRegion == null) {
+            // Mili start - fix: unregister UUID when event has no target region
+            RegionTaskIdRegistry.unregister(event.taskUuid);
+            // Mili end
+            return;
+        }
 
         ConcurrentLinkedQueue<Event> queue = pendingByRegion.computeIfAbsent(
                 event.targetRegion, k -> new ConcurrentLinkedQueue<>());
@@ -157,7 +175,12 @@ public class CrossRegionHelper {
         int maxPending = CrossRegionHelperConfig.maxPendingEventsPerRegion;
 
         if (queue.size() >= maxPending) {
-            queue.poll();
+            // Mili start - fix: unregister UUID for the evicted event before dropping it
+            Event evicted = queue.poll();
+            if (evicted != null) {
+                RegionTaskIdRegistry.unregister(evicted.taskUuid);
+            }
+            // Mili end
             regionQueueOverflows.increment();
         }
 
@@ -168,6 +191,9 @@ public class CrossRegionHelper {
         if (!CrossRegionHelperConfig.enabled || event == null) return;
 
         if (!inboundQueue.offer(event)) {
+            // Mili start - fix: unregister UUID for the dropped event to prevent registry leak
+            RegionTaskIdRegistry.unregister(event.taskUuid);
+            // Mili end
             eventsDropped.increment();
             long now = System.currentTimeMillis();
             if (now - lastDropWarning > 5000) {
@@ -209,7 +235,15 @@ public class CrossRegionHelper {
 
     public static ConcurrentLinkedQueue<Event> consumePending(RegionizedWorldData target) {
         if (!CrossRegionHelperConfig.enabled || target == null) return null;
-        return pendingByRegion.remove(target);
+        ConcurrentLinkedQueue<Event> queue = pendingByRegion.remove(target);
+        // Mili start - unregister task UUIDs for consumed events
+        if (queue != null) {
+            for (Event event : queue) {
+                RegionTaskIdRegistry.unregister(event.taskUuid);
+            }
+        }
+        // Mili end
+        return queue;
     }
 
     public static ConcurrentLinkedQueue<Event> onRegionTick(ServerLevel level,
@@ -225,6 +259,31 @@ public class CrossRegionHelper {
 
     public static int inboundQueueSize() { return inboundQueue.size(); }
 
+    // Mili start - find events associated with a task UUID
+    /**
+     * Find the source region for a given task UUID.
+     * Useful for region schedulers to trace where a cross-region event originated.
+     */
+    public static RegionizedWorldData findSourceRegionForTaskUuid(UUID taskUuid) {
+        if (taskUuid == null) return null;
+        // Check inbound queue
+        for (Event event : inboundQueue) {
+            if (taskUuid.equals(event.taskUuid)) {
+                return event.sourceRegion;
+            }
+        }
+        // Check pending by region
+        for (ConcurrentLinkedQueue<Event> queue : pendingByRegion.values()) {
+            for (Event event : queue) {
+                if (taskUuid.equals(event.taskUuid)) {
+                    return event.sourceRegion;
+                }
+            }
+        }
+        return null;
+    }
+    // Mili end
+
     public static int totalPendingAcrossRegions() {
         int total = 0;
         for (ConcurrentLinkedQueue<Event> q : pendingByRegion.values()) {
@@ -237,6 +296,11 @@ public class CrossRegionHelper {
         if (data != null) {
             ConcurrentLinkedQueue<Event> removed = pendingByRegion.remove(data);
             if (removed != null && !removed.isEmpty()) {
+                // Mili start - unregister task UUIDs for dropped events
+                for (Event event : removed) {
+                    RegionTaskIdRegistry.unregister(event.taskUuid);
+                }
+                // Mili end
                 com.mojang.logging.LogUtils.getClassLogger()
                         .debug("[Mili] Dropped {} events for unloaded region", removed.size());
             }
@@ -273,6 +337,17 @@ public class CrossRegionHelper {
                 Thread.currentThread().interrupt();
             }
         }
+
+        // Mili start - unregister task UUIDs for all remaining events
+        for (Event event : inboundQueue) {
+            RegionTaskIdRegistry.unregister(event.taskUuid);
+        }
+        for (ConcurrentLinkedQueue<Event> queue : pendingByRegion.values()) {
+            for (Event event : queue) {
+                RegionTaskIdRegistry.unregister(event.taskUuid);
+            }
+        }
+        // Mili end
 
         inboundQueue.clear();
         pendingByRegion.clear();

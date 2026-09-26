@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Tue, 11 Aug 2026 21:11:36 +0800
+Subject: [PATCH] Leaves-Prevent-loss-of-item-drops-due-to-update-supp
+
+
+diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
+index 13e981bfd070d9351d8880478b5a86e39bcd73ad..d0ac2d15388e842ed56ec39ecdbc99994e0617bc 100644
+--- a/net/minecraft/server/level/ServerPlayerGameMode.java
++++ b/net/minecraft/server/level/ServerPlayerGameMode.java
+@@ -394,7 +394,18 @@ public class ServerPlayerGameMode {
+         this.level.getCurrentWorldData().captureDrops = new java.util.ArrayList<>(); // Folia - region threading
+         // CraftBukkit end
+         BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
+-        boolean changed = this.level.removeBlock(pos, false);
++                // Lophine start - preserve drops before update suppression
++                boolean changed;
++                org.leavesmc.leaves.util.UpdateSuppressionException updateSuppressionException = null;
++                try {
++                    changed = this.level.removeBlock(pos, false);
++                } catch (org.leavesmc.leaves.util.UpdateSuppressionException exception) {
++                    updateSuppressionException = exception;
++                    updateSuppressionException.provideBlock(this.level, pos, block);
++                    updateSuppressionException.providePlayer(this.player);
++                    changed = false;
++                }
++                // Lophine end - preserve drops before update suppression
+         if (SharedConstants.DEBUG_BLOCK_BREAK) {
+             LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
+         }
+@@ -422,6 +433,11 @@ public class ServerPlayerGameMode {
+         if (event.isDropItems()) {
+             org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
+         }
++                // Lophine start - preserve drops before update suppression
++                if (updateSuppressionException != null) {
++                    throw updateSuppressionException;
++                }
++                // Lophine end - preserve drops before update suppression
+ 
+         // Drop event experience
+         if (changed) {

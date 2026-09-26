@@ -19,7 +19,9 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public final class LagRemover {
     private static final long MEMORY_MBYTE = 1024 * 1024;
-    private static LagRemover instance;
+    // Mili start - fix: declare instance as volatile for safe publication across threads
+    private static volatile LagRemover instance;
+    // Mili end
 
     private final org.bukkit.plugin.Plugin plugin;
     private volatile boolean running = true;

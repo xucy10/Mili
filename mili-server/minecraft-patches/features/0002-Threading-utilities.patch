@@ -5,10 +5,10 @@ Subject: [PATCH] Threading utilities
 
 
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 2c3d36a9d4bf361c516fe1fe6e29d225002b303c..1bdb96fb0fcbb1f20206b38c3923cbe412622f59 100644
+index a0eb1f608a99301e0197ab1d1a6fbbb0a0be4ce0..978c53a41766362d3de07963c8d98409d1c78bb8 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -136,6 +136,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -143,6 +143,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
      private final RegistryAccess registryAccess;
      private final DamageSources damageSources;
      private final PalettedContainerFactory palettedContainerFactory;

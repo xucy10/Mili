@@ -1,10 +1,9 @@
-import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     java
-    id("io.papermc.paperweight.patcher")
+    id("moe.luminolmc.hyacinthusweight.patcher")
 }
 
 paperweight {
@@ -40,7 +39,17 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    // Mili - explicitly bind JavaCompile to the JDK 25 toolchain compiler,
+    // otherwise forked compilation may pick a stale JDK on CI runners
+    // ("release version 25 not supported")
+    val javaToolchains = extensions.getByType<JavaToolchainService>()
+    tasks.withType<JavaCompile>().configureEach {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
 
@@ -60,7 +69,7 @@ subprojects {
     }
     tasks.withType<JavaCompile>().configureEach {
         options.encoding = Charsets.UTF_8.name()
-        options.release = 21
+        options.release = 25
         options.isFork = true
     }
     tasks.withType<Javadoc>().configureEach {
@@ -86,35 +95,8 @@ subprojects {
                     password = System.getenv("PRIVATE_MAVEN_REPO_PASSWORD")
                 }
             }
-            // Mili start - GitHub Packages repository (only when running in GitHub Actions)
-            if (System.getenv("GITHUB_ACTIONS") == "true") {
-                maven("https://maven.pkg.github.com/xucy10/Mili") {
-                    name = "GitHubPackages"
-                    credentials(PasswordCredentials::class) {
-                        username = System.getenv("GITHUB_ACTOR")
-                        password = System.getenv("GITHUB_TOKEN")
-                    }
-                }
-            }
-            // Mili end
         }
     }
-
-    // Mili start - Configure component publication for GitHub Packages
-    // Exposes mili-api and mili-server as Maven artifacts.
-    configure<PublishingExtension> {
-        publications {
-            create<MavenPublication>("mili") {
-                groupId = "org.leavesmc.mili"
-                artifactId = project.name
-                // Allow overriding version via -Pversion=... on the CLI (used by CI)
-                version = project.findProperty("version")?.toString() ?: project.version.toString()
-
-                from(components["java"])
-            }
-        }
-    }
-    // Mili end
 
     tasks.withType<Javadoc>().configureEach {
         options {

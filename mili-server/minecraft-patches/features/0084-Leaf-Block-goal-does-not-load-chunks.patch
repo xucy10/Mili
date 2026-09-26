@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:54:57 +0800
+Subject: [PATCH] Leaf: Block goal does not load chunks
+
+
+diff --git a/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java b/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
+index c6e9b155c2341c13d569f28f54f0c1d2d7313676..0d21d9b1efbfe7e0f0358fad01cabc2ad3cce52d 100644
+--- a/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
++++ b/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
+@@ -119,6 +119,7 @@ public abstract class MoveToBlockGoal extends Goal {
+                 for (int x = 0; x <= r; x = x > 0 ? -x : 1 - x) {
+                     for (int z = x < r && x > -r ? r : 0; z <= r; z = z > 0 ? -z : 1 - z) {
+                         pos.setWithOffset(mobPos, x, y - 1, z);
++                        if (!this.mob.level().hasChunkAt(pos)) continue; // Gale - Airplane - block goal does not load chunks - if this block isn't loaded, continue
+                         if (this.mob.isWithinHome(pos) && this.isValidTarget(this.mob.level(), pos)) {
+                             this.blockPos = pos;
+                             this.mob.movingTarget = pos == BlockPos.ZERO ? null : pos.immutable(); // Paper

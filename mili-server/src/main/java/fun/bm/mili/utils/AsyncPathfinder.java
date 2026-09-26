@@ -6,19 +6,24 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.pathfinder.Path;
 
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncPathfinder {
     private static volatile boolean enabled = false;
-    private static ExecutorService executor;
+    // Mili start - fix: declare executor as volatile for visibility across threads
+    private static volatile ExecutorService executor;
+    // Mili end
     private static final AtomicInteger queuedTasks = new AtomicInteger();
     private static final AtomicInteger completedTasks = new AtomicInteger();
     private static final AtomicInteger failedTasks = new AtomicInteger();
     private static final AtomicLong totalComputeTime = new AtomicLong();
 
-    public static void setEnabled(boolean v) {
+    // Mili start - fix: synchronize setEnabled to prevent check-then-act race condition
+    public static synchronized void setEnabled(boolean v) {
         enabled = v;
         if (v && executor == null) {
             executor = Executors.newFixedThreadPool(AsyncPathfindingConfig.threadCount, r -> {
@@ -31,6 +36,7 @@ public class AsyncPathfinder {
             executor = null;
         }
     }
+    // Mili end
 
     public static boolean isEnabled() { return enabled; }
 
@@ -54,7 +60,9 @@ public class AsyncPathfinder {
                 totalComputeTime.addAndGet(elapsed / 1_000_000);
                 completedTasks.incrementAndGet();
                 return path;
-            } catch (Exception e) {
+            // Mili start - fix: catch Throwable instead of Exception to handle Errors (OOM, StackOverflow)
+            // that would otherwise propagate and silently kill the async pathfinding thread
+            } catch (Throwable e) {
                 failedTasks.incrementAndGet();
                 return null;
             } finally {

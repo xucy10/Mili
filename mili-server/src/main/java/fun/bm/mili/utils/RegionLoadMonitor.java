@@ -3,9 +3,9 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 
 /**
  * Region load monitor.
@@ -37,15 +37,23 @@ public class RegionLoadMonitor {
         }
 
         void record(long tickNanos) {
-            int idx = writeIndex.getAndIncrement() % history.length();
+            // Mili start - fix: use floorMod to handle negative writeIndex after AtomicInteger overflow
+            // getAndIncrement() wraps to Integer.MIN_VALUE at overflow, and Java's % operator
+            // returns a negative result for negative dividends, causing ArrayIndexOutOfBoundsException.
+            int idx = Math.floorMod(writeIndex.getAndIncrement(), history.length());
+            // Mili end
             long old = history.getAndSet(idx, tickNanos);
             if (old > 0) {
                 runningSum.addAndGet(-old);
             }
             runningSum.addAndGet(tickNanos);
-            if (filledCount.get() < history.length()) {
-                filledCount.incrementAndGet();
-            }
+            // Mili start - fix: use CAS to avoid filledCount exceeding history.length() due to race
+            int currentFilled;
+            do {
+                currentFilled = filledCount.get();
+                if (currentFilled >= history.length()) break;
+            } while (!filledCount.compareAndSet(currentFilled, currentFilled + 1));
+            // Mili end
         }
 
         RegionLoadSnapshot snapshot() {
@@ -57,18 +65,22 @@ public class RegionLoadMonitor {
             long sum = runningSum.get();
             long max = 0;
             long min = Long.MAX_VALUE;
+            boolean foundValid = false; // Mili - fix: track whether any valid sample was found
 
             int startIdx = (writeIndex.get() - count + history.length()) % history.length();
             for (int i = 0; i < count; i++) {
                 int idx = (startIdx + i) % history.length();
                 long v = history.get(idx);
                 if (v <= 0) continue;
+                foundValid = true; // Mili
                 if (v > max) max = v;
                 if (v < min) min = v;
             }
-            if (sum == 0) {
+            // Mili start - fix: if no valid samples found, return empty snapshot
+            if (!foundValid || sum == 0) {
                 return new RegionLoadSnapshot(0, 0, 0, 0.0, false, true);
             }
+            // Mili end
 
             long avg = sum / count;
             double thresholdHigh = RegionBalancerConfig.highLoadThresholdMs * 1_000_000.0;

@@ -3,73 +3,102 @@ Contributing to Mili
 
 **English** | [中文](./CONTRIBUTING.md)
 
-Thanks for wanting to contribute! This document mirrors the Chinese guide and provides a concise, actionable contribution workflow.
+Thanks for wanting to contribute! This guide provides a clear workflow for patch development, Rust module work, and common questions.
 
-Quick start
+## Quick Start
+
 1. Fork the repository with your personal account and clone locally:
 
 ```bash
 git clone https://github.com/<your>/Mili.git
 cd Mili
+
+# Enable long paths on Windows
+git config --global core.longpaths true
 ```
 
-2. Apply patch workspace:
+2. Apply patch workspace (required for first build):
 
 ```bash
-./gradlew applyAllPatches
+./gradlew applyAllPatches --no-configuration-cache --no-build-cache
 ```
 
-3. Work within the generated `*-api` / `*-server` directories and follow the patch workflow below.
+3. Work within the generated `mili-server/src/minecraft/` directory and follow the patch workflow below.
 
-Development environment
-- `git`
-- `JDK 21` or higher
+## Development Environment
 
-Windows / long-path notes
-Ensure system and Git long-path support are enabled:
-- Windows: https://learn.microsoft.com/windows/win32/fileio/maximum-file-path-limitation
-- Git for Windows: https://gitforwindows.org/faq.html#i-get-errors-trying-to-check-out-files-with-long-path-names
+| Dependency | Version | Notes |
+|------------|---------|-------|
+| JDK | 25+ | Mili 26.2 branch requires Java 25, not JDK 21 |
+| Rust | stable (edition 2024) | Optional, for native optimization library |
+| Git | 2.x | Enable long path support on Windows |
 
-Patches model overview
------------------------
-Applying `applyAllPatches` creates paired directories in repo root, such as:
+## Patch Model Overview
 
-- `Mili-api`, `luminol-api`, `folia-api`, `paper-api` — API changes
-- `Mili-server`, `luminol-server`, `folia-server`, `paper-server` — server patches
+Mili uses the **Hyacinthusweight** (paperweight-based) patch system. Applying `applyAllPatches` generates a working tree:
 
-These are not independent git repositories: commits in these folders are represented as patches relative to upstream base.
+- `mili-api/` — Mili API module
+- `mili-server/src/minecraft/` — Server implementation (source after applying 121 feature patches)
+- `folia-server/` — Folia submodule (upstream, do not modify directly)
 
-Adding a new patch
-------------------
-1. Edit code in the appropriate `*-api` or `*-server` folder.
-2. Stage changes: `git add <files>` (do not commit new auto-generated files directly).
-3. Commit: `git commit -m "Describe change"`.
-4. If you added new files, run: `./gradlew fixupPaperApiFilePatches`.
-5. Convert commits to patches: `./gradlew rebuildAllServerPatches`.
-6. Push and open a PR including the generated patch files.
+Patches are managed as `.patch` files in `mili-server/minecraft-patches/features/` (121 patches). Changes to the working tree must be converted back to patch files before pushing.
 
-Modifying an existing patch
----------------------------
-1. Make changes at `HEAD`.
-2. Create a fixup commit: `git commit -a --fixup <hash>` (or use `--squash` to edit message).
-3. Rebase with autosquash: `git rebase -i --autosquash base`.
-4. Run `./gradlew fixupPaperApiFilePatches` (if needed).
-5. Run `./gradlew rebuildAllServerPatches`.
-6. Push and update the PR.
+## Adding a New Patch
 
-FAQ
----
-- Should I fork with an organization account?
-    - No. PRs from organization forks cannot be edited by us easily and complicate the merge process.
+1. Edit code in `mili-server/src/minecraft/`
+2. Stage changes: `git add <files>`
+3. Commit: `git commit -m "Describe change"`
+4. Rebuild patches: `./gradlew :mili-server:rebuildAllServerPatches`
+5. Commit patch files and push
 
-- Build failures?
-    - Run: `./gradlew assemble --stacktrace` and inspect errors.
+## Modifying an Existing Patch
 
-- How to run tests?
-    - Use `./gradlew test` or other test tasks defined in `build.gradle.kts`.
+1. Make changes at `HEAD` in `mili-server/src/minecraft/`
+2. Create a fixup commit: `git commit -a --fixup <hash>`
+3. Rebase with autosquash: `git rebase -i --autosquash base`
+4. Run `./gradlew :mili-server:rebuildAllServerPatches`
+5. Push and update the PR
 
-Need more help?
----------------
+## Rust Module Development
+
+Rust source is in `mili-rust/src/rust/src/` (4 module files, edition 2024):
+
+```bash
+cd mili-rust/src/rust
+
+# Build
+cargo build --release
+
+# Lint check (must be 0 warnings)
+cargo clippy --release
+
+# Unit tests (28 tests)
+cargo test --release
+
+# Package into JAR
+./gradlew :mili-rust:stageRustBinary
+```
+
+**edition 2024 notes**:
+- `#[no_mangle]` must be written as `#[unsafe(no_mangle)]`
+- unsafe fn bodies must use explicit `unsafe` blocks
+- JNI `catch_unwind` requires `AssertUnwindSafe` wrapper around `JNIEnv`
+
+## FAQ
+
+**Should I fork with an organization account?**
+No. PRs from organization forks cannot be edited by us easily and complicate the merge process.
+
+**Build failures?**
+Run `./gradlew assemble --stacktrace` and inspect errors. Ensure you are using JDK 25.
+
+**Files in `mili-server/src/minecraft/` get overwritten?**
+These are generated by `applyAllPatches`. Changes must be made through patch files in `minecraft-patches/features/`, then run `rebuildAllServerPatches`.
+
+**How to run tests?**
+- Java: `./gradlew test`
+- Rust: `cd mili-rust/src/rust && cargo test --release`
+
+## Need More Help?
+
 See the main README files for build, dependency and community information. When opening an issue, include build logs, JDK version and reproduction steps.
-
-

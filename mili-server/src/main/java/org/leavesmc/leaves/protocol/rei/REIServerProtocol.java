@@ -146,12 +146,19 @@ public class REIServerProtocol implements LeavesProtocol {
             switch (holder.value()) {
                 case ShapedRecipe ignored -> builder.add(new ShapedDisplay((RecipeHolder) holder));
                 case ShapelessRecipe ignored -> builder.add(new ShapelessDisplay((RecipeHolder) holder));
+                // Leaves start - Paper 26.1: map_cloning is a TransmuteRecipe but the client expects a
+                // shapeless-style display (filled map + empty map → 2 filled maps). Match by identifier
+                // before the generic TransmuteRecipe case to route correctly.
+                case TransmuteRecipe ignored when "minecraft:map_cloning".equals(holder.id().identifier().toString()) ->
+                        builder.addAll(Display.ofMapCloningRecipe((RecipeHolder) holder));
+                // Leaves end
                 case TransmuteRecipe ignored -> builder.addAll(Display.ofTransmuteRecipe((RecipeHolder) holder));
-                case TippedArrowRecipe ignored -> builder.addAll(Display.ofTippedArrowRecipe((RecipeHolder) holder));
                 case FireworkRocketRecipe ignored ->
                         builder.addAll(Display.ofFireworkRocketRecipe((RecipeHolder) holder));
-                case MapCloningRecipe ignored -> builder.addAll(Display.ofMapCloningRecipe((RecipeHolder) holder));
-                // ignore ArmorDyeRecipe, BannerDuplicateRecipe, BookCloningRecipe, ShieldDecorationRecipe
+                // Leaves - Paper 26.1: tipped_arrow is now an ImbueRecipe (replaced the removed TippedArrowRecipe class).
+                // ImbueRecipe is currently only used for tipped_arrow so a plain type match is safe.
+                case ImbueRecipe ignored -> builder.addAll(Display.ofTippedArrowRecipe((RecipeHolder) holder));
+                // ignore ArmorDyeRecipe, BannerDuplicateRecipe, BookCloningRecipe, ShieldDecorationRecipe, RepairItemRecipe
                 default -> {
                 }
             }
@@ -243,7 +250,7 @@ public class REIServerProtocol implements LeavesProtocol {
                 });
                 */
             } else {
-                player.displayClientMessage(Component.translatable("text.rei.failed_cheat_items"), false);
+                player.sendSystemMessage(Component.translatable("text.rei.failed_cheat_items"), false);
             }
         };
         inboundTransform(player, CREATE_ITEMS_PACKET, buf, consumer);
@@ -302,7 +309,7 @@ public class REIServerProtocol implements LeavesProtocol {
                 });
                 */
             } else {
-                player.displayClientMessage(Component.translatable("text.rei.failed_cheat_items"), false);
+                player.sendSystemMessage(Component.translatable("text.rei.failed_cheat_items"), false);
             }
         };
         inboundTransform(player, CREATE_ITEMS_HOTBAR_PACKET, buf, consumer);
@@ -376,7 +383,7 @@ public class REIServerProtocol implements LeavesProtocol {
         if (player.getBukkitEntity().hasPermission(CHEAT_PERMISSION)) {
             return true;
         }
-        player.displayClientMessage(Component.translatable("text.rei.no_permission_cheat").withStyle(ChatFormatting.RED), false);
+        player.sendSystemMessage(Component.translatable("text.rei.no_permission_cheat").withStyle(ChatFormatting.RED), false);
         return false;
     }
 
@@ -393,15 +400,25 @@ public class REIServerProtocol implements LeavesProtocol {
     private static List<List<ItemStack>> readInputs(RegistryAccess registryAccess, ListTag tag) {
         List<List<ItemStack>> items = new ArrayList<>();
         for (Tag t : tag) {
-            CompoundTag compoundTag = (CompoundTag) t;
-            compoundTag.getInt("Index").orElseThrow();
+            if (!(t instanceof CompoundTag compoundTag)) {
+                throw new IllegalStateException("Invalid REI input entry");
+            }
+            if (compoundTag.getInt("Index").isEmpty()) {
+                throw new IllegalStateException("Missing REI input index");
+            }
             ListTag ingredientList = compoundTag.getListOrEmpty("Ingredient");
             List<ItemStack> slotItems = new ArrayList<>();
             for (Tag ingredient : ingredientList) {
-                CompoundTag ingredientTag = (CompoundTag) ingredient;
+                if (!(ingredient instanceof CompoundTag ingredientTag)) {
+                    throw new IllegalStateException("Invalid REI ingredient entry");
+                }
+                Tag value = ingredientTag.get("value");
+                if (value == null) {
+                    throw new IllegalStateException("Missing REI ingredient value");
+                }
                 ItemStack stack = ItemStack.OPTIONAL_CODEC.parse(
                         registryAccess.createSerializationContext(NbtOps.INSTANCE),
-                        ingredientTag.get("value")
+                        value
                 ).getOrThrow();
                 slotItems.add(stack);
             }
@@ -413,16 +430,28 @@ public class REIServerProtocol implements LeavesProtocol {
     private static List<SlotAccessor> readSlots(AbstractContainerMenu menu, ServerPlayer player, ListTag tag) {
         List<SlotAccessor> slots = new ArrayList<>();
         for (Tag t : tag) {
-            CompoundTag compoundTag = (CompoundTag) t;
-            String id = compoundTag.getString("id").orElseThrow();
+            if (!(t instanceof CompoundTag compoundTag)) {
+                throw new IllegalStateException("Invalid REI slot entry");
+            }
+            String id = compoundTag.getString("id").orElseThrow(() -> new IllegalStateException("Missing REI slot id"));
             if (!id.startsWith(PROTOCOL_ID + ":")) {
                 throw new IllegalStateException("Invalid slot id: " + id + ", expected to start with '" + PROTOCOL_ID + ":'");
             }
             id = id.substring((PROTOCOL_ID + ":").length());
-            int slot = compoundTag.getInt("Slot").orElseThrow();
+            int slot = compoundTag.getInt("Slot").orElseThrow(() -> new IllegalStateException("Missing REI slot index"));
             SlotAccessor accessor = switch (id) {
-                case "vanilla" -> new VanillaSlotAccessor(menu.slots.get(slot));
-                case "player" -> new PlayerInventorySlotAccessor(player, slot);
+                case "vanilla" -> {
+                    if (slot < 0 || slot >= menu.slots.size()) {
+                        throw new IllegalStateException("Invalid vanilla slot index: " + slot);
+                    }
+                    yield new VanillaSlotAccessor(menu.slots.get(slot));
+                }
+                case "player" -> {
+                    if (slot < 0 || slot >= player.getInventory().getContainerSize()) {
+                        throw new IllegalStateException("Invalid player slot index: " + slot);
+                    }
+                    yield new PlayerInventorySlotAccessor(player, slot);
+                }
                 default -> throw new IllegalStateException("Unknown container id: " + id);
             };
             slots.add(accessor);
@@ -430,4 +459,3 @@ public class REIServerProtocol implements LeavesProtocol {
         return slots;
     }
 }
-

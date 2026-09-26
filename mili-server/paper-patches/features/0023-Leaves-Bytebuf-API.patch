@@ -5,10 +5,10 @@ Subject: [PATCH] Leaves: Bytebuf API
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 06766a9058595aeee25e8fd3e3d01aeec2a55116..bc99d8f564d8df744311fa1faf9f7d85328e0a9c 100644
+index 9da3c85b48c1c74ecb06134f6c9b409f4b6bacbc..9cd7da734c2f308047dd500985dcbf3778d38f12 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-@@ -422,6 +422,8 @@ public final class CraftServer implements Server {
+@@ -416,6 +416,8 @@ public final class CraftServer implements Server {
  
          CraftRegistry.setMinecraftRegistry(console.registryAccess());
  
@@ -17,7 +17,7 @@ index 06766a9058595aeee25e8fd3e3d01aeec2a55116..bc99d8f564d8df744311fa1faf9f7d85
          if (!Main.useConsole) {
              this.getLogger().info("Console input is disabled due to --noconsole command argument");
          }
-@@ -3122,4 +3124,11 @@ public final class CraftServer implements Server {
+@@ -3119,4 +3121,11 @@ public final class CraftServer implements Server {
          return photographerManager;
      }
      // Leaves end - replay mod api
@@ -30,10 +30,10 @@ index 06766a9058595aeee25e8fd3e3d01aeec2a55116..bc99d8f564d8df744311fa1faf9f7d85
 +    // Leaves end - Bytebuf API
  }
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index 2f59107642d43719159872d5df37107d8a1a5b97..c8ff85d3e7b47995427592dc4510e722e05a5b5f 100644
+index c4ea667ea68cda84baa844eec58e9991fcd80472..112a70be39cb8e990f4e44fdf86195863e1d7495 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -3424,4 +3424,16 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
+@@ -3453,4 +3453,16 @@ public class CraftPlayer extends CraftHumanEntity implements Player, PluginMessa
          return this.getHandle().getNearbyChunkHot();
      }
      // KioCG end

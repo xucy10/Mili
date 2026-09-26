@@ -32,18 +32,31 @@ public final class RustSpan<T> implements Iterable<T> {
 
     @SafeVarargs
     public static <T> RustSpan<T> of(T... array) {
+        // Mili start - fix: null check for varargs array (can be null if explicitly passed)
+        java.util.Objects.requireNonNull(array, "array cannot be null");
+        // Mili end
         return new RustSpan<>(array, 0, array.length);
     }
 
     public static <T> RustSpan<T> of(T[] array, int offset, int length) {
-        if (offset < 0 || length < 0 || offset + length > array.length) {
+        // Mili start - fix: use long arithmetic to prevent integer overflow bypass
+        // offset + length can overflow to negative, bypassing the original check
+        if (offset < 0 || length < 0 || (long) offset + (long) length > array.length) {
             throw new IndexOutOfBoundsException(
                     "offset=" + offset + ", length=" + length + ", array.length=" + array.length);
         }
+        // Mili end
         return new RustSpan<>(array, offset, length);
     }
 
     public static RustSpan<Long> ofLongs(long[] array, int offset, int length) {
+        // Mili start - fix: null check + overflow-safe bounds check for primitive array
+        java.util.Objects.requireNonNull(array, "array cannot be null");
+        if (offset < 0 || length < 0 || (long) offset + (long) length > array.length) {
+            throw new IndexOutOfBoundsException(
+                    "offset=" + offset + ", length=" + length + ", array.length=" + array.length);
+        }
+        // Mili end
         Long[] boxed = new Long[length];
         for (int i = 0; i < length; i++) {
             boxed[i] = array[offset + i];
@@ -67,10 +80,12 @@ public final class RustSpan<T> implements Iterable<T> {
     }
 
     public RustSpan<T> subspan(int start, int len) {
-        if (start < 0 || len < 0 || start + len > length) {
+        // Mili start - fix: use long arithmetic to prevent integer overflow bypass
+        if (start < 0 || len < 0 || (long) start + (long) len > length) {
             throw new IndexOutOfBoundsException(
                     "start=" + start + ", len=" + len + ", span.length=" + length);
         }
+        // Mili end
         return new RustSpan<>(array, offset + start, len);
     }
 

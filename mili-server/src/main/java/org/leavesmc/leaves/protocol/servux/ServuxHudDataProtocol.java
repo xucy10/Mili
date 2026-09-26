@@ -37,6 +37,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.saveddata.WeatherData;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.protocol.core.LeavesCustomPayload;
 import org.leavesmc.leaves.protocol.core.LeavesProtocol;
@@ -150,7 +151,7 @@ public class ServuxHudDataProtocol implements LeavesProtocol {
 
     public static void refreshWeatherData(ServerPlayer player) {
         ServerLevel level = MinecraftServer.getServer().overworld();
-        if (!level.getGameRules().get(GameRules.ADVANCE_WEATHER)) {
+        if (!level.getGameRules().get(GameRules.ADVANCE_WEATHER)) { // Leaves - Paper 26.1: RULE_WEATHER_CYCLE -> ADVANCE_WEATHER, getBoolean -> get
             return;
         }
 
@@ -158,22 +159,24 @@ public class ServuxHudDataProtocol implements LeavesProtocol {
         nbt.putString("id", HudDataPayload.CHANNEL.toString());
         nbt.putString("servux", ServuxProtocol.SERVUX_STRING);
 
-        if (level.serverLevelData.isRaining() && level.serverLevelData.getRainTime() > -1) {
-            nbt.putInt("SetRaining", level.serverLevelData.getRainTime());
+        // Leaves - Paper 26.1: weather state moved from PaperLevelOverrides to saveddata.WeatherData
+        final WeatherData weatherData = level.getWeatherData();
+        if (weatherData.isRaining() && weatherData.getRainTime() > -1) {
+            nbt.putInt("SetRaining", weatherData.getRainTime());
             nbt.putBoolean("isRaining", true);
         } else {
             nbt.putBoolean("isRaining", false);
         }
 
-        if (level.serverLevelData.isThundering() && level.serverLevelData.getThunderTime() > -1) {
-            nbt.putInt("SetThundering", level.serverLevelData.getThunderTime());
+        if (weatherData.isThundering() && weatherData.getThunderTime() > -1) {
+            nbt.putInt("SetThundering", weatherData.getThunderTime());
             nbt.putBoolean("isThundering", true);
         } else {
             nbt.putBoolean("isThundering", false);
         }
 
-        if (level.serverLevelData.getClearWeatherTime() > -1) {
-            nbt.putInt("SetClear", level.serverLevelData.getClearWeatherTime());
+        if (weatherData.getClearWeatherTime() > -1) {
+            nbt.putInt("SetClear", weatherData.getClearWeatherTime());
         }
 
         sendPacket(player, new HudDataPayload(HudDataPayloadType.PACKET_S2C_WEATHER_TICK, nbt));
@@ -181,7 +184,7 @@ public class ServuxHudDataProtocol implements LeavesProtocol {
 
     private static void putWorldData(@NotNull CompoundTag metadata) {
         ServerLevel level = MinecraftServer.getServer().overworld();
-        BlockPos spawnPos = level.levelData.getRespawnData().pos();
+        BlockPos spawnPos = level.getLevelData().getRespawnData().pos();
         metadata.putInt("spawnPosX", spawnPos.getX());
         metadata.putInt("spawnPosY", spawnPos.getY());
         metadata.putInt("spawnPosZ", spawnPos.getZ());
@@ -376,4 +379,3 @@ public class ServuxHudDataProtocol implements LeavesProtocol {
         }
     }
 }
-

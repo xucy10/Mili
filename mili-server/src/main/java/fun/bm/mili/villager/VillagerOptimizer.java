@@ -3,12 +3,7 @@ package fun.bm.mili.villager;
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
 import fun.bm.mili.utils.TPSTracker;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -41,7 +36,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerOptimizer implements Listener {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
-    private static VillagerOptimizer instance;
+    // Mili start - fix: instance 字段不是 volatile，可能导致多线程可见性问题
+    private static volatile VillagerOptimizer instance;
+    // Mili end
+
+    // Mili start - fix: 定时任务在 shutdown 中从不取消，导致任务泄漏
+    private static org.bukkit.scheduler.BukkitTask processTask;
+    // Mili end
 
     private final Plugin plugin;
     private final NamespacedKey lobotomizedKey;
@@ -102,8 +103,9 @@ public final class VillagerOptimizer implements Listener {
             }
         }
 
+        // Mili start - fix: 保存定时任务引用以便在 shutdown 中取消
         // Start chunk processing task
-        new BukkitRunnable() {
+        processTask = new BukkitRunnable() {
             @Override
             public void run() {
                 if (instance != null) {
@@ -111,6 +113,7 @@ public final class VillagerOptimizer implements Listener {
                 }
             }
         }.runTaskTimer(activePlugin, 5L, 5L);
+        // Mili end
 
         activePlugin.getLogger().info("[Mili] VillagerOptimizer initialized");
     }
@@ -126,6 +129,12 @@ public final class VillagerOptimizer implements Listener {
     public static void shutdown() {
         if (instance != null) {
             instance.shuttingDown = true;
+            // Mili start - fix: shutdown 中取消定时任务并置空引用
+            if (processTask != null) {
+                processTask.cancel();
+                processTask = null;
+            }
+            // Mili end
             instance = null;
         }
     }
@@ -285,6 +294,11 @@ public final class VillagerOptimizer implements Listener {
 
         long now = System.currentTimeMillis();
         if (now - lastProcessTime < checkInterval * 50) { // convert ticks to ms (1 tick = 50ms)
+            // Mili start - fix: 提前返回时不清理 changedChunks，可能无限增长导致 OOM
+            if (changedChunks.size() > 1000) {
+                changedChunks.clear();
+            }
+            // Mili end
             return;
         }
         lastProcessTime = now;
@@ -339,6 +353,8 @@ public final class VillagerOptimizer implements Listener {
             name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(villager.customName()).toLowerCase();
         }
 
+        // Mili start - fix: call getLocation() once to prevent race condition between multiple calls
+        org.bukkit.Location loc = villager.getLocation();
         VillagerState state = new VillagerState(
                 name,
                 villager.isSwimming(),
@@ -346,10 +362,11 @@ public final class VillagerOptimizer implements Listener {
                 villager.getVehicle() != null,
                 villager.getProfession() == Villager.Profession.NONE,
                 villager.getVillagerExperience(),
-                villager.getLocation().getBlockX(),
-                villager.getLocation().getBlockY(),
-                villager.getLocation().getBlockZ()
+                loc.getBlockX(),
+                loc.getBlockY(),
+                loc.getBlockZ()
         );
+        // Mili end
 
         BlockGrid grid = new BlockGrid(villager.getWorld(), state.blockX(), state.blockY(), state.blockZ(), 1);
         return activityPolicy.shouldBeActive(state, grid);
@@ -360,6 +377,9 @@ public final class VillagerOptimizer implements Listener {
         if (!allowedToRestock(villager)) return;
 
         PersistentDataContainer pdc = villager.getPersistentDataContainer();
+        // Mili start - fix: separate game-time day tracking from real-time restock cooldown
+        // Original code conflated world fullTime with System.currentTimeMillis() in the same key,
+        // causing elapsed time calculations to be completely wrong
         long lastRestockCheck = pdc.getOrDefault(lastRestockCheckDayTimeKey, PersistentDataType.LONG, 0L);
         long fullTime = villager.getWorld().getFullTime();
 
@@ -374,26 +394,30 @@ public final class VillagerOptimizer implements Listener {
 
         if (!allowedToRestock(villager)) return;
 
-        // Random restock check
+        // Random restock check using game time consistently
         long interval = VillagerOptimizerConfig.restockInterval;
         long randomRange = VillagerOptimizerConfig.restockRandomRange;
-        long lastRestock = pdc.getOrDefault(lastRestockCheckDayTimeKey, PersistentDataType.LONG, 0L);
-        long elapsed = System.currentTimeMillis() - lastRestock;
+        long elapsedGameTime = fullTime - lastRestockCheck;
 
         if (randomRange > 0 && randomRange < interval) {
             long adjustedInterval = interval - (long) (Math.random() * randomRange);
-            if (elapsed >= adjustedInterval) {
-                doRestock(villager);
+            if (elapsedGameTime >= adjustedInterval) {
+                doRestock(villager, fullTime);
             }
-        } else if (elapsed >= interval) {
-            doRestock(villager);
+        } else if (elapsedGameTime >= interval) {
+            doRestock(villager, fullTime);
         }
+        // Mili end
     }
 
-    private void doRestock(Villager villager) {
+    // Mili start - fix: use game time (fullTime) consistently for lastRestockCheckDayTimeKey
+    private void doRestock(Villager villager, long fullTime) {
+    // Mili end
         villager.restock();
         PersistentDataContainer pdc = villager.getPersistentDataContainer();
-        pdc.set(lastRestockCheckDayTimeKey, PersistentDataType.LONG, System.currentTimeMillis());
+        // Mili start - fix: store game time not wall-clock time
+        pdc.set(lastRestockCheckDayTimeKey, PersistentDataType.LONG, fullTime);
+        // Mili end
         int restocksToday = pdc.getOrDefault(restocksTodayKey, PersistentDataType.INTEGER, 0);
         pdc.set(restocksTodayKey, PersistentDataType.INTEGER, restocksToday + 1);
 

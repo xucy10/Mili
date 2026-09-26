@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: MrHua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 19:58:33 +0800
+Subject: [PATCH] Do not setTarget for entity which is out of currenttickregion
+
+
+diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
+index b8fd825f42d3ce3081debc9bd7fd2ba6e8cb6cbb..67e367f5dd4ecd706cd019a13c5e07e15a211573 100644
+--- a/net/minecraft/world/entity/Mob.java
++++ b/net/minecraft/world/entity/Mob.java
+@@ -301,6 +301,11 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
+         if (Objects.equals(currentTarget, target)) {
+             return false;
+         }
++        // Luminol start - Fix off-region targeting
++        if (target != null && !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(target)) {
++            return false;
++        }
++        // Luminol end
+         LivingEntity originalTarget = target;
+         target = asValidTarget(target);
+         if (reason != null) {

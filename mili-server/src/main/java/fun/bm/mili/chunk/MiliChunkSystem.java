@@ -1,7 +1,7 @@
 package fun.bm.mili.chunk;
 
-import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.scheduler.BukkitTask;
@@ -9,13 +9,16 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class MiliChunkSystem {
 
     private MiliChunkSystem() {}
 
-    private static volatile boolean initialized = false;
+    // Mili start - fix: use AtomicBoolean for thread-safe init/shutdown
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
+    // Mili end
     private static BukkitTask mainThreadTask;
     private static ScheduledExecutorService asyncExecutor;
 
@@ -28,9 +31,13 @@ public final class MiliChunkSystem {
     private static final AtomicLong cacheMisses = new AtomicLong(0);
 
     public static void init(org.bukkit.plugin.Plugin plugin) {
-        if (!ChunkSystemConfig.enabled || initialized) return;
+        // Mili start - fix: CAS-based init to prevent double initialization race
+        if (!ChunkSystemConfig.enabled) return;
+        if (!initialized.compareAndSet(false, true)) return;
+        // Mili end
 
         if (plugin == null) {
+            initialized.set(false);
             throw new IllegalArgumentException("Mili plugin instance is required for MiliChunkSystem");
         }
 
@@ -62,7 +69,6 @@ public final class MiliChunkSystem {
                 TimeUnit.MILLISECONDS
         );
 
-        initialized = true;
         LogUtils.getLogger().info(
                 "[Mili] MiliChunkSystem v3.0 initialized with {} async threads",
                 ChunkSystemConfig.asyncThreads
@@ -70,11 +76,13 @@ public final class MiliChunkSystem {
     }
 
     public static void shutdown() {
-        if (!initialized) return;
-        initialized = false;
+        // Mili start - fix: CAS-based shutdown to prevent double shutdown race
+        if (!initialized.compareAndSet(true, false)) return;
+        // Mili end
 
         if (mainThreadTask != null) {
             mainThreadTask.cancel();
+            mainThreadTask = null;
         }
 
         if (asyncExecutor != null) {
@@ -87,6 +95,7 @@ public final class MiliChunkSystem {
                 asyncExecutor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+            asyncExecutor = null;
         }
 
         worldData.clear();
@@ -107,7 +116,8 @@ public final class MiliChunkSystem {
                 ChunkLifecycleManager.manage(world, data, totalChunkUnloads);
                 ChunkViewDistanceOptimizer.optimize(world, data);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Mili start - fix: catch Throwable (not just Exception) to prevent main thread task cancellation on Error
             LogUtils.getLogger().error("[Mili] Chunk system tick error", e);
         }
 

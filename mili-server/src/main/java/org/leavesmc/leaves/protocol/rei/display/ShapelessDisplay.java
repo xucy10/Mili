@@ -26,7 +26,6 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import org.apache.commons.lang3.NotImplementedException;
-import org.bukkit.craftbukkit.CraftRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.leavesmc.leaves.protocol.rei.ingredient.EntryIngredient;
 
@@ -55,7 +54,7 @@ public class ShapelessDisplay extends CraftingDisplay {
     public ShapelessDisplay(@NotNull RecipeHolder<ShapelessRecipe> recipeHolder) {
         this(
                 recipeHolder.value().placementInfo().ingredients().stream().map(EntryIngredient::ofIngredient).toList(),
-                List.of(EntryIngredient.of(recipeHolder.value().assemble(CraftingInput.EMPTY, CraftRegistry.getMinecraftRegistry()))),
+                List.of(EntryIngredient.of(recipeHolder.value().assemble(CraftingInput.EMPTY))), // Leaves - Paper 26.1: assemble no longer takes RegistryAccess
                 recipeHolder.id().identifier()
         );
     }

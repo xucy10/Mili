@@ -1,5 +1,6 @@
 package fun.bm.mili.carpet;
 
+import com.mojang.logging.LogUtils;
 import fun.bm.mili.carpet.config.modules.CoreConfig;
 import fun.bm.mili.carpet.config.modules.CounterCompatConfig;
 import fun.bm.mili.carpet.config.modules.FakePlayerCompatConfig;
@@ -21,7 +22,9 @@ import org.leavesmc.leaves.protocol.CarpetServerProtocol;
 import java.util.List;
 
 public final class CarpetCompatSync {
-    private static boolean init = false;
+    // Mili start - fix: declare init as volatile to prevent check-then-act race in apply()
+    private static volatile boolean init = false;
+    // Mili end
 
     public static void apply() {
         if (CoreConfig.enabled) {
@@ -46,9 +49,11 @@ public final class CarpetCompatSync {
         try {
             RecipeManager recipeManager = server.getRecipeManager();
             recipeManager.reinjectCompatRecipes();
-        } catch (Exception e) {
-            // Silently ignore — recipe re-injection is best-effort
+        // Mili start - fix: catch Throwable and log instead of silently swallowing all errors
+        } catch (Throwable t) {
+            LogUtils.getLogger().warn("[Mili] Failed to re-inject compat recipes", t);
         }
+        // Mili end
     }
 
     private static void applyGeneralRules() {

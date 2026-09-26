@@ -29,6 +29,7 @@ pub const RESULT_BEHIND: u8 = 4;
 /// * `reach_sq` — squared reach distance
 /// * `hitbox_limit` — max AABB dimension before marking "too big"
 /// * `frustum` — 6-plane frustum for full AABB-vs-frustum test
+#[allow(clippy::too_many_arguments)]
 pub fn batch_cull_entities(
     entities: &[f32],
     num_entities: usize,
@@ -43,11 +44,18 @@ pub fn batch_cull_entities(
         return Vec::new();
     }
 
+    // Mili start - fix: validate data length to prevent out-of-bounds panic
+    let _required_len = match num_entities.checked_mul(ENTITY_STRIDE) {
+        Some(n) if entities.len() >= n => n,
+        _ => return Vec::new(),
+    };
+    // Mili end
+
     if num_entities <= 64 {
         let mut results = vec![RESULT_VISIBLE; num_entities];
-        for i in 0..num_entities {
+        for (i, result) in results.iter_mut().enumerate().take(num_entities) {
             let base = i * ENTITY_STRIDE;
-            results[i] = cull_single_entity(
+            *result = cull_single_entity(
                 &entities[base..base + ENTITY_STRIDE],
                 viewer_x,
                 viewer_y,
@@ -78,6 +86,7 @@ pub fn batch_cull_entities(
 }
 
 #[inline(always)]
+#[allow(clippy::too_many_arguments)]
 fn cull_single_entity(
     data: &[f32],
     viewer_x: f64,
@@ -123,7 +132,7 @@ fn cull_single_entity(
 ///
 /// # Safety
 /// Caller must ensure `entity_ptr` points to at least `num_entities * ENTITY_STRIDE` f32 values.
-pub fn batch_cull_entities_zero_copy(
+pub unsafe fn batch_cull_entities_zero_copy(
     entity_ptr: *const f32,
     num_entities: usize,
     viewer_x: f64,
@@ -136,8 +145,15 @@ pub fn batch_cull_entities_zero_copy(
     if num_entities == 0 || entity_ptr.is_null() {
         return Vec::new();
     }
-    let entities: &[f32] =
-        unsafe { std::slice::from_raw_parts(entity_ptr, num_entities * ENTITY_STRIDE) };
+    // Mili start - fix: use checked_mul to prevent overflow creating wrong slice length
+    let total_floats = match num_entities.checked_mul(ENTITY_STRIDE) {
+        Some(n) => n,
+        None => return Vec::new(),
+    };
+    // Safety: Caller guarantees `entity_ptr` points to at least
+    // `total_floats` valid f32 values. Capacity already validated in JNI bridge.
+    let entities: &[f32] = unsafe { std::slice::from_raw_parts(entity_ptr, total_floats) };
+    // Mili end
     batch_cull_entities(
         entities,
         num_entities,

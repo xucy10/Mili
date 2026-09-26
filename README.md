@@ -1,21 +1,29 @@
+<p align="center">
+  <img src="public/image/Mili/mili-logo.png" alt="Mili Logo" width="600">
+</p>
 
-  # Mili（米粒） 
+<h1 align="center">Mili（米粒）</h1>
 
-  **基于 Folia 的高性能 Minecraft 服务端核心，融合 Rust 原生加速与深度生电兼容**
+<p align="center">
+  <strong>基于 Folia 的高性能 Minecraft 服务端核心，面向生电服与技术服的性能优化与生态兼容</strong>
+</p>
 
-  [中文](./README.md) | [English](./README_EN.md)
+<p align="center">
+  <a href="./README.md">中文</a> | <a href="./README_EN.md">English</a>
+</p>
 
-  ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11-green)
-  ![Java](https://img.shields.io/badge/JDK-21+-orange)
-  ![Rust](https://img.shields.io/badge/Rust-stable-red)
-  ![License](https://img.shields.io/badge/License-GPL--3.0-blue)
-</div>
+<p align="center">
+  <img src="https://img.shields.io/badge/Minecraft-26.2-green" alt="Minecraft 26.2">
+  <img src="https://img.shields.io/badge/JDK-25+-orange" alt="JDK 25+">
+  <img src="https://img.shields.io/badge/Rust-edition%202024-red" alt="Rust edition 2024">
+  <img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="GPL-3.0">
+</p>
 
 ---
 
 ## 项目简介
 
-Mili 是一个基于 **Paper → Folia** 三层 fork 链的 Minecraft 服务端核心，专为 **生电服 / 技术服** 场景设计。它在 Folia 区域多线程调度模型之上，提供了红石兼容性修复、原版行为开关、Rust 原生加速优化和完整的 Carpet/Leaves 协议兼容层。
+Mili 是一个基于 **Paper → Folia** fork 链的 Minecraft 服务端核心，专为 **生电服 / 技术服** 场景设计。它在 Folia 区域多线程调度模型之上，提供了红石兼容性修复、原版行为开关、Rust 原生加速优化和完整的 Carpet/Leaves 协议兼容层。
 
 ### 继承链
 
@@ -35,7 +43,10 @@ Minecraft（原版）
 
 ### Rust 原生加速（`mili-rust`）
 
-通过 JNI 桥接 Rust 编译的原生库（`mili_optimizer.dll` / `.so` / `.dylib`），对高频计算路径做零拷贝批量加速：
+>因rust库原因，我们对最低版本产生了要求，如Debian12
+Ubuntu也可能需要22或24，win也可能需server2022或22H2
+
+通过 JNI 桥接 Rust 编译的原生库（`mili_optimizer.dll` / `.so` ），对高频计算路径做零拷贝批量加速：
 
 | 模块 | 功能 | 技术亮点 |
 |------|------|----------|
@@ -46,18 +57,21 @@ Minecraft（原版）
 
 **零拷贝设计**：Java 侧将实体数据打包进 `DirectByteBuffer`，Rust 通过 `GetDirectBufferAddress` 直接读取内存地址，避免 JNI 边界的数据拷贝。每 tick 仅 M 次 JNI 调用（M = 观察者数量），而非 N×M 次（N = 实体数）。
 
+**安全设计**：所有 JNI 入口用 `catch_unwind(AssertUnwindSafe(...))` 包装防止 panic 跨边界传播；`#[unsafe(no_mangle)]` 符合 edition 2024 规范；`overflow-checks=true` 防止算术溢出 UB。
+
 ### Folia 稳定性修复
 
 - **Region Balancer**：共享线程池 + 优先级队列替代 Folia 每区域独占线程，动态负载均衡
 - **Region Load Monitor**：无锁滑动窗口统计区域 tick 耗时
 - **Adaptive TPS Manager**：根据实时负载动态调整 TPS
 - **Cross-Region Helper**：类型化跨区事件队列（红石信号、实体伤害、方块通知等）
+- **RegionTaskIdRegistry**：全局 UUID 注册中心，防止跨区块任务 ID 碰撞导致崩溃
 - **全局实体计数器**：按区域聚合 mob 数量，避免 O(entities) 扫描
-- **崩溃修复**：`RegionizedWorldData` 空连接 NPE、已移除实体效果添加、`/save-all` 区域安全化
+- **线程安全加固**：全局 `catch(Exception)` → `catch(Throwable)` 修复，防止 OOM/StackOverflow 等 Error 导致调度器线程静默死亡
 
 ### 红石与生电兼容
 
-从 Leaves 移植并适配 Folia 的红石/生电修复：
+从 Leaves/Lophine 移植并适配 Folia 的红石/生电修复：
 
 - **更新抑制（Update Suppression）**：捕获 `UpdateSuppressionException` 防止服务端崩溃，保留掉落物，不回滚已放置方块
 - **红石忽略向上更新**：恢复 1.20.1/1.19 的红石粉/中继器/比较器行为
@@ -82,7 +96,7 @@ Minecraft（原版）
 
 ### 假玩家 / Bot 系统
 
-从 Leaves 移植并适配 Folia，支持创建/管理/移除假玩家，假玩家常驻、背包操作、动作执行（攻击、破坏、钓鱼、跳跃、移动等），配套完整的 Kotlin 事件 API。
+从 Leaves 移植并适配 Folia，支持创建/管理/移除假玩家，假玩家常驻、背包操作、动作执行（攻击、破坏、钓鱼、跳跃、移动等），配套完整的 Java 事件 API。
 
 ### ReplayMod 摄影师
 
@@ -96,8 +110,8 @@ Minecraft（原版）
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
-| JDK | 21+ | 构建工具链 |
-| Rust | stable | 可选，用于编译原生优化库 |
+| JDK | 25+ | 构建工具链（Mili 26.2 分支需要 Java 25，不是 JDK 21） |
+| Rust | stable (edition 2024) | 可选，用于编译原生优化库 |
 | Git | 2.x | 需启用长路径支持（Windows） |
 
 ### 构建步骤
@@ -124,7 +138,7 @@ python scripts/inject_kotlin.py
 ```
 
 构建产物位于 `mili-server/build/libs/`：
-- `mili-paperclip-1.21.11-R0.1-SNAPSHOT-mojmap.jar` — 可直接运行的 Paperclip JAR
+- `mili-paperclip-26.2-R0.1-SNAPSHOT.jar` — 可直接运行的 Paperclip JAR
 - `mili_optimizer.dll` / `.so` / `.dylib` — Rust 原生优化库（打包进 JAR）
 
 ### Rust 单独编译与测试
@@ -132,46 +146,15 @@ python scripts/inject_kotlin.py
 ```bash
 cd mili-rust/src/rust
 cargo build --release    # 编译
-cargo test --release     # 运行单元测试（25 个）
+cargo clippy --release   # 代码检查（0 warning）
+cargo test --release     # 运行单元测试（28 个）
 ```
 
 ---
 
 ## API 使用
 
-### Gradle
-
-```kotlin
-repositories {
-    maven {
-        url = "https://repo.menthamc.org/repository/maven-public/"
-    }
-}
-
-dependencies {
-    compileOnly("fun.bm.mili:mili-api:1.21.11-R0.1-SNAPSHOT")
-}
-```
-
-### Maven
-
-```xml
-<repositories>
-  <repository>
-    <id>menthamc</id>
-    <url>https://repo.menthamc.org/repository/maven-public/</url>
-  </repository>
-</repositories>
-
-<dependencies>
-  <dependency>
-    <groupId>fun.bm.mili</groupId>
-    <artifactId>mili-api</artifactId>
-    <version>1.21.11-R0.1-SNAPSHOT</version>
-    <scope>provided</scope>
-  </dependency>
-</dependencies>
-```
+## 懒得上传，如有需要，我以后单独制作一个只发布api的仓库
 
 ---
 
@@ -182,13 +165,24 @@ Mili/
 ├── mili-api/                  # Mili API 模块
 │   └── src/main/java/         #   Bot、Photographer、事件 API
 ├── mili-server/               # Mili 服务端核心
-│   ├── minecraft-patches/     #   补丁文件（features/ + fixes/）
+│   ├── minecraft-patches/     #   补丁文件（121 个 features/ + resources/ + sources/）
 │   └── src/main/
-│       ├── java/fun/bm/mili/  #   Java 源码（utils、carpet、protocol）
-│       └── kotlin/fun/bm/mili/#   Kotlin 源码（config、command、utils）
+│       └── java/fun/bm/mili/  #   Java 源码
+│           ├── bridge/        #     区块-区域桥接
+│           ├── carpet/        #     Carpet 兼容层
+│           ├── chunk/         #     区块系统
+│           ├── command/       #     命令系统
+│           ├── config/        #     配置模块
+│           ├── metrics/       #     bStats 统计
+│           ├── portal/        #     传送门管理
+│           ├── protocol/      #     协议兼容
+│           ├── rust/          #     Rust JNI Java 侧工具类
+│           ├── utils/         #     工具类（区域调度、网络优化、内存管理等）
+│           │   └── concurrent/#     并发数据结构
+│           └── villager/      #     村民优化器
 ├── mili-rust/                 # Rust 原生优化模块
 │   ├── src/main/java/         #   JNI 桥接 Java 侧（RustBridge.java）
-│   └── src/rust/src/          #   Rust 源码
+│   └── src/rust/src/          #   Rust 源码（edition 2024）
 │       ├── config.rs          #   TOML 配置读写
 │       ├── entity_cull.rs     #   实体视锥剔除
 │       ├── frustum.rs         #   视锥体构建与测试
@@ -219,8 +213,9 @@ Mili 提供两套 TOML 配置文件：
 |------|------|----------|
 | `function` | 游戏机制与实用功能 | `LanguageConfig`、`FakeplayerConfig`、`ContainerExpansionConfig` |
 | `experiment` | 实验性性能/并发功能 | `RegionBalancerConfig`、`CrossRegionHelperConfig` |
+| `optimizations` | 性能优化 | `NetworkOptimizerConfig`、`MmapRegionStorageConfig` |
 | `fixes` | 崩溃修复 | `UpdateSuppressionCrashFixConfig` |
-| `misc` | 杂项 | `AutoUpdateConfig` |
+| `misc` | 杂项 | `AutoUpdateConfig`、`BStatsConfig` |
 | `carpet` | Carpet 规则映射 | `CoreConfig`、`GeneralCompatConfig` |
 
 完整配置项速查表见 [Wiki](docs/WIKI.md#10-配置速查表)。
@@ -229,11 +224,11 @@ Mili 提供两套 TOML 配置文件：
 
 ## 补丁工作流
 
-Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
+Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统管理 121 个 feature 补丁：
 
 1. 在 `mili-server/src/minecraft/` 或 `mili-api/` 中修改代码
 2. 提交变更：`git commit -m "描述"`
-3. 重建补丁：`./gradlew rebuildAllServerPatches`
+3. 重建补丁：`./gradlew :mili-server:rebuildAllServerPatches`
 4. 提交补丁文件并推送
 
 修改 `mili-server/src/minecraft/java/` 下的生成文件会被 `applyAllPatches` 覆盖，必须通过 `minecraft-patches/features/` 下的补丁文件修改。
@@ -266,7 +261,9 @@ Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统：
 
 ## 社区
 
-[Discord](https://discord.com/invite/BSa67dbvVf)
+欢迎各位
+Discord社区：[Discord](https://discord.com/invite/BSa67dbvVf)  
+QQ社区：[QQ](https://qun.qq.com/universal-share/share?ac=1&authKey=a6t7hRvlxKAYQEtG7BnIxgMBY4ozc8nbGKpz0pIbIioovmrf2knWn83frrAIdc5W&busi_data=eyJncm91cENvZGUiOiIxMTA3MjI0MTkwIiwidG9rZW4iOiI1dEUyNU1YZXg5YXo2VEtoUFBHeC9zZmVKdkJKQjNkUmdPTjNwbHQwK2IxRjVjR3pOdVlPa21zOEp2dk0vZ3dhIiwidWluIjoiNzI4MjI1NiJ9&data=pGwn1GHB86r4H0dverQtu5YAtQZiS8LswEw_hS2B1EZcbdQidP37cVF_uaitxSHUpTTroe0oMF1kQTWR78tAJA&svctype=4&tempid=h5_group_info)
 
 ## 感谢
 

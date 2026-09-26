@@ -1,0 +1,245 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Mon, 31 Aug 2026 09:13:58 +0000
+Subject: [PATCH] i18n for /tps output and show global TPS intervals
+
+
+diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e1603578a13293 100644
+--- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
++++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+@@ -37,6 +37,9 @@ import java.lang.management.MemoryUsage;
+ import java.lang.management.RuntimeMXBean;
+ import org.jetbrains.annotations.NotNull;
+ // Luminol end
++// Mili start - i18n for /tps output
++import fun.bm.mili.utils.MiliI18n;
++// Mili end
+ 
+ public final class CommandServerHealth extends Command {
+ 
+@@ -68,23 +71,23 @@ public final class CommandServerHealth extends Command {
+         return Component.text()
+                 .append(Component.text(prefix, PRIMARY, TextDecoration.BOLD))
+                 .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
+-                .append(Component.text("% util", PRIMARY))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.util_short", "% util"), PRIMARY)) // Mili - i18n
+                 .append(Component.text(" | ", SECONDARY))
+                 .append(Component.text(TWO_DECIMAL_PLACES.get().format(mspt), CommandUtil.getColourForMSPT(mspt)))
+-                .append(Component.text(" mspt", PRIMARY))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.mspt_short", " mspt"), PRIMARY)) // Mili - i18n
+                 .append(Component.text(" | ", SECONDARY))
+                 .append(Component.text(TWO_DECIMAL_PLACES.get().format(tps), CommandUtil.getColourForTPS(tps)))
+-                .append(Component.text(" TPS" + (newline ? "\n" : ""), PRIMARY))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.tps_short", " TPS") + (newline ? "\n" : ""), PRIMARY)) // Mili - i18n
+                 .build();
+     }
+ 
+     private static Component formatRegionStats(final TickRegions.RegionStats stats, final boolean newline) {
+         return Component.text()
+-                .append(Component.text("Chunks: ", PRIMARY))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.chunks", "Chunks: "), PRIMARY)) // Mili - i18n
+                 .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getChunkCount()), INFORMATION))
+-                .append(Component.text("  Players: ", PRIMARY))
++                .append(Component.text("  " + MiliI18n.get("mili.tpscommand.players", "Players: "), PRIMARY)) // Mili - i18n
+                 .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getPlayerCount()), INFORMATION))
+-                .append(Component.text("  Entities: ", PRIMARY))
++                .append(Component.text("  " + MiliI18n.get("mili.tpscommand.entities", "Entities: "), PRIMARY)) // Mili - i18n
+                 .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
+                 .build();
+     }
+@@ -93,7 +96,7 @@ public final class CommandServerHealth extends Command {
+         final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
+                 TickRegionScheduler.getCurrentRegion();
+         if (region == null) {
+-            sender.sendMessage(Component.text("You are not in a region currently", NamedTextColor.RED));
++            sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.not_in_region", "You are not in a region currently"), NamedTextColor.RED)); // Mili - i18n
+             return true;
+         }
+ 
+@@ -118,7 +121,7 @@ public final class CommandServerHealth extends Command {
+         final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
+ 
+         final Component line = Component.text()
+-                .append(Component.text("Region around block ", PRIMARY))
++                .append(Component.text(MiliI18n.get("mili.tpscommand.region_around", "Region around block "), PRIMARY)) // Mili - i18n
+                 .append(Component.text(location, INFORMATION))
+                 .append(Component.text(":\n", PRIMARY))
+ 
+@@ -140,7 +143,7 @@ public final class CommandServerHealth extends Command {
+             try {
+                 lowestRegionsCount = Integer.parseInt(args[1]);
+             } catch (final NumberFormatException ex) {
+-                sender.sendMessage(Component.text("Highest utilisation count '" + args[1] + "' must be an integer", NamedTextColor.RED));
++                sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.invalid_count", "Highest utilisation count '%s' must be an integer", args[1]), NamedTextColor.RED)); // Mili - i18n
+                 return true;
+             }
+         }
+@@ -165,6 +168,16 @@ public final class CommandServerHealth extends Command {
+         final long currTime = System.nanoTime();
+         final TickData.TickReportData globalTickReport = RegionizedServer.getGlobalTickData().getTickReport15s(currTime);
+ 
++        // Mili start - show global TPS for multiple intervals
++        final TickData.TickReportData global5s = RegionizedServer.getGlobalTickData().getTickReport5s(currTime);
++        final TickData.TickReportData global1m = RegionizedServer.getGlobalTickData().getTickReport1m(currTime);
++        final TickData.TickReportData global5m = RegionizedServer.getGlobalTickData().getTickReport5m(currTime);
++        final double globalTps5s = global5s == null ? 20.0 : global5s.tpsData().segmentAll().average();
++        final double globalTps1m = global1m == null ? 20.0 : global1m.tpsData().segmentAll().average();
++        final double globalTps5m = global5m == null ? 20.0 : global5m.tpsData().segmentAll().average();
++        final double globalTps15m = globalTickReport == null ? 20.0 : globalTickReport.tpsData().segmentAll().average();
++        // Mili end - show global TPS for multiple intervals
++
+         final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+         final MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+         final long usedMemory = heapUsage.getUsed() / (1024 * 1024);
+@@ -232,7 +245,7 @@ public final class CommandServerHealth extends Command {
+         final TextComponent.Builder lowestRegionsBuilder = Component.text();
+ 
+         if (sender instanceof Player) {
+-            lowestRegionsBuilder.append(Component.text(" Click to teleport\n", SECONDARY));
++            lowestRegionsBuilder.append(Component.text(MiliI18n.get("mili.tpscommand.click_teleport", " Click to teleport\n"), SECONDARY)); // Mili - i18n
+         }
+         for (int i = 0, len = Math.min(lowestRegionsCount, regionsBelowThreshold.size()); i < len; ++i) {
+             final ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, TickData.TickReportData>
+@@ -259,7 +272,7 @@ public final class CommandServerHealth extends Command {
+ 
+             final Component line = Component.text()
+                     .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                    .append(Component.text("Region at ", PRIMARY))
++                    .append(Component.text(MiliI18n.get("mili.tpscommand.region_at", "Region at "), PRIMARY)) // Mili - i18n
+                     .append(Component.text(location, INFORMATION))
+                     .append(Component.text(":\n", PRIMARY))
+ 
+@@ -278,36 +291,49 @@ public final class CommandServerHealth extends Command {
+                     .build()
+ 
+                     .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, Payload.string("/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5")))
+-                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
++                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text(MiliI18n.get("mili.tpscommand.click_teleport_hover", "Click to teleport to %s", location), SECONDARY))); // Mili - i18n
+ 
+             lowestRegionsBuilder.append(line);
+         }
+ 
+         sender.sendMessage(
+                 Component.text()
+-                        .append(Component.text("Server Health Report", HEADER, TextDecoration.BOLD))
+-                        .append(Component.text(" (Uptime: ", SECONDARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.header", "Server Health Report"), HEADER, TextDecoration.BOLD)) // Mili - i18n
++                        .append(Component.text(" (", SECONDARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.uptime", "Uptime: "), SECONDARY)) // Mili - i18n
+                         .append(Component.text(uptimeStr, utilisationColor))
+                         .append(Component.text(")\n", SECONDARY))
+ 
++                        // Mili start - show global TPS for multiple intervals
++                        .append(Component.text(" - ", LIST, TextDecoration.BOLD))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.global_tps", "Global TPS (5s, 1m, 5m, 15m): "), PRIMARY))
++                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(globalTps5s), CommandUtil.getColourForTPS(globalTps5s)))
++                        .append(Component.text(", ", SECONDARY))
++                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(globalTps1m), CommandUtil.getColourForTPS(globalTps1m)))
++                        .append(Component.text(", ", SECONDARY))
++                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(globalTps5m), CommandUtil.getColourForTPS(globalTps5m)))
++                        .append(Component.text(", ", SECONDARY))
++                        .append(Component.text(TWO_DECIMAL_PLACES.get().format(globalTps15m) + "\n", CommandUtil.getColourForTPS(globalTps15m)))
++                        // Mili end - show global TPS for multiple intervals
++
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Online Players: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.online_players", "Online Players: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(Bukkit.getOnlinePlayers().size(), INFORMATION))
+                         .append(Component.newline())
+ 
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Total regions: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.total_regions", "Total regions: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(regions.size(), INFORMATION))
+                         .append(Component.text(", ", PRIMARY))
+-                        .append(Component.text("Total Chunks: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.total_chunks", "Total Chunks: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(NO_DECIMAL_PLACES.get().format(totalChunks), INFORMATION))
+                         .append(Component.text(", ", PRIMARY))
+-                        .append(Component.text("Total Entities: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.total_entities", "Total Entities: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(NO_DECIMAL_PLACES.get().format(totalEntities) + "\n", INFORMATION))
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Utilisation: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.utilisation", "Utilisation: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(ONE_DECIMAL_PLACES.get().format(totalUtil * 100.0), utilisationColor))
+                         .append(Component.text("%", PRIMARY))
+                         .append(Component.text(" / ", SECONDARY))
+@@ -315,14 +341,14 @@ public final class CommandServerHealth extends Command {
+                         .append(Component.text("%\n", PRIMARY))
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Load rate: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.load_rate", "Load rate: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(TWO_DECIMAL_PLACES.get().format(loadRate), INFORMATION))
+                         .append(Component.text(", ", PRIMARY))
+-                        .append(Component.text("Gen rate: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.gen_rate", "Gen rate: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(TWO_DECIMAL_PLACES.get().format(genRate) + "\n", INFORMATION))
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Memory: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.memory", "Memory: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(NO_DECIMAL_PLACES.get().format(usedMemory), memColor))
+                         .append(Component.text(" MB", memColor))
+                         .append(Component.text(" / ", SECONDARY))
+@@ -334,20 +360,20 @@ public final class CommandServerHealth extends Command {
+                         .append(Component.newline())
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Lowest Region TPS: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.lowest_tps", "Lowest Region TPS: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(TWO_DECIMAL_PLACES.get().format(minTps) + "\n", CommandUtil.getColourForTPS(minTps)))
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Median Region TPS: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.median_tps", "Median Region TPS: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(TWO_DECIMAL_PLACES.get().format(medianTps) + "\n", CommandUtil.getColourForTPS(medianTps)))
+ 
+                         .append(Component.text(" - ", LIST, TextDecoration.BOLD))
+-                        .append(Component.text("Highest Region TPS: ", PRIMARY))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.highest_tps", "Highest Region TPS: "), PRIMARY)) // Mili - i18n
+                         .append(Component.text(TWO_DECIMAL_PLACES.get().format(maxTps) + "\n", CommandUtil.getColourForTPS(maxTps)))
+ 
+-                        .append(Component.text("Highest ", HEADER, TextDecoration.BOLD))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.top_regions_prefix", "Highest "), HEADER, TextDecoration.BOLD)) // Mili - i18n
+                         .append(Component.text(Integer.toString(lowestRegionsCount), INFORMATION, TextDecoration.BOLD))
+-                        .append(Component.text(" utilisation regions\n", HEADER, TextDecoration.BOLD))
++                        .append(Component.text(MiliI18n.get("mili.tpscommand.top_regions_suffix", " utilisation regions\n"), HEADER, TextDecoration.BOLD)) // Mili - i18n
+ 
+                         .append(lowestRegionsBuilder.build())
+                         .build()
+@@ -371,13 +397,13 @@ public final class CommandServerHealth extends Command {
+             }
+             case "region": {
+                 if (!(sender instanceof Entity)) {
+-                    sender.sendMessage(Component.text("Cannot see current region information as console", NamedTextColor.RED));
++                    sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.console_no_region", "Cannot see current region information as console"), NamedTextColor.RED)); // Mili - i18n
+                     return true;
+                 }
+                 return executeRegion(sender, commandLabel, args);
+             }
+             default: {
+-                sender.sendMessage(Component.text("Type '" + args[0] + "' must be one of: [server, region]", NamedTextColor.RED));
++                sender.sendMessage(Component.text(MiliI18n.get("mili.tpscommand.invalid_type", "Type '%s' must be one of: [server, region]", args[0]), NamedTextColor.RED)); // Mili - i18n
+                 return true;
+             }
+         }
+@@ -409,10 +435,10 @@ public final class CommandServerHealth extends Command {
+         long seconds = TimeUnit.MILLISECONDS.toSeconds(uptimeMillis) % 60;
+ 
+         StringBuilder sb = new StringBuilder();
+-        if (days > 0) sb.append(days).append("d ");
+-        if (hours > 0) sb.append(hours).append("h ");
+-        if (minutes > 0) sb.append(minutes).append("m ");
+-        sb.append(seconds).append("s");
++        if (days > 0) sb.append(days).append(MiliI18n.get("mili.tpscommand.uptime_days", "d ")); // Mili - i18n
++        if (hours > 0) sb.append(hours).append(MiliI18n.get("mili.tpscommand.uptime_hours", "h ")); // Mili - i18n
++        if (minutes > 0) sb.append(minutes).append(MiliI18n.get("mili.tpscommand.uptime_minutes", "m ")); // Mili - i18n
++        sb.append(seconds).append(MiliI18n.get("mili.tpscommand.uptime_seconds", "s")); // Mili - i18n
+ 
+         return sb.toString();
+     }

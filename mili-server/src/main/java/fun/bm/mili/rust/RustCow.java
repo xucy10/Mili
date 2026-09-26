@@ -38,18 +38,28 @@ public final class RustCow<T> {
     }
 
     public void set(T newValue) {
+        // Mili start - fix: synchronized to prevent read/write race with setIfChanged/makeOwned
         Objects.requireNonNull(newValue);
-        this.value = newValue;
-        this.owned = true;
+        synchronized (this) {
+            this.value = newValue;
+            this.owned = true;
+        }
+        // Mili end
     }
 
     public void setIfChanged(T newValue, Supplier<T> copier) {
+        // Mili start - fix: atomic copy-on-write; original code copied then immediately overwrote
         Objects.requireNonNull(newValue);
-        if (!owned) {
-            this.value = copier.get();
-            this.owned = true;
+        Objects.requireNonNull(copier);
+        synchronized (this) {
+            if (!owned) {
+                // Value is shared (borrowed) - must copy before mutating
+                this.value = copier.get();
+                this.owned = true;
+            }
+            this.value = newValue;
         }
-        this.value = newValue;
+        // Mili end
     }
 
     public boolean isOwned() {
@@ -57,9 +67,14 @@ public final class RustCow<T> {
     }
 
     public void makeOwned(Supplier<T> copier) {
-        if (!owned) {
-            this.value = copier.get();
-            this.owned = true;
+        // Mili start - fix: synchronized to prevent double-copy race
+        Objects.requireNonNull(copier);
+        synchronized (this) {
+            if (!owned) {
+                this.value = copier.get();
+                this.owned = true;
+            }
         }
+        // Mili end
     }
 }

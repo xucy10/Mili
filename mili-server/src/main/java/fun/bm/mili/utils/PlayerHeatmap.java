@@ -6,7 +6,9 @@ import org.bukkit.entity.Player;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -14,7 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PlayerHeatmap {
     private static volatile boolean enabled = false;
     private static final ConcurrentHashMap<String, WorldHeatmapData> worldData = new ConcurrentHashMap<>();
-    private static long lastCleanupTime = System.currentTimeMillis();
+    // Mili start - fix: use AtomicLong for thread-safe lastCleanupTime
+    private static final AtomicLong lastCleanupTime = new AtomicLong(System.currentTimeMillis());
+    // Mili end
 
     public static void setEnabled(boolean v) { enabled = v; }
     public static boolean isEnabled() { return enabled; }
@@ -32,9 +36,12 @@ public class PlayerHeatmap {
         int maxMinutes = fun.bm.mili.config.modules.function.PlayerHeatmapConfig.maxHistoryMinutes;
         if (maxMinutes <= 0) return;
 
+        // Mili start - fix: use AtomicLong compareAndSet for thread-safe cleanup timing
         long now = System.currentTimeMillis();
-        if (now - lastCleanupTime < 60_000) return;
-        lastCleanupTime = now;
+        long last = lastCleanupTime.get();
+        if (now - last < 60_000) return;
+        if (!lastCleanupTime.compareAndSet(last, now)) return;
+        // Mili end
 
         long cutoff = now - (maxMinutes * 60_000L);
         for (WorldHeatmapData data : worldData.values()) {
@@ -89,6 +96,9 @@ public class PlayerHeatmap {
         private final ConcurrentHashMap<Long, Integer> heatMap = new ConcurrentHashMap<>();
         private final CopyOnWriteArrayList<String> trackedPlayers = new CopyOnWriteArrayList<>();
         private final ConcurrentHashMap<String, Long> lastSeenPositions = new ConcurrentHashMap<>();
+        // Mili start - fix: track last seen timestamps for proper cleanup
+        private final ConcurrentHashMap<String, Long> lastSeenTime = new ConcurrentHashMap<>();
+        // Mili end
         private final AtomicLong totalRecords = new AtomicLong();
 
         void recordPlayers(World world) {
@@ -112,6 +122,9 @@ public class PlayerHeatmap {
 
                 long newKey = pack(chunkX, chunkZ);
                 lastSeenPositions.put(uuid, newKey);
+                // Mili start - fix: store timestamp for proper cleanup
+                lastSeenTime.put(uuid, System.currentTimeMillis());
+                // Mili end
             }
         }
 
@@ -127,11 +140,14 @@ public class PlayerHeatmap {
             return Collections.unmodifiableMap(heatMap);
         }
 
+        // Mili start - fix: cleanup based on timestamps instead of packed coordinates
         void cleanup(long cutoffMs) {
-            lastSeenPositions.entrySet().removeIf(e -> e.getValue() < cutoffMs);
+            lastSeenTime.entrySet().removeIf(e -> e.getValue() < cutoffMs);
+            lastSeenPositions.keySet().retainAll(lastSeenTime.keySet());
             heatMap.clear();
             totalRecords.set(0);
         }
+        // Mili end
 
         private static long pack(int x, int z) {
             return ((long) x << 32) | (z & 0xFFFFFFFFL);

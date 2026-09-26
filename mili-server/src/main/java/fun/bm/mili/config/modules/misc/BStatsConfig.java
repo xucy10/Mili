@@ -1,10 +1,9 @@
 package fun.bm.mili.config.modules.misc;
 
-import fun.bm.mili.rust.TomlConfigData;
 import fun.bm.mili.metrics.MiliMetrics;
+import fun.bm.mili.rust.TomlConfigData;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
-import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -40,9 +39,11 @@ public class BStatsConfig implements IConfigModule {
             props.load(is);
             String val = props.getProperty("bstats_plugin_id", "0").trim();
             return Integer.parseInt(val);
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors
+        } catch (Throwable e) {
             LOGGER.warn("[MiliBStats] Failed to load plugin id", e);
             return 0;
         }
+        // Mili end
     }
 }

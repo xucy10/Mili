@@ -57,7 +57,6 @@ import org.leavesmc.leaves.event.bot.*;
 import org.slf4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -73,13 +72,10 @@ public class BotList {
     private final BotDataStorage manualSaveDataStorage;
     private final BotDataStorage resumeDataStorage;
 
-    // Mili start - Use ConcurrentHashMap for Folia thread-safety: getBot/getBotByName
-    // can be called from any region thread, while writes happen on the tick thread.
-    private final Map<UUID, ServerBot> botsByUUID = new ConcurrentHashMap<>();
-    private final Map<String, ServerBot> botsByName = new ConcurrentHashMap<>();
-    private final Map<String, Set<String>> botsNameByWorldUuid = new ConcurrentHashMap<>();
-    private final Map<String, Set<String>> legacyBotsNameByWorldUuid = new ConcurrentHashMap<>();
-    // Mili end
+    private final Map<UUID, ServerBot> botsByUUID = Maps.newHashMap();
+    private final Map<String, ServerBot> botsByName = Maps.newHashMap();
+    private final Map<String, Set<String>> botsNameByWorldUuid = Maps.newHashMap();
+    private final Map<String, Set<String>> legacyBotsNameByWorldUuid = Maps.newHashMap();
 
     public boolean forceShutdown = false;
 
@@ -201,7 +197,7 @@ public class BotList {
         this.server.server.getPluginManager().callEvent(event);
         location = event.getSpawnLocation();
 
-        bot.spawnIn(world);
+        bot.setServerLevel(world);
         bot.gameMode.setLevel(bot.level());
 
         bot.setPosRaw(location.getX(), location.getY(), location.getZ());
@@ -237,7 +233,7 @@ public class BotList {
             bot.renderData();
             bot.initInventoryMenu();
             botsNameByWorldUuid
-                    .computeIfAbsent(bot.level().uuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(bot.level().uuid.toString(), (k) -> new HashSet<>())
                     .add(bot.getBukkitEntity().getName());
             BotList.LOGGER.info("{}[{}] logged in with entity id {} at ([{}]{}, {}, {})", bot.getName().getString(), "Local", bot.getId(), bot.level().serverLevelData.getLevelName(), bot.getX(), bot.getY(), bot.getZ());
         };
@@ -404,7 +400,7 @@ public class BotList {
                 continue;
             }
             this.botsNameByWorldUuid
-                    .computeIfAbsent(levelUuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(levelUuid.toString(), (k) -> new HashSet<>())
                     .add(fullName);
         }
         loadLegacyResumeBotInfo();
@@ -423,7 +419,7 @@ public class BotList {
                 continue;
             }
             this.legacyBotsNameByWorldUuid
-                    .computeIfAbsent(levelUuid.toString(), (k) -> ConcurrentHashMap.newKeySet())
+                    .computeIfAbsent(levelUuid.toString(), (k) -> new HashSet<>())
                     .add(fullName);
         }
     }
@@ -440,10 +436,10 @@ public class BotList {
         String prevUuid = bot.level().uuid.toString();
         String newUuid = level.uuid.toString();
         this.botsNameByWorldUuid
-                .computeIfAbsent(newUuid, (k) -> ConcurrentHashMap.newKeySet())
+                .computeIfAbsent(newUuid, (k) -> new HashSet<>())
                 .add(bot.getBukkitEntity().getName());
         this.botsNameByWorldUuid
-                .computeIfAbsent(prevUuid, (k) -> ConcurrentHashMap.newKeySet())
+                .computeIfAbsent(prevUuid, (k) -> new HashSet<>())
                 .remove(bot.getBukkitEntity().getName());
     }
 

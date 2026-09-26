@@ -1,76 +1,106 @@
 为 Mili 贡献代码
-=================
+==================
 
 [English](./CONTRIBUTING_EN.md) | **中文**
 
-感谢您愿意为 Mili 做出贡献！本指南给出一个清晰的入门流程、补丁工作流与常见问题解答，以便您快速上手。
+感谢您愿意为 Mili 做出贡献！本指南给出一个清晰的入门流程、补丁工作流与常见问题解答。
 
-快速入门
+## 快速入门
+
 1. 使用个人账号 Fork 仓库并克隆到本地：
 
 ```bash
 git clone https://github.com/xucy10/Mili.git
 cd Mili
+
+# Windows 需启用长路径
+git config --global core.longpaths true
 ```
 
-2. 应用补丁工作树（在仓库根目录运行）：
+2. 应用补丁工作树（首次构建必须执行）：
 
 ```bash
-./gradlew applyAllPatches
+./gradlew applyAllPatches --no-configuration-cache --no-build-cache
 ```
 
-3. 在生成的 `*-api` / `*-server` 目录中进行修改并按补丁流程提交。
+3. 在生成的 `mili-server/src/minecraft/` 目录中修改代码并按补丁流程提交。
 
-开发环境要求
-- `git`
-- `JDK 21` 或更高
+## 开发环境要求
 
-注意（Windows / Git 长路径）
-请确保启用了系统与 Git 的长路径支持：
-- Windows: https://learn.microsoft.com/windows/win32/fileio/maximum-file-path-limitation
-- Git for Windows: https://gitforwindows.org/faq.html#i-get-errors-trying-to-check-out-files-with-long-path-names
+| 依赖 | 版本 | 说明 |
+|------|------|------|
+| JDK | 25+ | Mili 26.2 分支需要 Java 25，不是 JDK 21 |
+| Rust | stable (edition 2024) | 可选，编译原生优化库 |
+| Git | 2.x | Windows 需启用长路径支持 |
 
-补丁模型概览
-----------------
-Mili 使用基于 Git 的补丁模型，仓库在应用补丁后会在根目录生成一系列 `*-api` / `*-server` 目录：
+## 补丁模型概览
 
-- `Mili-api`, `luminol-api`, `folia-api`, `paper-api` —— API 相关修改
-- `Mili-server`, `luminol-server`, `folia-server`, `paper-server` —— 服务器实现与补丁
+Mili 使用 **Hyacinthusweight**（基于 paperweight）补丁系统，仓库在应用补丁后生成工作树目录：
 
-这些目录在本质上并非独立 git 仓库：
-- 在应用补丁前，基点指向未被修改的上游源码。
-- 每一次对 `*-api`/`*-server` 的提交都会在补丁集合中产生相应变更。
+- `mili-api/` — Mili API 模块
+- `mili-server/src/minecraft/` — 服务器实现（应用 121 个 feature 补丁后的源码）
+- `folia-server/` — Folia 子模块（上游，不直接修改）
 
-如何添加新补丁
-----------------
-1. 在相应的 `*-api` 或 `*-server` 目录下进行修改。
-2. 暂存更改：`git add <files>`（注意：对 Mili 自动创建的新文件不要直接提交为普通提交）。
-3. 提交修改：`git commit -m "Describe change"`。
-4. 运行：`./gradlew fixupPaperApiFilePatches`（若有新增文件由该任务生成补丁）
-5. 运行：`./gradlew rebuildAllServerPatches` 将提交转为补丁。
-6. 推送并发起 PR（将补丁文件包含在 PR 中）。
+这些目录中的修改通过 `.patch` 文件管理：
+- 补丁文件位于 `mili-server/minecraft-patches/features/`（121 个）
+- 每次修改源码后需要重建补丁文件
 
-修改已存在补丁
-----------------
-1. 在 `HEAD` 上修改相关代码。
-2. 使用修正提交：`git commit -a --fixup <hash>`（或使用 `--squash` 编辑提交信息）。
-3. 自动变基：`git rebase -i --autosquash base`，然后保存并退出。
-4. 运行 `./gradlew fixupPaperApiFilePatches`（若需要）
-5. 运行 `./gradlew rebuildAllServerPatches`。
-6. 推送并更新 PR。
+## 如何添加新补丁
 
-常见问题
----------
-- 我应当使用组织账号 Fork 吗？
-    - 不建议。组织 Fork 的 PR 无法由本项目直接编辑，合并过程会更复杂。
+1. 在 `mili-server/src/minecraft/` 下修改代码
+2. 暂存更改：`git add <files>`
+3. 提交修改：`git commit -m "描述"`
+4. 重建补丁：`./gradlew :mili-server:rebuildAllServerPatches`
+5. 提交补丁文件并推送
 
-- 构建失败怎么办？
-    - 先运行 `./gradlew assemble --stacktrace` 并检查错误输出与依赖问题。
+## 修改已存在补丁
 
-- 我如何运行本地测试？
-    - 使用 `./gradlew test` 或项目提供的特定测试任务（参见 `build.gradle.kts`）。
+1. 在 `mili-server/src/minecraft/` 下修改相关代码
+2. 使用修正提交：`git commit -a --fixup <hash>`
+3. 自动变基：`git rebase -i --autosquash base`
+4. 运行 `./gradlew :mili-server:rebuildAllServerPatches`
+5. 推送并更新 PR
 
-更多帮助
----------
+## Rust 模块开发
+
+Rust 源码位于 `mili-rust/src/rust/src/`，共 4 个模块文件：
+
+```bash
+cd mili-rust/src/rust
+
+# 编译
+cargo build --release
+
+# 代码检查（必须 0 warning）
+cargo clippy --release
+
+# 单元测试（28 个）
+cargo test --release
+
+# 打包进 JAR
+./gradlew :mili-rust:stageRustBinary
+```
+
+**edition 2024 注意事项**：
+- `#[no_mangle]` 必须写 `#[unsafe(no_mangle)]`
+- unsafe fn 内部必须显式 unsafe 块
+- JNI 的 `catch_unwind` 需用 `AssertUnwindSafe` 包装 `JNIEnv`
+
+## 常见问题
+
+**我应当使用组织账号 Fork 吗？**
+不建议。组织 Fork 的 PR 无法由本项目直接编辑，合并过程会更复杂。
+
+**构建失败怎么办？**
+先运行 `./gradlew assemble --stacktrace` 并检查错误输出与依赖问题。确保使用 JDK 25。
+
+**修改 `mili-server/src/minecraft/` 下的文件后被覆盖？**
+这些是 `applyAllPatches` 生成的文件。必须通过 `minecraft-patches/features/` 下的补丁文件修改，修改后执行 `rebuildAllServerPatches`。
+
+**如何运行本地测试？**
+- Java：`./gradlew test`
+- Rust：`cd mili-rust/src/rust && cargo test --release`
+
+## 更多帮助
+
 查阅仓库根目录的 `README.md` / `README_EN.md` 获取构建、依赖和社区链接。如需进一步协助，请在 Issue 中提供构建日志、JDK 版本和复现步骤。
-

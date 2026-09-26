@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:51:42 +0800
+Subject: [PATCH] Leaf: Reduce block destruction packet allocations
+
+
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index bdd978f54743a543cf8be94a05d928f82716ff6f..dd33558742af12a8142d6bae3215db58eb486c0d 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -1883,6 +1883,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+ 
+     @Override
+     public void destroyBlockProgress(final int id, final BlockPos blockPos, final int progress) {
++        // Gale start - SportPaper - reduce block destruction packet allocations
++        var players = this.server.getPlayerList().getPlayers();
++
++        if (players.isEmpty()) {
++            return;
++        }
++
++        ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(id, blockPos, progress);
++        // Gale end - SportPaper - reduce block destruction packet allocations
+         // CraftBukkit start
+         Player breakerPlayer = null;
+         Entity entity = this.getEntity(id);
+@@ -1899,7 +1908,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+                 .callEvent();
+         }
+         // Paper end - Add BlockBreakProgressUpdateEvent
+-        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
++        for (ServerPlayer player : players) { // Gale - SportPaper - reduce block destruction packet allocations
+             if (player.level() == this && player.getId() != id) {
+                 double xd = blockPos.getX() - player.getX();
+                 double yd = blockPos.getY() - player.getY();
+@@ -1910,7 +1919,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+                         continue;
+                     }
+                     // CraftBukkit end
+-                    player.connection.send(new ClientboundBlockDestructionPacket(id, blockPos, progress));
++                    player.connection.send(packet); // Gale - SportPaper - reduce block destruction packet allocations
+                 }
+             }
+         }

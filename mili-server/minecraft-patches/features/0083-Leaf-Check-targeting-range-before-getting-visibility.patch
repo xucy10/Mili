@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrhua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 20:53:40 +0800
+Subject: [PATCH] Leaf: Check targeting range before getting visibility
+
+
+diff --git a/net/minecraft/world/entity/ai/targeting/TargetingConditions.java b/net/minecraft/world/entity/ai/targeting/TargetingConditions.java
+index 832260c9b2adabd715545ea7e4c0b4c6d4a13d68..7dbd5a78f8de235dd214cd04503c6940247c8e4d 100644
+--- a/net/minecraft/world/entity/ai/targeting/TargetingConditions.java
++++ b/net/minecraft/world/entity/ai/targeting/TargetingConditions.java
+@@ -79,9 +79,18 @@ public class TargetingConditions {
+             }
+ 
+             if (this.range > 0.0) {
+-                double modifier = this.testInvisible ? target.getVisibilityPercent(targeter) : 1.0;
+-                double visibilityDistance = Math.max(this.range * modifier, 2.0);
++                // Gale start - Airplane - check targeting range before getting visibility
++                // modifier = invisibility percent, visibilityDistance = follow range adjusted for invisibility, distanceToSqr = distance
+                 double distanceToSqr = targeter.distanceToSqr(target.getX(), target.getY(), target.getZ());
++                double followRangeRaw = this.range;
++
++                if (distanceToSqr > followRangeRaw * followRangeRaw) { // the actual follow range will always be this value or smaller, so if the distance is larger then it never will return true after getting invis
++                    return false;
++                }
++
++                double modifier = this.testInvisible ? target.getVisibilityPercent(targeter) : 1.0;
++                double visibilityDistance = Math.max(followRangeRaw * modifier, 2.0);
++                // Gale end - Airplane - check targeting range before getting visibility
+                 if (distanceToSqr > visibilityDistance * visibilityDistance) {
+                     return false;
+                 }

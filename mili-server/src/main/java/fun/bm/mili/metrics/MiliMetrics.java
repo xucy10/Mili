@@ -1,35 +1,26 @@
 package fun.bm.mili.metrics;
 
 import fun.bm.mili.config.modules.misc.BStatsConfig;
-import me.earthme.luminol.config.IConfigModule;
-import me.earthme.luminol.config.flags.ConfigClassInfo;
-import me.earthme.luminol.config.flags.ConfigInfo;
-import me.earthme.luminol.enums.EnumConfigCategory;
 import org.bukkit.Bukkit;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Minimal bStats metrics class for server implementation reporting.
  */
 public class MiliMetrics {
     private static final Logger LOGGER = LoggerFactory.getLogger("MiliMetrics");
-    private static boolean enabled;
+    // Mili start - fix: use AtomicBoolean to prevent check-then-act race in start()
+    private static final java.util.concurrent.atomic.AtomicBoolean enabled = new java.util.concurrent.atomic.AtomicBoolean(false);
+    // Mili end
     private static ScheduledExecutorService scheduler;
 
     public static void init(int defaultPluginId) {
@@ -47,8 +38,9 @@ public class MiliMetrics {
     }
 
     private static void start(int pluginId) {
-        if (enabled) return;
-        enabled = true;
+        // Mili start - fix: use AtomicBoolean.compareAndSet to prevent race condition
+        if (!enabled.compareAndSet(false, true)) return;
+        // Mili end
 
         scheduler = Executors.newScheduledThreadPool(1, r -> {
             Thread t = new Thread(r, "MiliMetrics");
@@ -59,9 +51,11 @@ public class MiliMetrics {
         scheduler.scheduleWithFixedDelay(() -> {
             try {
                 sendMetrics(pluginId);
-            } catch (Exception e) {
-                LOGGER.debug("[MiliMetrics] Failed to send metrics", e);
+            // Mili start - fix: catch Throwable instead of Exception to handle Errors
+            } catch (Throwable t) {
+                LOGGER.debug("[MiliMetrics] Failed to send metrics", t);
             }
+            // Mili end
         }, 30, 30, TimeUnit.MINUTES);
 
         LOGGER.info("[MiliMetrics] Started bStats metrics (pluginId={})", pluginId);
@@ -70,44 +64,62 @@ public class MiliMetrics {
     private static void sendMetrics(int pluginId) {
         String serverUUID = getServerUUID();
         int players = Bukkit.getOnlinePlayers().size();
-        int maxPlayers = Bukkit.getMaxPlayers();
-        String javaVersion = System.getProperty("java.version");
         String osName = System.getProperty("os.name");
         String osArch = System.getProperty("os.arch");
-        String mcVersion = Bukkit.getBukkitVersion().split("-")[0];
-        int worldCount = Bukkit.getWorlds().size();
+        String osVersion = System.getProperty("os.version");
 
+        // Mili start - feat: switch to the standard bStats server-implementation schema
+        // (same as Paper/CatServer) so custom charts are recognized; the "players"
+        // SingleLineChart renders the player count graph on bStats.org
+        // (skipped when 0 to match the reference implementations)
+        String playersChart = players > 0
+            ? "{\"chartId\":\"players\",\"data\":{\"value\":" + players + "}}"
+            : "";
         String json = "{" +
-            "\"osname\":\"" + jsonEscape(osName) + "\"," +
-            "\"osarch\":\"" + jsonEscape(osArch) + "\"," +
-            "\"javaVersion\":\"" + jsonEscape(javaVersion) + "\"," +
-            "\"serverImplementation\":\"Mili\"," +
-            "\"mcVersion\":\"" + jsonEscape(mcVersion) + "\"," +
-            "\"onlinePlayers\":" + players + "," +
-            "\"maxPlayers\":" + maxPlayers + "," +
-            "\"worldCount\":" + worldCount +
-            "}";
+            "\"serverUUID\":\"" + jsonEscape(serverUUID) + "\"," +
+            "\"osName\":\"" + jsonEscape(osName) + "\"," +
+            "\"osArch\":\"" + jsonEscape(osArch) + "\"," +
+            "\"osVersion\":\"" + jsonEscape(osVersion) + "\"," +
+            "\"coreCount\":" + Runtime.getRuntime().availableProcessors() + "," +
+            "\"plugins\":[" +
+                "{" +
+                "\"pluginName\":\"Mili\"," +
+                "\"customCharts\":[" + playersChart + "]" +
+                "}" +
+            "]}";
+        // Mili end
 
+        // Mili start - fix: ensure HttpURLConnection is disconnected to prevent connection leak
+        java.net.HttpURLConnection conn = null;
         try {
             URL url = new URL("https://bStats.org/submitData/server-implementation");
-            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn = (java.net.HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("Accept", "application/json");
             conn.setRequestProperty("Connection", "close");
+            conn.setRequestProperty("Content-Encoding", "gzip");
             conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("User-Agent", "Server-Software");
+            conn.setRequestProperty("User-Agent", "MC-Server/1");
             conn.setDoOutput(true);
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
 
-            String postData = "metrics=" + java.net.URLEncoder.encode(json, StandardCharsets.UTF_8);
-            conn.getOutputStream().write(postData.getBytes(StandardCharsets.UTF_8));
+            byte[] compressed = gzip(json.getBytes(StandardCharsets.UTF_8));
+            conn.setFixedLengthStreamingMode(compressed.length);
+            conn.getOutputStream().write(compressed);
 
             int responseCode = conn.getResponseCode();
             LOGGER.debug("[MiliMetrics] Response: {}", responseCode);
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors in network request
+        } catch (Throwable e) {
             LOGGER.debug("[MiliMetrics] Request failed", e);
+        } finally {
+            // Mili end
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
+        // Mili end
     }
 
     private static String getServerUUID() {
@@ -121,13 +133,23 @@ public class MiliMetrics {
             file.getParentFile().mkdirs();
             java.nio.file.Files.write(file.toPath(), id.getBytes(StandardCharsets.UTF_8));
             return id;
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors
+        } catch (Throwable e) {
             return "unknown";
         }
+        // Mili end
     }
 
     private static String jsonEscape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static byte[] gzip(byte[] data) throws java.io.IOException {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.GZIPOutputStream gz = new java.util.zip.GZIPOutputStream(bos)) {
+            gz.write(data);
+        }
+        return bos.toByteArray();
     }
 
     public static void shutdown() {
@@ -135,6 +157,8 @@ public class MiliMetrics {
             scheduler.shutdownNow();
             scheduler = null;
         }
-        enabled = false;
+        // Mili start - fix: use AtomicBoolean set
+        enabled.set(false);
+        // Mili end
     }
 }

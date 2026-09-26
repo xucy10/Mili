@@ -68,7 +68,9 @@ final class ChunkLifecycleManager {
             if (chunk.isForceLoaded() || chunk.isLoaded()) {
                 chunk.unload(true);
             }
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable to prevent silent thread death on Error (StackOverflowError/OOM)
+        } catch (Throwable e) {
+        // Mili end
             LogUtils.getLogger().debug(
                     "[Mili] Failed to unload chunk ({}, {})",
                     chunk.getX(), chunk.getZ()

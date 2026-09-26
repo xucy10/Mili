@@ -1,7 +1,7 @@
 package fun.bm.mili.chunk;
 
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -22,11 +22,14 @@ public final class ChunkHotness {
     private volatile boolean active = false;
     private volatile double nearestPlayerDistanceSq = Double.MAX_VALUE;
 
-    private static final long SCORE_MASK = 0x000FFFFFFFFFFFFFL;
-
+    // Mili start - fix: removed SCORE_MASK that corrupted double bit layout
+    // The mask 0x000FFFFFFFFFFFFFL clears the exponent bits of double,
+    // causing unpackScore to return NaN or denormalized values.
+    // Use direct CAS on the full 64-bit value instead.
     private double unpackScore(long bits) {
-        return Double.longBitsToDouble(bits & SCORE_MASK);
+        return Double.longBitsToDouble(bits);
     }
+    // Mili end
 
     public void update(boolean nearPlayer, double distanceToNearestPlayer) {
         this.active = nearPlayer;
@@ -46,7 +49,9 @@ public final class ChunkHotness {
     }
 
     public void recordAccess(long durationNanos) {
-        long clampedDuration = Math.min(durationNanos, MAX_SINGLE_SAMPLE_NS);
+        // Mili start - fix: clamp negative durations to 0 (can happen on clock skew or uninitialized state)
+        long clampedDuration = Math.max(0, Math.min(durationNanos, MAX_SINGLE_SAMPLE_NS));
+        // Mili end
         totalAccessNanos.add(clampedDuration);
         int count = accessCount.incrementAndGet();
 
@@ -63,7 +68,11 @@ public final class ChunkHotness {
     }
 
     public double getScore() {
-        return Math.max(0, unpackScore(scoreBits.get()));
+        // Mili start - fix: guard against NaN/NaN from corrupted scoreBits
+        double score = unpackScore(scoreBits.get());
+        if (Double.isNaN(score) || score < 0) return 0.0;
+        return score;
+        // Mili end
     }
 
     public boolean isActive() {

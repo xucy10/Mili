@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class RedstoneDirtyTracker {
     private static volatile boolean enabled = false;
@@ -68,13 +67,15 @@ public class RedstoneDirtyTracker {
         return stats;
     }
 
+    // Mili start - fix: use BlockPos.asLong() to avoid hash collisions from bitmask truncation
     private static long pack(BlockPos pos) {
-        return ((long) pos.getX() << 40) | ((long) (pos.getY() & 0xFFFF) << 20) | (pos.getZ() & 0xFFFFF);
+        return pos.asLong();
     }
 
     private static long pack(int x, int y, int z) {
-        return ((long) x << 40) | ((long) (y & 0xFFFF) << 20) | (z & 0xFFFFF);
+        return BlockPos.asLong(x, y, z);
     }
+    // Mili end
 
     public static class DirtyBlock {
         public final BlockPos pos;

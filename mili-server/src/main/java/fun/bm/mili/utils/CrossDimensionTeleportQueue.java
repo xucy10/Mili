@@ -3,15 +3,14 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.optimizations.CrossDimensionTeleportQueueConfig;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.craftbukkit.entity.CraftEntity;
-import org.bukkit.craftbukkit.entity.CraftPlayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,13 +21,21 @@ public class CrossDimensionTeleportQueue {
     private static final AtomicInteger processed = new AtomicInteger();
     private static final AtomicInteger failed = new AtomicInteger();
     private static final AtomicLong totalWaitTime = new AtomicLong();
+    // Mili start - fix: use AtomicInteger counter instead of O(n) queue.size()
+    private static final AtomicInteger queueSize = new AtomicInteger();
+    // Mili end
 
     public static void setEnabled(boolean v) { enabled = v; }
     public static boolean isEnabled() { return enabled; }
 
     public static boolean enqueueTeleport(org.bukkit.entity.Entity entity, Location destination) {
         if (!enabled) return false;
-        if (queue.size() >= CrossDimensionTeleportQueueConfig.maxQueueSize) return false;
+        // Mili start - fix: use AtomicInteger counter instead of O(n) queue.size()
+        if (queueSize.incrementAndGet() > CrossDimensionTeleportQueueConfig.maxQueueSize) {
+            queueSize.decrementAndGet();
+            return false;
+        }
+        // Mili end
 
         Entity nmsEntity = ((CraftEntity) entity).getHandle();
         net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> destKey =
@@ -37,7 +44,12 @@ public class CrossDimensionTeleportQueue {
                         net.minecraft.resources.Identifier.parse(destination.getWorld().getName()));
         ServerLevel destLevel = MinecraftServer.getServer().getLevel(destKey);
 
-        if (destLevel == null) return false;
+        if (destLevel == null) {
+            // Mili start - fix: decrement counter since enqueue failed
+            queueSize.decrementAndGet();
+            // Mili end
+            return false;
+        }
 
         boolean isPlayer = entity instanceof org.bukkit.entity.Player;
         long createTime = System.nanoTime();
@@ -60,6 +72,9 @@ public class CrossDimensionTeleportQueue {
         List<TeleportRequest> entityRequests = new ArrayList<>();
 
         while ((request = queue.poll()) != null) {
+            // Mili start - fix: decrement queueSize counter after poll
+            queueSize.decrementAndGet();
+            // Mili end
             if (!request.entity.isAlive()) {
                 failed.incrementAndGet();
                 continue;
@@ -83,6 +98,9 @@ public class CrossDimensionTeleportQueue {
         for (TeleportRequest req : all) {
             if (processedThisTick >= 10) {
                 queue.offer(req);
+                // Mili start - fix: re-increment counter when re-queuing request
+                queueSize.incrementAndGet();
+                // Mili end
                 continue;
             }
 
@@ -95,16 +113,20 @@ public class CrossDimensionTeleportQueue {
                         org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN, 0L, e -> {});
                 processed.incrementAndGet();
                 processedThisTick++;
-            } catch (Exception e) {
+            // Mili start - fix: catch Throwable instead of Exception to handle Errors
+            } catch (Throwable e) {
                 failed.incrementAndGet();
             }
+            // Mili end
         }
     }
 
     public static Map<String, Object> getStats() {
         Map<String, Object> stats = new java.util.LinkedHashMap<>();
         stats.put("Enabled", enabled);
-        stats.put("Queue Size", queue.size());
+        // Mili start - fix: use AtomicInteger counter instead of O(n) queue.size()
+        stats.put("Queue Size", queueSize.get());
+        // Mili end
         stats.put("Processed", processed.get());
         stats.put("Failed", failed.get());
         long total = processed.get();

@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: MrHua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 19:50:16 +0800
+Subject: [PATCH] Paper: Prevent zombie reinforcements loading chunks
+
+
+diff --git a/net/minecraft/world/entity/monster/zombie/Zombie.java b/net/minecraft/world/entity/monster/zombie/Zombie.java
+index aa0a34e3bae3c0d81bc87577570340d1efc46c2b..143e7f5cd55ff37bec1150e2f1beb98287770503 100644
+--- a/net/minecraft/world/entity/monster/zombie/Zombie.java
++++ b/net/minecraft/world/entity/monster/zombie/Zombie.java
+@@ -344,6 +344,13 @@ public class Zombie extends Monster {
+                 int yt = y + Mth.nextInt(this.random, 7, 40) * Mth.nextInt(this.random, -1, 1);
+                 int zt = z + Mth.nextInt(this.random, 7, 40) * Mth.nextInt(this.random, -1, 1);
+                 BlockPos spawnPos = new BlockPos(xt, yt, zt);
++
++                // Paper start - Prevent reinforcement checks from loading chunks
++                if (this.level().getChunkIfLoadedImmediately(spawnPos.getX() >> 4, spawnPos.getZ() >> 4) == null) {
++                    continue;
++                }
++                // Paper end - Prevent reinforcement checks from loading chunks
++
+                 if (SpawnPlacements.isSpawnPositionOk(type, level, spawnPos)
+                     && SpawnPlacements.checkSpawnRules(type, level, EntitySpawnReason.REINFORCEMENT, spawnPos, level.getRandom())) {
+                     reinforcement.setPos(xt, yt, zt);

@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: MrHua269 <mrhua269@gmail.com>
+Date: Tue, 11 Aug 2026 19:40:46 +0800
+Subject: [PATCH] Leaf: Remove useless creating stats json bases on player
+ namelogic
+
+
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 2975a879320faed5f6591489f86d3f909072cbaa..75fda00984205153a767f9f26a8c6a33708c7f5c 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -1296,6 +1296,8 @@ public abstract class PlayerList {
+             return uuidStatsFile;
+         }
+ 
++        // Leaf start - Remove useless creating stats json bases on player name logic
++        /*
+         String playerNameStatsFile = gameProfile.name() + ".json";
+         if (FileUtil.isValidPathSegment(playerNameStatsFile)) {
+             Path playerNameStatsPath = statFolder.resolve(playerNameStatsFile);
+@@ -1308,6 +1310,8 @@ public abstract class PlayerList {
+                 }
+             }
+         }
++        */
++        // Leaf end - Remove useless creating stats json bases on player name logic
+ 
+         return uuidStatsFile;
+     }

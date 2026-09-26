@@ -110,26 +110,24 @@ fn extract_value_comment_with_key(
     // Use `table.key()` + `Key::leaf_decor()` (non-deprecated API)
     if let Some(k) = table.key(key) {
         let kd = k.leaf_decor();
-        if let Some(prefix) = kd.prefix() {
-            if let Some(text) = prefix.as_str() {
+        if let Some(prefix) = kd.prefix()
+            && let Some(text) = prefix.as_str() {
                 let text = text.trim();
                 if !text.is_empty() {
                     comments.push(text.to_string());
                 }
             }
-        }
     }
 
     // Suffix decor (comment after the value on the same line, e.g. `key = val # comment`)
     let suffix = value.decor().suffix();
-    if let Some(s) = suffix {
-        if let Some(text) = s.as_str() {
+    if let Some(s) = suffix
+        && let Some(text) = s.as_str() {
             let text = text.trim();
             if !text.is_empty() {
                 comments.push(text.to_string());
             }
         }
-    }
 
     if comments.is_empty() {
         String::new()
@@ -145,24 +143,22 @@ fn extract_table_comment(table: &toml_edit::Table) -> String {
     let mut comments = Vec::new();
 
     let prefix = decor.prefix();
-    if let Some(p) = prefix {
-        if let Some(text) = p.as_str() {
+    if let Some(p) = prefix
+        && let Some(text) = p.as_str() {
             let text = text.trim();
             if !text.is_empty() {
                 comments.push(text.to_string());
             }
         }
-    }
 
     let suffix = decor.suffix();
-    if let Some(s) = suffix {
-        if let Some(text) = s.as_str() {
+    if let Some(s) = suffix
+        && let Some(text) = s.as_str() {
             let text = text.trim();
             if !text.is_empty() {
                 comments.push(text.to_string());
             }
         }
-    }
 
     if comments.is_empty() {
         String::new()
@@ -186,7 +182,7 @@ fn toml_value_to_json(value: &toml_edit::Value) -> Option<Value> {
         Some(Value::Bool(value.as_bool().unwrap_or(false)))
     } else if value.is_array() {
         let arr = value.as_array().unwrap();
-        let json_arr: Vec<Value> = arr.iter().filter_map(|v| toml_value_to_json(v)).collect();
+        let json_arr: Vec<Value> = arr.iter().filter_map(toml_value_to_json).collect();
         Some(Value::Array(json_arr))
     } else if value.is_inline_table() {
         let tbl = value.as_inline_table().unwrap();
@@ -318,13 +314,12 @@ impl ConfigNode {
         for (key, entry) in &self.children {
             match entry {
                 ConfigEntry::Value(val, comment) => {
-                    if let Some(c) = comment {
-                        if !c.is_empty() {
+                    if let Some(c) = comment
+                        && !c.is_empty() {
                             for line in c.lines() {
                                 output.push_str(&format!("# {}\n", line));
                             }
                         }
-                    }
                     output.push_str(&format!("{} = {}\n", key, json_to_toml_value(val)));
                 }
                 ConfigEntry::Table(_, _) => {}
@@ -338,13 +333,12 @@ impl ConfigNode {
                     output.push('\n');
                 }
 
-                if let Some(c) = comment {
-                    if !c.is_empty() {
+                if let Some(c) = comment
+                    && !c.is_empty() {
                         for line in c.lines() {
                             output.push_str(&format!("# {}\n", line));
                         }
                     }
-                }
 
                 let full_path = if path_prefix.is_empty() {
                     key.clone()
@@ -476,11 +470,10 @@ fn set_value_in_document(
         if let Some(toml_val) = toml_val {
             doc[key] = toml_edit::Item::Value(toml_val);
             if let Some(c) = comment {
-                if let Some(item) = doc.get_mut(key) {
-                    if let toml_edit::Item::Value(v) = item {
+                if let Some(item) = doc.get_mut(key)
+                    && let toml_edit::Item::Value(v) = item {
                         apply_comment_to_value(v, c);
                     }
-                }
                 // For multi-line comments, also set the key's leaf decor prefix
                 // so the comment appears above the key=value line
                 if c.contains('\n') {
@@ -492,11 +485,10 @@ fn set_value_in_document(
                         k.leaf_decor_mut().set_prefix(prefix_str);
                     }
                     // Clear the value suffix since we put it on the key
-                    if let Some(item) = doc.get_mut(key) {
-                        if let toml_edit::Item::Value(v) = item {
+                    if let Some(item) = doc.get_mut(key)
+                        && let toml_edit::Item::Value(v) = item {
                             v.decor_mut().set_suffix("");
                         }
-                    }
                 }
             }
         } else {
@@ -515,14 +507,13 @@ fn set_value_in_document(
             if let Some(toml_val) = toml_val {
                 current[*part] = toml_edit::Item::Value(toml_val);
                 if let Some(c) = comment {
-                    if let Some(item) = current.get_mut(*part) {
-                        if let toml_edit::Item::Value(v) = item {
+                    if let Some(item) = current.get_mut(part)
+                        && let toml_edit::Item::Value(v) = item {
                             apply_comment_to_value(v, c);
                         }
-                    }
                     // For multi-line comments, set the key's leaf decor prefix
                     if c.contains('\n') {
-                        if let Some(mut k) = current.key_mut(*part) {
+                        if let Some(mut k) = current.key_mut(part) {
                             let mut prefix_str = String::new();
                             for line in c.lines() {
                                 prefix_str.push_str(&format!("# {}\n", line));
@@ -530,23 +521,22 @@ fn set_value_in_document(
                             k.leaf_decor_mut().set_prefix(prefix_str);
                         }
                         // Clear the value suffix since we put it on the key
-                        if let Some(item) = current.get_mut(*part) {
-                            if let toml_edit::Item::Value(v) = item {
+                        if let Some(item) = current.get_mut(part)
+                            && let toml_edit::Item::Value(v) = item {
                                 v.decor_mut().set_suffix("");
                             }
-                        }
                     }
                 }
             } else {
                 // Value::Null: remove the key from the table
-                current.remove(*part);
+                current.remove(part);
             }
         } else {
             // Ensure sub-table exists
-            if !current.contains_table(*part) {
+            if !current.contains_table(part) {
                 current[*part] = toml_edit::Item::Table(toml_edit::Table::new());
             }
-            current = match current.get_mut(*part) {
+            current = match current.get_mut(part) {
                 Some(toml_edit::Item::Table(t)) => t,
                 _ => return,
             };
@@ -563,14 +553,13 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
 
     if parts.len() == 1 {
         // Root-level key comment
-        if let Some(item) = doc.get_mut(parts[0]) {
-            if let toml_edit::Item::Value(v) = item {
+        if let Some(item) = doc.get_mut(parts[0])
+            && let toml_edit::Item::Value(v) = item {
                 apply_comment_to_value(v, comment);
             }
-        }
         // For multi-line comments on values, use key's leaf decor prefix
-        if comment.contains('\n') {
-            if let Some(mut k) = doc.key_mut(parts[0]) {
+        if comment.contains('\n')
+            && let Some(mut k) = doc.key_mut(parts[0]) {
                 let mut prefix_str = String::new();
                 for line in comment.lines() {
                     prefix_str.push_str(&format!("# {}\n", line));
@@ -581,7 +570,6 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
                     v.decor_mut().set_suffix("");
                 }
             }
-        }
         return;
     }
 
@@ -589,7 +577,7 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
     let mut current = doc.as_table_mut();
     for (i, part) in parts.iter().enumerate() {
         if i == parts.len() - 1 {
-            match current.get_mut(*part) {
+            match current.get_mut(part) {
                 Some(toml_edit::Item::Table(t)) => {
                     apply_comment_to_table(t, comment);
                 }
@@ -597,14 +585,14 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
                     apply_comment_to_value(v, comment);
                     // For multi-line comments on values, use key's leaf decor prefix
                     if comment.contains('\n') {
-                        if let Some(mut k) = current.key_mut(*part) {
+                        if let Some(mut k) = current.key_mut(part) {
                             let mut prefix_str = String::new();
                             for line in comment.lines() {
                                 prefix_str.push_str(&format!("# {}\n", line));
                             }
                             k.leaf_decor_mut().set_prefix(prefix_str);
                         }
-                        if let Some(toml_edit::Item::Value(v)) = current.get_mut(*part) {
+                        if let Some(toml_edit::Item::Value(v)) = current.get_mut(part) {
                             v.decor_mut().set_suffix("");
                         }
                     }
@@ -613,7 +601,7 @@ fn set_comment_in_document(doc: &mut toml_edit::DocumentMut, path: &str, comment
             }
             return;
         }
-        current = match current.get_mut(*part) {
+        current = match current.get_mut(part) {
             Some(toml_edit::Item::Table(t)) => t,
             _ => return,
         };
@@ -647,11 +635,7 @@ fn json_to_toml_edit_value(value: &Value) -> Option<toml_edit::Value> {
         Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 Some(toml_edit::Value::from(i))
-            } else if let Some(f) = n.as_f64() {
-                Some(toml_edit::Value::from(f))
-            } else {
-                None
-            }
+            } else { n.as_f64().map(toml_edit::Value::from) }
         }
         Value::Bool(b) => Some(toml_edit::Value::from(*b)),
         Value::Array(arr) => {

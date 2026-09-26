@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Mon, 31 Aug 2026 08:47:04 +0000
+Subject: [PATCH] Optimize TPS catch-up and fix culled entity fallback
+
+
+diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/papermc/paper/threadedregions/TickRegionScheduler.java
+index b8d14279b1b27001150b21cf0522997e75068500..47e4e374a08266d07b784f9bfdb8b017cc7eb76e 100644
+--- a/io/papermc/paper/threadedregions/TickRegionScheduler.java
++++ b/io/papermc/paper/threadedregions/TickRegionScheduler.java
+@@ -41,7 +41,7 @@ public final class TickRegionScheduler {
+     }
+ 
+     public static final int TICK_RATE = 20;
+-    public static long TIME_BETWEEN_TICKS = 1_000_000_000L / TICK_RATE; // ns
++    public static volatile long TIME_BETWEEN_TICKS = 1_000_000_000L / TICK_RATE; // ns
+     // Folia start - watchdog
+     public static final FoliaWatchdogThread WATCHDOG_THREAD = new FoliaWatchdogThread();
+     static {
+@@ -449,7 +449,11 @@ public final class TickRegionScheduler {
+             final long tickStart = System.nanoTime();
+ 
+             // use max(), don't assume that tickStart >= scheduledStart
+-            final long tickCount = Math.max(1L, this.tickSchedule.getPeriodsAhead(TIME_BETWEEN_TICKS, tickStart));
++            // Mili start - TPS catch-up: bound the catch-up burst, see TickCatchupConfig
++            final long mili$periodsAhead = Math.max(1L, this.tickSchedule.getPeriodsAhead(TIME_BETWEEN_TICKS, tickStart));
++            final int mili$maxCatchup = fun.bm.mili.config.modules.optimizations.TickCatchupConfig.maxTickCatchup;
++            final long tickCount = mili$maxCatchup > 0 ? Math.min(mili$periodsAhead, mili$maxCatchup) : mili$periodsAhead;
++            // Mili end - TPS catch-up
+ 
+             if (!this.tryMarkTicking()) {
+                 if (!this.cancelled.get()) {
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index 11acddb0b76b8ce2ccee638d9d501bd33c4e0982..05e5d0bce88aa038e0821c013e077a2b544b8360 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -1124,6 +1124,10 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+                 );
+                 if (results != null) {
+                     fun.bm.mili.rust.EntityCullHelper.applyCullingResults(entityList, results);
++                } else {
++                    // Mili - reset stale culled flags when the native culling failed this tick,
++                    // otherwise previously culled entities would never receive updates again
++                    fun.bm.mili.rust.EntityCullHelper.resetCulledFlags(entityList);
+                 }
+             }
+             mili$batchCullMap.clear();

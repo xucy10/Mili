@@ -125,7 +125,7 @@ public class EntitiesCounterUtil {
             }
             // Paper end - Only count natural spawns
             BlockPos blockPos = entity.blockPosition();
-            chunkGetter.query(ChunkPos.asLong(blockPos), chunk -> {
+            chunkGetter.query(ChunkPos.pack(blockPos), chunk -> {
                 MobSpawnSettings.MobSpawnCost mobSpawnCost = getRoughBiome(blockPos, chunk).getMobSettings().getMobSpawnCost(entity.getType());
                 if (mobSpawnCost != null) {
                     potentialCalculator.addCharge(entity.blockPosition(), mobSpawnCost.charge());
@@ -137,7 +137,7 @@ public class EntitiesCounterUtil {
 
                 // Paper start - Optional per player mob spawns
                 if (countMobs) {
-                    chunk.level.getChunkSource().chunkMap.updatePlayerMobTypeMap(entity);
+                    ((net.minecraft.server.level.ServerLevel) chunk.getLevel()).getChunkSource().chunkMap.updatePlayerMobTypeMap(entity);
                 }
                 // Paper end - Optional per player mob spawns
             });

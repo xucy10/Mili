@@ -1,9 +1,11 @@
 package fun.bm.mili.utils;
 
-import fun.bm.mili.chunk.MiliChunkSystem;
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.chunk.MiliChunkSystem;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
@@ -22,7 +24,14 @@ public final class PerformanceCollector {
     }
 
     public static void recordMetric(String name, long value) {
-        ((ValueMetric) METRICS.computeIfAbsent(name, k -> new ValueMetric(k))).record(value);
+        // Mili start - fix: check type before casting to prevent ClassCastException on type mismatch
+        Metric metric = METRICS.computeIfAbsent(name, k -> new ValueMetric(k));
+        if (metric instanceof ValueMetric valueMetric) {
+            valueMetric.record(value);
+        } else {
+            LogUtils.getLogger().warn("Metric '{}' is not a ValueMetric, cannot record value", name);
+        }
+        // Mili end
     }
 
     public static void incrementCounter(String name) {
@@ -30,14 +39,25 @@ public final class PerformanceCollector {
     }
 
     public static void incrementCounter(String name, long delta) {
-        ((CounterMetric) METRICS.computeIfAbsent(name, k -> new CounterMetric(k))).increment(delta);
+        // Mili start - fix: check type before casting to prevent ClassCastException on type mismatch
+        Metric metric = METRICS.computeIfAbsent(name, k -> new CounterMetric(k));
+        if (metric instanceof CounterMetric counterMetric) {
+            counterMetric.increment(delta);
+        } else {
+            LogUtils.getLogger().warn("Metric '{}' is not a CounterMetric, cannot increment counter", name);
+        }
+        // Mili end
     }
 
     public static void startTiming(String name) {
-        TimingMetric metric = (TimingMetric) METRICS.computeIfAbsent(
-                name, k -> new TimingMetric(k)
-        );
-        metric.start();
+        // Mili start - fix: check type before casting to prevent ClassCastException on type mismatch
+        Metric metric = METRICS.computeIfAbsent(name, k -> new TimingMetric(k));
+        if (metric instanceof TimingMetric timingMetric) {
+            timingMetric.start();
+        } else {
+            LogUtils.getLogger().warn("Metric '{}' is not a TimingMetric, cannot start timing", name);
+        }
+        // Mili end
     }
 
     public static void stopTiming(String name) {

@@ -19,6 +19,9 @@ pub const PLANE_TOP: usize = 3;
 pub const PLANE_NEAR: usize = 4;
 pub const PLANE_FAR: usize = 5;
 
+/// Small epsilon for float comparisons to avoid division by near-zero values.
+const EPSILON: f32 = 1e-6;
+
 impl Frustum {
     /// Build a frustum from a projection-view matrix.
     ///
@@ -82,9 +85,9 @@ impl Frustum {
         max_z: f32,
     ) -> bool {
         for plane in &self.planes {
-            let px = if plane[0] > 0.0 { min_x } else { max_x };
-            let py = if plane[1] > 0.0 { min_y } else { max_y };
-            let pz = if plane[2] > 0.0 { min_z } else { max_z };
+            let px = if plane[0] >= 0.0 { min_x } else { max_x };
+            let py = if plane[1] >= 0.0 { min_y } else { max_y };
+            let pz = if plane[2] >= 0.0 { min_z } else { max_z };
 
             let dist = px * plane[0] + py * plane[1] + pz * plane[2] + plane[3];
             if dist < 0.0 {
@@ -110,7 +113,7 @@ impl Frustum {
 #[inline(always)]
 fn normalize_plane(plane: [f32; 4]) -> [f32; 4] {
     let len = (plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]).sqrt();
-    if len > 0.0 {
+    if len > EPSILON {
         [
             plane[0] / len,
             plane[1] / len,
@@ -140,11 +143,19 @@ pub fn batch_cull_spheres(
         return Vec::new();
     }
 
+    // Mili start - fix: validate data lengths to prevent out-of-bounds panic
+    let max_spheres = (centers.len() / 3).min(radii.len());
+    let actual = num_spheres.min(max_spheres);
+    if actual == 0 {
+        return vec![0u8; num_spheres]; // all culled — insufficient data
+    }
+    // Mili end
+
     if num_spheres <= 128 {
         let mut results = vec![0u8; num_spheres];
-        for i in 0..num_spheres {
+        for (i, result) in results.iter_mut().enumerate().take(actual) {
             let base = i * 3;
-            results[i] = frustum.test_sphere(
+            *result = frustum.test_sphere(
                 centers[base],
                 centers[base + 1],
                 centers[base + 2],
@@ -154,7 +165,7 @@ pub fn batch_cull_spheres(
         return results;
     }
 
-    (0..num_spheres)
+    (0..actual)
         .into_par_iter()
         .map(|i| {
             let base = i * 3;
@@ -182,11 +193,19 @@ pub fn batch_cull_aabbs(aabbs: &[f32], num_aabbs: usize, frustum: &Frustum) -> V
 
     const AABB_STRIDE: usize = 6;
 
+    // Mili start - fix: validate data length to prevent out-of-bounds panic
+    let max_aabbs = aabbs.len() / AABB_STRIDE;
+    let actual = num_aabbs.min(max_aabbs);
+    if actual == 0 {
+        return vec![0u8; num_aabbs]; // all culled — insufficient data
+    }
+    // Mili end
+
     if num_aabbs <= 128 {
         let mut results = vec![0u8; num_aabbs];
-        for i in 0..num_aabbs {
+        for (i, result) in results.iter_mut().enumerate().take(actual) {
             let base = i * AABB_STRIDE;
-            results[i] = frustum.test_aabb(
+            *result = frustum.test_aabb(
                 aabbs[base],
                 aabbs[base + 1],
                 aabbs[base + 2],
@@ -198,7 +217,7 @@ pub fn batch_cull_aabbs(aabbs: &[f32], num_aabbs: usize, frustum: &Frustum) -> V
         return results;
     }
 
-    (0..num_aabbs)
+    (0..actual)
         .into_par_iter()
         .map(|i| {
             let base = i * AABB_STRIDE;
@@ -239,20 +258,32 @@ pub fn frustum_from_camera(
     let sin_v = half_v.sin();
     let cos_v = half_v.cos();
 
-    let tan_v = sin_v / cos_v;
+    // Guard against division by zero when cos_v is near-zero (fov_y near pi).
+    let tan_v = if cos_v.abs() > EPSILON {
+        sin_v / cos_v
+    } else {
+        // Degenerate case: use a very large tan to avoid NaN.
+        f32::MAX
+    };
     let nh = near * tan_v;
     let nw = nh * aspect;
 
-    // Camera right vector
+    // Camera right vector = forward x up
     let right = [
         camera_fwd[1] * camera_up[2] - camera_fwd[2] * camera_up[1],
         camera_fwd[2] * camera_up[0] - camera_fwd[0] * camera_up[2],
         camera_fwd[0] * camera_up[1] - camera_fwd[1] * camera_up[0],
     ];
 
-    // Normalize right
-    let rlen = (right[0] * right[0] + right[1] * right[1] + right[2] * right[2]).sqrt();
-    let right = [right[0] / rlen, right[1] / rlen, right[2] / rlen];
+    // Normalize right — guard against zero-length cross product (parallel vectors)
+    let rlen_sq = right[0] * right[0] + right[1] * right[1] + right[2] * right[2];
+    let rlen = rlen_sq.sqrt();
+    let right = if rlen > EPSILON {
+        [right[0] / rlen, right[1] / rlen, right[2] / rlen]
+    } else {
+        // Fallback: use world-up if forward and up are parallel
+        [0.0, 0.0, 1.0]
+    };
 
     // Frustum corners on near plane
     let nc = [
@@ -352,11 +383,13 @@ fn plane_from_points(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 4] {
     let ny = ab[2] * ac[0] - ab[0] * ac[2];
     let nz = ab[0] * ac[1] - ab[1] * ac[0];
 
-    let len = (nx * nx + ny * ny + nz * nz).sqrt();
-    if len == 0.0 {
+    let len_sq = nx * nx + ny * ny + nz * nz;
+    if len_sq < EPSILON * EPSILON {
+        // Degenerate triangle — return a safe fallback plane
         return [0.0, 1.0, 0.0, 0.0];
     }
 
+    let len = len_sq.sqrt();
     let nx = nx / len;
     let ny = ny / len;
     let nz = nz / len;
@@ -454,5 +487,26 @@ mod tests {
         assert!(frustum.test_point(0.0, 0.0, -10.0));
         // Something behind camera should be culled
         assert!(!frustum.test_point(0.0, 0.0, 10.0));
+    }
+
+    /// Regression test: parallel forward/up vectors must not produce NaN.
+    #[test]
+    fn test_frustum_degenerate_vectors() {
+        // forward and up are identical (parallel) — cross product is zero
+        let frustum = frustum_from_camera(
+            std::f32::consts::PI / 4.0,
+            16.0 / 9.0,
+            0.1,
+            1000.0,
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+        // Planes should not contain NaN
+        for plane in &frustum.planes {
+            for &v in plane {
+                assert!(!v.is_nan(), "Plane contains NaN in degenerate case");
+            }
+        }
     }
 }

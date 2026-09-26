@@ -3,28 +3,36 @@ package fun.bm.mili.utils;
 import fun.bm.mili.config.modules.function.AutoBackupConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.jspecify.annotations.Nullable;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.stream.Stream;
-import java.util.zip.*;
-import org.jspecify.annotations.Nullable;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class AutoBackupManager {
     private static ScheduledExecutorService scheduler;
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
     private static volatile boolean running = false;
-    private static long lastBackupTime = 0;
-    private static String lastBackupResult = "None";
+    // Mili start - fix: lastBackupTime 和 lastBackupResult 非 volatile，多线程可见性问题
+    private static volatile long lastBackupTime = 0;
+    private static volatile String lastBackupResult = "None";
+    // Mili end
 
-    public static void start() {
+    // Mili start - fix: start() 中 running=true 在 scheduler 创建之前设置，stop() 可在两者间被调用导致竞态
+    public static synchronized void start() {
         if (running) return;
-        running = true;
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "Mili-Backup-Thread");
             t.setDaemon(true);
@@ -34,14 +42,29 @@ public class AutoBackupManager {
         long intervalMs = AutoBackupConfig.intervalMinutes * 60_000L;
         scheduler.scheduleWithFixedDelay(AutoBackupManager::performBackup, intervalMs, intervalMs,
                 TimeUnit.MILLISECONDS);
+        running = true;
     }
+    // Mili end
 
     public static void stop() {
         running = false;
+        // Mili start - fix: stop() 调用 shutdownNow() 但不等待终止，改为优雅关闭
         if (scheduler != null) {
-            scheduler.shutdownNow();
+            scheduler.shutdown();
+            try {
+                if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+                    scheduler.shutdownNow();
+                    if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                        Bukkit.getLogger().warning("[Mili Backup] Scheduler did not terminate");
+                    }
+                }
+            } catch (InterruptedException e) {
+                scheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
             scheduler = null;
         }
+        // Mili end
     }
 
     public static boolean isRunning() { return running; }
@@ -57,10 +80,12 @@ public class AutoBackupManager {
             try {
                 doBackup(worldName);
                 return true;
-            } catch (Exception e) {
+            // Mili start - fix: catch Throwable instead of Exception to handle Errors
+            } catch (Throwable e) {
                 lastBackupResult = "Error: " + e.getMessage();
                 return false;
             }
+            // Mili end
         }, scheduler != null ? scheduler : ForkJoinPool.commonPool());
     }
 
@@ -68,16 +93,25 @@ public class AutoBackupManager {
         try {
             doBackup(null);
             cleanupOldBackups();
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors in scheduled backup
+        } catch (Throwable e) {
             lastBackupResult = "Error: " + e.getMessage();
             Bukkit.getLogger().log(Level.WARNING, "[Mili Backup] Backup failed", e);
         }
+        // Mili end
     }
 
     private static void doBackup(@Nullable String specificWorld) throws IOException {
+        // Mili start - fix: doBackup 从异步线程调用 Bukkit.broadcast() 等非线程安全 Bukkit API
+        org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("Mili");
+        // Mili end
         if (AutoBackupConfig.notifyPlayers) {
-            Bukkit.broadcast(net.kyori.adventure.text.Component.text(
-                    "[Mili] World backup in progress...", net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            // Mili start - fix: 将 Bukkit API 调用调度到主线程执行
+            final org.bukkit.plugin.Plugin p = plugin;
+            Bukkit.getScheduler().runTask(p, () ->
+                    Bukkit.broadcast(net.kyori.adventure.text.Component.text(
+                            "[Mili] World backup in progress...", net.kyori.adventure.text.format.NamedTextColor.YELLOW)));
+            // Mili end
         }
 
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
@@ -125,8 +159,13 @@ public class AutoBackupManager {
             String msg = specificWorld != null
                     ? "[Mili] Backup complete! World: " + specificWorld + " (" + formatSize(totalSize) + ")"
                     : "[Mili] Backup complete! All worlds (" + formatSize(totalSize) + ")";
-            Bukkit.broadcast(net.kyori.adventure.text.Component.text(
-                    msg, net.kyori.adventure.text.format.NamedTextColor.GREEN));
+            // Mili start - fix: 将 Bukkit API 调用调度到主线程执行
+            final org.bukkit.plugin.Plugin p = plugin;
+            final String fmsg = msg;
+            Bukkit.getScheduler().runTask(p, () ->
+                    Bukkit.broadcast(net.kyori.adventure.text.Component.text(
+                            fmsg, net.kyori.adventure.text.format.NamedTextColor.GREEN)));
+            // Mili end
         }
 
         Bukkit.getLogger().info("[Mili Backup] Completed: " + worldNames + " (" + formatSize(totalSize) + ")");

@@ -1,18 +1,24 @@
 package fun.bm.mili.utils;
 
+import com.mojang.logging.LogUtils;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import org.jetbrains.annotations.Nullable;
-import com.mojang.logging.LogUtils;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class SmartRegionManager {
 
     private SmartRegionManager() {}
 
-    private static volatile boolean initialized = false;
+    // Mili start - fix: use AtomicBoolean for thread-safe init/shutdown
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
+    // Mili end
 
     private static final ConcurrentHashMap<Integer, RegionProfile> regionProfiles = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedQueue<RegionMigrationTask> migrationQueue = new ConcurrentLinkedQueue<>();
@@ -26,7 +32,10 @@ public final class SmartRegionManager {
     private static ScheduledExecutorService scheduler;
 
     public static void init() {
-        if (!RegionBalancerConfig.enabled || initialized) return;
+        // Mili start - fix: CAS-based init to prevent double initialization race
+        if (!RegionBalancerConfig.enabled) return;
+        if (!initialized.compareAndSet(false, true)) return;
+        // Mili end
 
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "Mili-SmartRegion");
@@ -49,13 +58,13 @@ public final class SmartRegionManager {
                 TimeUnit.MILLISECONDS
         );
 
-        initialized = true;
         LogUtils.getLogger().info("[Mili] SmartRegionManager v2.0 initialized");
     }
 
     public static void shutdown() {
-        if (!initialized) return;
-        initialized = false;
+        // Mili start - fix: CAS-based shutdown to prevent double shutdown race
+        if (!initialized.compareAndSet(true, false)) return;
+        // Mili end
 
         if (scheduler != null) {
             scheduler.shutdown();
@@ -65,7 +74,11 @@ public final class SmartRegionManager {
                 }
             } catch (InterruptedException e) {
                 scheduler.shutdownNow();
+                // Mili start - fix: restore interrupt flag
+                Thread.currentThread().interrupt();
+                // Mili end
             }
+            scheduler = null;
         }
 
         regionProfiles.clear();
@@ -93,7 +106,8 @@ public final class SmartRegionManager {
                     scheduleMigration(regionKey, profile);
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Mili start - fix: catch Throwable to prevent scheduler thread death on Error
             LogUtils.getLogger().error("[Mili] Region analysis error", e);
         }
     }
@@ -120,11 +134,18 @@ public final class SmartRegionManager {
                     task.reset(null, null);
                     taskPool.offer(task);
                 }
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // Mili start - fix: catch Throwable (not just Exception) + ensure task is recycled to pool even on error
                 LogUtils.getLogger().warn(
                         "[Mili] Migration failed for region: {}", task.regionKey, e
                 );
                 failedMigrations.incrementAndGet();
+                // Recycle the task to pool to prevent object leak
+                if (taskPool.size() < maxPoolSize) {
+                    task.reset(null, null);
+                    taskPool.offer(task);
+                }
+                // Mili end
             }
         }
     }
@@ -272,15 +293,31 @@ public final class SmartRegionManager {
     private static class RegionMigrationTask {
         Integer regionKey;
         RegionProfile profile;
+        // Mili start - task UUID for cross-region migration tracking
+        UUID taskUuid;
+        // Mili end
 
         RegionMigrationTask(Integer regionKey, RegionProfile profile) {
             this.regionKey = regionKey;
             this.profile = profile;
+            // Mili start - allocate UUID on creation
+            this.taskUuid = RegionTaskIdRegistry.allocateAndRegister("region-migration", regionKey);
+            // Mili end
         }
 
         void reset(Integer regionKey, RegionProfile profile) {
+            // Mili start - unregister old UUID before reusing the task object
+            if (this.taskUuid != null) {
+                RegionTaskIdRegistry.unregister(this.taskUuid);
+            }
+            // Mili end
             this.regionKey = regionKey;
             this.profile = profile;
+            // Mili start - allocate new UUID on reset (no UUID reuse — prevents stale references)
+            this.taskUuid = (regionKey != null)
+                    ? RegionTaskIdRegistry.allocateAndRegister("region-migration", regionKey)
+                    : null;
+            // Mili end
         }
 
         boolean execute() {
@@ -288,18 +325,38 @@ public final class SmartRegionManager {
                 RegionLoadMonitor.RegionLoadSnapshot snap = profile.getCurrentSnapshot();
                 if (snap == null) return false;
 
+                // Mili start - update task state to running
+                if (taskUuid != null) {
+                    RegionTaskIdRegistry.updateState(taskUuid, "running");
+                }
+                // Mili end
+
                 LogUtils.getLogger().info(
-                        "[Mili] Processing migration for region with load={}%, trend={}",
+                        "[Mili] Processing migration for region with load={}%, trend={}, taskUuid={}",
                         (int)(snap.loadFactor() * 100),
-                        String.format("%.3f", profile.getTrendSlope())
+                        String.format("%.3f", profile.getTrendSlope()),
+                        taskUuid
                 );
 
                 TimeUnit.MILLISECONDS.sleep(10);
 
                 profile.recordMigrationResult(true);
+                // Mili start - unregister on successful completion
+                if (taskUuid != null) {
+                    RegionTaskIdRegistry.updateState(taskUuid, "completed");
+                    RegionTaskIdRegistry.unregister(taskUuid);
+                }
+                // Mili end
                 return true;
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // Mili start - fix: catch Throwable (not just Exception) to prevent UUID leak on Error
                 profile.recordMigrationResult(false);
+                // Mili start - unregister on failure
+                if (taskUuid != null) {
+                    RegionTaskIdRegistry.updateState(taskUuid, "failed");
+                    RegionTaskIdRegistry.unregister(taskUuid);
+                }
+                // Mili end
                 return false;
             }
         }

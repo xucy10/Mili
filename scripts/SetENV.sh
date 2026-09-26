@@ -25,12 +25,10 @@ elif [ "$release" = "2" ]; then
   make_latest=true
 fi
 
-# Milihyacinthus (paperweight fork, 2.0.0-SNAPSHOT) no longer appends the -mojmap
-# suffix: the vanilla io.papermc.paperweight createPaperclipJar task produces
-# mili-paperclip-<version>.jar (no classifier). Fall back to the legacy naming.
+# hyacinthusweight 2.0.15 (MC 26.2) no longer appends the -mojmap suffix
 jarSrc=$(ls mili-server/build/libs/*-paperclip-$grdversion.jar 2>/dev/null | head -1)
 if [ -z "$jarSrc" ]; then
-  # fall back to legacy naming (older paperweight versions with createMojmapPaperclipJar)
+  # fall back to legacy naming (older paperweight versions)
   jarSrc=$(ls mili-server/build/libs/*-paperclip-$grdversion-mojmap.jar 2>/dev/null | head -1)
 fi
 if [ -z "$jarSrc" ]; then

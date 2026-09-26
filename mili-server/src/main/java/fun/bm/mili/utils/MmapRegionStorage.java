@@ -29,6 +29,13 @@ public class MmapRegionStorage {
             return existing.buffer;
         }
 
+        // Mili start - fix: 缓存未命中且旧条目失效时，不关闭旧的 RandomAccessFile/FileChannel，文件句柄泄漏
+        if (existing != null) {
+            existing.close();
+            mappedRegions.remove(key);
+        }
+        // Mili end
+
         cacheMisses.incrementAndGet();
 
         try {
@@ -38,17 +45,28 @@ public class MmapRegionStorage {
                 evictOldest();
             }
 
+            // Mili start - fix: channel.map() 抛异常时 RandomAccessFile 和 FileChannel 未关闭
             RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "rw");
             FileChannel channel = raf.getChannel();
-            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, size);
+            MappedByteBuffer buffer;
+            try {
+                buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, size);
+            } catch (Throwable mapEx) {
+                try { channel.close(); } catch (Throwable ignored) {}
+                try { raf.close(); } catch (Throwable ignored) {}
+                throw mapEx;
+            }
+            // Mili end
 
             MappedRegion region = new MappedRegion(buffer, channel, raf, System.currentTimeMillis());
             mappedRegions.put(key, region);
 
             return buffer;
-        } catch (Exception e) {
+        // Mili start - fix: catch Throwable instead of Exception to handle Errors (OOM from channel.map)
+        } catch (Throwable e) {
             return null;
         }
+        // Mili end
     }
 
     private static void evictOldest() {
@@ -98,16 +116,22 @@ public class MmapRegionStorage {
         boolean isValid() {
             try {
                 lastAccess = System.currentTimeMillis();
-                return buffer != null && buffer.isLoaded();
-            } catch (Exception e) {
+                // Mili start - fix: isValid() 用 buffer.isLoaded() 判断有效性，但 isLoaded() 只是提示而非有效性检查
+                return channel.isOpen();
+                // Mili end
+            // Mili start - fix: catch Throwable instead of Exception to handle Errors
+            } catch (Throwable e) {
                 return false;
             }
+            // Mili end
         }
 
         void close() {
-            try { channel.force(false); } catch (Exception ignored) {}
-            try { channel.close(); } catch (Exception ignored) {}
-            try { raf.close(); } catch (Exception ignored) {}
+            // Mili start - fix: catch Throwable instead of Exception in resource cleanup
+            try { channel.force(false); } catch (Throwable ignored) {}
+            try { channel.close(); } catch (Throwable ignored) {}
+            try { raf.close(); } catch (Throwable ignored) {}
+            // Mili end
         }
     }
 }

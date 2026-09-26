@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Tue, 11 Aug 2026 21:11:34 +0800
+Subject: [PATCH] Instant-Block-Updater
+
+
+diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
+index 012e1a154407bd2e80324f110e4573be2102b114..d3394076bb780947af59c07c2cbe512b32038ac9 100644
+--- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
++++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
+@@ -475,7 +475,7 @@ public final class RegionizedWorldData {
+     public long lastMidTickExecuteFailure;
+     // From Level
+     public boolean populating;
+-    public final CollectingNeighborUpdater neighborUpdater;
++    public final net.minecraft.world.level.redstone.NeighborUpdater neighborUpdater;
+     public boolean captureBlockStates = false;
+     public boolean captureTreeGeneration = false;
+     public final Map<BlockPos, CraftBlockState> capturedBlockStates = new java.util.LinkedHashMap<>(); // Paper
+@@ -563,7 +563,7 @@ public final class RegionizedWorldData {
+         this.world = world;
+         this.blockLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, true);
+         this.fluidLevelTicks = new LevelTicks<>(world::isPositionTickingWithEntitiesLoaded, world, false);
+-        this.neighborUpdater = new CollectingNeighborUpdater(world, world.neighbourUpdateMax);
++        this.neighborUpdater = fun.bm.mili.config.modules.experiment.RedStoneConfig.instantBlockUpdater ? new net.minecraft.world.level.redstone.InstantNeighborUpdater(world) : new CollectingNeighborUpdater(world, world.neighbourUpdateMax); // Mili - Instant Block Updater
+         this.nearbyPlayers = new NearbyPlayers(world);
+         this.wireHandler = new alternate.current.wire.WireHandler(world);
+         this.turbo = new io.papermc.paper.redstone.RedstoneWireTurbo((RedStoneWireBlock)Blocks.REDSTONE_WIRE);
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index b2bea0d22ad49099583e1a1231f4edabfcdc2fc8..8f742e14781e34b30d5d44b602e730031b24e594 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -980,12 +980,16 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+         // Paper - rewrite chunk system
+         profiler.pop();
+         profiler.push("debugSynchronizers");
++        // Mili start - instant neighbor updates
++        if (regionizedWorldData.neighborUpdater instanceof net.minecraft.world.level.redstone.CollectingNeighborUpdater neighborUpdater) {
+         if (this.debugSynchronizers.hasAnySubscriberFor(DebugSubscriptions.NEIGHBOR_UPDATES)) {
+-            regionizedWorldData.neighborUpdater // Folia - region threading
+-                .setDebugListener(blockPos -> this.debugSynchronizers.broadcastEventToTracking(blockPos, DebugSubscriptions.NEIGHBOR_UPDATES, blockPos));
++            neighborUpdater // Folia - region threading
++                    .setDebugListener(blockPos -> this.debugSynchronizers.broadcastEventToTracking(blockPos, DebugSubscriptions.NEIGHBOR_UPDATES, blockPos));
+         } else {
+-            regionizedWorldData.neighborUpdater.setDebugListener(null); // Folia - region threading
++            neighborUpdater.setDebugListener(null); // Folia - region threading
+         }
++        }
++        // Mili end - instant neighbor updates
+ 
+         this.debugSynchronizers.tick(this.server.debugSubscribers());
+         profiler.pop();

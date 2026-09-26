@@ -240,6 +240,10 @@ public class GeneralCompatConfig implements IConfigModule {
         return Math.clamp(tickCommandPermission, 0, 4);
     }
 
+    public static boolean mergedUpdateSuppressionCrashEnabled() {
+        return amsUpdateSuppressionCrashFix || yeetUpdateSuppressionCrash;
+    }
+
     @Override
     public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
     }

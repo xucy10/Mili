@@ -5,10 +5,10 @@ Subject: [PATCH] Add config for waypoint restoration
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
-index 713b1bcf6ff77febceddaffc2b96c10f3aeda0c6..36d08cd30ba5043654a100a52db9dd68de2ecf83 100644
+index c2c74485901a974301302ad30493dc321345ea0e..d7ce463a9922ab6713e77f5e845724629bbc87b1 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
-@@ -1129,7 +1129,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+@@ -1152,7 +1152,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
      }
  
      private void updateWaypoint() {

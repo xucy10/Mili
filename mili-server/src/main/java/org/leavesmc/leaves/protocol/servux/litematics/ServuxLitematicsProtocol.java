@@ -198,7 +198,7 @@ public class ServuxLitematicsProtocol implements LeavesProtocol {
         }
 
         ServerLevel world = player.level();
-        ChunkAccess chunk = world.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, false);
+        ChunkAccess chunk = world.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL, false);
 
         if (chunk == null) {
             return;
@@ -243,8 +243,8 @@ public class ServuxLitematicsProtocol implements LeavesProtocol {
             output.putString("Task", "BulkEntityReply");
             output.put("TileEntities", tileList);
             output.put("Entities", entityList);
-            output.putInt("chunkX", chunkPos.x);
-            output.putInt("chunkZ", chunkPos.z);
+            output.putInt("chunkX", chunkPos.x());
+            output.putInt("chunkZ", chunkPos.z());
             ServuxProtocol.LOGGER.debug("process bulk entity used: {}ms", System.currentTimeMillis() - timeStart);
 
             ServuxLitematicaPayload send = new ServuxLitematicaPayload(ServuxLitematicaPayloadType.PACKET_S2C_NBT_RESPONSE_START);
@@ -264,12 +264,17 @@ public class ServuxLitematicsProtocol implements LeavesProtocol {
         }
 
         if (tags.getStringOr("Task", "").equals("LitematicaPaste")) {
-            ServuxProtocol.LOGGER.debug("litematic_data: Servux Paste request from player {}", player.getName().getString());
-            ServerLevel serverLevel = player.level();
-            long timeStart = System.currentTimeMillis();
-            SchematicPlacement placement = SchematicPlacement.createFromNbt(tags);
-            ReplaceBehavior replaceMode = ReplaceBehavior.fromStringStatic(tags.getStringOr("ReplaceMode", ReplaceBehavior.NONE.name()));
-            placement.pasteTo(serverLevel, replaceMode, player, timeStart);
+            try {
+                ServuxProtocol.LOGGER.debug("litematic_data: Servux Paste request from player {}", player.getName().getString());
+                ServerLevel serverLevel = player.level();
+                long timeStart = System.currentTimeMillis();
+                SchematicPlacement placement = SchematicPlacement.createFromNbt(tags);
+                ReplaceBehavior replaceMode = ReplaceBehavior.fromStringStatic(tags.getStringOr("ReplaceMode", ReplaceBehavior.NONE.name()));
+                placement.pasteTo(serverLevel, replaceMode, player, timeStart);
+            } catch (RuntimeException exception) {
+                player.getBukkitEntity().sendActionBar(Component.text("Invalid Litematica paste data", NamedTextColor.RED));
+                ServuxProtocol.LOGGER.warn("Rejected invalid Litematica paste request from {}", player.getScoreboardName(), exception);
+            }
         }
     }
 

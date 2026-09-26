@@ -19,10 +19,10 @@ index 6369b13e1fcdbdb25dd9d6e4d3bffdedbee4f739..c20c04938b2f62b9e75831c5fdfabbd6
          }
          // Folia end - block plugins not marked as supported
 diff --git a/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java b/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java
-index 335058589eeba934105bea31a0c3aea2293a5597..5868188d408c0bc03a10e1b2f675d9f3655fbb49 100644
+index 6ef0042a355c65262bdb89dcf151bd644653216d..8f0b7b2985d3aadaacd5313d52d48ac916d871c9 100644
 --- a/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java
 +++ b/src/main/java/io/papermc/paper/plugin/provider/type/spigot/SpigotPluginProviderFactory.java
-@@ -36,7 +36,7 @@ class SpigotPluginProviderFactory implements PluginTypeFactory<SpigotPluginProvi
+@@ -27,7 +27,7 @@ class SpigotPluginProviderFactory implements PluginTypeFactory<SpigotPluginProvi
      @Override
      public SpigotPluginProvider build(JarFile file, PluginDescriptionFile configuration, Path source) throws InvalidDescriptionException {
          // Folia start - block plugins not marked as supported
@@ -32,10 +32,10 @@ index 335058589eeba934105bea31a0c3aea2293a5597..5868188d408c0bc03a10e1b2f675d9f3
          }
          // Folia end - block plugins not marked as supported
 diff --git a/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java b/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
-index 936b812843dfc1b58e4fb3c41a0f9683258a1a98..6f608ad5d1151925ad0f38596dfe15290d20d753 100644
+index 804ea060fc5dc0d0ab89574a75604cdf911b4e6c..946fa5a718ff1243d665064a8920cd1a7aec5470 100644
 --- a/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
 +++ b/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
-@@ -373,7 +373,7 @@ public final class CraftMagicNumbers implements UnsafeValues {
+@@ -393,7 +393,7 @@ public final class CraftMagicNumbers implements UnsafeValues {
          }
  
          // Folia start - block plugins not marked as supported

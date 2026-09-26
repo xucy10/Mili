@@ -7,13 +7,7 @@ import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import fun.bm.mili.config.modules.optimizations.NetworkOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.TechnicalMCOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
-import fun.bm.mili.utils.LagRemover;
-import fun.bm.mili.utils.NetworkOptimizer;
-import fun.bm.mili.utils.RegionBalancer;
-import fun.bm.mili.utils.SmartRegionManager;
-import fun.bm.mili.utils.TechnicalMCOptimizer;
-import fun.bm.mili.utils.dagschedule.DAGScheduler;
-import fun.bm.mili.utils.picontrol.TickDurationGovernor;
+import fun.bm.mili.utils.*;
 import fun.bm.mili.villager.VillagerOptimizer;
 import org.bukkit.plugin.Plugin;
 
@@ -27,7 +21,6 @@ import java.util.logging.Logger;
  * - 网络优化 (NetworkOptimizer)
  * - 生电优化 (TechnicalMCOptimizer)
  * - 延迟缓解 (LagRemover)
- * - 自适应TPS调节 (TickDurationGovernor + DAG调度)
  */
 public final class MiliOptimizations {
     private static final Logger LOGGER = Logger.getLogger("Mili");
@@ -67,21 +60,11 @@ public final class MiliOptimizations {
             TechnicalMCOptimizer.init();
         }
 
-        // DAG 调度器（依赖感知的并行tick，依赖 region-balancer）
-        if (RegionBalancerConfig.enabled && RegionBalancerConfig.dagEnabled) {
-            DAGScheduler.init();
-        }
-
-        // Tick 持续时间调节器（PI控制器，替代纯TPS触发，依赖 region-balancer）
-        if (RegionBalancerConfig.enabled && RegionBalancerConfig.governorEnabled) {
-            TickDurationGovernor.init();
-        }
-
-        LOGGER.info(String.format("[Mili] Optimizations initialized (v3.1, dag=%b, governor=%b)",
-                RegionBalancerConfig.dagEnabled, RegionBalancerConfig.governorEnabled));
+        LOGGER.info("[Mili] Optimizations initialized (v3.1)");
     }
 
     public static void shutdown() {
+        AsyncKeepaliveManager.shutdown(); // Mili - graceful shutdown of async keepalive scheduler
         // Mili start - fix: only shutdown subsystems that were initialized (config enabled)
         if (ChunkSystemConfig.enabled) {
             MiliChunkSystem.shutdown();
@@ -94,14 +77,6 @@ public final class MiliOptimizations {
             RegionBalancer.shutdown();
             SmartRegionManager.shutdown();
         }
-        // Mili start - shutdown new subsystems
-        if (RegionBalancerConfig.dagEnabled) {
-            DAGScheduler.shutdown();
-        }
-        if (RegionBalancerConfig.governorEnabled) {
-            TickDurationGovernor.shutdown();
-        }
-        // Mili end
         if (RegionBalancerConfig.enabled || ChunkSystemConfig.enabled) {
             ChunkRegionBridge.shutdown();
         }
