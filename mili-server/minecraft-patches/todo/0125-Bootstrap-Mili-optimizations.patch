@@ -40,7 +40,7 @@ diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft
 index 1ad4704523a3d90414ac514488207b1b5def9afd..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -238,6 +238,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -238,7 +238,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          this.paperConfigurations.initializeGlobalConfiguration(this.registryAccess());
          this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
          // Paper end - initialize global and world-defaults configuration

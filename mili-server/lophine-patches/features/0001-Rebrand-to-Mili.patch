@@ -8,7 +8,7 @@ diff --git a/src/main/java/me/earthme/luminol/config/ConfigManager.java b/src/ma
 index f5fb4e210c07f32e52eb8c1ba166d1571a6778c7..afa7df571dc2adaf76020ef20ea794ebf2194692 100644
 --- a/src/main/java/me/earthme/luminol/config/ConfigManager.java
 +++ b/src/main/java/me/earthme/luminol/config/ConfigManager.java
-@@ -25,6 +25,19 @@ public class ConfigManager {
+@@ -25,5 +25,19 @@ public class ConfigManager {
          configfiles.put("luminol", ConfigsInstance.of("luminol", "me.earthme.luminol.config.modules"));
          configfiles.put("lophine", ConfigsInstance.of("lophine", "fun.bm.lophine.config.modules")); // add lophine global config
 +        configfiles.put("mili", ConfigsInstance.of(

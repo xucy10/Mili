@@ -28,7 +28,7 @@ index de3c39d8d98bbfa5fc0a9243ef3adf9b19a466e9..8e7112091619e8223b990a334d39e995
              io.papermc.paper.entity.activation.ActivationRange.activateEntities(this); // Paper - EAR
              } finally { foliaProfiler.stopTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ACTIVATE_ENTITIES); } // Folia - profiler
              foliaProfiler.startTimer(ca.spottedleaf.leafprofiler.LProfilerRegistry.ENTITY_TICK); try { // Folia - profiler
-@@ -933,6 +934,13 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -933,6 +934,14 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
  
                                          entity.stopRiding();
                                      }
