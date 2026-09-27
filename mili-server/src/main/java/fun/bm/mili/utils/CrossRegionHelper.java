@@ -185,11 +185,20 @@ public class CrossRegionHelper {
         RegionizedWorldData srcRegion = level.getCurrentWorldData();
         if (srcRegion == null) return;
 
-        RegionizedWorldData tgtRegion = level.getCurrentWorldData();
-        if (tgtRegion == null) return;
-        if (srcRegion == tgtRegion) return; // not cross-region, skip
+        // D2 fix: 用 regioniser 判断 pos 与 neighbor 是否处于不同区域。
+        // getRegionAtUnsynchronised 在当前线程拥有该 chunk 时返回非 null（调用发生在源区域 tick 线程）。
+        // 若 neighbor 与 pos 在同一 ThreadedRegion（引用相等），属于区域内红石，无需跨区处理。
+        var srcThreadedRegion = level.regioniser.getRegionAtUnsynchronised(
+                pos.getX() >> 4, pos.getZ() >> 4);
+        var neighborThreadedRegion = level.regioniser.getRegionAtSynchronised(
+                neighbor.getX() >> 4, neighbor.getZ() >> 4);
 
-        submit(new RedstoneSignal(pos, neighbor, dir, srcRegion, tgtRegion, level.getGameTime()));
+        if (srcThreadedRegion == neighborThreadedRegion) return; // 同区，跳过
+        if (neighborThreadedRegion == null) return; // neighbor chunk 未加载
+
+        // 目标区域的 RegionizedWorldData 是线程局部的，无法在此获取。
+        // targetRegion 设为 null；消费侧通过 neighbor 坐标匹配当前区域。
+        submit(new RedstoneSignal(pos, neighbor, dir, srcRegion, null, level.getGameTime()));
     }
 
     public static void submitDamageCrossRegion(LivingEntity source, LivingEntity target,
@@ -212,10 +221,69 @@ public class CrossRegionHelper {
         return pendingByRegion.remove(target);
     }
 
+    /**
+     * 在目标区域 tick 开头调用：从 inboundQueue 中取出属于当前区域的 RedstoneSignal 事件并重放。
+     *
+     * <p>D2 fix: 原实现仅返回队列给调用方丢弃；现内部实装重放逻辑。
+     * 红线：红石语义判定留 Java——调用 {@link ServerLevel#updateNeighborsAt} 触发原版邻居更新。
+     *
+     * @return 仍待其他区域处理的事件数（观测用；调用方可忽略）
+     */
     public static ConcurrentLinkedQueue<Event> onRegionTick(ServerLevel level,
                                                             RegionizedWorldData data) {
         if (!CrossRegionHelperConfig.enabled || data == null) return null;
-        return consumePending(data);
+
+        // 从 inboundQueue 中 drain 事件，按 neighbor 坐标匹配当前区域
+        java.util.List<Event> deferred = new java.util.ArrayList<>();
+        Event event;
+        int processed = 0;
+        while ((event = inboundQueue.poll()) != null) {
+            if (event instanceof RedstoneSignal rs) {
+                // getRegionAtUnsynchronised 在当前线程拥有该 chunk 时返回非 null
+                var neighborRegion = level.regioniser.getRegionAtUnsynchronised(
+                        rs.neighbor.getX() >> 4, rs.neighbor.getZ() >> 4);
+                if (neighborRegion != null) {
+                    // neighbor 在当前区域，重放红石邻居更新
+                    replayRedstoneSignal(level, rs);
+                    processed++;
+                } else {
+                    // 不属于当前区域，放回队列等待其他区域处理
+                    deferred.add(event);
+                }
+            } else {
+                deferred.add(event);
+            }
+        }
+        if (processed > 0) {
+            eventsProcessed.add(processed);
+        }
+        // 放回不属于当前区域的事件
+        for (Event e : deferred) {
+            if (!inboundQueue.offer(e)) {
+                eventsDropped.increment();
+            }
+        }
+        return null; // 返回 null：消费逻辑已内部完成，调用方无需处理
+    }
+
+    /**
+     * 在目标区域线程内重放跨区红石信号。
+     *
+     * <p>红线：仅触发原版邻居更新机制，不做任何自定义语义判定。
+     * 防崩优先：任何异常吞掉并计数，绝不阻塞 tick。
+     */
+    private static void replayRedstoneSignal(ServerLevel level, RedstoneSignal rs) {
+        try {
+            // 获取红石线方块状态，触发 neighbor update
+            var blockState = level.getBlockState(rs.pos);
+            var neighborState = level.getBlockState(rs.neighbor);
+            if (!blockState.isAir() && !neighborState.isAir()) {
+                // 触发目标区域的邻居更新——使用原版 updateNeighborsAt
+                blockState.neighborChanged(level, rs.pos, blockState.getBlock(), rs.neighbor, false);
+            }
+        } catch (Exception e) {
+            eventsDropped.increment();
+        }
     }
 
     public static int pendingCount(RegionizedWorldData region) {

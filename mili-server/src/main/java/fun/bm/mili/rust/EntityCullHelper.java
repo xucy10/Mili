@@ -125,7 +125,8 @@ public final class EntityCullHelper {
             float[] fwd = {(float) look.x, (float) look.y, (float) look.z};
             float[] upArr = {(float) up.x, (float) up.y, (float) up.z};
             float[] built = RustBridge.buildFrustumFromCamera(
-                Math.toRadians(70.0), 16.0 / 9.0, 0.05, 1000.0,
+                Math.toRadians(RayTrackingEntityTrackerConfig.cullFov),
+                RayTrackingEntityTrackerConfig.cullAspect, 0.05, 1000.0,
                 pos, fwd, upArr
             );
             if (built != null && built.length >= PLANES_FLOATS) {
@@ -171,12 +172,23 @@ public final class EntityCullHelper {
                     break;
                 case 2: // TOO_FAR
                 case 3: // TOO_BIG
-                    culled = false; // Don't cull, just skip raytrace
+                    culled = false; // 不剔除，仅跳过 raytrace
                     break;
-                case 1: // CULLED
-                case 4: // BEHIND
-                default:
+                case 4: // BEHIND — 视锥外，设 outOfCamera 并剔除
                     culled = true;
+                    if (cullable instanceof net.minecraft.world.entity.Entity entity) {
+                        // setOutOfCamera 已由补丁 0122 添加但无调用者，此处启用
+                        // 反射调用以避免编译期依赖问题（CI 验证）
+                        try {
+                            entity.getClass().getMethod("setOutOfCamera", boolean.class).invoke(entity, true);
+                        } catch (Exception ignored) {}
+                    }
+                    break;
+                case 1: // CULLED — 留给未来遮挡 raytrace
+                    culled = true;
+                    break;
+                default: // 未知状态码 → fail-open（不剔除），避免冻结可见实体
+                    culled = false;
                     break;
             }
             cullable.setCulled(culled);

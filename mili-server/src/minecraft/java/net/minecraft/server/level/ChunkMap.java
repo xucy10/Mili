@@ -1080,7 +1080,12 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
                 && !entity.isRemoved() // Mili - skip removed entities in batch culling
                 && entity instanceof dev.tr7zw.entityculling.versionless.access.Cullable cullable) {
                 // Check if entity should be force-visible
-                if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck) {
+                if (!cullable.isForcedVisible() && !entity.isCurrentlyGlowing() && !entity.getType().skipRaytracningCheck
+                    // Mili start - marker armor stand exemption (D4 fix: prevent behavior regression)
+                    && !(entity instanceof net.minecraft.world.entity.decoration.ArmorStand armorStand
+                         && armorStand.isMarker() && fun.bm.mili.config.modules.experiment.RayTrackingEntityTrackerConfig.skipMarkerArmorStands)
+                    // Mili end - marker armor stand exemption
+                    ) {
                     for (final ServerPlayerConnection conn : tracker.seenBy) {
                         ServerPlayer viewer = conn.getPlayer();
                         mili$batchCullMap.computeIfAbsent(viewer, k -> new java.util.ArrayList<>()).add(entity);
@@ -1109,6 +1114,10 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
                 );
                 if (results != null) {
                     fun.bm.mili.rust.EntityCullHelper.applyCullingResults(entityList, results);
+                } else {
+                    // Mili start - D4 fix: reset culled flags on failure to prevent frozen entities
+                    fun.bm.mili.rust.EntityCullHelper.resetCulledFlags(entityList);
+                    // Mili end - D4 fix
                 }
             }
             mili$batchCullMap.clear();

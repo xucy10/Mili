@@ -56,6 +56,12 @@ public final class RustBridge {
                     Files.copy(is, dst, StandardCopyOption.REPLACE_EXISTING);
                     System.load(dst.toAbsolutePath().toString());
                     loaded = true;
+                    // D3 fix: 加载成功后调用 nativeInit 预热 rayon 线程池
+                    try {
+                        nativeInit();
+                    } catch (UnsatisfiedLinkError e) {
+                        // nativeInit 缺失不致命（旧版库可能无此导出）
+                    }
                     return;
                 } catch (UnsatisfiedLinkError e) {
                     lastError = e;

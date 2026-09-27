@@ -8,11 +8,20 @@ name = "mili_optimizer"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
+# rustd：Mili 常驻子进程守护进程（骨架）。
+# 注：gradle 流水线全部走 `cargo build --lib`（见 mili-rust/build.gradle.kts），
+# bin target 不会被构建/打包，Phase 1 才接入构建产物 staging。
+[[bin]]
+name = "rustd"
+path = "src/bin/rustd/main.rs"
+
 [dependencies]
 rayon = "1.8"
 jni = { version = "0.21", features = ["invocation"] }
 toml_edit = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# 外部动态库扩展（C ABI v1）加载；仅 dlopen/dlsym 绑定，不扩张 GLIBC 依赖面
+libloading = "0.8"
 
 [dev-dependencies]

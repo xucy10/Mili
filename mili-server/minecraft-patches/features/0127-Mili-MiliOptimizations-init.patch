@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@local>
+Date: Sat, 27 Sep 2026 23:59:00 +0800
+Subject: [PATCH] Mili: Initialize MiliOptimizations after config load
+
+接线 MiliOptimizations.init()（无参重载）到 DedicatedServer.initServer()
+中 ConfigManager.loadConfigFiles() 之后，使区域均衡器、网络优化、
+生电优化等子系统在配置加载完毕后随服务端启动激活。
+
+需要 Bukkit Plugin 的子组件（LagRemover、VillagerOptimizer、
+MiliChunkSystem）在无参路径中跳过，待插件加载后由 init(Plugin) 接线。
+
+diff --git a/net/minecraft/server/dedicated/DedicatedServer.java b/net/minecraft/server/dedicated/DedicatedServer.java
+index d80255f..a279308 100644
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -263,6 +263,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
+         // Paper end - initialize global and world-defaults configuration
+         me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
++        fun.bm.mili.MiliOptimizations.init(); // Mili - initialize optimizations after config load
+         this.getBotList().loadResumeBotInfo(); // Leaves - load resident bot info
+         if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save

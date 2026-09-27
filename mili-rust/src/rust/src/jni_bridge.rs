@@ -12,11 +12,16 @@ use jni::JNIEnv;
 use crate::{config, entity_cull, frustum};
 
 // ============================================================================
-// Native init
+// Native init — rayon 线程池预热 + 版本日志（D3 修复）
 // ============================================================================
 
 #[no_mangle]
-pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_nativeInit(_env: JNIEnv, _class: JClass) {}
+pub extern "system" fn Java_fun_bm_mili_rust_RustBridge_nativeInit(_env: JNIEnv, _class: JClass) {
+    // 预热 rayon 线程池：触发首次并行计算时不再付出线程创建延迟。
+    // rayon 默认懒初始化，此处强制预热以消除首个批量剔除的抖动。
+    rayon::broadcast(|_| {});
+    eprintln!("[mili-rust] nativeInit: rayon pool warmed (threads={})", rayon::current_num_threads());
+}
 
 // ============================================================================
 // Entity culling — zero-copy via DirectByteBuffer

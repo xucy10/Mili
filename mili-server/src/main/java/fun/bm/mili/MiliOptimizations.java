@@ -36,19 +36,21 @@ public final class MiliOptimizations {
 
     public static void init(Plugin plugin) {
         // 核心延迟缓解
-        LagRemover.init(plugin);
+        if (plugin != null) {
+            LagRemover.init(plugin);
+        }
 
         // 村民优化
-        if (VillagerOptimizerConfig.enabled) {
+        if (plugin != null && VillagerOptimizerConfig.enabled) {
             VillagerOptimizer.init(plugin);
         }
 
         // 区块系统
-        if (ChunkSystemConfig.enabled) {
+        if (plugin != null && ChunkSystemConfig.enabled) {
             MiliChunkSystem.init(plugin);
         }
 
-        // 区域管理
+        // 区域管理（不需要 Plugin）
         if (RegionBalancerConfig.enabled || ChunkSystemConfig.enabled) {
             ChunkRegionBridge.init();
         }
@@ -57,28 +59,36 @@ public final class MiliOptimizations {
             SmartRegionManager.init();
         }
 
-        // 网络优化
+        // 网络优化（不需要 Plugin）
         if (NetworkOptimizerConfig.enabled) {
             NetworkOptimizer.init();
         }
 
-        // 生电优化
+        // 生电优化（不需要 Plugin）
         if (TechnicalMCOptimizerConfig.enabled) {
             TechnicalMCOptimizer.init();
         }
 
-        // DAG 调度器（依赖感知的并行tick，依赖 region-balancer）
+        // DAG 调度器（依赖 region-balancer）
         if (RegionBalancerConfig.enabled && RegionBalancerConfig.dagEnabled) {
             DAGScheduler.init();
         }
 
-        // Tick 持续时间调节器（PI控制器，替代纯TPS触发，依赖 region-balancer）
+        // Tick 持续时间调节器
         if (RegionBalancerConfig.enabled && RegionBalancerConfig.governorEnabled) {
             TickDurationGovernor.init();
         }
 
         LOGGER.info(String.format("[Mili] Optimizations initialized (v3.1, dag=%b, governor=%b)",
                 RegionBalancerConfig.dagEnabled, RegionBalancerConfig.governorEnabled));
+    }
+
+    /**
+     * 无参重载：在配置加载完毕后由补丁调用，初始化不需要 Bukkit Plugin 的组件。
+     * 需要 Plugin 的组件（LagRemover、VillagerOptimizer、MiliChunkSystem）等 Bukkit 加载后再调用 {@link #init(Plugin)}。
+     */
+    public static void init() {
+        init(null);
     }
 
     public static void shutdown() {

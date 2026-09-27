@@ -173,24 +173,25 @@ Mili 保留lophine的两套配置：
 - 与 `AdaptiveTPSManager` 联动，根据整体负载调整 TPS。
 
 **Rust 集成**：
-- `RegionBalancer` 反射调用 `org.mili.rust.RustOptimizer` 的 `scheduler()` 获取批量/工作线程建议；
-- 若 Rust 二进制不可用，自动回退到 Java 默认策略。
+- 目前 `RegionBalancer` 为纯 Java 实现（负载统计 + 优先级调度），未接入 Rust；
+- Rust 侧调度建议的接入规划见 `docs/ARCHITECTURE.md` §5（Phase 3）。
 
 ### 7.3 Rust 优化器（`mili-rust`）
 
-`mili-rust` 是一个 Rust crate，构建后打包进服务端 JAR 的 `rust/` 目录，通过 JNI/子进程与 Java 交互。
+`mili-rust` 是一个 Rust crate（cdylib + rlib），构建后打包进服务端 JAR 的 `rust/` 目录，Java 从 classpath 提取后通过 **JNI** 加载（`System.load`）。设计原则：**仅批量处理热路径**——Java 每 tick 收集扁平数组/DirectByteBuffer，一次 JNI 调用全部处理。
 
-| 模块 | 功能 | 优化点 |
-|------|------|--------|
-| `chunk.rs` | 区块坐标转换、区域计算、region key 打包 | 原生位运算加速 |
-| `varint.rs` | Minecraft VarInt/VarLong 编解码 | 栈上分配、快速路径 |
-| `nbt.rs` | NBT 流式扫描 | 不实例化完整 NBT 树，零分配扫描 |
-| `protocol.rs` | 网络包合并成本计算 | 类 Huffman 合并策略，批处理建议 |
-| `scheduler.rs` | 任务调度 | Rayon 工作窃取 + 小任务顺序 fast path |
-| `occlusion.rs` | 批量遮挡剔除 | 每帧一次 JNI 调用，Rayon 并行 AABB/DDA |
-| `util.rs` | Bitmap / MurmurHash3 / 2 的幂次 helper | 位图与哈希辅助 |
+| 模块 | 功能 | 状态 |
+|------|------|------|
+| `config.rs` | TOML 配置引擎（解析/合并/注释保留），替代 NightConfig | **生产运行中**（`TomlConfigData` → 全部配置模块） |
+| `entity_cull.rs` | 批量实体剔除（视锥 + 距离 + hitbox 三级判定，Rayon 并行） | 已接入，默认关闭（`RayTrackingEntityTrackerConfig`） |
+| `frustum.rs` | 视锥体数学（平面提取/AABB/球体测试） | 已接入（批量接口导出规划中） |
+| `jni_bridge.rs` | JNI 导出层（DirectByteBuffer 零拷贝） | — |
+| `proto.rs` | rustd 帧协议 v1（u32 LE 长度 + op + payload） | **Phase 0 骨架** |
+| `extensions/` | 扩展框架（C ABI v1 + 注册表 + panic 边界） | **Phase 0 骨架** |
+| `rustd`（bin） | 常驻守护进程骨架（后台任务通道） | **Phase 0 骨架**，Phase 1 进构建 |
 
-Java 侧入口：`org.mili.rust.RustOptimizer`（反射调用，缺失时回退 Java 实现）。
+Java 侧入口：`fun.bm.mili.rust.RustBridge`（JNI 加载器）与 `fun.bm.mili.rust.runtime.*`（运行时门面，Phase 0 骨架）。
+注：`org.mili.rust.RustOptimizer`（子进程版）为**待移除死代码**（无调用者、无 bin target）；规划中的 chunk/varint/nbt/protocol/scheduler 模块见 `docs/ARCHITECTURE.md` §5.2 与 §8 路线图。
 
 ### 7.4 假玩家 / Bot 系统
 

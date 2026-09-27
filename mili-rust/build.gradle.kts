@@ -167,6 +167,7 @@ tasks.register("buildRustBinariesAll") {
                     "zigbuild",
                     "--release",
                     "--lib",
+                    "--bin", "rustd", // Mili - also build rustd daemon
                     "--target",
                     "x86_64-unknown-linux-gnu.2.28"
                 )
@@ -181,6 +182,7 @@ tasks.register("buildRustBinariesAll") {
                     "build",
                     "--release",
                     "--lib",
+                    "--bin", "rustd", // Mili - also build rustd daemon
                     "--target",
                     nt.target
                 )
@@ -584,6 +586,34 @@ tasks.register("stageRustBinary") {
             )
         }
     }
+
+    // Mili start - stage rustd daemon binaries (platform-suffixed naming)
+    val rustdStageDir = File(rustDir, "rustd")
+    rustdStageDir.mkdirs()
+
+    val rustdBinaries = mapOf(
+        "x86_64-pc-windows-gnu" to "rustd-x86_64-pc-windows-gnu.exe",
+        "x86_64-unknown-linux-gnu" to "rustd-x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu" to "rustd-aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin" to "rustd-x86_64-apple-darwin",
+        "aarch64-apple-darwin" to "rustd-aarch64-apple-darwin"
+    )
+
+    for ((target, stagedName) in rustdBinaries) {
+        val binName = if (target.startsWith("x86_64-pc-windows")) "rustd.exe" else "rustd"
+        val srcBin = File(cargoTargetDir, "$target/release/$binName")
+        if (srcBin.isFile) {
+            val dst = File(rustdStageDir, stagedName)
+            srcBin.copyTo(dst, overwrite = true)
+            logger.lifecycle("Staged rustd: $stagedName (${srcBin.length()} bytes)")
+        } else {
+            if (target == "x86_64-unknown-linux-gnu") {
+                throw GradleException("rustd binary missing for required target $target")
+            }
+            logger.lifecycle("Skipping rustd for $target (not built)")
+        }
+    }
+    // Mili end - stage rustd daemon binaries
 }
 
 tasks.named<Jar>("jar") {

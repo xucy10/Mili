@@ -17,4 +17,10 @@ public class RayTrackingEntityTrackerConfig implements IConfigModule {
     public static int tracingDistance = 48;
     @ConfigInfo(name = "hitbox_limit")
     public static int hitboxLimit = 50;
+    /** 剔除视锥体垂直 FOV（度），保守上限避免过剔除。 */
+    @ConfigInfo(name = "cull_fov")
+    public static double cullFov = 115.0;
+    /** 剔除视锥体宽高比，保守上限兼容超宽屏。 */
+    @ConfigInfo(name = "cull_aspect")
+    public static double cullAspect = 2.34;
 }

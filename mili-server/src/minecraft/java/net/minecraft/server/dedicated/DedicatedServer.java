@@ -263,6 +263,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface 
         this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
         // Paper end - initialize global and world-defaults configuration
         me.earthme.luminol.config.ConfigManager.loadConfigFiles(); // Luminol - load config file
+        fun.bm.mili.MiliOptimizations.init(); // Mili - initialize optimizations after config load
         this.getBotList().loadResumeBotInfo(); // Leaves - load resident bot info
         if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save

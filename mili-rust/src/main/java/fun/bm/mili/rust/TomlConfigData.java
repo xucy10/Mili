@@ -6,6 +6,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 
+import com.electronwill.nightconfig.core.Config;
+import com.electronwill.nightconfig.toml.TomlParser;
+import com.electronwill.nightconfig.toml.TomlWriter;
+
 import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -26,7 +30,8 @@ import java.util.Set;
  *   <li>Comments are stored in a {@code Map<String, String>} keyed by the same dot-notation.</li>
  *   <li>File I/O goes through Rust ({@link RustBridge#configLoad} / {@link RustBridge#configSaveMerge}),
  *       which uses {@code toml_edit} for high-performance parsing with comment preservation.</li>
- *   <li>When the Rust library is not loaded, falls back to NightConfig-style in-memory operation.</li>
+ *   <li>When the Rust library is not loaded, falls back to NightConfig in-memory operation
+ *       (D1 fix: Rust 库缺失不再导致服务器无法启动).</li>
  * </ul>
  *
  * <p><b>Thread safety:</b> This class is <b>not</b> thread-safe. All access must be synchronized
@@ -42,16 +47,34 @@ public class TomlConfigData {
     private final Map<String, Object> values = new LinkedHashMap<>();
     private final Map<String, String> comments = new LinkedHashMap<>();
 
+    /** Rust 原生库是否可用；构造时一次性判定，失败降级为纯 Java NightConfig 路径。 */
+    private final boolean nativeAvailable;
+
     /**
      * Create a new TomlConfigData backed by the given file.
+     *
+     * <p>D1 fix: 构造函数不再因 Rust 库缺失而抛出 UnsatisfiedLinkError 导致启动崩溃。
+     * 失败时置 {@code nativeAvailable=false} 并 WARN 一次，后续 load/save 走 NightConfig 降级。
      *
      * @param file the TOML configuration file
      */
     public TomlConfigData(File file) {
         this.file = file;
-        // Ensure the Rust native library is loaded before any JNI calls.
-        // Config loading happens early in startup before RenderHelper triggers load().
-        RustBridge.load();
+        boolean loaded = false;
+        try {
+            RustBridge.load();
+            loaded = RustBridge.isLoaded();
+        } catch (Throwable t) {
+            com.mojang.logging.LogUtils.getClassLogger().warn(
+                "[Mili] Rust native library unavailable, config engine falls back to NightConfig: {}", t.getMessage()
+            );
+        }
+        this.nativeAvailable = loaded;
+        if (!loaded) {
+            com.mojang.logging.LogUtils.getClassLogger().warn(
+                "[Mili] Config engine running in NightConfig fallback mode (non-native)"
+            );
+        }
     }
 
     // ========================================================================
@@ -71,19 +94,34 @@ public class TomlConfigData {
             return;
         }
 
-        String json = RustBridge.configLoad(file.getAbsolutePath());
-        if (json == null || json.isEmpty()) {
-            return;
-        }
+        if (nativeAvailable) {
+            String json = RustBridge.configLoad(file.getAbsolutePath());
+            if (json == null || json.isEmpty()) {
+                com.mojang.logging.LogUtils.getClassLogger().warn(
+                    "[Mili] Rust configLoad returned empty for non-empty file: {}", file.getAbsolutePath()
+                );
+                return;
+            }
 
-        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-        for (Map.Entry<String, JsonElement> entry : root.entrySet()) {
-            String key = entry.getKey();
-            if (key.startsWith(COMMENT_PREFIX)) {
-                String commentKey = key.substring(COMMENT_PREFIX.length());
-                comments.put(commentKey, entry.getValue().getAsString());
-            } else {
-                values.put(key, jsonElementToObject(entry.getValue()));
+            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+            for (Map.Entry<String, JsonElement> entry : root.entrySet()) {
+                String key = entry.getKey();
+                if (key.startsWith(COMMENT_PREFIX)) {
+                    String commentKey = key.substring(COMMENT_PREFIX.length());
+                    comments.put(commentKey, entry.getValue().getAsString());
+                } else {
+                    values.put(key, jsonElementToObject(entry.getValue()));
+                }
+            }
+        } else {
+            // D1 fallback: NightConfig 降级读取
+            try {
+                Config config = new TomlParser().parse(file);
+                flattenConfig(config, "", values);
+            } catch (Exception e) {
+                com.mojang.logging.LogUtils.getClassLogger().warn(
+                    "[Mili] NightConfig fallback parse failed for {}: {}", file.getAbsolutePath(), e.getMessage()
+                );
             }
         }
     }
@@ -94,18 +132,28 @@ public class TomlConfigData {
      * <p>Uses merge mode to preserve existing comments in the file.
      */
     public void save() {
-        JsonObject root = new JsonObject();
+        if (nativeAvailable) {
+            JsonObject root = new JsonObject();
 
-        for (Map.Entry<String, Object> entry : values.entrySet()) {
-            root.add(entry.getKey(), GSON.toJsonTree(entry.getValue()));
-        }
-        for (Map.Entry<String, String> entry : comments.entrySet()) {
-            root.addProperty(COMMENT_PREFIX + entry.getKey(), entry.getValue());
-        }
+            for (Map.Entry<String, Object> entry : values.entrySet()) {
+                root.add(entry.getKey(), GSON.toJsonTree(entry.getValue()));
+            }
+            for (Map.Entry<String, String> entry : comments.entrySet()) {
+                root.addProperty(COMMENT_PREFIX + entry.getKey(), entry.getValue());
+            }
 
-        boolean success = RustBridge.configSaveMerge(file.getAbsolutePath(), root.toString());
-        if (!success) {
-            throw new RuntimeException("Failed to save config file: " + file.getAbsolutePath());
+            boolean success = RustBridge.configSaveMerge(file.getAbsolutePath(), root.toString());
+            if (!success) {
+                throw new RuntimeException("Failed to save config file: " + file.getAbsolutePath());
+            }
+        } else {
+            // D1 fallback: NightConfig 降级写入（无注释保留，但保证数据持久化）
+            try {
+                Config config = unflattenConfig(values);
+                new TomlWriter().write(config, file);
+            } catch (Exception e) {
+                throw new RuntimeException("NightConfig fallback save failed for " + file.getAbsolutePath(), e);
+            }
         }
     }
 
@@ -349,5 +397,44 @@ public class TomlConfigData {
      * object is never accessed.
      */
     public static final class EmptyConfigView {
+    }
+
+    // ========================================================================
+    // NightConfig fallback helpers (D1 降级)
+    // ========================================================================
+
+    /** 将 NightConfig 层级 Config 展平为点号 key → value 映射。 */
+    @SuppressWarnings("unchecked")
+    private static void flattenConfig(Config config, String prefix, Map<String, Object> out) {
+        for (Config.Entry entry : config.entrySet()) {
+            String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
+            Object value = entry.getValue();
+            if (value instanceof Config sub) {
+                flattenConfig(sub, key, out);
+            } else if (value instanceof List<?> list) {
+                out.put(key, list);
+            } else if (value != null) {
+                out.put(key, value);
+            }
+        }
+    }
+
+    /** 将点号 key → value 映射重建为 NightConfig 层级 Config。 */
+    private static Config unflattenConfig(Map<String, Object> flat) {
+        Config root = Config.inMemory();
+        for (Map.Entry<String, Object> entry : flat.entrySet()) {
+            String[] parts = entry.getKey().split("\\.");
+            Config current = root;
+            for (int i = 0; i < parts.length - 1; i++) {
+                Config sub = current.get(parts[i]);
+                if (sub == null) {
+                    sub = Config.inMemory();
+                    current.set(parts[i], sub);
+                }
+                current = sub;
+            }
+            current.set(parts[parts.length - 1], entry.getValue());
+        }
+        return root;
     }
 }
