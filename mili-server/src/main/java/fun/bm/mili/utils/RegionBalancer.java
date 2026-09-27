@@ -132,6 +132,34 @@ public final class RegionBalancer {
         if (!RegionBalancerConfig.enabled) return;
         if (initialized.getAndSet(true)) return;
 
+        // Mili start - MILI_BALANCER scheduler mode
+        // When the region tick threads are owned by TickRegionScheduler's
+        // MILI_BALANCER scheduler, the scheduling itself happens there (see
+        // BalancerSchedulerThreadPool). Starting our own dispatcher/worker
+        // pool would be dead weight - only instrumentation and controllers
+        // are needed in that mode.
+        if (me.earthme.luminol.utils.MiliSchedulerUtil.isTickSchedulerOwnedByBalancer()) {
+            com.mojang.logging.LogUtils.getClassLogger().info(
+                    "RegionBalancer running in scheduler mode: tick threads are owned by MILI_BALANCER");
+
+            // Mili start - Adaptive TPS
+            if (RegionBalancerConfig.governorEnabled) {
+                com.mojang.logging.LogUtils.getClassLogger().info(
+                        "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
+            } else {
+                fun.bm.mili.utils.AdaptiveTPSManager.start();
+            }
+            // Mili end - Adaptive TPS
+
+            // Mili start - PI controller for catch-up limiting
+            CatchUpController.init();
+            syncDagAndGovernorConfig();
+            // Mili end
+
+            return;
+        }
+        // Mili end - MILI_BALANCER scheduler mode
+
         int poolSize = RegionBalancerConfig.getThreadPoolSize();
         workerPool = Executors.newFixedThreadPool(poolSize, r -> {
             Thread t = new Thread(r, "RegionBalancer-Worker");

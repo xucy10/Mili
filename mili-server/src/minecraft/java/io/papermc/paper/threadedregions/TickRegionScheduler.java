@@ -53,7 +53,8 @@ public final class TickRegionScheduler {
 
     public static enum SchedulerType {
         EDF,
-        WORK_STEALING;
+        WORK_STEALING,
+        MILI_BALANCER; // Mili - load-aware balancer scheduler (see BalancerSchedulerThreadPool)
     }
 
     public TickRegionScheduler(final SchedulerType schedulerType, final int initialThreads) {
@@ -103,6 +104,12 @@ public final class TickRegionScheduler {
                 ((StealingScheduledThreadPool)this.scheduler).setFlags(StealingScheduledThreadPool.FLAG_SCHEDULE_EVENLY);
                 break;
             }
+            // Mili start - load-aware balancer scheduler
+            case MILI_BALANCER: {
+                this.scheduler = new ca.spottedleaf.concurrentutil.scheduler.BalancerSchedulerThreadPool(initialThreads, threadFactory);
+                break;
+            }
+            // Mili end - load-aware balancer scheduler
             default: {
                 throw new IllegalStateException("Unknown scheduler type: " + schedulerType);
             }
@@ -113,7 +120,23 @@ public final class TickRegionScheduler {
         if (this.scheduler instanceof EDFSchedulerThreadPool edfSchedulerThreadPool) {
             edfSchedulerThreadPool.start();
         }
+        // Mili start - load-aware balancer scheduler
+        if (this.scheduler instanceof ca.spottedleaf.concurrentutil.scheduler.BalancerSchedulerThreadPool balancerSchedulerThreadPool) {
+            balancerSchedulerThreadPool.start();
+        }
+        // Mili end - load-aware balancer scheduler
     }
+
+    // Mili start - load-aware balancer scheduler
+    /**
+     * Returns {@code true} if the tick threads are owned by the Mili balancer
+     * scheduler. RegionBalancer uses this to avoid starting its own worker
+     * pool in that case.
+     */
+    public boolean isMiliBalancer() {
+        return this.scheduler instanceof ca.spottedleaf.concurrentutil.scheduler.BalancerSchedulerThreadPool;
+    }
+    // Mili end - load-aware balancer scheduler
 
     public void setThreads(final int threads) {
         if (this.scheduler instanceof StealingScheduledThreadPool stealingScheduledThreadPool) {

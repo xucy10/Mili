@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <someonm20141923@outlook.com>
+Date: Sat, 27 Sep 2026 20:00:00 +0800
+Subject: [PATCH] Mili: Add legacy NMS member (method/field) remapping
+
+
+Companion of 0024 (class name remapping). Some plugins reflectively
+invoke NMS members by spigot-era names that upstream Mojang has since
+renamed (e.g. Entity#getDataWatcher -> getSynchedEntityData,
+ServerPlayer#playerConnection -> connection). ObfHelper only knows the
+current spigot<->mojang pairs, so those lookups fail.
+
+This consults fun.bm.mili.nms.LegacyNMSMappings for method/field names
+BEFORE the ObfHelper lookup. The shim only rewrites a legacy name when
+it is NOT declared anywhere on the target class hierarchy, so live
+members can never be shadowed by the mapping table. Lookup order:
+hierarchy-keyed table (CurrentSimpleName.legacyName), then a unique
+legacy-simple-name global fallback. Mappings can be extended at
+runtime via config/mili-legacy-nms.properties (class./method./field.
+prefixed entries) without recompiling the server.
+
+diff --git a/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java b/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
+index 0c1bff165c0b41464728c869988dc321bd5e95d5..f7a2c19e4b8d52643437b2ea1b9f1d6089c07e21 100644
+--- a/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
++++ b/src/main/java/io/papermc/paper/pluginremap/reflect/PaperReflection.java
+@@ -63,6 +63,12 @@
+ 
+     @Override
+     protected String mapDeclaredMethodName(final Class<?> clazz, final String name, final Class<?> @Nullable ... parameterTypes) {
++        // Mili start - legacy NMS member remapping shim
++        final String legacyMapped = fun.bm.mili.nms.LegacyNMSMappings.mapDeclaredMethodName(clazz, name, parameterTypes);
++        if (legacyMapped != name) {
++            return legacyMapped;
++        }
++        // Mili end - legacy NMS member remapping shim
+         final @Nullable Map<String, String> mapping = this.strippedMethodMappings.get(clazz.getName());
+         if (mapping == null) {
+             return name;
+@@ -72,6 +78,12 @@
+ 
+     @Override
+     protected String mapMethodName(final Class<?> clazz, final String name, final Class<?> @Nullable ... parameterTypes) {
++        // Mili start - legacy NMS member remapping shim
++        final String legacyMapped = fun.bm.mili.nms.LegacyNMSMappings.mapMethodName(clazz, name, parameterTypes);
++        if (legacyMapped != name) {
++            return legacyMapped;
++        }
++        // Mili end - legacy NMS member remapping shim
+         final @Nullable String mapped = this.findMappedMethodName(clazz, name, parameterTypes);
+         return mapped != null ? mapped : name;
+     }
+@@ -87,6 +99,12 @@
+ 
+     @Override
+     protected String mapDeclaredFieldName(final Class<?> clazz, final String name) {
++        // Mili start - legacy NMS member remapping shim
++        final String legacyMapped = fun.bm.mili.nms.LegacyNMSMappings.mapDeclaredFieldName(clazz, name);
++        if (legacyMapped != name) {
++            return legacyMapped;
++        }
++        // Mili end - legacy NMS member remapping shim
+         final ObfHelper.@Nullable ClassMapping mapping = this.mappingsByMojangName.get(clazz.getName());
+         if (mapping == null) {
+             return name;
+@@ -96,6 +114,12 @@
+ 
+     @Override
+     protected String mapFieldName(final Class<?> clazz, final String name) {
++        // Mili start - legacy NMS member remapping shim
++        final String legacyMapped = fun.bm.mili.nms.LegacyNMSMappings.mapFieldName(clazz, name);
++        if (legacyMapped != name) {
++            return legacyMapped;
++        }
++        // Mili end - legacy NMS member remapping shim
+         final @Nullable String mapped = this.findMappedFieldName(clazz, name);
+         return mapped != null ? mapped : name;
+     }
+-- 
+2.43.0
+
