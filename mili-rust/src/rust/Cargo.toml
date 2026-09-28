@@ -8,9 +8,9 @@ name = "mili_optimizer"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
-# rustd：Mili 常驻子进程守护进程（骨架）。
-# 注：gradle 流水线全部走 `cargo build --lib`（见 mili-rust/build.gradle.kts），
-# bin target 不会被构建/打包，Phase 1 才接入构建产物 staging。
+# rustd：Mili 常驻子进程守护进程（后台任务通道，崩溃隔离）。
+# 构建：gradle 的 buildRustBinariesAll 已追加 `--bin rustd`，
+# stageRustBinary 将产物以平台后缀名 staged 到 build/rust/rustd/。
 [[bin]]
 name = "rustd"
 path = "src/bin/rustd/main.rs"

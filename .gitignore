@@ -5,6 +5,9 @@
 build
 /run
 **/bin/
+# Cargo 的 bin target 源码目录 src/bin/ 是源码而非构建输出，需从上面的 **/bin/ 规则中排除
+!mili-rust/src/rust/src/bin/
+!mili-rust/src/rust/src/bin/**/*
 *.class
 /lophine-server/build.gradle.kts
 /lophine-api/build.gradle.kts
