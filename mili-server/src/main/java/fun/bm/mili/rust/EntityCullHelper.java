@@ -174,14 +174,14 @@ public final class EntityCullHelper {
                 case 3: // TOO_BIG
                     culled = false; // 不剔除，仅跳过 raytrace
                     break;
-                case 4: // BEHIND — 视锥外，设 outOfCamera 并剔除
+                case 4: // BEHIND — 视锥外：标记 outOfCamera 并剔除
                     culled = true;
-                    if (cullable instanceof net.minecraft.world.entity.Entity entity) {
-                        // setOutOfCamera 已由补丁 0122 添加但无调用者，此处启用
-                        // 反射调用以避免编译期依赖问题（CI 验证）
-                        try {
-                            entity.getClass().getMethod("setOutOfCamera", boolean.class).invoke(entity, true);
-                        } catch (Exception ignored) {}
+                    // setOutOfCamera 由补丁 0122 添加到 Entity；此处经反射调用，
+                    // 以免在编译期对尚可能变动的 NMS 方法产生硬依赖。
+                    try {
+                        entity.getClass().getMethod("setOutOfCamera", boolean.class).invoke(entity, true);
+                    } catch (Exception ignored) {
+                        // 方法不存在时静默忽略：剔除行为本身不受影响
                     }
                     break;
                 case 1: // CULLED — 留给未来遮挡 raytrace

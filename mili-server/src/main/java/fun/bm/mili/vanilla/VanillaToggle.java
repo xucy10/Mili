@@ -37,4 +37,10 @@ public record VanillaToggle(
     public static VanillaToggle of(String id, String category, String description, boolean defaultValue) {
         return new VanillaToggle(id, category, description, defaultValue, Set.of());
     }
+
+    /** 便捷工厂：声明依赖补丁号的规则。 */
+    public static VanillaToggle of(String id, String category, String description,
+                                  boolean defaultValue, Set<String> requiredPatches) {
+        return new VanillaToggle(id, category, description, defaultValue, requiredPatches);
+    }
 }
