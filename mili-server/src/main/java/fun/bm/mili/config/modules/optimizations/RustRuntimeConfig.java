@@ -1,6 +1,5 @@
 package fun.bm.mili.config.modules.optimizations;
 
-import fun.bm.mili.MiliOptimizations;
 import fun.bm.mili.command.MiliRustStatusCommand;
 import fun.bm.mili.command.MiliTogglesCommand;
 import fun.bm.mili.rust.runtime.RustRuntime;
@@ -9,18 +8,19 @@ import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.config.flags.DoNotLoad;
+import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
 /**
- * Rust 运行时与 Mili 优化系统初始化接线模块。
+ * Rust 运行时初始化接线模块。
  * <p>
  * onLoaded 在配置加载完毕后被调用（可能跑在 common pool 线程），
  * 此处只做无世界接触的初始化：RustRuntime（JNI/daemon）、CrossRegionHelper、命令注册。
- * MiliOptimizations.init(Plugin) 需要 Bukkit Plugin 实例，推迟到 server 启动后由补丁接线。
+ * MiliOptimizations.init() 由补丁 0127 在 DedicatedServer 启动序列中另行接线。
  */
-@ConfigClassInfo(category = me.earthme.luminol.enums.EnumConfigCategory.OPTIMIZATION, name = "rust_runtime")
+@ConfigClassInfo(category = EnumConfigCategory.OPTIMIZATIONS, name = "rust_runtime")
 public class RustRuntimeConfig implements IConfigModule {
 
     @ConfigInfo(name = "enabled", comments = "启用 Rust 运行时（JNI 热路径 + rustd 后台进程）")

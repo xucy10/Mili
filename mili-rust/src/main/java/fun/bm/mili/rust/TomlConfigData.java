@@ -6,10 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 
-import com.electronwill.nightconfig.core.Config;
-import com.electronwill.nightconfig.toml.TomlParser;
-import com.electronwill.nightconfig.toml.TomlWriter;
-
 import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -17,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 /**
  * Rust-backed TOML configuration data store.
@@ -30,9 +27,16 @@ import java.util.Set;
  *   <li>Comments are stored in a {@code Map<String, String>} keyed by the same dot-notation.</li>
  *   <li>File I/O goes through Rust ({@link RustBridge#configLoad} / {@link RustBridge#configSaveMerge}),
  *       which uses {@code toml_edit} for high-performance parsing with comment preservation.</li>
- *   <li>When the Rust library is not loaded, falls back to NightConfig in-memory operation
- *       (D1 fix: Rust 库缺失不再导致服务器无法启动).</li>
+ *   <li>When the Rust library is not loaded, the engine degrades to a non-persistent
+ *       in-memory mode (D1 fix: a missing Rust library no longer aborts server startup).
+ *       In that mode the on-disk TOML is deliberately left untouched -- it is neither read
+ *       nor written -- so an operator's existing configuration can never be silently
+ *       overwritten with defaults.</li>
  * </ul>
+ *
+ * <p><b>Module constraint:</b> this class lives in the {@code mili-rust} module, whose
+ * classpath contains neither NightConfig nor the Mojang logging classes. Only the JDK may
+ * be used here; Minecraft-facing helpers belong in {@code mili-server}.</p>
  *
  * <p><b>Thread safety:</b> This class is <b>not</b> thread-safe. All access must be synchronized
  * by the caller (typically {@code ConfigsInstance} ensures single-threaded access during load/reload).
@@ -42,19 +46,20 @@ public class TomlConfigData {
     private static final String COMMENT_PREFIX = "__comment__:";
     private static final Gson GSON = new Gson();
     private static final Type STRING_MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
+    private static final Logger LOGGER = Logger.getLogger("Mili");
 
     private final File file;
     private final Map<String, Object> values = new LinkedHashMap<>();
     private final Map<String, String> comments = new LinkedHashMap<>();
 
-    /** Rust 原生库是否可用；构造时一次性判定，失败降级为纯 Java NightConfig 路径。 */
+    /** Rust 原生库是否可用；构造时一次性判定，失败降级为非持久化的内存模式。 */
     private final boolean nativeAvailable;
 
     /**
      * Create a new TomlConfigData backed by the given file.
      *
      * <p>D1 fix: 构造函数不再因 Rust 库缺失而抛出 UnsatisfiedLinkError 导致启动崩溃。
-     * 失败时置 {@code nativeAvailable=false} 并 WARN 一次，后续 load/save 走 NightConfig 降级。
+     * 失败时置 {@code nativeAvailable=false} 并 WARN 一次，后续 load/save 走降级路径。
      *
      * @param file the TOML configuration file
      */
@@ -65,15 +70,13 @@ public class TomlConfigData {
             RustBridge.load();
             loaded = RustBridge.isLoaded();
         } catch (Throwable t) {
-            com.mojang.logging.LogUtils.getClassLogger().warn(
-                "[Mili] Rust native library unavailable, config engine falls back to NightConfig: {}", t.getMessage()
-            );
+            LOGGER.warning("[Mili] Rust native library unavailable, config engine degrades to in-memory mode: "
+                + t.getMessage());
         }
         this.nativeAvailable = loaded;
         if (!loaded) {
-            com.mojang.logging.LogUtils.getClassLogger().warn(
-                "[Mili] Config engine running in NightConfig fallback mode (non-native)"
-            );
+            LOGGER.warning("[Mili] Config engine running in degraded (non-persistent) mode: "
+                + "values are neither loaded from nor saved to " + file.getAbsolutePath());
         }
     }
 
@@ -97,9 +100,8 @@ public class TomlConfigData {
         if (nativeAvailable) {
             String json = RustBridge.configLoad(file.getAbsolutePath());
             if (json == null || json.isEmpty()) {
-                com.mojang.logging.LogUtils.getClassLogger().warn(
-                    "[Mili] Rust configLoad returned empty for non-empty file: {}", file.getAbsolutePath()
-                );
+                LOGGER.warning("[Mili] Rust configLoad returned empty for non-empty file: "
+                    + file.getAbsolutePath());
                 return;
             }
 
@@ -114,15 +116,13 @@ public class TomlConfigData {
                 }
             }
         } else {
-            // D1 fallback: NightConfig 降级读取
-            try {
-                Config config = new TomlParser().parse(file);
-                flattenConfig(config, "", values);
-            } catch (Exception e) {
-                com.mojang.logging.LogUtils.getClassLogger().warn(
-                    "[Mili] NightConfig fallback parse failed for {}: {}", file.getAbsolutePath(), e.getMessage()
-                );
-            }
+            // D1 fallback: 降级模式不解析磁盘文件。
+            // 原因有二：(1) mili-rust 模块的 classpath 上没有 TOML 解析器，手写解析器
+            // 不值得为此维护；(2) 更重要的是，若把"默认值"写回磁盘会覆盖运维人员的既有
+            // 配置（数据丢失）。因此降级模式只保证服务器能启动（配置取默认值），
+            // 磁盘文件保持原样，并由下面的 WARN 明确告知。
+            LOGGER.warning("[Mili] Degraded mode: skipping load of " + file.getAbsolutePath()
+                + " -- falling back to built-in defaults");
         }
     }
 
@@ -147,13 +147,11 @@ public class TomlConfigData {
                 throw new RuntimeException("Failed to save config file: " + file.getAbsolutePath());
             }
         } else {
-            // D1 fallback: NightConfig 降级写入（无注释保留，但保证数据持久化）
-            try {
-                Config config = unflattenConfig(values);
-                new TomlWriter().write(config, file);
-            } catch (Exception e) {
-                throw new RuntimeException("NightConfig fallback save failed for " + file.getAbsolutePath(), e);
-            }
+            // D1 fallback: 降级模式明确拒绝写盘。
+            // 若把内存中的默认值写回，会把用户的配置文件整体覆盖（数据丢失），
+            // 风险远高于"改动不持久"，因此这里只告警、不落盘。
+            LOGGER.warning("[Mili] Degraded mode: refusing to write " + file.getAbsolutePath()
+                + " -- in-memory values are not persisted");
         }
     }
 
@@ -397,44 +395,5 @@ public class TomlConfigData {
      * object is never accessed.
      */
     public static final class EmptyConfigView {
-    }
-
-    // ========================================================================
-    // NightConfig fallback helpers (D1 降级)
-    // ========================================================================
-
-    /** 将 NightConfig 层级 Config 展平为点号 key → value 映射。 */
-    @SuppressWarnings("unchecked")
-    private static void flattenConfig(Config config, String prefix, Map<String, Object> out) {
-        for (Config.Entry entry : config.entrySet()) {
-            String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
-            Object value = entry.getValue();
-            if (value instanceof Config sub) {
-                flattenConfig(sub, key, out);
-            } else if (value instanceof List<?> list) {
-                out.put(key, list);
-            } else if (value != null) {
-                out.put(key, value);
-            }
-        }
-    }
-
-    /** 将点号 key → value 映射重建为 NightConfig 层级 Config。 */
-    private static Config unflattenConfig(Map<String, Object> flat) {
-        Config root = Config.inMemory();
-        for (Map.Entry<String, Object> entry : flat.entrySet()) {
-            String[] parts = entry.getKey().split("\\.");
-            Config current = root;
-            for (int i = 0; i < parts.length - 1; i++) {
-                Config sub = current.get(parts[i]);
-                if (sub == null) {
-                    sub = Config.inMemory();
-                    current.set(parts[i], sub);
-                }
-                current = sub;
-            }
-            current.set(parts[parts.length - 1], entry.getValue());
-        }
-        return root;
     }
 }

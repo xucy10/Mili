@@ -269,18 +269,21 @@ public class CrossRegionHelper {
     /**
      * 在目标区域线程内重放跨区红石信号。
      *
-     * <p>红线：仅触发原版邻居更新机制，不做任何自定义语义判定。
-     * 防崩优先：任何异常吞掉并计数，绝不阻塞 tick。
+     * <p><b>红线</b>：只触发原版邻居更新机制，不自行判定红石语义。
+     *
+     * <p><b>线程安全</b>：仅读取目标区域内的 {@code neighbor} 位置，绝不读取 {@code rs.pos}
+     * 的方块状态——后者属于源区域，此刻可能正被另一个区域线程修改。
      */
     private static void replayRedstoneSignal(ServerLevel level, RedstoneSignal rs) {
         try {
-            // 获取红石线方块状态，触发 neighbor update
-            var blockState = level.getBlockState(rs.pos);
-            var neighborState = level.getBlockState(rs.neighbor);
-            if (!blockState.isAir() && !neighborState.isAir()) {
-                // 触发目标区域的邻居更新——使用原版 updateNeighborsAt
-                blockState.neighborChanged(level, rs.pos, blockState.getBlock(), rs.neighbor, false);
+            if (level.getBlockState(rs.neighbor).isAir()) {
+                return; // 目标位置为空，没有需要通知的方块
             }
+            // ServerLevel#neighborChanged(BlockPos, Block, @Nullable Orientation) 会委托给
+            // 当前线程所属区域自身的 neighborUpdater（Folia 区域化下是安全的）。
+            // 语义：告知位于目标区域内、紧邻源红石线的方块——"你旁边的红石线变了"。
+            level.neighborChanged(rs.neighbor,
+                    net.minecraft.world.level.block.Blocks.REDSTONE_WIRE, null);
         } catch (Exception e) {
             eventsDropped.increment();
         }
