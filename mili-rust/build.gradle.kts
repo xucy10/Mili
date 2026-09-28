@@ -588,7 +588,7 @@ tasks.register("stageRustBinary") {
     }
 
     // Mili start - stage rustd daemon binaries (platform-suffixed naming)
-    val rustdStageDir = File(rustDir, "rustd")
+    val rustdStageDir = File(rustBuildDir, "rustd")
     rustdStageDir.mkdirs()
 
     val rustdBinaries = mapOf(
