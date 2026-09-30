@@ -93,7 +93,7 @@ public class ServerConnectionListener {
                                     } catch (ChannelException var5) {
                                     }
 
-                                    if (!disableFlushConsolidation) channel.pipeline().addFirst(new io.netty.handler.flush.FlushConsolidationHandler()); // Paper - Optimize network
+                                    if (!disableFlushConsolidation) channel.pipeline().addFirst(new io.netty.handler.flush.FlushConsolidationHandler(256, true)); // Paper - Optimize network // Mili - consolidate flushes even when no read is in progress, since region threads write packets outside of reads
                                     ChannelPipeline channelPipeline = channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
                                     if (ServerConnectionListener.this.server.repliesToStatus()) {
                                         channelPipeline.addLast("legacy_query", new LegacyQueryHandler(ServerConnectionListener.this.getServer()));

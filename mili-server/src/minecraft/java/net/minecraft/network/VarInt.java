@@ -35,19 +35,36 @@ public class VarInt {
     }
 
     public static int read(ByteBuf buffer) {
-        int i = 0;
-        int i1 = 0;
-
-        byte _byte;
-        do {
-            _byte = buffer.readByte();
-            i |= (_byte & 127) << i1++ * 7;
-            if (i1 > 5) {
-                throw new RuntimeException("VarInt too big");
-            }
-        } while (hasContinuationBit(_byte));
-
-        return i;
+        // Mili start - Krypton style optimized VarInt read
+        // Peel the one-byte case (the most common size) and unroll the loop so the
+        // JIT does not have to track the variable shift; semantics match the vanilla
+        // loop exactly for all 1-5 byte encodings.
+        int data = buffer.readUnsignedByte();
+        if (data < 128) {
+            return data;
+        }
+        int result = data & 127;
+        data = buffer.readUnsignedByte();
+        if (data < 128) {
+            return result | data << 7;
+        }
+        result |= (data & 127) << 7;
+        data = buffer.readUnsignedByte();
+        if (data < 128) {
+            return result | data << 14;
+        }
+        result |= (data & 127) << 14;
+        data = buffer.readUnsignedByte();
+        if (data < 128) {
+            return result | data << 21;
+        }
+        result |= (data & 127) << 21;
+        data = buffer.readUnsignedByte();
+        if (data >= 128) {
+            throw new RuntimeException("VarInt too big");
+        }
+        return result | data << 28;
+        // Mili end - Krypton style optimized VarInt read
     }
 
     public static ByteBuf write(ByteBuf buffer, int value) {

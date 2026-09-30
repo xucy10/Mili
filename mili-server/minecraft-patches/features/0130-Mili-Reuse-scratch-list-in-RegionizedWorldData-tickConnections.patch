@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@local>
+Date: Wed, 30 Sep 2026 20:42:00 +0800
+Subject: [PATCH] Mili: Reuse scratch list in RegionizedWorldData#tickConnections
+
+RegionizedWorldData#tickConnections 每 tick 都 new ArrayList 复制
+整个连接列表，分配开销随玩家数线性增长。改为实例级 scratch 列表
+复用（clear + addAll）：每个 RegionizedWorldData 仅被其所属 region
+线程独占 tick（RegionizedServer 全局线程的 tickConnections 是独立
+实现、操作自己的列表），不存在并发重入，快照语义与原复制一致。
+
+index c285a22..530c9eb 100644
+--- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
++++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
+@@ -428,6 +428,7 @@ public final class RegionizedWorldData {
+     // Luminol end
+     // connections
+     public final List<Connection> connections = new ArrayList<>();
++    private final java.util.ArrayList<Connection> connectionsTickScratch = new java.util.ArrayList<>(); // Mili - reused scratch list for tickConnections, avoids a per-tick allocation
+ 
+     // misc. fields
+     private boolean isHandlingTick;
+@@ -645,7 +646,11 @@ public final class RegionizedWorldData {
+ 
+     // connections
+     public void tickConnections() {
+-        final List<Connection> connections = new ArrayList<>(this.connections);
++        // Mili start - reuse scratch list across ticks instead of allocating a new ArrayList per tick
++        this.connectionsTickScratch.clear();
++        this.connectionsTickScratch.addAll(this.connections);
++        final List<Connection> connections = this.connectionsTickScratch;
++        // Mili end - reuse scratch list across ticks instead of allocating a new ArrayList per tick
+         Collections.shuffle(connections);
+         for (final Connection conn : connections) {
+             if (!conn.isConnected()) {

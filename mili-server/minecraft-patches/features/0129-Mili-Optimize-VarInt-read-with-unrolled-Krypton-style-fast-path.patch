@@ -1,0 +1,67 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@local>
+Date: Wed, 30 Sep 2026 20:41:00 +0800
+Subject: [PATCH] Mili: Optimize VarInt.read with unrolled Krypton-style fast path
+
+写路径（VarInt.write / Utf8String.write）已有 Paper/Krypton 优化，
+读路径仍是原版逐字节 readByte 循环，而入站高流量包（玩家移动等）
+每包都要经过 VarInt.read。
+
+改为展开式实现：单字节场景（最常见）直接返回，2-4 字节场景逐步
+peel，JIT 无需跟踪可变位移；对 1-5 字节全部编码的语义与原版循环
+完全一致（含超长抛出 VarInt too big）。唯一差异是异常路径上不再
+多消费一个缓冲区字节，而异常时解码器会丢弃整个缓冲区，行为无差。
+
+index 5e97981..1f37db9 100644
+--- a/net/minecraft/network/VarInt.java
++++ b/net/minecraft/network/VarInt.java
+@@ -35,19 +35,36 @@ public class VarInt {
+     }
+ 
+     public static int read(ByteBuf buffer) {
+-        int i = 0;
+-        int i1 = 0;
+-
+-        byte _byte;
+-        do {
+-            _byte = buffer.readByte();
+-            i |= (_byte & 127) << i1++ * 7;
+-            if (i1 > 5) {
+-                throw new RuntimeException("VarInt too big");
+-            }
+-        } while (hasContinuationBit(_byte));
+-
+-        return i;
++        // Mili start - Krypton style optimized VarInt read
++        // Peel the one-byte case (the most common size) and unroll the loop so the
++        // JIT does not have to track the variable shift; semantics match the vanilla
++        // loop exactly for all 1-5 byte encodings.
++        int data = buffer.readUnsignedByte();
++        if (data < 128) {
++            return data;
++        }
++        int result = data & 127;
++        data = buffer.readUnsignedByte();
++        if (data < 128) {
++            return result | data << 7;
++        }
++        result |= (data & 127) << 7;
++        data = buffer.readUnsignedByte();
++        if (data < 128) {
++            return result | data << 14;
++        }
++        result |= (data & 127) << 14;
++        data = buffer.readUnsignedByte();
++        if (data < 128) {
++            return result | data << 21;
++        }
++        result |= (data & 127) << 21;
++        data = buffer.readUnsignedByte();
++        if (data >= 128) {
++            throw new RuntimeException("VarInt too big");
++        }
++        return result | data << 28;
++        // Mili end - Krypton style optimized VarInt read
+     }
+ 
+     public static ByteBuf write(ByteBuf buffer, int value) {

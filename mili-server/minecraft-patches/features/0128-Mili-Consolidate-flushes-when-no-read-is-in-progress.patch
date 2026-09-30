@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@local>
+Date: Wed, 30 Sep 2026 20:40:00 +0800
+Subject: [PATCH] Mili: Consolidate flushes when no read is in progress
+
+Folia 调度下主线程游戏期间每个游戏包都会走一次 writeAndFlush
+（ServerCommonPacketListenerImpl#send 的 flag 逻辑：
+suspendFlushingOnServerThread 默认 false -> flag=true），而 Paper
+默认构造的 FlushConsolidationHandler(256, false) 只合并"读进行中"
+的 flush，主线程批量写场景逐包穿透到 socket。
+
+改为 FlushConsolidationHandler(256, true)，在无读进行中时通过事件
+循环调度任务合并 flush，将每包一次 flush 降为每事件循环一轮一次，
+显著减少 syscalls。仍可通过 -DPaper.disableFlushConsolidate 完全
+关闭。
+
+index 7f86b35..4b02775 100644
+--- a/net/minecraft/server/network/ServerConnectionListener.java
++++ b/net/minecraft/server/network/ServerConnectionListener.java
+@@ -93,7 +93,7 @@ public class ServerConnectionListener {
+                                     } catch (ChannelException var5) {
+                                     }
+ 
+-                                    if (!disableFlushConsolidation) channel.pipeline().addFirst(new io.netty.handler.flush.FlushConsolidationHandler()); // Paper - Optimize network
++                                    if (!disableFlushConsolidation) channel.pipeline().addFirst(new io.netty.handler.flush.FlushConsolidationHandler(256, true)); // Paper - Optimize network // Mili - consolidate flushes even when no read is in progress, since region threads write packets outside of reads
+                                     ChannelPipeline channelPipeline = channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
+                                     if (ServerConnectionListener.this.server.repliesToStatus()) {
+                                         channelPipeline.addLast("legacy_query", new LegacyQueryHandler(ServerConnectionListener.this.getServer()));

@@ -428,6 +428,7 @@ public final class RegionizedWorldData {
     // Luminol end
     // connections
     public final List<Connection> connections = new ArrayList<>();
+    private final java.util.ArrayList<Connection> connectionsTickScratch = new java.util.ArrayList<>(); // Mili - reused scratch list for tickConnections, avoids a per-tick allocation
 
     // misc. fields
     private boolean isHandlingTick;
@@ -645,7 +646,11 @@ public final class RegionizedWorldData {
 
     // connections
     public void tickConnections() {
-        final List<Connection> connections = new ArrayList<>(this.connections);
+        // Mili start - reuse scratch list across ticks instead of allocating a new ArrayList per tick
+        this.connectionsTickScratch.clear();
+        this.connectionsTickScratch.addAll(this.connections);
+        final List<Connection> connections = this.connectionsTickScratch;
+        // Mili end - reuse scratch list across ticks instead of allocating a new ArrayList per tick
         Collections.shuffle(connections);
         for (final Connection conn : connections) {
             if (!conn.isConnected()) {
