@@ -153,15 +153,6 @@ sourceSets {
 }
 
 
-
-tasks.compileJava {
-
-    dependsOn(tasks.generateApiVersioningFile)
-
-}
-
-
-
 /*
  * GitHub Packages
  */
