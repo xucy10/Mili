@@ -152,12 +152,42 @@ configurations {
 }
 
 configure<PublishingExtension> {
-    publications.create<MavenPublication>("maven") {
-        // For Brigadier API
-        outgoingVariants.forEach {
-            suppressPomMetadataWarningsFor(it)
+
+    publications {
+
+        create<MavenPublication>("maven") {
+
+            outgoingVariants.forEach {
+                suppressPomMetadataWarningsFor(it)
+            }
+
+            from(components["java"])
+
+            groupId = "com.xucy10.mili"
+            artifactId = "mili-api"
+            version = project.version.toString()
         }
-        from(components["java"])
+    }
+
+
+    repositories {
+
+        maven {
+
+            name = "GitHubPackages"
+
+            url = uri(
+                "https://maven.pkg.github.com/xucy10/Mili"
+            )
+
+            credentials {
+
+                username = System.getenv("GITHUB_ACTOR")
+
+                password = System.getenv("GITHUB_TOKEN")
+
+            }
+        }
     }
 }
 
