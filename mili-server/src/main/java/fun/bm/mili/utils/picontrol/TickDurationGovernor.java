@@ -1,9 +1,9 @@
 package fun.bm.mili.utils.picontrol;
 
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.scheduler.TickIntervalBus;
 import fun.bm.mili.utils.RegionBalancer;
 import fun.bm.mili.utils.RegionLoadMonitor;
-import io.papermc.paper.threadedregions.TickRegionScheduler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -28,9 +28,17 @@ import java.util.concurrent.locks.LockSupport;
  *
  * <p>The governor runs at a fixed 1 Hz cadence. Each tick it reads the
  * RegionLoadMonitor snapshots and RegionBalancer queue depth, feeds them
- * into the PI controller, and adjusts {@link TickRegionScheduler#TIME_BETWEEN_TICKS}.</p>
+ * into the PI controller, and proposes the resulting interval to
+ * {@link TickIntervalBus}.</p>
+ *
+ * <p>本控制器在总线上的权威等级最高（{@link TickIntervalBus.Authority#GOVERNOR}），
+ * 因此只要它在运行，其提案即为生效值；这取代了原先依赖 {@code RegionBalancer} 里
+ * 一段 if 分支来实现"两者互斥"的做法。</p>
  */
 public final class TickDurationGovernor {
+
+    /** 本提案者的名称。 */
+    private static final String PROPOSER = "tick-governor";
 
     private TickDurationGovernor() {}
 
@@ -119,8 +127,10 @@ public final class TickDurationGovernor {
         }
         CatchUpController.shutdown();
         currentIntervalNs.set(Config.TARGET_INTERVAL_NS);
-        // Reset Folia scheduler to default
-        TickRegionScheduler.TIME_BETWEEN_TICKS = Config.TARGET_INTERVAL_NS;
+        // Mili start - 不再直接写全局字段：撤回提案后由总线把控制权交还给次级仲裁者；
+        // 若无其他提案者则自动回落到基准值，不会把 tick 间隔停在最后一个非默认值上
+        TickIntervalBus.withdraw(PROPOSER);
+        // Mili end
         LogUtils.getLogger().info("[Mili] TickDurationGovernor shutdown");
     }
 
@@ -203,7 +213,10 @@ public final class TickDurationGovernor {
         // Apply
         targetInterval = clamp(targetInterval, Config.MIN_INTERVAL_NS, Config.MAX_INTERVAL_NS);
         currentIntervalNs.set(targetInterval);
-        TickRegionScheduler.TIME_BETWEEN_TICKS = targetInterval;
+        // Mili start - 经总线提案。本控制器权威等级最高，正常即生效；仍走总线是为了让
+        // "谁在控制 tick 间隔"始终可被观测与审计，而不是散落各处的裸写
+        TickIntervalBus.propose(PROPOSER, TickIntervalBus.Authority.GOVERNOR, targetInterval);
+        // Mili end
         currentPhase = newPhase;
     }
 

@@ -29,3 +29,4 @@ mili-server/src/minecraft/resources
 
 # Agent working state (task list, local notes). Useful locally, not project source.
 .workbuddy/
+scripts/check_java_basics.py

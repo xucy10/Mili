@@ -1,6 +1,8 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.RecurringTask;
 import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 
@@ -24,30 +26,23 @@ public final class SmartRegionManager {
     private static final AtomicLong failedMigrations = new AtomicLong(0);
 
     private static ScheduledExecutorService scheduler;
+    private static volatile RecurringTask.Handle analyzeTask;
+    private static volatile RecurringTask.Handle migrateTask;
 
     public static void init() {
         if (!RegionBalancerConfig.enabled || initialized) return;
 
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "Mili-SmartRegion");
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY + 2);
-            return t;
-        });
+        // Mili start - 保留独占定时池：processMigrations 是 50ms 高频任务，若进共享
+        // BACKGROUND 单线程会把其他巡检长期挤到饿死。这里承接原有的 NORM_PRIORITY + 2，
+        // 避免"纳管"变成"降级"；同时改用 RecurringTask 以获得异常隔离，池仍归治理层托管。
+        scheduler = MiliScheduler.namedScheduledPool("smart-region", 1, Thread.NORM_PRIORITY + 2);
 
-        scheduler.scheduleAtFixedRate(
-                SmartRegionManager::analyzeRegions,
-                0,
-                RegionBalancerConfig.analysisIntervalMs,
-                TimeUnit.MILLISECONDS
-        );
+        analyzeTask = RecurringTask.startOn(scheduler, "smart-region-analyze",
+                0L, RegionBalancerConfig.analysisIntervalMs, SmartRegionManager::analyzeRegions);
 
-        scheduler.scheduleAtFixedRate(
-                SmartRegionManager::processMigrations,
-                100,
-                50,
-                TimeUnit.MILLISECONDS
-        );
+        migrateTask = RecurringTask.startOn(scheduler, "smart-region-migrate",
+                100L, 50L, SmartRegionManager::processMigrations);
+        // Mili end
 
         initialized = true;
         LogUtils.getLogger().info("[Mili] SmartRegionManager v2.0 initialized");
@@ -57,16 +52,17 @@ public final class SmartRegionManager {
         if (!initialized) return;
         initialized = false;
 
-        if (scheduler != null) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-            }
+        // Mili start - 池已由线程治理层托管，此处只取消任务句柄并释放引用
+        if (analyzeTask != null) {
+            analyzeTask.cancel();
+            analyzeTask = null;
         }
+        if (migrateTask != null) {
+            migrateTask.cancel();
+            migrateTask = null;
+        }
+        scheduler = null;
+        // Mili end
 
         regionProfiles.clear();
         migrationQueue.clear();

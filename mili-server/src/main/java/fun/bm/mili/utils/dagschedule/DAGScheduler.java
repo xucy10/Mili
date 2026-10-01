@@ -1,6 +1,8 @@
 package fun.bm.mili.utils.dagschedule;
 
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.Tier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -35,8 +37,17 @@ public final class DAGScheduler {
         /** Grace period after a wave timeout, so the next wave never starts
          *  before its dependencies actually finished (bounded, never hangs). */
         public static long WAVE_GRACE_TIMEOUT_MS = 5_000L;
-        /** Use virtual threads if available (JDK 25+). */
+        /** Use virtual threads if available (JDK 21+). */
         public static boolean USE_VIRTUAL_THREADS = true;
+        /** Maximum concurrently running tasks inside one wave. 0 = auto (CPU cores). */
+        public static int MAX_WAVE_CONCURRENCY = 0;
+
+        /** Resolve the per-wave concurrency cap, substituting the auto value when unset. */
+        public static int resolveWaveConcurrency() {
+            return MAX_WAVE_CONCURRENCY > 0
+                    ? MAX_WAVE_CONCURRENCY
+                    : Math.max(2, Runtime.getRuntime().availableProcessors());
+        }
 
         private Config() {}
     }
@@ -69,32 +80,33 @@ public final class DAGScheduler {
     private static final AtomicLong statWavesExecuted = new AtomicLong(0);
     private static final AtomicLong statWaveNanosSum = new AtomicLong(0);
 
-    /** Carrier thread pool for virtual threads. */
-    private static volatile ExecutorService fallbackPool;
+    /**
+     * Wave executor —— 必须是<b>有界的</b>。
+     *
+     * <p>原实现对每个任务执行 {@code Thread.ofVirtual().start(...)}，降级路径则是
+     * {@code new Thread(...).start()}，两者都等价于无界线程：一旦单批任务量上来，
+     * 就会同时挂起上万个 continuation 及其栈。现在统一经治理层的并发闸门取用。</p>
+     */
+    private static volatile Executor waveExecutor;
 
     // ---------- Lifecycle ----------
 
     public static void init() {
         if (!initialized.compareAndSet(false, true)) return;
         // Fallback pool for non-virtual-thread mode
-        if (!Config.USE_VIRTUAL_THREADS) {
-            int cores = Runtime.getRuntime().availableProcessors();
-            fallbackPool = Executors.newFixedThreadPool(cores, r -> {
-                Thread t = new Thread(r, "Mili-DAG-Worker");
-                t.setDaemon(true);
-                return t;
-            });
-        }
-        LogUtils.getLogger().info("[Mili] DAGScheduler initialized (batchSize={}, maxWaves={}, vt={})",
-                Config.MAX_BATCH_SIZE, Config.MAX_WAVES, Config.USE_VIRTUAL_THREADS);
+        LogUtils.getLogger().info(
+                "[Mili] DAGScheduler initialized (batchSize={}, maxWaves={}, vt={}, waveConcurrency={})",
+                Config.MAX_BATCH_SIZE, Config.MAX_WAVES, Config.USE_VIRTUAL_THREADS,
+                Config.resolveWaveConcurrency());
     }
 
     public static void shutdown() {
         if (!shutdown.compareAndSet(false, true)) return;
         initialized.set(false);
-        if (fallbackPool != null) {
-            fallbackPool.shutdownNow();
-        }
+        // Mili start - 波次执行器不再自行关闭：若它走的是治理层的 namedPool，
+        // 关闭职责已随 adopt 移交；虚拟线程路径则无状态、无需关闭。此处仅释放引用。
+        waveExecutor = null;
+        // Mili end
         activeTasks.clear();
         LogUtils.getLogger().info("[Mili] DAGScheduler shutdown");
     }
@@ -225,6 +237,29 @@ public final class DAGScheduler {
     }
 
     /**
+     * 惰性取波次执行器。
+     *
+     * <p>无论虚拟线程还是平台线程路径，都必须携带并发上限。虚拟线程虽然廉价，
+     * 但"廉价"不等于"免费"：每个挂起的 continuation 仍然占用栈空间，一个上万节点的波次
+     * 若同时起飞，内存压力并不比平台线程小多少。这里统一走治理层的并发闸门。</p>
+     */
+    private static Executor waveExecutor() {
+        final Executor existing = waveExecutor;
+        if (existing != null) {
+            return existing;
+        }
+        synchronized (DAGScheduler.class) {
+            if (waveExecutor == null) {
+                final int limit = Config.resolveWaveConcurrency();
+                waveExecutor = Config.USE_VIRTUAL_THREADS
+                        ? MiliScheduler.virtualExecutor("dag-wave", limit)
+                        : MiliScheduler.namedPool("dag-wave", Tier.CPU, limit);
+            }
+            return waveExecutor;
+        }
+    }
+
+    /**
      * Execute a single wave: all wave tasks are independent, run concurrently.
      */
     private static WaveResult executeWave(List<DAGTask> wave) {
@@ -273,22 +308,10 @@ public final class DAGScheduler {
                 }
             };
 
-            if (Config.USE_VIRTUAL_THREADS) {
-                try {
-                    Thread.ofVirtual().name("dag-task-" + task.taskId).start(workWrapper);
-                } catch (Throwable ex) {
-                    // If virtual threads are unavailable (older JVM), fallback
-                    if (fallbackPool != null) {
-                        fallbackPool.execute(workWrapper);
-                    } else {
-                        new Thread(workWrapper).start();
-                    }
-                }
-            } else if (fallbackPool != null) {
-                fallbackPool.execute(workWrapper);
-            } else {
-                new Thread(workWrapper).start();
-            }
+            // Mili start - 统一经治理层的有界闸门。原实现是 per-task 新建线程：
+            // 虚拟线程路径没有并发上限，平台降级路径更是每个任务一个 OS 线程。
+            waveExecutor().execute(workWrapper);
+            // Mili end
         }
 
         // Wait with timeout

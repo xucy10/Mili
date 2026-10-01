@@ -5,19 +5,18 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import com.mojang.logging.LogUtils;
+import fun.bm.mili.scheduler.RecurringTask;
 
 public final class MemoryOptimizer {
 
     private MemoryOptimizer() {}
 
     private static volatile boolean running = false;
-    private static ScheduledExecutorService scheduler;
+    private static volatile RecurringTask.Handle monitorHandle;
     private static final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 
     private static final LongAdder gcCount = new LongAdder();
@@ -35,19 +34,10 @@ public final class MemoryOptimizer {
         }
 
         maxMemoryBytes = Runtime.getRuntime().maxMemory();
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "Mili-MemoryOptimizer");
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY - 1);
-            return t;
-        });
-
-        scheduler.scheduleAtFixedRate(
-                MemoryOptimizer::monitorMemory,
-                5_000,
-                5_000,
-                TimeUnit.MILLISECONDS
-        );
+        // Mili start - 移交给线程治理层：共享定时池 + 异常隔离，不再独占一个线程。
+        // 原实现里一次未捕获异常会让本任务被 JDK 静默取消，内存巡检从此不再执行。
+        monitorHandle = RecurringTask.start("memory-optimizer", 5_000L, MemoryOptimizer::monitorMemory);
+        // Mili end
 
         running = true;
         LogUtils.getLogger().info("[Mili] MemoryOptimizer initialized");
@@ -59,17 +49,12 @@ public final class MemoryOptimizer {
         }
         running = false;
 
-        if (scheduler != null) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(3, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+        // Mili start - 生命周期由治理层收口，句柄取消即可，无需自行 awaitTermination
+        if (monitorHandle != null) {
+            monitorHandle.cancel();
+            monitorHandle = null;
         }
+        // Mili end
     }
 
     private static void monitorMemory() {

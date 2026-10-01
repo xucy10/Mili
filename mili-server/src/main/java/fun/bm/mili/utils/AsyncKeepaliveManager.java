@@ -1,6 +1,7 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.function.OldFeatureConfig;
+import fun.bm.mili.scheduler.RecurringTask;
 import net.minecraft.network.Connection;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
@@ -10,9 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 // Ported from Leaves - Async keepalive
 // Folia note: send() queues to Netty channel (thread-safe); disconnectAsync() is designed for async use;
@@ -21,16 +19,15 @@ public final class AsyncKeepaliveManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Mili Async Keepalive");
     private static final Map<Connection, ServerCommonPacketListenerImpl> ACTIVE_LISTENERS = new ConcurrentHashMap<>();
-    private static final ScheduledExecutorService EXECUTOR = Executors.newSingleThreadScheduledExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "Mili Async Keepalive");
-        thread.setDaemon(true);
-        return thread;
-    });
 
     static {
+        // Mili start - 移交给线程治理层。原实现有双重隐患：一是完全没有关闭路径，
+        // 线程随 JVM 一直泄漏；二是 scheduleAtFixedRate 无异常兜底，tickAll 抛一次
+        // 即被 JDK 静默取消，心跳检测从此无声失效（表现为玩家超时不掉线）。
         if (OldFeatureConfig.asyncKeepalive) {
-            EXECUTOR.scheduleAtFixedRate(AsyncKeepaliveManager::tickAll, 1L, 1L, TimeUnit.SECONDS);
+            RecurringTask.start("async-keepalive", 1_000L, AsyncKeepaliveManager::tickAll);
         }
+        // Mili end
     }
 
     private AsyncKeepaliveManager() {

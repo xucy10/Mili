@@ -1,6 +1,7 @@
 package fun.bm.mili.metrics;
 
 import fun.bm.mili.config.modules.misc.BStatsConfig;
+import fun.bm.mili.scheduler.RecurringTask;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
@@ -18,8 +19,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 public class MiliMetrics {
     private static final Logger LOGGER = LoggerFactory.getLogger("MiliMetrics");
     private static boolean enabled;
-    private static ScheduledExecutorService scheduler;
+    private static volatile RecurringTask.Handle metricsTask;
 
     public static void init(int defaultPluginId) {
         if (defaultPluginId <= 0) return;
@@ -50,19 +49,18 @@ public class MiliMetrics {
         if (enabled) return;
         enabled = true;
 
-        scheduler = Executors.newScheduledThreadPool(1, r -> {
-            Thread t = new Thread(r, "MiliMetrics");
-            t.setDaemon(true);
-            return t;
-        });
-
-        scheduler.scheduleWithFixedDelay(() -> {
-            try {
-                sendMetrics(pluginId);
-            } catch (Exception e) {
-                LOGGER.debug("[MiliMetrics] Failed to send metrics", e);
-            }
-        }, 30, 30, TimeUnit.MINUTES);
+        // Mili start - 交线程治理层托管。刻意保留 FixedDelay 语义：上报含网络 IO，
+        // 换成 FixedRate 会在一次慢上报后连续补触发。内层 try 保留，使偶发网络失败
+        // 不被计入 RecurringTask 的连续失败阈值（离线环境下报失败属正常，不该停用任务）。
+        metricsTask = RecurringTask.startWithFixedDelay("mili-metrics",
+                TimeUnit.MINUTES.toMillis(30), () -> {
+                    try {
+                        sendMetrics(pluginId);
+                    } catch (Exception e) {
+                        LOGGER.debug("[MiliMetrics] Failed to send metrics", e);
+                    }
+                });
+        // Mili end
 
         LOGGER.info("[MiliMetrics] Started bStats metrics (pluginId={})", pluginId);
     }
@@ -131,10 +129,12 @@ public class MiliMetrics {
     }
 
     public static void shutdown() {
-        if (scheduler != null) {
-            scheduler.shutdownNow();
-            scheduler = null;
+        // Mili start - 取消句柄即可，池的生命周期由线程治理层统一收口
+        if (metricsTask != null) {
+            metricsTask.cancel();
+            metricsTask = null;
         }
+        // Mili end
         enabled = false;
     }
 }

@@ -1,6 +1,9 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.function.AutoBackupConfig;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.RecurringTask;
+import fun.bm.mili.scheduler.Tier;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 
@@ -16,7 +19,7 @@ import java.util.zip.*;
 import org.jspecify.annotations.Nullable;
 
 public class AutoBackupManager {
-    private static ScheduledExecutorService scheduler;
+    private static volatile RecurringTask.Handle backupTask;
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
     private static volatile boolean running = false;
     private static long lastBackupTime = 0;
@@ -25,23 +28,21 @@ public class AutoBackupManager {
     public static void start() {
         if (running) return;
         running = true;
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "Mili-Backup-Thread");
-            t.setDaemon(true);
-            return t;
-        });
-
+        // Mili start - 移交给线程治理层。刻意保留 FixedDelay 语义：备份耗时长，
+        // 若换成 FixedRate，一次慢备份结束后会连续补触发，反而制造排队风暴。
         long intervalMs = AutoBackupConfig.intervalMinutes * 60_000L;
-        scheduler.scheduleWithFixedDelay(AutoBackupManager::performBackup, intervalMs, intervalMs,
-                TimeUnit.MILLISECONDS);
+        backupTask = RecurringTask.startWithFixedDelay("auto-backup", intervalMs, AutoBackupManager::performBackup);
+        // Mili end
     }
 
     public static void stop() {
         running = false;
-        if (scheduler != null) {
-            scheduler.shutdownNow();
-            scheduler = null;
+        // Mili start - 取消句柄即可，池的生命周期由治理层统一收口
+        if (backupTask != null) {
+            backupTask.cancel();
+            backupTask = null;
         }
+        // Mili end
     }
 
     public static boolean isRunning() { return running; }
@@ -61,7 +62,7 @@ public class AutoBackupManager {
                 lastBackupResult = "Error: " + e.getMessage();
                 return false;
             }
-        }, scheduler != null ? scheduler : ForkJoinPool.commonPool());
+        }, MiliScheduler.pool(Tier.BLOCKING_IO));
     }
 
     private static void performBackup() {

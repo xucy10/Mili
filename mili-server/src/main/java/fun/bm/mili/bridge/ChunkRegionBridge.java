@@ -9,36 +9,31 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.RecurringTask;
 
 public final class ChunkRegionBridge {
 
     private ChunkRegionBridge() {}
 
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
-    private static ScheduledExecutorService scheduler;
+    private static volatile ScheduledExecutorService bridgeExecutor;
+    private static volatile RecurringTask.Handle bridgeTask;
 
     private static final long syncIntervalMs = 250;
 
     public static void init() {
         if (!initialized.compareAndSet(false, true)) return;
 
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "Mili-ChunkRegionBridge");
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        });
-
-        scheduler.scheduleAtFixedRate(
-                ChunkRegionBridge::syncLoadData,
-                syncIntervalMs,
-                syncIntervalMs,
-                TimeUnit.MILLISECONDS
-        );
+        // Mili start - 250ms 高频且需遍历全部世界与玩家，独占线程以保证巡检延迟可控，
+        // 不与共享 BACKGROUND 池中的低频任务互相抢占。仍经 RecurringTask 以获得异常隔离，
+        // 生命周期交治理层托管。
+        bridgeExecutor = MiliScheduler.namedScheduledPool("chunk-region-bridge", 1);
+        bridgeTask = RecurringTask.startOn(bridgeExecutor, "chunk-region-bridge",
+                syncIntervalMs, ChunkRegionBridge::syncLoadData);
+        // Mili end
 
         LogUtils.getLogger().info("[Mili] ChunkRegionBridge initialized");
     }
@@ -70,17 +65,13 @@ public final class ChunkRegionBridge {
     public static void shutdown() {
         if (!initialized.compareAndSet(true, false)) return;
 
-        if (scheduler != null) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(3, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
+        // Mili start - 取消句柄即可，池的生命周期由治理层统一收口
+        if (bridgeTask != null) {
+            bridgeTask.cancel();
+            bridgeTask = null;
         }
+        bridgeExecutor = null;
+        // Mili end
 
         LogUtils.getLogger().info("[Mili] ChunkRegionBridge shutdown");
     }

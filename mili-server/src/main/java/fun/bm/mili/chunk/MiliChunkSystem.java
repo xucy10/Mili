@@ -1,6 +1,7 @@
 package fun.bm.mili.chunk;
 
 import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
+import fun.bm.mili.scheduler.MiliScheduler;
 import com.mojang.logging.LogUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -34,15 +35,10 @@ public final class MiliChunkSystem {
             throw new IllegalArgumentException("Mili plugin instance is required for MiliChunkSystem");
         }
 
-        asyncExecutor = Executors.newScheduledThreadPool(
-                ChunkSystemConfig.asyncThreads,
-                r -> {
-                    Thread t = new Thread(r, "Mili-ChunkWorker");
-                    t.setDaemon(true);
-                    t.setPriority(Thread.NORM_PRIORITY + 1);
-                    return t;
-                }
-        );
+        // Mili start - 保留独占线程（50ms 周期，塞进共享定时池会把其他巡检挤饿死），
+        // 但把生命周期、线程命名与预算交给线程治理层托管，不再自行 shutdown。
+        asyncExecutor = MiliScheduler.namedScheduledPool("chunk-worker", ChunkSystemConfig.asyncThreads);
+        // Mili end
 
         for (World world : Bukkit.getWorlds()) {
             registerWorld(world);
@@ -77,17 +73,10 @@ public final class MiliChunkSystem {
             mainThreadTask.cancel();
         }
 
-        if (asyncExecutor != null) {
-            asyncExecutor.shutdown();
-            try {
-                if (!asyncExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    asyncExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                asyncExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
+        // Mili start - 池已由线程治理层 adopt，关闭职责随之移交；此处仅释放引用。
+        // 自行再 shutdown 会与治理层的 awaitTermination 形成重复关闭。
+        asyncExecutor = null;
+        // Mili end
 
         worldData.clear();
         asyncProcessor.clear();

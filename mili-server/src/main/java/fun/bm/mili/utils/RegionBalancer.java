@@ -143,12 +143,7 @@ public final class RegionBalancer {
                     "RegionBalancer running in scheduler mode: tick threads are owned by MILI_BALANCER");
 
             // Mili start - Adaptive TPS
-            if (RegionBalancerConfig.governorEnabled) {
-                com.mojang.logging.LogUtils.getClassLogger().info(
-                        "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
-            } else {
-                fun.bm.mili.utils.AdaptiveTPSManager.start();
-            }
+            startAdaptiveTps();
             // Mili end - Adaptive TPS
 
             // Mili start - PI controller for catch-up limiting
@@ -175,15 +170,7 @@ public final class RegionBalancer {
         dispatcher.start();
 
         // Mili start - Adaptive TPS
-        // Mutual exclusion: when the TickDurationGovernor is enabled it owns
-        // TIME_BETWEEN_TICKS — two writers would fight every second and the
-        // effective interval would oscillate randomly.
-        if (RegionBalancerConfig.governorEnabled) {
-            com.mojang.logging.LogUtils.getClassLogger().info(
-                    "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
-        } else {
-            fun.bm.mili.utils.AdaptiveTPSManager.start();
-        }
+        startAdaptiveTps();
         // Mili end - Adaptive TPS
 
         // Mili start - PI controller for catch-up limiting
@@ -193,6 +180,26 @@ public final class RegionBalancer {
 
         com.mojang.logging.LogUtils.getClassLogger().info(
                 "RegionBalancer initialized with {} worker threads", poolSize);
+    }
+
+    /**
+     * 启动自适应 TPS 控制器。
+     *
+     * <p>这段逻辑原先被复制了两份（MILI_BALANCER 模式分支与普通分支各一份），这里是合并后的
+     * 唯一实现。但比重复更值得说的是<b>互斥方式的改变</b>：过去只能靠"干脆不启动"来避免争写，
+     * 一旦有人直接调用 {@code AdaptiveTPSManager.setTickInterval} 就会绕过这层约定。
+     * 现在真正的互斥由 {@link fun.bm.mili.scheduler.TickIntervalBus} 的权威等级仲裁保证 ——
+     * 即便两者同时运行，PI 控制器的提案也会压制自适应 TPS，不会出现互相覆盖。</p>
+     *
+     * <p>此处保留"不启动"的判断，纯粹是为了省掉一份每秒一次的无效采样。</p>
+     */
+    private static void startAdaptiveTps() {
+        if (RegionBalancerConfig.governorEnabled) {
+            com.mojang.logging.LogUtils.getClassLogger().info(
+                    "AdaptiveTPSManager skipped: TickDurationGovernor is managing the tick interval");
+        } else {
+            fun.bm.mili.utils.AdaptiveTPSManager.start();
+        }
     }
 
     private static final AtomicLong taskUidGen = new AtomicLong(0);
@@ -523,6 +530,13 @@ public final class RegionBalancer {
         // DAG scheduler config
         fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_BATCH_SIZE = RegionBalancerConfig.dagBatchSize;
         fun.bm.mili.utils.dagschedule.DAGScheduler.Config.MAX_WAVES = RegionBalancerConfig.dagMaxWaves;
+
+        // Mili start - 跨 region 依赖图（波次屏障）
+        fun.bm.mili.scheduler.RegionTickDag.Config.WAVE_TIMEOUT_MS = RegionBalancerConfig.dagWaveTimeoutMs;
+        fun.bm.mili.scheduler.RegionTickDag.Config.MAX_LAG_STREAK = RegionBalancerConfig.dagMaxLagStreak;
+        fun.bm.mili.scheduler.RegionTickDag.setEnabled(
+                RegionBalancerConfig.enabled && RegionBalancerConfig.dagEnabled);
+        // Mili end
 
         // Governor config
         fun.bm.mili.utils.picontrol.TickDurationGovernor.Config.TARGET_INTERVAL_NS = RegionBalancerConfig.governorTargetIntervalNs;

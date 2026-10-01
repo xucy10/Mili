@@ -203,6 +203,18 @@ public final class BalancerSchedulerThreadPool extends Scheduler {
         state.priority = isBalancerInstrumentationEnabled()
                 ? fun.bm.mili.utils.RegionLoadMonitor.computePriority(state.tick, state.lastTickNanos)
                 : 0.0d;
+
+        // Mili start - 跨 region 依赖屏障（软门控）
+        // 未就绪的 region 被压到队尾，让已就绪者先行。
+        // 之所以做"软"而不是"硬"阻塞：硬阻塞会让队首卡住整条队列，而 poll 返回 null 时
+        // 等待逻辑面对已过期的 deadline 会立刻返回，退化成忙轮询。优先级降级复用现有排序
+        // 机制，既没有死锁也没有忙轮询风险。且未声明任何依赖时恒为 READY，与现状一致。
+        if (fun.bm.mili.scheduler.RegionTickDag.isEnabled()
+                && fun.bm.mili.scheduler.RegionTickDag.readiness(state.tick)
+                        != fun.bm.mili.scheduler.RegionTickDag.Readiness.READY) {
+            state.priority = Double.NEGATIVE_INFINITY;
+        }
+        // Mili end
     }
 
     @Override
@@ -473,6 +485,12 @@ public final class BalancerSchedulerThreadPool extends Scheduler {
                             fun.bm.mili.utils.RegionLoadMonitor.afterTick(task.tick, System.nanoTime() - begin);
                             fun.bm.mili.utils.RegionBalancer.markTicked(task.tick);
                         }
+
+                        // Mili start - 跨 region 依赖图：记录本 region 已完成本波 tick。
+                        // 刻意放在 instrumentation 之外：即便负载监控关闭，波次也必须记账，
+                        // 否则下一波永远不会开始，未就绪的 region 会被永久压在队尾。
+                        fun.bm.mili.scheduler.RegionTickDag.markTicked(task.tick);
+                        // Mili end
 
                         task.lastTickNanos = System.nanoTime();
                         task.hasQueuedTasks = false;

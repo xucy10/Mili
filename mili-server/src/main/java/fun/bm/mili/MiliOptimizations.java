@@ -7,6 +7,9 @@ import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
 import fun.bm.mili.config.modules.optimizations.NetworkOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.TechnicalMCOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.RegionTickDag;
+import fun.bm.mili.utils.AdaptiveTPSManager;
 import fun.bm.mili.utils.LagRemover;
 import fun.bm.mili.utils.NetworkOptimizer;
 import fun.bm.mili.utils.RegionBalancer;
@@ -35,6 +38,10 @@ public final class MiliOptimizations {
     private MiliOptimizations() {}
 
     public static void init(Plugin plugin) {
+        // Mili start - 线程治理层必须最先就位：后续子系统用到线程时才能被纳管而非各自开窗
+        MiliScheduler.init();
+        // Mili end
+
         // 核心延迟缓解
         if (plugin != null) {
             LagRemover.init(plugin);
@@ -72,6 +79,10 @@ public final class MiliOptimizations {
         // DAG 调度器（依赖 region-balancer）
         if (RegionBalancerConfig.enabled && RegionBalancerConfig.dagEnabled) {
             DAGScheduler.init();
+            // Mili start - 跨 region 依赖图（波次屏障）。必须在 RegionBalancer.init() 之后，
+            // 因为启停标志由 syncDagAndGovernorConfig() 依据配置注入。
+            RegionTickDag.init();
+            // Mili end
         }
 
         // Tick 持续时间调节器
@@ -101,12 +112,19 @@ public final class MiliOptimizations {
         }
         LagRemover.shutdown();
         if (RegionBalancerConfig.enabled) {
+            // Mili start - AdaptiveTPSManager 由 RegionBalancer.init() 启动，但其 shutdown
+            // 此前从未被调用，采样线程一直随 JVM 泄漏。先停它也有序意义：停止即撤回
+            // tick 间隔提案，之后 RegionBalancer 停机时总线可干净地回落到基准值。
+            AdaptiveTPSManager.shutdown();
             RegionBalancer.shutdown();
             SmartRegionManager.shutdown();
         }
         // Mili start - shutdown new subsystems
         if (RegionBalancerConfig.dagEnabled) {
             DAGScheduler.shutdown();
+            // Mili start - 跨 region 依赖图收口：取消兜底任务并清空图
+            RegionTickDag.shutdown();
+            // Mili end
         }
         if (RegionBalancerConfig.governorEnabled) {
             TickDurationGovernor.shutdown();
@@ -122,6 +140,9 @@ public final class MiliOptimizations {
             TechnicalMCOptimizer.shutdown();
         }
         // Mili end
+
+        // Mili start - 治理层最后收口：统一关闭所有受管线程池，含被 adopt 的
+        MiliScheduler.shutdown();
 
         LOGGER.info("[Mili] All optimizations shutdown");
     }

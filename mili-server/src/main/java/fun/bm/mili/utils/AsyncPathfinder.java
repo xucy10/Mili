@@ -1,6 +1,8 @@
 package fun.bm.mili.utils;
 
 import fun.bm.mili.config.modules.optimizations.AsyncPathfindingConfig;
+import fun.bm.mili.scheduler.MiliScheduler;
+import fun.bm.mili.scheduler.Tier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.pathfinder.Path;
@@ -20,16 +22,15 @@ public class AsyncPathfinder {
 
     public static void setEnabled(boolean v) {
         enabled = v;
+        // Mili start - 寻路是纯 CPU 计算，归入 CPU 层；池由治理层托管。
+        // 关键改动：关闭开关时**不再** shutdownNow 池。原实现在 toggle 时会销毁整个池，
+        // 若该池被多个调用方共享，等于顺手掐断了别人；现在只停止提交任务，
+        // 线程随治理层统一回收，顺带避免重复 toggle 反复创建/销毁线程。
         if (v && executor == null) {
-            executor = Executors.newFixedThreadPool(AsyncPathfindingConfig.threadCount, r -> {
-                Thread t = new Thread(r, "Mili-AsyncPathfinder");
-                t.setDaemon(true);
-                return t;
-            });
-        } else if (!v && executor != null) {
-            executor.shutdownNow();
-            executor = null;
+            executor = MiliScheduler.namedPool("pathfinder", Tier.CPU,
+                    Math.max(1, AsyncPathfindingConfig.threadCount));
         }
+        // Mili end
     }
 
     public static boolean isEnabled() { return enabled; }

@@ -33,6 +33,19 @@ public class RegionBalancerConfig implements IConfigModule {
             过深的 DAG 会被回退为平面顺序执行""")
     public static int dagMaxWaves = 16;
 
+    @ConfigInfo(name = "dag-wave-timeout-ms", comments = """
+            跨 region 依赖图的波次屏障超时（毫秒）。
+            一个波次内的 region 若在此时间内未完成，波次将强制推进，
+            该 region 被标记为掉队并停止阻塞下游 —— 这是"抗卡死"语义的核心参数。
+            过大会让一个卡顿的 region 拖慢全场；过小则正常高负载时误判增多""")
+    public static long dagWaveTimeoutMs = 100L;
+
+    @ConfigInfo(name = "dag-max-lag-streak", comments = """
+            允许连续掉队的波次数量。
+            超过此值后打印告警（用于定位"哪个 region 在拖后腿"），
+            掉队的 region 仍会继续 tick，一旦追上即清除标记回归正常""")
+    public static int dagMaxLagStreak = 3;
+
     @ConfigInfo(name = "governor-enabled", comments = """
             启用 Tick 持续时间 PI 调节器。
             替代纯 TPS 触发的追赶机制，通过 PI 控制器动态调整 tick 间隔，
