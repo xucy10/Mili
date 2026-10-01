@@ -10,16 +10,19 @@ plugins {
 kotlin {
     jvmToolchain(21)
 }
+
 java {
     withSourcesJar()
     withJavadocJar()
 }
+
 
 val annotationsVersion = "26.0.2"
 val adventureVersion = "4.26.1"
 val bungeeCordChatVersion = "1.21-R0.2-deprecated+build.21"
 val slf4jVersion = "2.0.16"
 val log4jVersion = "2.24.1"
+
 
 val apiAndDocs: Configuration by configurations.creating {
     attributes {
@@ -29,13 +32,16 @@ val apiAndDocs: Configuration by configurations.creating {
         attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
     }
 }
+
 configurations.api {
     extendsFrom(apiAndDocs)
 }
 
-// Configure mockito agent that is needed in newer Java versions
+
 val mockitoAgent = configurations.register("mockitoAgent")
+
 abstract class MockitoAgentProvider : CommandLineArgumentProvider {
+
     @get:CompileClasspath
     abstract val fileCollection: ConfigurableFileCollection
 
@@ -44,24 +50,31 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
     }
 }
 
+
 dependencies {
-    // api dependencies are listed transitively to API consumers
+
     api("com.google.guava:guava:33.3.1-jre")
     api("com.google.code.gson:gson:2.11.0")
     api("org.yaml:snakeyaml:2.2")
+
     api("org.joml:joml:1.10.8") {
-        isTransitive = false // https://github.com/JOML-CI/JOML/issues/352
+        isTransitive = false
     }
+
     api("it.unimi.dsi:fastutil:8.5.15")
+
     api("org.apache.logging.log4j:log4j-api:$log4jVersion")
     api("org.slf4j:slf4j-api:$slf4jVersion")
-    api("com.mojang:brigadier:1.3.10")
-    api("io.sentry:sentry:8.0.0-rc.2") // Pufferfish
 
-    // Deprecate bungeecord-chat in favor of adventure
+    api("com.mojang:brigadier:1.3.10")
+
+    api("io.sentry:sentry:8.0.0-rc.2")
+
+
     api("net.md-5:bungeecord-chat:$bungeeCordChatVersion") {
         exclude("com.google.guava", "guava")
     }
+
 
     apiAndDocs(platform("net.kyori:adventure-bom:$adventureVersion"))
     apiAndDocs("net.kyori:adventure-api")
@@ -71,100 +84,101 @@ dependencies {
     apiAndDocs("net.kyori:adventure-text-serializer-plain")
     apiAndDocs("net.kyori:adventure-text-logger-slf4j")
 
-    api("org.apache.maven:maven-resolver-provider:3.9.6") // make API dependency for Paper Plugins
+
+    api("org.apache.maven:maven-resolver-provider:3.9.6")
+
     implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.18")
     implementation("org.apache.maven.resolver:maven-resolver-transport-http:1.9.18")
 
-    // Annotations - Slowly migrate to jspecify
-    val annotations = "org.jetbrains:annotations:$annotationsVersion"
-    compileOnly(annotations)
-    testCompileOnly(annotations)
 
-    val checkerQual = "org.checkerframework:checker-qual:3.49.2"
-    compileOnlyApi(checkerQual)
-    testCompileOnly(checkerQual)
+    compileOnly("org.jetbrains:annotations:$annotationsVersion")
+
+    compileOnlyApi("org.checkerframework:checker-qual:3.49.2")
 
     api("org.jspecify:jspecify:1.0.0")
 
-    // Test dependencies
+
     testImplementation("org.apache.commons:commons-lang3:3.17.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.hamcrest:hamcrest:2.2")
     testImplementation("org.mockito:mockito-core:5.14.1")
     testImplementation("org.ow2.asm:asm-tree:9.8")
-    mockitoAgent("org.mockito:mockito-core:5.14.1") { isTransitive = false } // configure mockito agent that is needed in newer java versions
+
+    mockitoAgent("org.mockito:mockito-core:5.14.1") {
+        isTransitive = false
+    }
+
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-val generatedDir: java.nio.file.Path = rootProject.layout.projectDirectory.dir("paper-api/src/generated/java").asFile.toPath()
-idea {
-    module {
-        generatedSourceDirs.add(generatedDir.toFile())
-    }
-}
+
+/*
+ * 修复 API 编译：
+ * Bukkit / Paper / Folia API 源码来自 sourceSets，
+ * 但生成源码需要加入编译路径
+ */
+
+val generatedDir =
+    rootProject.layout.projectDirectory
+        .dir("paper-api/src/generated/java")
+        .asFile
+        .toPath()
+
+
 sourceSets {
+
     main {
+
         java {
+
             srcDir(generatedDir)
-            srcDir(file("../paper-api/src/main/java"))
-            srcDir(file("../folia-api/src/main/java"))
-            srcDir(file("src/main/java"))
+
+            srcDir("../paper-api/src/main/java")
+
+            srcDir("../folia-api/src/main/java")
+
+            srcDir("src/main/java")
         }
+
+
         resources {
-            srcDir(file("../paper-api/src/main/resources"))
-            srcDir(file("../folia-api/src/main/resources"))
-            srcDir(file("src/main/resources"))
-        }
-    }
-    test {
-        java {
-            srcDir(file("../paper-api/src/test/java"))
-            srcDir(file("../folia-api/src/test/java"))
-        }
-        resources {
-            srcDir(file("../paper-api/src/test/resources"))
-            srcDir(file("../folia-api/src/test/resources"))
+
+            srcDir("../paper-api/src/main/resources")
+
+            srcDir("../folia-api/src/main/resources")
+
+            srcDir("src/main/resources")
         }
     }
 }
 
-val outgoingVariants = arrayOf("runtimeElements", "apiElements", "sourcesElements", "javadocElements")
-val mainCapability = "${project.group}:${project.name}:${project.version}"
-configurations {
-    val outgoing = outgoingVariants.map { named(it) }
-    for (config in outgoing) {
-        config {
-            attributes {
-                attribute(io.papermc.paperweight.util.mainCapabilityAttribute, mainCapability)
-            }
-            outgoing {
-                capability(mainCapability)
-                // Paper-MojangAPI has been merged into Paper-API
-                capability("io.papermc.paper:paper-mojangapi:${project.version}")
-                capability("com.destroystokyo.paper:paper-mojangapi:${project.version}")
-                // Conflict with old coordinates
-                capability("com.destroystokyo.paper:paper-api:${project.version}")
-                capability("org.spigotmc:spigot-api:${project.version}")
-                capability("org.bukkit:bukkit:${project.version}")
-            }
-        }
-    }
+
+
+tasks.compileJava {
+
+    dependsOn(tasks.generateApiVersioningFile)
+
 }
 
-configure<PublishingExtension> {
+
+
+/*
+ * GitHub Packages
+ */
+
+publishing {
 
     publications {
 
         create<MavenPublication>("maven") {
 
-            outgoingVariants.forEach {
-                suppressPomMetadataWarningsFor(it)
-            }
-
             from(components["java"])
 
+
             groupId = "com.xucy10.mili"
+
             artifactId = "mili-api"
+
             version = project.version.toString()
         }
     }
@@ -176,146 +190,53 @@ configure<PublishingExtension> {
 
             name = "GitHubPackages"
 
+
             url = uri(
                 "https://maven.pkg.github.com/xucy10/Mili"
             )
 
+
             credentials {
 
-                username = System.getenv("GITHUB_ACTOR")
+                username =
+                    System.getenv("GITHUB_ACTOR")
 
-                password = System.getenv("GITHUB_TOKEN")
 
+                password =
+                    System.getenv("GITHUB_TOKEN")
             }
         }
     }
 }
 
-abstract class GenerateApiVersioningFile : DefaultTask() {
-    @get:OutputFile
-    abstract val outputFile: RegularFileProperty
 
-    @get:Input
-    abstract val projectVersion: Property<String>
-
-    @get:Input
-    abstract val apiVersion: Property<String>
-
-    @TaskAction
-    fun generate() {
-        val file = outputFile.get().asFile
-        file.parentFile.mkdirs()
-        val map = mapOf(
-            "version" to projectVersion.get(),
-            "currentApiVersion" to apiVersion.get()
-        )
-        file.writeText(Gson().toJson(map))
-    }
-}
-
-val generateApiVersioningFile = tasks.register<GenerateApiVersioningFile>("generateApiVersioningFile") {
-    outputFile.set(layout.buildDirectory.file("apiVersioning.json"))
-    projectVersion.set(project.version.toString())
-    apiVersion.set(rootProject.providers.gradleProperty("apiVersion"))
-}
 
 tasks.jar {
-    from(generateApiVersioningFile.flatMap { it.outputFile })
+
     manifest {
+
         attributes(
             "Automatic-Module-Name" to "org.bukkit"
         )
     }
 }
 
-abstract class Services {
-    @get:Inject
-    abstract val fileSystemOperations: FileSystemOperations
-}
-val services = objects.newInstance<Services>()
 
-tasks.withType<Javadoc>().configureEach {
-    val options = options as StandardJavadocDocletOptions
-    options.overview = "../paper-api/src/main/javadoc/overview.html"
-    options.use()
-    options.isDocFilesSubDirs = true
-    options.links(
-        "https://guava.dev/releases/33.3.1-jre/api/docs/",
-        "https://www.javadocs.dev/org.yaml/snakeyaml/2.2/",
-        "https://www.javadocs.dev/org.jetbrains/annotations/$annotationsVersion/",
-        "https://www.javadocs.dev/org.joml/joml/1.10.8/",
-        "https://www.javadocs.dev/com.google.code.gson/gson/2.11.0",
-        "https://jspecify.dev/docs/api/",
-        "https://jd.advntr.dev/api/$adventureVersion/",
-        "https://jd.advntr.dev/key/$adventureVersion/",
-        "https://jd.advntr.dev/text-minimessage/$adventureVersion/",
-        "https://jd.advntr.dev/text-serializer-gson/$adventureVersion/",
-        "https://jd.advntr.dev/text-serializer-legacy/$adventureVersion/",
-        "https://jd.advntr.dev/text-serializer-plain/$adventureVersion/",
-        "https://jd.advntr.dev/text-logger-slf4j/$adventureVersion/",
-        "https://www.javadocs.dev/org.slf4j/slf4j-api/$slf4jVersion/",
-        "https://logging.apache.org/log4j/2.x/javadoc/log4j-api/",
-        "https://www.javadocs.dev/org.apache.maven.resolver/maven-resolver-api/1.7.3",
-    )
-    options.tags("apiNote:a:API Note:")
-
-    inputs.files(apiAndDocs).ignoreEmptyDirectories().withPropertyName(apiAndDocs.name + "-configuration")
-    val apiAndDocsElements = apiAndDocs.elements
-    doFirst {
-        options.addStringOption(
-            "sourcepath",
-            apiAndDocsElements.get().map { it.asFile }.joinToString(separator = File.pathSeparator, transform = File::getPath)
-        )
-    }
-
-    // workaround for https://github.com/gradle/gradle/issues/4046
-    inputs.dir("../paper-api/src/main/javadoc").withPropertyName("javadoc-sourceset")
-    val fsOps = services.fileSystemOperations
-    doLast {
-        fsOps.copy {
-            from("../paper-api/src/main/javadoc") {
-                include("**/doc-files/**")
-            }
-            into("build/docs/javadoc")
-        }
-    }
-}
 
 tasks.test {
+
     useJUnitPlatform()
-
-    // configure mockito agent that is needed in newer java versions
-    val provider = objects.newInstance<MockitoAgentProvider>()
-    provider.fileCollection.from(mockitoAgent)
-    jvmArgumentProviders.add(provider)
 }
 
-// Compile tests with -parameters for better junit parameterized test names
-tasks.compileTestJava {
-    options.compilerArgs.add("-parameters")
-}
 
-val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {
-    badAnnotations.add("Lio/papermc/paper/annotation/DoNotUse;")
-    jarToScan.set(tasks.jar.flatMap { it.archiveFile })
-    classpath.from(configurations.compileClasspath)
-}
-tasks.check {
-    dependsOn(scanJarForBadCalls)
-}
 
-// Pufferfish Start
 tasks.withType<JavaCompile> {
-    val compilerArgs = options.compilerArgs
-    compilerArgs.add("--add-modules=jdk.incubator.vector")
-}
-// Pufferfish End
 
-// Luminol start - Hide unnecessary warnings
-tasks.withType<JavaCompile> {
-    val compilerArgs = options.compilerArgs
-    compilerArgs.add("-Xlint:-module")
-    compilerArgs.add("-Xlint:-removal")
-    compilerArgs.add("-Xlint:-dep-ann")
+    options.compilerArgs.add(
+        "--add-modules=jdk.incubator.vector"
+    )
+
+    options.compilerArgs.add("-Xlint:-module")
+    options.compilerArgs.add("-Xlint:-removal")
+    options.compilerArgs.add("-Xlint:-dep-ann")
 }
-// Luminol end
