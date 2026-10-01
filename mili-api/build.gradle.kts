@@ -24,7 +24,7 @@ val slf4jVersion = "2.0.16"
 val log4jVersion = "2.24.1"
 
 
-val apiAndDocs: Configuration by configurations.creating {
+val apiAndDocs: Configuration = configurations.create("apiAndDocs") {
     attributes {
         attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.DOCUMENTATION))
         attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))

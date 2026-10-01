@@ -164,9 +164,9 @@ val log4jPlugins = sourceSets.create("log4jPlugins") {
 configurations.named(log4jPlugins.compileClasspathConfigurationName) {
     extendsFrom(configurations.compileClasspath.get())
 }
-val alsoShade: Configuration by configurations.creating
+val alsoShade: Configuration = configurations.create("alsoShade")
 
-val runtimeConfiguration by configurations.consumable("runtimeConfiguration") {
+val runtimeConfiguration = configurations.consumable("runtimeConfiguration") {
     attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
     extendsFrom(configurations.getByName(sourceSets.main.get().runtimeElementsConfigurationName))
 }
@@ -342,7 +342,7 @@ tasks.processResources {
     }
 }
 
-val scanJarForBadCalls by tasks.registering(io.papermc.paperweight.tasks.ScanJarForBadCalls::class) {
+val scanJarForBadCalls = tasks.register<io.papermc.paperweight.tasks.ScanJarForBadCalls>("scanJarForBadCalls") {
     badAnnotations.add("Lio/papermc/paper/annotation/DoNotUse;")
     jarToScan.set(tasks.jar.flatMap { it.archiveFile })
     classpath.from(configurations.compileClasspath)
