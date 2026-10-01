@@ -34,6 +34,6 @@ jobs:
 
       - name: Publish API
         run: |
-          ./gradlew :mili-api:publish --no-daemon
+          ./gradlew :mili-server:build :mili-api:publish --no-daemon
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
