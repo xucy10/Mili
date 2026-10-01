@@ -35,6 +35,7 @@ public final class SmartRegionManager {
         // Mili start - 保留独占定时池：processMigrations 是 50ms 高频任务，若进共享
         // BACKGROUND 单线程会把其他巡检长期挤到饿死。这里承接原有的 NORM_PRIORITY + 2，
         // 避免"纳管"变成"降级"；同时改用 RecurringTask 以获得异常隔离，池仍归治理层托管。
+        // 两个任务原本都是 scheduleAtFixedRate，故沿用默认 FIXED_RATE，不改成 FIXED_DELAY。
         scheduler = MiliScheduler.namedScheduledPool("smart-region", 1, Thread.NORM_PRIORITY + 2);
 
         analyzeTask = RecurringTask.startOn(scheduler, "smart-region-analyze",

@@ -145,6 +145,29 @@ public final class RecurringTask {
     }
 
     /**
+     * 在指定定时池上启动周期任务，可指定首次延迟。默认使用 {@link Policy#FIXED_RATE}。
+     *
+     * <p>与 {@link #start(String, long, long, Body)} 对称：需要独占池的组件往往同样需要
+     * "首次延迟与周期不同"（先让世界加载完再开始巡检、或错开启动瞬间的峰值）。
+     * 少了这一档，调用方只能去补一个 {@code Policy} 实参，或者——更糟——
+     * 误以为存在该重载而写出编译不过的代码。</p>
+     *
+     * @param executor      承载该任务的定时池
+     * @param name          全局唯一名称
+     * @param initialDelayMs 首次延迟（毫秒）
+     * @param periodMs      执行周期（毫秒），必须为正
+     * @param body          任务体
+     * @return 句柄；若同名任务已存在则返回既有句柄
+     */
+    public static Handle startOn(@NotNull final ScheduledExecutorService executor,
+                                 @NotNull final String name,
+                                 final long initialDelayMs,
+                                 final long periodMs,
+                                 @NotNull final Body body) {
+        return startOn(executor, name, initialDelayMs, periodMs, Policy.FIXED_RATE, body);
+    }
+
+    /**
      * 在指定定时池上启动周期任务，完整参数形式。
      *
      * @param executor      承载该任务的定时池
