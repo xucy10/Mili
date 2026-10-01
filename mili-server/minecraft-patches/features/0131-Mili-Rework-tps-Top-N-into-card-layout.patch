@@ -51,10 +51,10 @@ util_short / mspt_short / tps_short 键仍被 formatRegionInfo 使用。
       占用率  12.0%   MSPT 18.40   TPS 19.95
       区块: 89  玩家: 0  实体: 12
 
-diff --git a/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index 31096de..b597d45 100644
---- a/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-+++ b/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+index 31096de43eb26134b1155e3d913d2c1aff099b0f..b597d45064f4597370084c4729b3f310b6b0cda6 100644
+--- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
++++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 @@ -10,11 +10,11 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
  import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
  import net.kyori.adventure.text.Component;
