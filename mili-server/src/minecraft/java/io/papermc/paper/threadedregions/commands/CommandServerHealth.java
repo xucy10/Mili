@@ -10,11 +10,11 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -24,7 +24,6 @@ import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.craftbukkit.CraftWorld;
-import org.bukkit.entity.Player;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +50,7 @@ import org.jetbrains.annotations.NotNull;
  * [World]        section
  * [TPS Range]    section
  * [Memory]       section
- * [Highest Utilisation - Top N]  section ← hover on players/entities counts
+ * [Highest Utilisation - Top N]  card list: rank header + aligned metrics + hover stats
  * </pre>
  */
 public final class CommandServerHealth extends Command {
@@ -70,6 +69,19 @@ public final class CommandServerHealth extends Command {
     private static final TextColor SEPARATOR = TextColor.color(80, 80, 80);
     private static final TextColor DIM = TextColor.color(100, 100, 100);
     private static final TextColor LIST = TextColor.color(33, 97, 188);
+
+    /** Pre-computed render data for one row in the Top-N region list. */
+    private record TopRegionRender(
+            ServerLevel world,
+            ChunkPos chunkCenter,
+            int centerBlockX,
+            int centerBlockZ,
+            TickRegions.RegionStats stats,
+            List<String> playerNames,
+            Map<String, Long> entityCounts,
+            double util, double mspt, double tps,
+            String utilStr, String msptStr, String tpsStr
+    ) {}
 
     public CommandServerHealth() {
         super("tps");
@@ -92,8 +104,10 @@ public final class CommandServerHealth extends Command {
         final int minZ = center.z - chunkRadius;
         final int maxZ = center.z + chunkRadius;
         for (final ServerPlayer player : world.players()) {
-            final ChunkPos pc = new ChunkPos(player.blockPosition());
-            if (pc.x >= minX && pc.x <= maxX && pc.z >= minZ && pc.z <= maxZ) {
+            final BlockPos pos = player.blockPosition();
+            final int pcx = pos.getX() >> 4;
+            final int pcz = pos.getZ() >> 4;
+            if (pcx >= minX && pcx <= maxX && pcz >= minZ && pcz <= maxZ) {
                 names.add(player.getScoreboardName());
             }
         }
@@ -134,7 +148,11 @@ public final class CommandServerHealth extends Command {
         return builder.build();
     }
 
-    /** Builds the hover component for the entity-count label in a region. */
+    /**
+     * Builds the hover component for the entity-count label in a region. Entity
+     * names are sent as translatable components so every viewer's client resolves
+     * them in its own language, instead of the server's locale.
+     */
     private static Component buildEntityHover(@NotNull final Map<String, Long> entityCounts, final int topN) {
         final List<Map.Entry<String, Long>> sorted = entityCounts.entrySet().stream()
                 .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
@@ -143,18 +161,23 @@ public final class CommandServerHealth extends Command {
 
         final long total = entityCounts.values().stream().mapToLong(Long::longValue).sum();
 
+        // The entity name must remain a translatable component (client-localised),
+        // so the "  %s: %d" line format is split around %s into a text prefix and
+        // a text suffix that gets the count formatted in.
+        final String lineFormat = MiliI18n.get("mili.tpscommand.hover_entity_line", "  %s: %d");
+        final int nameIdx = lineFormat.indexOf("%s");
+        final String linePrefix = nameIdx >= 0 ? lineFormat.substring(0, nameIdx) : "  ";
+        final String lineSuffix = nameIdx >= 0 ? lineFormat.substring(nameIdx + 2) : ": %d";
+
         final TextComponent.Builder builder = Component.text()
                 .append(Component.text(String.format(
                         MiliI18n.get("mili.tpscommand.hover_entities_header", "Top %d entities in region:", topN), topN), LABEL))
                 .append(Component.newline());
 
         for (final Map.Entry<String, Long> entry : sorted) {
-            final String entityName = mcComponentToPlainString(
-                    net.minecraft.network.chat.Component.translatable(entry.getKey()));
-            builder.append(Component.text(String.format(
-                            MiliI18n.get("mili.tpscommand.hover_entity_line", "  %s: %d"),
-                            entityName, entry.getValue()),
-                    VALUE))
+            builder.append(Component.text(linePrefix, VALUE))
+                    .append(Component.translatable(entry.getKey(), VALUE))
+                    .append(Component.text(String.format(lineSuffix, entry.getValue()), VALUE))
                     .append(Component.newline());
         }
 
@@ -164,14 +187,20 @@ public final class CommandServerHealth extends Command {
         return builder.build();
     }
 
-    /** Extracts the plain text from a Minecraft Component (for use in hover text). */
-    private static String mcComponentToPlainString(final net.minecraft.network.chat.Component mcComponent) {
-        return mcComponent.getString();
-    }
-
     // -----------------------------------------------------------------------
     //  Format helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Left-pads {@code s} with leading spaces so its length equals {@code width}.
+     * Used by the dynamic-width Top-N columns so digits line up across rows.
+     */
+    private static String padLeft(@NotNull final String s, final int width) {
+        if (s.length() >= width) {
+            return s;
+        }
+        return " ".repeat(width - s.length()) + s;
+    }
 
     private static Component sectionTitle(@NotNull final String key, @NotNull final String fallback) {
         return Component.text()
@@ -396,14 +425,19 @@ public final class CommandServerHealth extends Command {
             totalEntities += stats.getEntityCount();
         }
 
-        // ---------- Build top-N region components with hovers ----------
+        // ---------- Build top-N region cards with hovers ----------
+        // Two-pass rendering: pass 1 collects formatted strings while computing
+        // dynamic column widths (util / MSPT / TPS), so the card metrics lines
+        // line up regardless of digit count (e.g. when util exceeds 100%). Pass 2
+        // renders with the resolved widths.
 
-        final TextComponent.Builder topRegionsBuilder = Component.text();
+        final List<TopRegionRender> topRenders = new ArrayList<>();
+        int utilMaxLen = 0;
+        int msptMaxLen = 0;
+        int tpsMaxLen = 0;
 
-        if (sender instanceof Player) {
-            topRegionsBuilder.append(Component.text(MiliI18n.get("mili.tpscommand.click_teleport", " Click to teleport\n"), DIM));
-        }
-        for (int i = 0, len = Math.min(lowestRegionsCount, regionsBelowThreshold.size()); i < len; ++i) {
+        final int topCount = Math.min(lowestRegionsCount, regionsBelowThreshold.size());
+        for (int i = 0; i < topCount; ++i) {
             final ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, TickData.TickReportData>
                     pair = regionsBelowThreshold.get(i);
 
@@ -423,36 +457,78 @@ public final class CommandServerHealth extends Command {
             final double mspt = report.timePerTickData().segmentAll().average() / 1.0E6;
             final TickRegions.RegionStats stats = region.getData().getRegionStats();
 
-            final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
-
-            // Gathered hover data
-            final List<String> playerNames = getPlayerNamesInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
+            // RegionStats already knows the player count; skip the world-wide scan
+            // entirely for empty regions.
+            final List<String> playerNames = stats.getPlayerCount() == 0
+                    ? List.of()
+                    : getPlayerNamesInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
             final Map<String, Long> entityCounts = getEntityCountsInRegion(world, chunkCenter, REGION_CHUNK_RADIUS);
-            final Component playerHover = buildPlayerHover(playerNames);
-            final Component entityHover = buildEntityHover(entityCounts, 5);
 
-            final int yLoc = 80;
+            final String utilStr = ONE_DECIMAL_PLACES.get().format(util * 100.0);
+            final String msptStr = TWO_DECIMAL_PLACES.get().format(mspt);
+            final String tpsStr = TWO_DECIMAL_PLACES.get().format(tps);
 
-            final Component line = Component.text()
-                    .append(Component.text("  - ", LIST, TextDecoration.BOLD))
+            utilMaxLen = Math.max(utilMaxLen, utilStr.length());
+            msptMaxLen = Math.max(msptMaxLen, msptStr.length());
+            tpsMaxLen = Math.max(tpsMaxLen, tpsStr.length());
+
+            topRenders.add(new TopRegionRender(
+                    world, chunkCenter, centerBlockX, centerBlockZ,
+                    stats, playerNames, entityCounts,
+                    util, mspt, tps,
+                    utilStr, msptStr, tpsStr));
+        }
+
+        final TextComponent.Builder topRegionsBuilder = Component.text();
+
+        final String cardIndent = "      ";
+        for (int i = 0, len = topRenders.size(); i < len; ++i) {
+            final TopRegionRender r = topRenders.get(i);
+
+            final String location = r.world().getWorld().getName() + " (" + r.centerBlockX() + ", " + r.centerBlockZ() + ")";
+
+            final String paddedUtil = padLeft(r.utilStr(), utilMaxLen);
+            final String paddedMspt = padLeft(r.msptStr(), msptMaxLen);
+            final String paddedTps = padLeft(r.tpsStr(), tpsMaxLen);
+
+            final TextColor utilColor = CommandUtil.getUtilisationColourRegion(r.util());
+            final TextColor msptColor = CommandUtil.getColourForMSPT(r.mspt());
+            final TextColor tpsColor = CommandUtil.getColourForTPS(r.tps());
+
+            final Component playerHover = buildPlayerHover(r.playerNames());
+            final Component entityHover = buildEntityHover(r.entityCounts(), 5);
+
+            final Component card = Component.text()
+                    // Rank + location header
+                    .append(Component.text("  ", LIST, TextDecoration.BOLD))
+                    .append(Component.text("#" + (i + 1), SECTION, TextDecoration.BOLD))
+                    .append(Component.text("  ", SEPARATOR))
                     .append(Component.text(location, VALUE, TextDecoration.BOLD))
                     .append(Component.text("\n", SEPARATOR))
 
-                    .append(formatRegionInfo("    ", util, mspt, tps))
+                    // Metrics line, columns aligned by the pass-1 widths
+                    .append(Component.text(cardIndent, SEPARATOR))
+                    .append(Component.text(MiliI18n.get("mili.tpscommand.utilisation", "Utilisation") + " ", LABEL))
+                    .append(Component.text(paddedUtil, utilColor))
+                    .append(Component.text("%", LABEL))
+                    .append(Component.text("   ", SEPARATOR))
+                    .append(Component.text("MSPT ", LABEL))
+                    .append(Component.text(paddedMspt, msptColor))
+                    .append(Component.text("   ", SEPARATOR))
+                    .append(Component.text("TPS ", LABEL))
+                    .append(Component.text(paddedTps, tpsColor))
                     .append(Component.newline())
-                    .append(formatRegionStatsWithHover(
-                            stats.getChunkCount(),
-                            stats.getPlayerCount(),
-                            stats.getEntityCount(),
-                            playerHover, entityHover, (i + 1) != len))
-                    .build()
-                    .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND,
-                            "/minecraft:execute as @s in " + world.getWorld().getKey().toString()
-                                    + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
-                    .hoverEvent(HoverEvent.showText(Component.text(
-                            MiliI18n.get("mili.tpscommand.click_teleport_hover", "Click to teleport to %s", location), DIM)));
 
-            topRegionsBuilder.append(line);
+                    // Stats line with player/entity hovers
+                    .append(Component.text(cardIndent, SEPARATOR))
+                    .append(formatRegionStatsWithHover(
+                            r.stats().getChunkCount(),
+                            r.stats().getPlayerCount(),
+                            r.stats().getEntityCount(),
+                            playerHover, entityHover, (i + 1) != len))
+                    .build();
+
+            topRegionsBuilder.append(card);
         }
 
         // ---------- Assemble final component ----------
