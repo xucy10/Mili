@@ -121,11 +121,31 @@ jobs:
           version: 0.13.0
 
       - name: Install system cross toolchains and build deps
+        timeout-minutes: 12
         run: |
-          sudo apt-get update
-          sudo apt-get install -y mingw-w64
-          sudo apt-get install -y clang lld build-essential pkg-config curl git
-          sudo apt-get install -y libssl-dev zlib1g-dev
+          set -eux
+          # GitHub-hosted ubuntu runners occasionally fail to reach
+          # azure.archive.ubuntu.com / ports.ubuntu.com and retry silently for
+          # hours, burning the whole 120m job timeout. Wrap each apt call in a
+          # bounded retry loop so a flaky mirror fails fast and recovers on the
+          # next attempt instead of hanging the pipeline.
+          retry() {
+            local n=0
+            local max=6
+            until "$@"; do
+              n=$((n + 1))
+              if [ "$n" -ge "$max" ]; then
+                echo "::error::command failed after $max attempts: $*"
+                return 1
+              fi
+              echo "::warning::attempt $n/$max failed, retrying in 15s: $*"
+              sleep 15
+            done
+          }
+          retry sudo apt-get update
+          retry sudo apt-get install -y --no-install-recommends mingw-w64
+          retry sudo apt-get install -y --no-install-recommends clang lld build-essential pkg-config curl git
+          retry sudo apt-get install -y --no-install-recommends libssl-dev zlib1g-dev
 
       - name: Install cargo-zigbuild
         run: |
