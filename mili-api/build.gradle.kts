@@ -202,6 +202,19 @@ publishing {
 
 
 
+/*
+ * The API source set aggregates paper-api, folia-api and mili-api sources.
+ * The upstream fork chain materializes files such as
+ * gg/pufferfish/pufferfish/sentry/SentryContext.java in more than one of those
+ * roots, so jar packaging tasks must tolerate duplicates. compileJava is
+ * unaffected; without this, :mili-api:sourcesJar fails during publish with
+ * "Entry ... is a duplicate but no duplicate handling strategy has been set".
+ */
+tasks.withType<Jar>().configureEach {
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 tasks.jar {
 
     manifest {
