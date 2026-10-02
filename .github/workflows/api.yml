@@ -6,10 +6,15 @@ on:
     tags:
       - "api-*"
 
+concurrency:
+  group: publish-mili-api-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     permissions:
       contents: read
@@ -17,23 +22,73 @@ jobs:
 
     steps:
 
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-
-      - name: Setup JDK 21
-        uses: actions/setup-java@v4
         with:
-          java-version: "21"
-          distribution: "temurin"
+          fetch-depth: 0
+          submodules: recursive
 
+      # paperweight's patch pipeline needs the folia-server submodule, a clean
+      # paperweight cache, and a writable git identity (git am / patch commits).
+      - name: Repair submodules & configure git
+        run: |
+          set -eux
+          git submodule deinit -f --all || true
+          rm -rf .git/modules || true
+          git submodule init
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+          git config --global user.email "282142033+xucy10@users.noreply.github.com"
+          git config --global user.name "Mili CI"
+          git config --global advice.mergeConflict false
+          git config --global init.defaultBranch main
+          git config --global gc.autoDetach false
+          rm -rf .gradle/caches/paperweight || true
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 25
 
+      # Keep in sync with mili CI (build.yml): the paperweight fork MUST be built
+      # and published to mavenLocal first. The paperweight-core snapshot hosted on
+      # the remote repository was built with Gradle 9.7.1, so its
+      # org.gradle.plugin.api-version attribute (9.7.1) does not match this
+      # repository's Gradle wrapper (9.4.1) and variant resolution fails with
+      # "No matching variant of io.papermc.paperweight:paperweight-core".
+      - name: Publish Milihyacinthus (paperweight fork) to mavenLocal
+        run: |
+          set -eux
+          git clone --depth 1 https://github.com/xucy10/Milihyacinthus.git milihyacinthus-src
+          cd milihyacinthus-src
+          chmod +x gradlew
+          ./gradlew publishToMavenLocal --no-daemon
+          cd ..
+          rm -rf milihyacinthus-src
+
+      - name: Download Riceear (Hyacinthusclip fork)
+        run: |
+          set -eux
+          mkdir -p libs
+          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
+          echo "Downloading riceear v${CLIP_VERSION}"
+          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
+          if [ ! -s libs/riceear.jar ]; then
+            echo "ERROR: Failed to download riceear jar"
+            exit 1
+          fi
+          ls -la libs/riceear.jar
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # :mili-server sources are produced by the paperweight patch chain;
+      # they must be generated before any build or publish can run.
+      - name: Apply All Patches
+        run: ./gradlew applyAllPatches --no-configuration-cache
 
       - name: Publish API
-        run: |
-          ./gradlew :mili-server:build :mili-api:publish --no-daemon
+        run: ./gradlew :mili-server:build :mili-api:publish --no-daemon --no-configuration-cache
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
