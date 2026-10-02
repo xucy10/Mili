@@ -51,6 +51,47 @@ jobs:
           distribution: zulu
           java-version: 25
 
+      # :mili-server:build pulls in :mili-rust, whose x86_64 Linux build
+      # hard-requires cargo-zigbuild (GLIBC 2.28 compatibility) and therefore
+      # zig; keep this environment identical to mili CI (build.yml).
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install system cross toolchains and build deps
+        timeout-minutes: 12
+        run: |
+          set -eux
+          retry() {
+            local n=0
+            local max=6
+            until "$@"; do
+              n=$((n + 1))
+              if [ "$n" -ge "$max" ]; then
+                echo "::error::command failed after $max attempts: $*"
+                return 1
+              fi
+              echo "::warning::attempt $n/$max failed, retrying in 15s: $*"
+              sleep 15
+            done
+          }
+          retry sudo apt-get update
+          retry sudo apt-get install -y --no-install-recommends mingw-w64
+          retry sudo apt-get install -y --no-install-recommends clang lld build-essential pkg-config curl git
+          retry sudo apt-get install -y --no-install-recommends libssl-dev zlib1g-dev
+
+      - name: Install cargo-zigbuild
+        run: |
+          set -eux
+          cargo install cargo-zigbuild --locked
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       # Keep in sync with mili CI (build.yml): the paperweight fork MUST be built
       # and published to mavenLocal first. The paperweight-core snapshot hosted on
       # the remote repository was built with Gradle 9.7.1, so its
