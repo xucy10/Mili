@@ -79,13 +79,22 @@ subprojects {
 
     extensions.configure<PublishingExtension> {
         repositories {
-            maven("https://repo.menthamc.org/repository/maven-snapshots/") {
-                name = "MenthaMC"
-                credentials(PasswordCredentials::class) {
-                    username = System.getenv("PRIVATE_MAVEN_REPO_USERNAME")
-                    password = System.getenv("PRIVATE_MAVEN_REPO_PASSWORD")
+            // Mili start - only register the (offline) MenthaMC snapshots repo
+            // when credentials are actually provided. Gradle fails every
+            // PublishToMavenRepository task whose repository has empty
+            // credentials ("property 'credentials.username' doesn't have a
+            // configured value"), so unconditionally registering it breaks
+            // :publish in CI, where only the GitHub Packages credentials exist.
+            if (System.getenv("PRIVATE_MAVEN_REPO_USERNAME") != null && System.getenv("PRIVATE_MAVEN_REPO_PASSWORD") != null) {
+                maven("https://repo.menthamc.org/repository/maven-snapshots/") {
+                    name = "MenthaMC"
+                    credentials(PasswordCredentials::class) {
+                        username = System.getenv("PRIVATE_MAVEN_REPO_USERNAME")
+                        password = System.getenv("PRIVATE_MAVEN_REPO_PASSWORD")
+                    }
                 }
             }
+            // Mili end
             // Mili start - GitHub Packages repository (only when running in GitHub Actions)
             if (System.getenv("GITHUB_ACTIONS") == "true") {
                 maven("https://maven.pkg.github.com/xucy10/Mili") {
