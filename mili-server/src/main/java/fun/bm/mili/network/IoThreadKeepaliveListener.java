@@ -5,7 +5,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.plugin.Plugin;
+import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
 
 /**
  * 在玩家进入游戏时给其连接安装 IO 线程 keepalive handler。
@@ -13,24 +13,25 @@ import org.bukkit.plugin.Plugin;
  */
 public class IoThreadKeepaliveListener implements Listener {
 
-    private Plugin plugin;
+    // Mili start - fix: Mili is a server core, not a registered Bukkit plugin, so
+    // Bukkit.getPluginManager().getPlugin("Mili") always returns null — registering against it
+    // would throw IllegalPluginAccessException and silently disable keepalive offloading for
+    // everyone. MinecraftInternalPlugin is the built-in instance Leaves/Mili already uses for
+    // Folia schedulers, and reports isEnabled() == true, which is all registerEvents checks.
+    private static final MinecraftInternalPlugin OWNER = MinecraftInternalPlugin.INSTANCE;
+    // Mili end
 
-    public void register(Plugin miliPlugin) {
-        if (miliPlugin != null && miliPlugin.isEnabled()) {
-            this.plugin = miliPlugin;
-        } else {
-            this.plugin = Bukkit.getPluginManager().getPlugin("Mili");
+    public void register() {
+        try {
+            Bukkit.getPluginManager().registerEvents(this, OWNER);
+        } catch (Throwable t) {
+            Bukkit.getLogger().warning("[Mili Keepalive] 事件注册失败，后续进服的玩家不会安装 IO keepalive："
+                    + t.getMessage());
         }
-        if (this.plugin == null) {
-            Bukkit.getLogger().warning("[Mili Keepalive] 获取 Mili 插件实例失败，IO 线程 keepalive 已禁用");
-            return;
-        }
-        Bukkit.getPluginManager().registerEvents(this, this.plugin);
     }
 
     public void unregister() {
         org.bukkit.event.HandlerList.unregisterAll(this);
-        this.plugin = null;
     }
 
     // 注意：PlayerJoinEvent 不可取消，这里不能加 ignoreCancelled，否则 Bukkit 注册时会直接抛异常

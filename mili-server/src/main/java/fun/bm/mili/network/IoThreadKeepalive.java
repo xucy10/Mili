@@ -9,7 +9,6 @@ import io.netty.channel.ChannelPipeline;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -49,6 +48,15 @@ public final class IoThreadKeepalive {
     private static Field nettyChannelField;
     private static Field playerListenerField;
     private static MethodHandle getPacketListener;
+    // Mili start - resolve handleKeepAlive at runtime instead of referencing it statically:
+    // where Paper declares it (ServerCommonPacketListenerImpl vs ServerGamePacketListenerImpl)
+    // differs between upstream versions, and a stale assumption would be a compile error rather
+    // than a graceful degradation. Looked up once per concrete listener class, then cached.
+    private static final java.util.Map<Class<?>, MethodHandle> HANDLE_KEEPALIVE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Set<Class<?>> HANDLE_KEEPALIVE_FAILED =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+    // Mili end
     private static boolean initialised;
     private static boolean available;
 
@@ -245,11 +253,13 @@ public final class IoThreadKeepalive {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof ServerboundKeepAlivePacket packet) {
+                Object listener = null;
                 try {
-                    Object listener = getPacketListener.invoke(this.connection);
-                    if (listener instanceof ServerCommonPacketListenerImpl common) {
+                    listener = getPacketListener.invoke(this.connection);
+                    MethodHandle handle = resolveHandleKeepAlive(listener, packet);
+                    if (handle != null) {
                         // rx 时间戳在这里取 —— 仍在同一个 event loop 上，但不再等待 region 有空
-                        common.handleKeepAlive(packet);
+                        handle.invokeExact(listener, (Object) packet);
                         return;
                     }
                 } catch (Throwable throwable) {
@@ -257,6 +267,49 @@ public final class IoThreadKeepalive {
                 }
             }
             ctx.fireChannelRead(msg);
+        }
+
+        /**
+         * 按 listener 的<b>实际类型</b>查找 {@code handleKeepAlive(ServerboundKeepAlivePacket)}。
+         * 用反射而非静态引用，是为了让上游版本差异只导致功能降级，而不是编译失败。
+         */
+        private static MethodHandle resolveHandleKeepAlive(Object listener, Object packet) {
+            if (listener == null) {
+                return null;
+            }
+            Class<?> type = listener.getClass();
+            MethodHandle cached = HANDLE_KEEPALIVE.get(type);
+            if (cached != null) {
+                return cached;
+            }
+            if (HANDLE_KEEPALIVE_FAILED.contains(type)) {
+                return null;
+            }
+            try {
+                Method found = null;
+                Class<?> current = type;
+                while (current != null && found == null) {
+                    try {
+                        found = current.getDeclaredMethod("handleKeepAlive", ServerboundKeepAlivePacket.class);
+                    } catch (NoSuchMethodException ignored) {
+                        current = current.getSuperclass();
+                    }
+                }
+                if (found == null) {
+                    HANDLE_KEEPALIVE_FAILED.add(type);
+                    LOGGER.error("IO 线程 keepalive 已禁用：{} 上找不到 handleKeepAlive", type.getName());
+                    return null;
+                }
+                found.setAccessible(true);
+                MethodHandle resolved = MethodHandles.lookup().unreflect(found)
+                        .asType(MethodType.methodType(void.class, Object.class, Object.class));
+                HANDLE_KEEPALIVE.put(type, resolved);
+                return resolved;
+            } catch (Throwable throwable) {
+                HANDLE_KEEPALIVE_FAILED.add(type);
+                LOGGER.error("IO 线程 keepalive 已禁用：无法绑定 handleKeepAlive", throwable);
+                return null;
+            }
         }
 
         @Override

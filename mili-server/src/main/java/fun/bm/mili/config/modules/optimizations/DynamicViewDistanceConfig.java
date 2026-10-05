@@ -5,6 +5,7 @@ import fun.bm.mili.utils.DynamicViewDistanceManager;
 import me.earthme.luminol.config.IConfigModule;
 import me.earthme.luminol.config.flags.ConfigClassInfo;
 import me.earthme.luminol.config.flags.ConfigInfo;
+import me.earthme.luminol.config.flags.DoNotLoad;
 import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,10 +44,52 @@ public class DynamicViewDistanceConfig implements IConfigModule {
     @Override
     public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         DynamicViewDistanceManager.setEnabled(enabled);
+        // Mili start - fix: DynamicViewDistanceManager.tick() had no caller anywhere, so enabling
+        // this module never actually adjusted anything — it was a dead switch. The driver lives in
+        // MiliOptimizations.init() (which runs on the first region tick, after world load), because
+        // scheduling from here may be too early. This best-effort attempt only matters for the
+        // case where the switch is flipped on a hot reload of an already-running server.
+        if (enabled) {
+            startTicking();
+        }
+        // Mili end
     }
 
     @Override
     public void onUnloaded(TomlConfigData configInstance) {
         DynamicViewDistanceManager.setEnabled(false);
+        stopTicking();
     }
+
+    // Mili start - fix: periodic driver for the manager (was missing entirely).
+    // Must NOT be Bukkit.getPluginManager().getPlugin("Mili"): Mili is a server core, not a
+    // registered Bukkit plugin, so that lookup always returns null. MinecraftInternalPlugin is
+    // instance the built-ins use for Folia schedulers (see FoliaSchedulerAdapter#scheduleBootstrap).
+    @DoNotLoad
+    private static volatile io.papermc.paper.threadedregions.scheduler.ScheduledTask adapTickTask = null;
+
+    /** 幂等。由 {@code MiliOptimizations.init()} 在服务端就绪后调用，是本功能的正规启动点。 */
+    public static synchronized void startTicking() {
+        if (adapTickTask != null) return;
+        try {
+            // Poll every second and let the manager's own CAS gate honour adjustIntervalSeconds:
+            // baking the interval into the scheduler period would freeze it at whatever it was
+            // when the config loaded, so hot-reloading adjust-interval-seconds down would be
+            // silently ignored.
+            adapTickTask = org.bukkit.Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+                    org.leavesmc.leaves.plugin.MinecraftInternalPlugin.INSTANCE,
+                    task -> DynamicViewDistanceManager.tick(), 20L, 20L);
+        } catch (Throwable throwable) {
+            // 服务端尚未就绪（配置加载早于世界加载），由 MiliOptimizations.init() 兜底启动
+            org.bukkit.Bukkit.getLogger().warning("[Mili VD] 动态视距暂未启动，等待服务端就绪后重试");
+        }
+    }
+
+    public static synchronized void stopTicking() {
+        if (adapTickTask != null) {
+            adapTickTask.cancel();
+            adapTickTask = null;
+        }
+    }
+    // Mili end
 }

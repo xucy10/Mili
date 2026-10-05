@@ -4,6 +4,8 @@ import fun.bm.mili.bridge.ChunkRegionBridge;
 import fun.bm.mili.chunk.MiliChunkSystem;
 import fun.bm.mili.config.modules.experiment.RegionBalancerConfig;
 import fun.bm.mili.config.modules.optimizations.ChunkSystemConfig;
+import fun.bm.mili.config.modules.optimizations.DynamicViewDistanceConfig;
+import fun.bm.mili.config.modules.optimizations.IoThreadKeepaliveConfig;
 import fun.bm.mili.config.modules.optimizations.NetworkOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.TechnicalMCOptimizerConfig;
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
@@ -103,6 +105,23 @@ public final class MiliOptimizations {
             TechnicalMCOptimizer.init();
         }
 
+        // Mili start - fix: DynamicViewDistanceManager.tick() had zero callers, so the
+        // dynamic-view-distance switch was dead. Start its periodic driver here because this
+        // runs on the first region tick — worlds and the global scheduler are both ready —
+        // whereas config load can happen before either exists.
+        if (DynamicViewDistanceConfig.enabled) {
+            DynamicViewDistanceConfig.startTicking();
+        }
+        // Mili end
+
+        // Mili start - fix: the IO-thread keepalive listener is registered during config load,
+        // which may precede PluginManager availability. Retry here so a failure at that point
+        // degrades to "slightly late" instead of "silently off for everyone who joins later".
+        if (IoThreadKeepaliveConfig.enabled) {
+            IoThreadKeepaliveConfig.ensureListener();
+        }
+        // Mili end
+
         LOGGER.info("[Mili] Optimizations initialized (v3.1)");
     }
 
@@ -135,6 +154,10 @@ public final class MiliOptimizations {
         if (TechnicalMCOptimizerConfig.enabled) {
             TechnicalMCOptimizer.shutdown();
         }
+        // Mili start - fix: symmetric teardown for the two subsystems started above. Both are
+        // idempotent and both tolerate being called for a subsystem that never started.
+        DynamicViewDistanceConfig.stopTicking();
+        IoThreadKeepaliveConfig.releaseListener();
         // Mili end
 
         // Mili start - shut the unified runtime down last: every region runtime is torn

@@ -28,23 +28,35 @@ public class IoThreadKeepaliveConfig implements IConfigModule {
     @Override
     public void onLoaded(TomlConfigData configInstance, @Nullable Set<Exception> exs) {
         if (enabled) {
-            if (listener == null) {
-                listener = new IoThreadKeepaliveListener();
-                listener.register(org.bukkit.Bukkit.getPluginManager().getPlugin("Mili"));
-            }
-            // 配置热重载时同样需要覆盖已在线的玩家
-            IoThreadKeepalive.installAll();
+            ensureListener();
         } else {
             IoThreadKeepalive.uninstallAll();
         }
     }
 
-    @Override
-    public void onUnloaded(TomlConfigData configInstance) {
+    /**
+     * 幂等地确保监听器已注册，并对当前在线玩家补齐安装。
+     * 配置加载可能早于 PluginManager 可用，因此 MiliOptimizations.init() 会在服务端就绪后重试一次。
+     */
+    public static void ensureListener() {
+        if (listener == null) {
+            listener = new IoThreadKeepaliveListener();
+            listener.register();
+        }
+        // 配置热重载时同样需要覆盖已在线的玩家
+        IoThreadKeepalive.installAll();
+    }
+
+    public static void releaseListener() {
         IoThreadKeepalive.uninstallAll();
         if (listener != null) {
             listener.unregister();
             listener = null;
         }
+    }
+
+    @Override
+    public void onUnloaded(TomlConfigData configInstance) {
+        releaseListener();
     }
 }
