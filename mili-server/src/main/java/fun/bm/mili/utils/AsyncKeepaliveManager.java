@@ -99,10 +99,13 @@ public final class AsyncKeepaliveManager {
     }
 
     private static void tickAll() {
-        long currentTimeNs = System.nanoTime();
-        long currentTimeMs = Util.getMillis();
-
         for (ServerCommonPacketListenerImpl listener : ACTIVE_LISTENERS.values()) {
+            // Mili start - fix: 每条连接取各自的时间戳
+            // 原实现在循环外取一次时间，导致遍历越靠后的连接被记为越早的 tx，
+            // 凭空多出一段虚拟延迟；人数越多，偏差越明显。
+            long currentTimeNs = System.nanoTime();
+            long currentTimeMs = Util.getMillis();
+            // Mili end
             try {
                 listener.keepConnectionAliveAsync(currentTimeNs, currentTimeMs);
                 if (!listener.connection.isConnected()) {
