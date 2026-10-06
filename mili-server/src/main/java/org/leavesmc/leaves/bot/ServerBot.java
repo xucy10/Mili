@@ -50,6 +50,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
@@ -76,6 +77,7 @@ import org.leavesmc.leaves.bot.agent.Actions;
 import org.leavesmc.leaves.bot.agent.Configs;
 import org.leavesmc.leaves.bot.agent.actions.AbstractBotAction;
 import org.leavesmc.leaves.bot.agent.configs.AbstractBotConfig;
+import org.leavesmc.leaves.bot.agent.configs.CombatModeConfig;
 import org.leavesmc.leaves.entity.bot.CraftBot;
 import org.leavesmc.leaves.event.bot.*;
 import org.leavesmc.leaves.plugin.MinecraftInternalPlugin;
@@ -107,6 +109,9 @@ public class ServerBot extends ServerPlayer {
 
     public int removeTaskId = -1;
     private int autoFishCooldown = 0;
+    // Mili start - bot mob farm support
+    private @Nullable Entity combatTarget = null;
+    // Mili end - bot mob farm support
 
     public ServerBot(MinecraftServer server, ServerLevel world, GameProfile profile) {
         super(server, world, profile, ClientInformation.createDefault());
@@ -246,7 +251,147 @@ public class ServerBot extends ServerPlayer {
         this.getCooldowns().tick();
         this.tickAutoFish();
         this.updatePlayerPose();
+
+        // Mili start - bot mob farm support
+        this.tickCombatAI();
+        // Mili end - bot mob farm support
     }
+
+    // Mili start - bot mob farm support
+    /**
+     * Anchor position the bot walks back to in LURE mode. Stored on first AI tick and re-asserted
+     * whenever the bot stops chasing, so a mob can never drag the bot off its platform.
+     */
+    private double lureAnchorX;
+    private double lureAnchorZ;
+    private boolean lureAnchorSet = false;
+
+    /**
+     * Minimal combat AI so a fakeplayer can actually work a mob farm.
+     *
+     * <p>Upstream Leaves bots only ever execute scripted {@code BotAction}s on a timer; they never
+     * acquire targets themselves. That makes them useless for a spawner farm, where the bot must
+     * react to whatever the spawner produced. This runs once per bot tick and does three things:
+     * acquire a nearby hostile target, turn towards it, and swing when in reach.
+     *
+     * <p>Gated on {@link Configs#COMBAT_MODE}; the default {@code NONE} keeps stock behaviour.
+     */
+    private void tickCombatAI() {
+        CombatModeConfig.CombatMode mode = this.getConfigValue(Configs.COMBAT_MODE);
+        if (mode == CombatModeConfig.CombatMode.NONE) {
+            this.combatTarget = null;
+            return;
+        }
+
+        // Never fight while the bot is busy doing something scripted, otherwise we would fight
+        // over the shared item-use / movement state.
+        if (this.handsBusy) {
+            return;
+        }
+
+        final double attackRange = Math.max(0.5D, this.getConfigValue(Configs.COMBAT_RANGE));
+        final double lureRange = Math.max(attackRange, this.getConfigValue(Configs.COMBAT_LURE_RANGE));
+
+        // Drop a target that died, despawned or left the world.
+        if (this.combatTarget != null && (this.combatTarget.isRemoved() || !this.combatTarget.isAlive())) {
+            this.combatTarget = null;
+        }
+
+        // Acquire a target if we do not have one. In LURE mode we look further out so the bot can
+        // walk towards mobs that spawned away from it.
+        if (this.combatTarget == null) {
+            final double searchRange = mode == CombatModeConfig.CombatMode.LURE ? lureRange : attackRange;
+            this.combatTarget = this.findCombatTarget(searchRange);
+        }
+
+        if (this.combatTarget == null) {
+            this.lureBackToAnchor();
+            return;
+        }
+
+        if (!this.lureAnchorSet) {
+            this.lureAnchorX = this.getX();
+            this.lureAnchorZ = this.getZ();
+            this.lureAnchorSet = true;
+        }
+
+        final double distanceSqr = this.distanceToSqr(this.combatTarget);
+
+        // Turn towards the target so the vanilla attack reach check (a raycast on the view
+        // direction) can pass, then swing if close enough.
+        this.faceLocation(this.combatTarget.getBukkitEntity().getLocation());
+
+        if (mode == CombatModeConfig.CombatMode.LURE && distanceSqr > attackRange * attackRange
+            && distanceSqr < lureRange * lureRange) {
+            this.walkTowards(this.combatTarget.getX(), this.combatTarget.getY(), this.combatTarget.getZ());
+            return;
+        }
+
+        if (distanceSqr <= attackRange * attackRange) {
+            // ServerPlayer#attack already handles the vanilla attack cooldown internally, so no
+            // extra strength gate is needed here.
+            this.attack(this.combatTarget);
+        }
+    }
+
+    /**
+     * Nearest alive, attackable mob whose hitbox intersects the box around this bot.
+     *
+     * <p>Uses the same {@code isAttackable}/{@code skipAttackInteraction} filter as the scripted
+     * attack action so behaviour is consistent between the two paths. Only {@code Mob} instances
+     * are considered, which keeps animals and item frames out of the way while still covering every
+     * hostile mob class (they all extend {@code Mob}).
+     */
+    private @Nullable Entity findCombatTarget(double range) {
+        AABB box = this.getBoundingBox().inflate(range, range * 0.5D, range);
+        List<Mob> candidates = this.level().getEntitiesOfClass(Mob.class, box, mob ->
+            mob.isAttackable()
+                && !mob.skipAttackInteraction(this)
+                && mob.isAlive()
+        );
+        Mob best = null;
+        double bestSqr = range * range;
+        for (Mob candidate : candidates) {
+            double sqr = this.distanceToSqr(candidate);
+            if (sqr < bestSqr) {
+                bestSqr = sqr;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Point the bot's input vector at the given coordinates. Deliberately avoids full pathfinding:
+     * a farm bot needs to shuffle a few blocks, and a real pathfinder in a region-threaded server
+     * risks cross-region scheduling. Mobs that fall out of {@code combat_lure_range} release the
+     * target, which is what stops the bot from walking off the platform.
+     */
+    private void walkTowards(double x, double y, double z) {
+        Vec3 delta = new Vec3(x - this.getX(), 0.0D, z - this.getZ());
+        if (delta.lengthSqr() < 1.0E-4D) {
+            return;
+        }
+        this.setDeltaMovement(delta.normalize().scale(0.1D));
+    }
+
+    /**
+     * Return to the anchor captured when the AI first ran. Only used in LURE mode; GUARD mode never
+     * moves on its own.
+     */
+    private void lureBackToAnchor() {
+        if (!this.lureAnchorSet) {
+            return;
+        }
+        double dx = this.lureAnchorX - this.getX();
+        double dz = this.lureAnchorZ - this.getZ();
+        if (dx * dx + dz * dz < 0.09D) {
+            this.setDeltaMovement(0.0D, this.getDeltaMovement().y, 0.0D);
+            return;
+        }
+        this.walkTowards(this.lureAnchorX, this.getY(), this.lureAnchorZ);
+    }
+    // Mili end - bot mob farm support
 
     public void networkTick() {
         if (this.getConfigValue(Configs.TICK_TYPE) == TickType.NETWORK) {
@@ -331,9 +476,15 @@ public class ServerBot extends ServerPlayer {
 
     @Override
     public void knockback(double power, double xd, double zd, final DamageSource source, final float damage, final boolean comesFromEffect, @Nullable Entity attacker, EntityKnockbackEvent.Cause eventCause) {
-        if (!this.hurtMarked) {
+        // Mili start - bot mob farm support
+        // Previously this was `if (!this.hurtMarked) return;`, which inverted the guard: hurtMarked
+        // means "this entity already consumed a knockback this tick", so returning on !hurtMarked
+        // suppressed knockback in exactly the case it should apply. Now we only skip a duplicate
+        // knockback within the same tick, matching vanilla LivingEntity behaviour.
+        if (this.hurtMarked) {
             return;
         }
+        // Mili end - bot mob farm support
         super.knockback(power, xd, zd, source, damage, comesFromEffect, attacker, eventCause);
     }
 

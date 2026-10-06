@@ -36,6 +36,12 @@ public class Configs {
     public static final SimulationDistanceConfig SIMULATION_DISTANCE = register(new SimulationDistanceConfig());
     public static final TickTypeConfig TICK_TYPE = register(new TickTypeConfig());
     public static final LocatorBarConfig ENABLE_LOCATOR_BAR = register(new LocatorBarConfig());
+    // Mili start - bot mob farm support
+    public static final AffectsSpawningConfig AFFECTS_SPAWNING = register(new AffectsSpawningConfig());
+    public static final CombatModeConfig COMBAT_MODE = register(new CombatModeConfig());
+    public static final CombatRangeConfig COMBAT_RANGE = register(new CombatRangeConfig());
+    public static final CombatLureRangeConfig COMBAT_LURE_RANGE = register(new CombatLureRangeConfig());
+    // Mili end - bot mob farm support
 
     @Nullable
     public static AbstractBotConfig<?, ?> getConfig(String name) {

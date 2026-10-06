@@ -7,6 +7,7 @@ import me.earthme.luminol.config.flags.ConfigInfo;
 import me.earthme.luminol.enums.EnumConfigCategory;
 import org.jetbrains.annotations.Nullable;
 import org.leavesmc.leaves.bot.ServerBot;
+import org.leavesmc.leaves.bot.agent.configs.CombatModeConfig;
 import org.leavesmc.leaves.command.bot.BotCommand;
 
 import java.util.List;
@@ -82,6 +83,27 @@ public class FakeplayerConfig implements IConfigModule {
             为假人启用定位栏""")
     public static boolean enableLocatorBar = false;
     public static ServerBot.TickType tickType = ServerBot.TickType.ENTITY_LIST;
+
+    // Mili start - bot mob farm support
+    @ConfigInfo(name = "bot-affects-spawning", comments = """
+            假人是否计入刷怪判定（刷怪笼/幻翼需要范围内有玩家才工作）。
+            开启后刷怪笼会把假人当作玩家，可让挂机刷怪塔持续刷怪。
+            仅作为 /bot config 的默认值；对每个假人生效，可用 /bot config <bot> affects_spawning 单独关闭。""")
+    public static boolean botAffectsSpawning = true;
+
+    @ConfigInfo(name = "bot-combat-mode", comments = """
+            假人战斗 AI 模式：NONE=无（默认）/ GUARD=原地守卫只转向攻击（塔尖形态）/ LURE=走位拉怪（塔底形态）。
+            仅作为 /bot config 的默认值。""")
+    public static CombatModeConfig.CombatMode botCombatMode = CombatModeConfig.CombatMode.NONE;
+
+    @ConfigInfo(name = "bot-combat-range", comments = """
+            假人开始挥刀的距离（格）。GUARD 模式下即仇恨半径。范围 0.5-32。""")
+    public static double botCombatRange = 3.0;
+
+    @ConfigInfo(name = "bot-combat-lure-range", comments = """
+            LURE 模式下假人走位拉怪的最大距离（格）。范围 1-64。""")
+    public static double botCombatLureRange = 16.0;
+    // Mili end - bot mob farm support
 
     private BotCommand command = null;
 
