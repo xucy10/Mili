@@ -21,6 +21,7 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import fun.bm.mili.config.modules.function.FakeplayerConfig;
 import net.minecraft.nbt.CompoundTag;
 import org.jetbrains.annotations.NotNull;
+import org.leavesmc.leaves.bot.ServerBot;
 import org.leavesmc.leaves.command.CommandContext;
 
 /**
