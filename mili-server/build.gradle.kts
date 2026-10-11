@@ -1,6 +1,8 @@
 import io.papermc.fill.model.BuildChannel
 import io.papermc.paperweight.attribute.DevBundleOutput
 import io.papermc.paperweight.util.*
+import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.time.Instant
 
 plugins {
@@ -468,12 +470,12 @@ val injectCnDownloadContext by tasks.registering {
     outputs.file(paperclipJar)
     doLast {
         val jarPath = paperclipJar.get().asFile.toPath()
-        java.nio.file.FileSystems.newFileSystem(jarPath, emptyMap<String, String>()).use { fs ->
+        FileSystems.newFileSystem(jarPath, emptyMap<String, String>()).use { fs ->
             val metaInf = fs.getPath("/META-INF")
             val base = metaInf.resolve("download-context")
             val cn = metaInf.resolve("download-context-cn")
-            if (java.nio.file.Files.exists(base) && !java.nio.file.Files.exists(cn)) {
-                java.nio.file.Files.copy(base, cn)
+            if (Files.exists(base) && !Files.exists(cn)) {
+                Files.copy(base, cn)
             }
         }
     }
