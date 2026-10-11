@@ -448,6 +448,41 @@ tasks.registerRunTask("runPaperclip") {
     mainClass.set(null as String?)
 }
 
+// Mili start - fix: inject META-INF/download-context-cn into the paperclip jar
+//
+// Riceear 3.0.x resolves the vanilla download context by country: users whose IP
+// resolves to China/CN/PRC probe META-INF/download-context-cn FIRST. The launcher's
+// fallback to the default download-context only runs on IOException, but
+// Util.readResourceText returns null (instead of throwing) when a resource is
+// missing, so a missing -cn file surfaces as
+//   IllegalArgumentException("patches.list file found without a corresponding
+//   original-url file")
+// at Riceear.setupClasspath for mainland users (patches.list is present, the
+// download context is not). Mili operates no CN mirror yet, so ship the same
+// official piston-data context under both names.
+val injectCnDownloadContext by tasks.registering {
+    group = "bundling"
+    description = "Add META-INF/download-context-cn (copy of download-context) to the paperclip jar"
+    val paperclipJar = tasks.named<io.papermc.paperweight.tasks.CreatePaperclipJar>("createPaperclipJar").flatMap { it.outputZip }
+    inputs.file(paperclipJar)
+    outputs.file(paperclipJar)
+    doLast {
+        val jarPath = paperclipJar.get().asFile.toPath()
+        java.nio.file.FileSystems.newFileSystem(jarPath, emptyMap<String, String>()).use { fs ->
+            val metaInf = fs.getPath("/META-INF")
+            val base = metaInf.resolve("download-context")
+            val cn = metaInf.resolve("download-context-cn")
+            if (java.nio.file.Files.exists(base) && !java.nio.file.Files.exists(cn)) {
+                java.nio.file.Files.copy(base, cn)
+            }
+        }
+    }
+}
+tasks.named("createPaperclipJar") {
+    finalizedBy(injectCnDownloadContext)
+}
+// Mili end
+
 fill {
     project("mili")
     versionFamily(paperweight.minecraftVersion.map { it.split(".", "-").takeWhile { part -> part.toIntOrNull() != null }.take(2).joinToString(".") })

@@ -344,6 +344,23 @@ jobs:
                 exit 1
               fi
             done
+
+            # Riceear 3.0.x probes META-INF/download-context-cn FIRST for users whose
+            # IP resolves to China/CN/PRC; its fallback to download-context only
+            # triggers on IOException, and Util.readResourceText returns null (not an
+            # exception) when a resource is missing. A jar without the -cn entry
+            # crashes mainland users at Riceear.setupClasspath with
+            # "patches.list file found without a corresponding original-url file".
+            echo ""
+            echo "=== CN download-context packaged into the jar ==="
+            for entry in META-INF/download-context META-INF/download-context-cn; do
+              if unzip -l "$JAR" | grep -q "$entry"; then
+                echo "OK: $entry"
+              else
+                echo "FATAL: $entry is missing from $JAR (mainland users would fail at Riceear.setupClasspath)"
+                exit 1
+              fi
+            done
           else
             echo "WARN: No server JAR found at $JAR_PATH"
             exit 1
