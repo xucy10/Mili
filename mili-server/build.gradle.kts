@@ -20,7 +20,7 @@ val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 dependencies {
     mache("io.papermc:mache:26.1.2+build.1")
-    comfreyclip("fun.bm:morninggloryclip:${providers.gradleProperty("clipVersion").get()}")
+    morninggloryclip("fun.bm:morninggloryclip:${providers.gradleProperty("clipVersion").get()}")
 }
 
 paperweight {
