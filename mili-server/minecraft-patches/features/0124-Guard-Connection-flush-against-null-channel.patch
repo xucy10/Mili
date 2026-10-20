@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: xucy10 <someonm20141923@outlook.com>
+Date: Mon, 31 Aug 2026 00:00:00 +0800
+Subject: [PATCH] Guard Connection.flush() against null channel
+
+Leaves fakeplayer (bot) connections use BotConnection with a null channel
+and no real network. Any queued Connection::flush action drained by
+processQueue() would dereference this.channel.eventLoop() and crash the
+region with an NPE on every bot login. Add a null guard directly in
+flush() so every entry point (flushChannel, tickChildren resumeFlushing,
+future callers) is safe for channelless connections.
+
+diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
+--- a/net/minecraft/network/Connection.java
++++ b/net/minecraft/network/Connection.java
+@@ -652,9 +652,10 @@
+         }
+     }
+ 
+     private void flush() {
++        if (this.channel == null) return; // Mili - fakeplayer connections have no real channel; draining queued actions must not NPE
+         if (this.channel.eventLoop().inEventLoop()) {
+             this.channel.flush();
+         } else {
+             this.channel.eventLoop().execute(() -> this.channel.flush());
+         }
+-- 
+2.39.5
+
