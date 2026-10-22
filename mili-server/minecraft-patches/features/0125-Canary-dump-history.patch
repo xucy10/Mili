@@ -4,23 +4,21 @@ Date: Thu, 22 Oct 2026 00:00:00 +0000
 Subject: [PATCH] Canary - freeze workdir history for dump (DO NOT COMMIT)
 
 
+diff --git a/net/minecraft/TempCanaryMarker.java b/net/minecraft/TempCanaryMarker.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
+--- /dev/null
++++ b/net/minecraft/TempCanaryMarker.java
+@@ -0,0 +1,2 @@
++// canary marker - intentional patch failure for workdir dump
++public final class TempCanaryMarker {}
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
 index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -1,3 +1,4 @@
+@@ -1,1 +1,1 @@
 -THIS CONTEXT LINE DOES NOT EXIST IN ANY BASE 0xFEE1DEAD
 +deliberate failure to freeze the am state for the workdir dump
- 
-diff --git a/net/minecraft/TempCanaryMarker.java b/net/minecraft/TempCanaryMarker.java
-new file mode 100644
-index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000
---- /dev/null
-+++ b/net/minecraft/TempCanaryMarker.java
-@@ -0,0 +1,3 @@
-+// canary marker - intentional patch failure for workdir dump
-+public final class TempCanaryMarker {
-+}
 -- 
 2.39.5
 
