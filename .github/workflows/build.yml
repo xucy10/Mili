@@ -288,20 +288,20 @@ jobs:
           set -e
           DUMP=/tmp/patch-dump
           mkdir -p $DUMP
-          dump_for() {
-            PROBE="$1"; NAME="$2"
-            F=$(find /home/runner/work/Mili/Mili/.gradle/caches/paperweight/upstreams -type f -name "$PROBE" 2>/dev/null | head -1 || true)
-            if [ -n "$F" ]; then
-              DIR=$(dirname "$F")
-              while [ "$DIR" != "/" ] && [ ! -e "$DIR/.git" ]; do DIR=$(dirname "$DIR"); done
-              echo "workdir for $NAME: $DIR"
-              tar czf "$DUMP/$NAME.tar.gz" -C "$DIR" . 2>/dev/null || true
+          UP=/home/runner/work/Mili/Mili/.gradle/caches/paperweight/upstreams
+          i=0
+          for g in $(find $UP -maxdepth 6 -name ".git" -type d 2>/dev/null); do
+            D=$(dirname "$g")
+            N=$(echo "$D" | tr '/' '_' | tail -c 40)
+            if git -C "$D" log --all --grep="Rebrand to Luminol" -q 2>/dev/null; then
+              NAME="mili-$i-$N"
             else
-              echo "probe $PROBE not found"
+              NAME="up-$i-$N"
             fi
-          }
-          dump_for "SignedMessageChain.java" "minecraft-workdir"
-          dump_for "CraftServer.java" "server-workdir"
+            echo "dumping $NAME <- $D"
+            tar czf "$DUMP/$NAME.tar.gz" -C "$D" . 2>/dev/null || true
+            i=$((i+1))
+          done
           ls -la $DUMP
 
       - name: Upload patch dump
