@@ -227,6 +227,7 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
 
+<<<<<<< HEAD
       # The patch wiring is subtle: the fork's own "minecraft" patchDir applies
       # mili-server/minecraft-patches and the results land in mili-server/src/minecraft/java.
       # If that ever stops happening the Java sources under mili-server/src/main/java still
@@ -278,6 +279,40 @@ jobs:
             git --git-dir="$d" rev-parse --show-toplevel 2>/dev/null || true
             git --git-dir="$d" config --get core.worktree 2>/dev/null || echo '(no core.worktree)'
           done
+=======
+      # Debug aid: when patch application fails, dump the weight workdirs
+      # (decompiled base + successfully applied patches, .git included) so the
+      # failing hunks can be rebuilt against the exact base CI sees.
+      - name: Dump patch workdirs
+        if: always()
+        run: |
+          set -e
+          DUMP=/tmp/patch-dump
+          mkdir -p $DUMP
+          dump_for() {
+            PROBE="$1"; NAME="$2"
+            F=$(find /home/runner/work/Mili /home/runner/.gradle/caches -type f -name "$PROBE" 2>/dev/null | head -1 || true)
+            if [ -n "$F" ]; then
+              DIR=$(dirname "$F")
+              while [ "$DIR" != "/" ] && [ ! -e "$DIR/.git" ]; do DIR=$(dirname "$DIR"); done
+              echo "workdir for $NAME: $DIR"
+              tar czf "$DUMP/$NAME.tar.gz" -C "$DIR" . 2>/dev/null || true
+            else
+              echo "probe $PROBE not found"
+            fi
+          }
+          dump_for "SignedMessageChain.java" "minecraft-workdir"
+          dump_for "CraftServer.java" "server-workdir"
+          ls -la $DUMP
+
+      - name: Upload patch dump
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: patch-workdir-dump
+          path: /tmp/patch-dump/
+          retention-days: 3
+>>>>>>> ed842e1 (ci: 补丁应用失败时转储 weight 工作目录以便本地重建修复)
 
       - name: Verify Generated Source
         run: |
