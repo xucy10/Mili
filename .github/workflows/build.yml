@@ -290,7 +290,7 @@ jobs:
           mkdir -p $DUMP
           dump_for() {
             PROBE="$1"; NAME="$2"
-            F=$(find /home/runner/work/Mili /home/runner/.gradle/caches -type f -name "$PROBE" 2>/dev/null | head -1 || true)
+            F=$(find /home/runner/work/Mili/Mili/.gradle/caches/paperweight/upstreams -type f -name "$PROBE" 2>/dev/null | head -1 || true)
             if [ -n "$F" ]; then
               DIR=$(dirname "$F")
               while [ "$DIR" != "/" ] && [ ! -e "$DIR/.git" ]; do DIR=$(dirname "$DIR"); done
