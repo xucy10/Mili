@@ -227,6 +227,31 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
 
+      - name: Dump patch workdirs on failure
+        if: failure()
+        run: |
+          set -e
+          DUMP=/tmp/patch-dump
+          mkdir -p $DUMP
+          # the failed git-am leaves .git/rebase-apply inside the minecraft workdir - the unique marker
+          R=$(find /home/runner/work/Mili/Mili -maxdepth 12 -type d -name "rebase-apply" 2>/dev/null | head -1 || true)
+          if [ -n "$R" ]; then
+            DIR=$(dirname "$(dirname "$R")")
+            echo "minecraft workdir: $DIR"
+            tar czf "$DUMP/minecraft-workdir.tar.gz" -C "$DIR" . 2>/dev/null || true
+          else
+            echo "no rebase-apply found"
+          fi
+          ls -la $DUMP
+
+      - name: Upload patch dump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-workdir-dump
+          path: /tmp/patch-dump
+          retention-days: 5
+
       # The patch wiring is subtle: the fork's own "minecraft" patchDir applies
       # mili-server/minecraft-patches and the results land in mili-server/src/minecraft/java.
       # If that ever stops happening the Java sources under mili-server/src/main/java still
