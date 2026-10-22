@@ -35,15 +35,15 @@ index 9bda4caf21d588a1fc6cb67645df0c9284269f64..2f4d76faf27afae9d2709f786f4079ee
 +    // Leaves end - Bytebuf API
  }
 diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
-index 274af6397b5f7c0b6787e2669de80e54858950a2..2e9d844d32e5385c0232cf1df056b5d5c82462a8 100644
+index 9a945887c1be302a68183040d7f8ac24ff139c3c..e640ddad7fb28ae95139b7c72a96b93966426135 100644
 --- a/src/main/java/org/bukkit/entity/Player.java
 +++ b/src/main/java/org/bukkit/entity/Player.java
-@@ -73,7 +73,7 @@ import org.jspecify.annotations.Nullable;
+@@ -68,7 +68,7 @@ import org.jspecify.annotations.Nullable;
   * Represents a player, connected or not
   */
  @NullMarked
--public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient, ObjectContentsLike { // Paper
-+public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient, ObjectContentsLike, org.leavesmc.leaves.bytebuf.PacketAudience { // Paper // Leaves - Bytebuf API
+-public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient { // Paper
++public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginMessageRecipient, net.kyori.adventure.identity.Identified, net.kyori.adventure.bossbar.BossBarViewer, com.destroystokyo.paper.network.NetworkClient, org.leavesmc.leaves.bytebuf.PacketAudience { // Paper // Leaves - Bytebuf API
  
      // Paper start
      @Override
