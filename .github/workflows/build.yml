@@ -181,6 +181,39 @@ jobs:
       - name: Apply All Patches
         run: ./gradlew applyAllPatches --no-configuration-cache
 
+      # Debug aid: when patch application fails, dump the weight workdirs
+      # (decompiled base + successfully applied patches, .git included) so the
+      # failing hunks can be rebuilt against the exact base CI sees.
+      - name: Dump patch workdirs on failure
+        if: failure()
+        run: |
+          set -e
+          DUMP=/tmp/patch-dump
+          mkdir -p $DUMP
+          dump_for() {
+            PROBE="$1"; NAME="$2"
+            F=$(find /home/runner/work/Mili /home/runner/.gradle/caches -type f -name "$PROBE" 2>/dev/null | head -1 || true)
+            if [ -n "$F" ]; then
+              DIR=$(dirname "$F")
+              while [ "$DIR" != "/" ] && [ ! -e "$DIR/.git" ]; do DIR=$(dirname "$DIR"); done
+              echo "workdir for $NAME: $DIR"
+              tar czf "$DUMP/$NAME.tar.gz" -C "$DIR" . 2>/dev/null || true
+            else
+              echo "probe $PROBE not found"
+            fi
+          }
+          dump_for "SignedMessageChain.java" "minecraft-workdir"
+          dump_for "CraftServer.java" "server-workdir"
+          ls -la $DUMP
+
+      - name: Upload patch dump
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: patch-workdir-dump
+          path: /tmp/patch-dump/
+          retention-days: 3
+
       - name: Verify Generated Source
         run: |
           echo "=== Checking generated API source dirs ==="
