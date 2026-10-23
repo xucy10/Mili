@@ -483,6 +483,32 @@ val injectCnDownloadContext by tasks.registering {
 tasks.named("createPaperclipJar") {
     finalizedBy(injectCnDownloadContext)
 }
+
+// Mili start - fix: ship bumped libraries instead of bsdiff patches
+//
+// The fork's CreatePaperclipJar turns every dependency bump (vanilla pin ->
+// Mili pin, e.g. jna 5.17.0 -> 5.19.1) into a bsdiff patch stored under
+// META-INF/libraries/<newVersion>/... and DELETES the full jar from the
+// paperclip. Resolving those entries then depends entirely on launcher
+// behavior: Riceear builds older than 2741279f0 (2026-09-14) resolved the
+// patch data against the vanilla bundler filesystem, where those files never
+// exist, so first launches crashed with NoSuchFileException naming the
+// new-version path (issue #30). Bundling the bumped jars instead makes
+// library resolution a plain jar-internal load on every launcher generation,
+// at the cost of roughly 10 MB in the paperclip jar.
+val emptyLibraryChanges = layout.buildDirectory.file("tmp/empty-library-changes.json")
+val neutralizeLibraryPatches by tasks.registering {
+    group = "bundling"
+    description = "Emit an empty library-changes list so bumped libraries are bundled, not patched"
+    outputs.file(emptyLibraryChanges)
+    doLast {
+        emptyLibraryChanges.get().asFile.apply { parentFile.mkdirs() }.writeText("[]")
+    }
+}
+tasks.named<io.papermc.paperweight.tasks.CreatePaperclipJar>("createPaperclipJar") {
+    libraryChangesJson.set(emptyLibraryChanges)
+    dependsOn(neutralizeLibraryPatches)
+}
 // Mili end
 
 fill {

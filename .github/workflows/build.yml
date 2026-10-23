@@ -113,11 +113,23 @@ jobs:
         run: |
           mkdir -p libs
           CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
+          RICEEAR_SHA256=$(grep riceearSha256 gradle.properties | cut -d= -f2)
           echo "Downloading riceear v${CLIP_VERSION}"
-          curl -sL "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
+          curl -sL --retry 3 "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
           if [ ! -s libs/riceear.jar ]; then
             echo "ERROR: Failed to download riceear jar"
             exit 1
+          fi
+          # The v3.0.18 tag shipped two different binaries under two asset names:
+          # hyacinthusclip-3.0.18.jar (2026-09-13, pre-2741279f0, resolves library
+          # patch data against the vanilla bundler and crashes first launches with
+          # NoSuchFileException - see issue #30) and riceear-3.0.18.jar
+          # (2026-09-14, fixed). Pin the exact binary so a re-upload or asset-name
+          # change cannot silently regress the launcher.
+          if [ -n "$RICEEAR_SHA256" ]; then
+            echo "$RICEEAR_SHA256  libs/riceear.jar" | sha256sum -c -
+          else
+            echo "WARN: riceearSha256 not set in gradle.properties - skipping launcher integrity check"
           fi
           ls -la libs/riceear.jar
 
@@ -361,6 +373,18 @@ jobs:
                 exit 1
               fi
             done
+
+            # Real first-launch smoke test: -Dpaperclip.patchonly=true makes Riceear
+            # download the pinned vanilla bundler, extract it and apply every patch
+            # (server + libraries), then exit 0 before starting the server. This is
+            # exactly the code path issue #30 tripped: a launcher that resolves
+            # patch data against the vanilla bundler crashes right here, and a
+            # paperclip whose bundled patch set is incomplete does too.
+            echo ""
+            echo "=== Real patch-application smoke test (paperclip.patchonly) ==="
+            SMOKE_DIR="$(mktemp -d)"
+            (cd "$SMOKE_DIR" && java -Dpaperclip.patchonly=true -jar "$GITHUB_WORKSPACE/$JAR")
+            echo "OK: patch application smoke test passed"
           else
             echo "WARN: No server JAR found at $JAR_PATH"
             exit 1
