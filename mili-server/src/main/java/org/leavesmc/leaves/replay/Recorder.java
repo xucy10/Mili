@@ -44,7 +44,7 @@ import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.packs.repository.KnownPack;
 import net.minecraft.tags.TagNetworkSerialization;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.flag.FeatureFlags;
 import org.jetbrains.annotations.NotNull;
@@ -200,7 +200,7 @@ public class Recorder extends Connection {
                 return;
             }
             case ClientboundAddEntityPacket packet1 -> {
-                if (packet1.getType() == EntityTypes.PLAYER) {
+                if (packet1.getType() == EntityType.PLAYER) {
                     synchronized (metaData) {
                         metaData.players.add(packet1.getUUID());
                     }
