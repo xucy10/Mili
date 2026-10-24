@@ -5,10 +5,10 @@ Subject: [PATCH] Fix creative player item pick
 
 
 diff --git a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java
-index 223793bea54a483fefc66caa7e07b29ab351c339..303b9befb30d7156a9a71900ac1a6ea8f7e8d876 100644
+index 4f39b96..8c16f7b 100644
 --- a/net/minecraft/world/entity/item/ItemEntity.java
 +++ b/net/minecraft/world/entity/item/ItemEntity.java
-@@ -420,7 +420,7 @@ public class ItemEntity extends Entity implements TraceableEntity {
+@@ -414,7 +414,7 @@ public class ItemEntity extends Entity implements TraceableEntity {
              Item item = itemStack.getItem();
              int orgCount = itemStack.getCount();
              // CraftBukkit start - fire PlayerPickupItemEvent

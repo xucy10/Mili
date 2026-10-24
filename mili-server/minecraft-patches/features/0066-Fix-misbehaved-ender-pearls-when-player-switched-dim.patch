@@ -5,10 +5,10 @@ Subject: [PATCH] Fix misbehaved ender pearls when player switched dimension
 
 
 diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
-index d0dba5cc351903fb762e231a95f302479794185f..fb00f70505a6c548cd1311d7ea55c6a501e814e3 100644
+index 8dc8c6c..dc135f1 100644
 --- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
 +++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
-@@ -264,7 +264,8 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -262,7 +262,8 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
              int previousChunkZ = SectionPos.blockToSectionCoord(this.position().z());
              Entity owner = this.owner != null ? findOwnerIncludingDeadPlayer(serverLevel, this.owner.getUUID()) : null;
              if (owner instanceof ServerPlayer serverPlayer

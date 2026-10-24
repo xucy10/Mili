@@ -5,10 +5,10 @@ Subject: [PATCH] Async protocol switching optimization
 
 
 diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
-index b0614d45fd8e4115c8eddac68a1867c52fba9fe2..d2e9d46bbd9ee4ce45419b11499d7a7bc50f0219 100644
+index f390a2a..efbbc1a 100644
 --- a/net/minecraft/network/Connection.java
 +++ b/net/minecraft/network/Connection.java
-@@ -1067,4 +1067,127 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+@@ -1057,4 +1057,127 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
          }
      }
      // Paper end - Optimize network
@@ -137,10 +137,10 @@ index b0614d45fd8e4115c8eddac68a1867c52fba9fe2..d2e9d46bbd9ee4ce45419b11499d7a7b
 +
  }
 diff --git a/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java b/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java
-index 77c4670868a95dc7b13461dfa67af34b0a3c329a..36955ce5cbe418856f7cbcf28193994ccd464f99 100644
+index 8f760aa..1bea3a0 100644
 --- a/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerConfigurationPacketListenerImpl.java
-@@ -197,8 +197,9 @@ public class ServerConfigurationPacketListenerImpl extends ServerCommonPacketLis
+@@ -188,8 +188,9 @@ public class ServerConfigurationPacketListenerImpl extends ServerCommonPacketLis
      public void handleConfigurationFinished(final ServerboundFinishConfigurationPacket packet) {
          PacketUtils.ensureRunningOnSameThread(packet, this, this.server.packetProcessor());
          this.finishCurrentTask(JoinWorldTask.TYPE);
@@ -151,8 +151,8 @@ index 77c4670868a95dc7b13461dfa67af34b0a3c329a..36955ce5cbe418856f7cbcf28193994c
          try {
              PlayerList playerList = this.server.getPlayerList();
              if (playerList.getPlayer(this.gameProfile.id()) != null) {
-@@ -244,6 +245,18 @@ public class ServerConfigurationPacketListenerImpl extends ServerCommonPacketLis
-             LOGGER.error("Couldn't place player in world", e);
+@@ -235,6 +236,18 @@ public class ServerConfigurationPacketListenerImpl extends ServerCommonPacketLis
+             LOGGER.error("Couldn't place player in world", (Throwable)var4);
              this.disconnect(DISCONNECT_REASON_INVALID_DATA);
          }
 +        // Luminol start - Async protocol switch
@@ -171,10 +171,10 @@ index 77c4670868a95dc7b13461dfa67af34b0a3c329a..36955ce5cbe418856f7cbcf28193994c
  
      @Override
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index cc6e7a12f5fbe7bebca2997554cf403f05fab304..2b01327988df7fa57f657ec61f10810822b01a00 100644
+index bf65efc..4eaa6a3 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -2900,7 +2900,13 @@ public class ServerGamePacketListenerImpl
+@@ -2898,7 +2898,13 @@ public class ServerGamePacketListenerImpl
          } // Folia end - rewrite login process - move connection ownership to global region
          this.waitingForSwitchToConfig = true; // Folia - rewrite login process - fix bad ordering of this field write - moved down
          this.send(ClientboundStartConfigurationPacket.INSTANCE);
@@ -188,38 +188,38 @@ index cc6e7a12f5fbe7bebca2997554cf403f05fab304..2b01327988df7fa57f657ec61f108108
      }
  
      @Override
-@@ -3785,12 +3791,26 @@ public class ServerGamePacketListenerImpl
+@@ -3781,12 +3787,26 @@ public class ServerGamePacketListenerImpl
+             throw new IllegalStateException("Client acknowledged config, but none was requested");
+         } else {
+             final ServerConfigurationPacketListenerImpl listener = new ServerConfigurationPacketListenerImpl(this.server, this.connection, this.createCookie(this.player.clientInformation())); // Paper
++            if (!me.earthme.luminol.config.modules.optimizations.AsyncProtocolChangeConfig.enabled) { // Luminol - Async protocol switch
+             this.connection
+                 .setupInboundProtocol(
+                     ConfigurationProtocols.SERVERBOUND,
+                     listener // Paper
+                 );
+             new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper
++            } // Luminol - Async protocol switch - add "{"
++            // Luminol start - Async protocol switch - move up
++            else
++                this.connection.setupInboundProtocolAsync(
++                        ConfigurationProtocols.SERVERBOUND,
++                        listener,
++                        () -> {
++                            new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper
++                        },
++                        true
++                );
++            // Luminol end
++            // new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper // Luminol - Async protocol switch - move up
          }
- 
-         final ServerConfigurationPacketListenerImpl listener = new ServerConfigurationPacketListenerImpl(this.server, this.connection, this.createCookie(this.player.clientInformation())); // Paper
-+        if (!me.earthme.luminol.config.modules.optimizations.AsyncProtocolChangeConfig.enabled) { // Luminol - Async protocol switch
-         this.connection
-             .setupInboundProtocol(
-                 ConfigurationProtocols.SERVERBOUND,
-                 listener // Paper
-             );
-         new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper
-+        } // Luminol - Async protocol switch - add "{"
-+        // Luminol start - Async protocol switch - move up
-+        else
-+            this.connection.setupInboundProtocolAsync(
-+                    ConfigurationProtocols.SERVERBOUND,
-+                    listener,
-+                    () -> {
-+                        new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper
-+                    },
-+                    true
-+            );
-+        // Luminol end
-+        // new io.papermc.paper.event.connection.configuration.PlayerConnectionReconfigureEvent(listener.paperConnection).callEvent(); // Paper // Luminol - Async protocol switch - move up
      }
  
-     @Override
 diff --git a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-index 780f52973976bc97bddccfeefd54e187371eecc9..9d324298a1e96c6797ea99aefd6b921ce2a3a460 100644
+index aab1594..86ae81b 100644
 --- a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-@@ -436,12 +436,30 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
+@@ -438,12 +438,30 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
      public void handleLoginAcknowledgement(final ServerboundLoginAcknowledgedPacket packet) {
          net.minecraft.network.protocol.PacketUtils.ensureRunningOnSameThread(packet, this, this.server.packetProcessor()); // CraftBukkit
          Validate.validState(this.state == ServerLoginPacketListenerImpl.State.PROTOCOL_SWITCHING, "Unexpected login acknowledgement packet");
@@ -253,12 +253,12 @@ index 780f52973976bc97bddccfeefd54e187371eecc9..9d324298a1e96c6797ea99aefd6b921c
  
      @Override
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 259eb7574841b1b885093b534440f8a40db4e8e2..2975a879320faed5f6591489f86d3f909072cbaa 100644
+index 2088a40..bafd1e2 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -237,9 +237,11 @@ public abstract class PlayerList {
+@@ -238,9 +238,11 @@ public abstract class PlayerList {
          // only after setting the connection listener to game type, add the connection to this regions list
-         level.getCurrentWorldData().addConnection(player);
+         level.getCurrentWorldData().connections.add(connection);
          // Folia end - rewrite login process
 +        if (!me.earthme.luminol.config.modules.optimizations.AsyncProtocolChangeConfig.enabled) { // Luminol - Async protocol switch // we will run async switch once these main thread logics became done
          connection.setupInboundProtocol(

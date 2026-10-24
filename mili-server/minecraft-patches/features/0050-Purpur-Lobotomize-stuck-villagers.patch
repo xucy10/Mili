@@ -5,11 +5,11 @@ Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
 diff --git a/net/minecraft/world/entity/npc/villager/Villager.java b/net/minecraft/world/entity/npc/villager/Villager.java
-index 0869ecb4b7fe07efa33d521bef2f525955bd3c30..3fa0ca479922a7c55625c5e7bcd25065210ea44e 100644
+index 0767710..12e108f 100644
 --- a/net/minecraft/world/entity/npc/villager/Villager.java
 +++ b/net/minecraft/world/entity/npc/villager/Villager.java
-@@ -190,6 +190,53 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
-         this.setCanPickUpLoot(true);
+@@ -199,6 +199,53 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+         this.setVillagerData(this.getVillagerData().withType(type).withProfession(level.registryAccess(), VillagerProfession.NONE));
      }
  
 +    // Purpur start
@@ -61,8 +61,8 @@ index 0869ecb4b7fe07efa33d521bef2f525955bd3c30..3fa0ca479922a7c55625c5e7bcd25065
 +
      @Override
      public Brain<Villager> getBrain() {
-         return (Brain<Villager>)super.getBrain();
-@@ -259,11 +306,20 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+         return (Brain<Villager>) super.getBrain();
+@@ -268,11 +315,20 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
          // Paper start - EAR 2
          this.customServerAiStep(level, false);
      }

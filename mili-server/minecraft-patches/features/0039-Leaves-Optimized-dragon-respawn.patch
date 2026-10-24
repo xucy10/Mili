@@ -5,7 +5,7 @@ Subject: [PATCH] Leaves: Optimized dragon respawn
 
 
 diff --git a/net/minecraft/world/level/dimension/end/EnderDragonFight.java b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
-index 824ef3f458505569fe5b8efb2055ecea7ba6cc56..7c68effb78bcb17ca64e043f87d6449f90b1b0a7 100644
+index a2a2c40..0bdff7b 100644
 --- a/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 +++ b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 @@ -317,7 +317,67 @@ public class EnderDragonFight extends SavedData {
@@ -18,7 +18,7 @@ index 824ef3f458505569fe5b8efb2055ecea7ba6cc56..7c68effb78bcb17ca64e043f87d6449f
 +    private int cachePortalOriginIteratorY = -1;
 +
      public BlockPattern.@Nullable BlockPatternMatch findExitPortal() {
-+        if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.optimizedDragonRespawn) { // Lophine - redirect
++        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.optimizedDragonRespawn) { // Lophine - redirect
 +            int i, j;
 +            for (i = cachePortalChunkIteratorX; i <= 8; ++i) {
 +                for (j = cachePortalChunkIteratorZ; j <= 8; ++j) {
@@ -76,7 +76,7 @@ index 824ef3f458505569fe5b8efb2055ecea7ba6cc56..7c68effb78bcb17ca64e043f87d6449f
          ChunkPos chunkOrigin = ChunkPos.containing(this.origin);
  
          for (int x = -8 + chunkOrigin.x(); x <= 8 + chunkOrigin.x(); x++) {
-@@ -623,8 +683,12 @@ public class EnderDragonFight extends SavedData {
+@@ -624,8 +684,12 @@ public class EnderDragonFight extends SavedData {
          }
          return false; // CraftBukkit - return value
      }

@@ -6,10 +6,10 @@ Subject: [PATCH] Do not fire pre creature spawn event unless some plugin
 
 
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
-index 500dcbe924fca160bd673592e1aba384f6eb9ed2..8ca7d39933152cf335e38663700f3931baca5d49 100644
+index b3b8160..a5b167e 100644
 --- a/net/minecraft/world/level/NaturalSpawner.java
 +++ b/net/minecraft/world/level/NaturalSpawner.java
-@@ -391,16 +391,20 @@ public final class NaturalSpawner {
+@@ -394,16 +394,20 @@ public final class NaturalSpawner {
      ) {
          // Paper start - PreCreatureSpawnEvent
          EntityType<?> type = currentSpawnData.type();

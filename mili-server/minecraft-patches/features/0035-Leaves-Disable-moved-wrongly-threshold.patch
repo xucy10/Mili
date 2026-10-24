@@ -5,10 +5,10 @@ Subject: [PATCH] Leaves: Disable moved wrongly threshold
 
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 2b01327988df7fa57f657ec61f10810822b01a00..ffa415d534a36e0497c1413304b11f5b071d7310 100644
+index 4eaa6a3..b8fd3b9 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -644,7 +644,7 @@ public class ServerGamePacketListenerImpl
+@@ -641,7 +641,7 @@ public class ServerGamePacketListenerImpl
                      return;
                  }
                  // Paper end - Prevent moving into unloaded chunks
@@ -17,7 +17,7 @@ index 2b01327988df7fa57f657ec61f10810822b01a00..ffa415d534a36e0497c1413304b11f5b
                      // CraftBukkit end
                      LOGGER.warn(
                          "{} (vehicle of {}) moved too quickly! {},{},{}", vehicle.getPlainTextName(), this.player.getPlainTextName(), xDist, yDist, zDist
-@@ -674,7 +674,7 @@ public class ServerGamePacketListenerImpl
+@@ -671,7 +671,7 @@ public class ServerGamePacketListenerImpl
                  zDist = targetZ - vehicle.getZ();
                  movedDist = xDist * xDist + yDist * yDist + zDist * zDist;
                  boolean fail = false;
@@ -26,7 +26,7 @@ index 2b01327988df7fa57f657ec61f10810822b01a00..ffa415d534a36e0497c1413304b11f5b
                      fail = true;
                      LOGGER.warn("{} (vehicle of {}) moved wrongly! {}", vehicle.getPlainTextName(), this.player.getPlainTextName(), Math.sqrt(movedDist));
                  }
-@@ -1613,7 +1613,7 @@ public class ServerGamePacketListenerImpl
+@@ -1596,7 +1596,7 @@ public class ServerGamePacketListenerImpl
  
                                      if (this.shouldCheckPlayerMovement(isFallFlying)) {
                                          float metersPerTick = isFallFlying ? 300.0F : 100.0F;
@@ -35,7 +35,7 @@ index 2b01327988df7fa57f657ec61f10810822b01a00..ffa415d534a36e0497c1413304b11f5b
                                              // CraftBukkit end
                                              // Paper start - Add fail move event
                                              io.papermc.paper.event.player.PlayerFailMoveEvent event = fireFailMove(io.papermc.paper.event.player.PlayerFailMoveEvent.FailReason.MOVED_TOO_QUICKLY,
-@@ -1674,7 +1674,8 @@ public class ServerGamePacketListenerImpl
+@@ -1670,7 +1670,8 @@ public class ServerGamePacketListenerImpl
                                  zDist = targetZ - this.player.getZ();
                                  movedDist = xDist * xDist + yDist * yDist + zDist * zDist;
                                  boolean movedWrongly = false; // Paper - Add fail move event; rename

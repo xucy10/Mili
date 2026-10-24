@@ -5,7 +5,7 @@ Subject: [PATCH] Lithium: Fast util
 
 
 diff --git a/net/minecraft/core/Direction.java b/net/minecraft/core/Direction.java
-index 46547155b817a89a8afe2f8d1a30bf881efc07bc..96a1769731b17535fdb9e2d9c52db20a7bf421b7 100644
+index 240fb13..a077689 100644
 --- a/net/minecraft/core/Direction.java
 +++ b/net/minecraft/core/Direction.java
 @@ -223,7 +223,7 @@ public enum Direction implements StringRepresentable, ca.spottedleaf.moonrise.pa
@@ -27,7 +27,7 @@ index 46547155b817a89a8afe2f8d1a30bf881efc07bc..96a1769731b17535fdb9e2d9c52db20a
  
      public static Direction getApproximateNearest(final double dx, final double dy, final double dz) {
 diff --git a/net/minecraft/world/phys/AABB.java b/net/minecraft/world/phys/AABB.java
-index efb79617cebe7234d85721da7b7f1fd6ef1a6a73..e8b6409701994c4c6cd545b2f5b999ce209bb888 100644
+index 259a19c..b93f662 100644
 --- a/net/minecraft/world/phys/AABB.java
 +++ b/net/minecraft/world/phys/AABB.java
 @@ -19,6 +19,15 @@ public class AABB {

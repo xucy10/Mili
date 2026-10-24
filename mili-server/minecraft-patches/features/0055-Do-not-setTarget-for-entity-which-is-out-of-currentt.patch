@@ -5,10 +5,10 @@ Subject: [PATCH] Do not setTarget for entity which is out of currenttickregion
 
 
 diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
-index b8fd825f42d3ce3081debc9bd7fd2ba6e8cb6cbb..67e367f5dd4ecd706cd019a13c5e07e15a211573 100644
+index cab2394..b5df28b 100644
 --- a/net/minecraft/world/entity/Mob.java
 +++ b/net/minecraft/world/entity/Mob.java
-@@ -301,6 +301,11 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
+@@ -297,6 +297,11 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
          if (Objects.equals(currentTarget, target)) {
              return false;
          }

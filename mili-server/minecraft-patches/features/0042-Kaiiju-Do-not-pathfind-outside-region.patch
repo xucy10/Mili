@@ -5,7 +5,7 @@ Subject: [PATCH] Kaiiju: Do not pathfind outside region
 
 
 diff --git a/net/minecraft/world/entity/ai/behavior/MoveToTargetSink.java b/net/minecraft/world/entity/ai/behavior/MoveToTargetSink.java
-index b40da004b5281a041ee896ae176bfb9c4660f353..ffb8a725c41d49a0f0e023ab37bb77062d67eccc 100644
+index 1948134..6a7e2c9 100644
 --- a/net/minecraft/world/entity/ai/behavior/MoveToTargetSink.java
 +++ b/net/minecraft/world/entity/ai/behavior/MoveToTargetSink.java
 @@ -117,7 +117,9 @@ public class MoveToTargetSink extends Behavior<Mob> {

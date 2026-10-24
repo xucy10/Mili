@@ -5,10 +5,10 @@ Subject: [PATCH] Petal: Reduce sensor work
 
 
 diff --git a/net/minecraft/world/entity/Mob.java b/net/minecraft/world/entity/Mob.java
-index d23cbf17d7261d6da6d99e3ae29aeb4759e8a763..82608f832cc2a77a017541636fe0b482842f156f 100644
+index 8a62960..c0d8d98 100644
 --- a/net/minecraft/world/entity/Mob.java
 +++ b/net/minecraft/world/entity/Mob.java
-@@ -835,11 +835,12 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
+@@ -822,11 +822,12 @@ public abstract class Mob extends LivingEntity implements Targeting, EquipmentUs
              return;
          }
          // Paper end - Allow nerfed mobs to jump and float

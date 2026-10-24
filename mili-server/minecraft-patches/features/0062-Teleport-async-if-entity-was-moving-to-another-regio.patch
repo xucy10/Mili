@@ -5,10 +5,10 @@ Subject: [PATCH] Teleport async if entity was moving to another region at once
 
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 559f2b2dbb9dc920078f35aec89a98b4cd4287ae..c89780288312a502c06c627071064ceab245fa38 100644
+index ecfcfbb..b876699 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -1169,6 +1169,19 @@ public abstract class Entity
+@@ -1164,6 +1164,19 @@ public abstract class Entity
              this.moveStartZ = this.getZ();
              this.moveVector = delta;
          }
@@ -29,10 +29,10 @@ index 559f2b2dbb9dc920078f35aec89a98b4cd4287ae..c89780288312a502c06c627071064cea
          // Paper end - detailed watchdog information
          if (this.noPhysics) {
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 93bc8fe11f920b48479510a639f21b9b9a816ca6..b59ca7b2e60d784f22b66a74b7a2f23e5db397b4 100644
+index cae1423..7ad3810 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -1572,6 +1572,25 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -1568,6 +1568,25 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
      public <T extends Entity> void guardEntityTick(final Consumer<T> tick, final T entity) {
          try {
              tick.accept(entity);
@@ -55,6 +55,6 @@ index 93bc8fe11f920b48479510a639f21b9b9a816ca6..b59ca7b2e60d784f22b66a74b7a2f23e
 +                    null
 +            ), null, 1L);
 +            // Luminol end
-         } catch (Throwable t) {
+         } catch (Throwable var6) {
              if (me.earthme.luminol.config.modules.experiment.DisableEntityCatchConfig.enabled) throw t; // Luminol
              // Paper start - Prevent block entity and entity crashes

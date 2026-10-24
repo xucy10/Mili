@@ -5,10 +5,10 @@ Subject: [PATCH] Add config for unsafe teleportation
 
 
 diff --git a/net/minecraft/world/entity/item/FallingBlockEntity.java b/net/minecraft/world/entity/item/FallingBlockEntity.java
-index 480b6b2405706fd4d7158d0e160adafd84099887..137389f7ee97fc3a15c8f5f87c058065af91264e 100644
+index dffcc53..c3f1f87 100644
 --- a/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/net/minecraft/world/entity/item/FallingBlockEntity.java
-@@ -70,7 +70,7 @@ public class FallingBlockEntity extends Entity {
+@@ -69,7 +69,7 @@ public class FallingBlockEntity extends Entity {
      public int fallDamageMax = 40;
      public float fallDamagePerDistance = 0.0F;
      public @Nullable CompoundTag blockData;
@@ -17,7 +17,7 @@ index 480b6b2405706fd4d7158d0e160adafd84099887..137389f7ee97fc3a15c8f5f87c058065
      protected static final EntityDataAccessor<BlockPos> DATA_START_POS = SynchedEntityData.defineId(FallingBlockEntity.class, EntityDataSerializers.BLOCK_POS);
      public boolean autoExpire = true; // Paper - Expand FallingBlock API
  
-@@ -384,7 +384,7 @@ public class FallingBlockEntity extends Entity {
+@@ -383,7 +383,7 @@ public class FallingBlockEntity extends Entity {
          ResourceKey<Level> oldDimension = this.level().dimension();
          boolean fromOrToEnd = (oldDimension == Level.END || newDimension == Level.END) && oldDimension != newDimension;
          Entity newEntity = super.teleport(transition);
@@ -27,7 +27,7 @@ index 480b6b2405706fd4d7158d0e160adafd84099887..137389f7ee97fc3a15c8f5f87c058065
      }
  }
 diff --git a/net/minecraft/world/level/block/EndPortalBlock.java b/net/minecraft/world/level/block/EndPortalBlock.java
-index 123df098fa987030fe3789f36ff95aeee2979834..fbcf9261880cfce3f37071ea63f572c692d84cf4 100644
+index aab09fe..0db5c6e 100644
 --- a/net/minecraft/world/level/block/EndPortalBlock.java
 +++ b/net/minecraft/world/level/block/EndPortalBlock.java
 @@ -76,6 +76,11 @@ public class EndPortalBlock extends BaseEntityBlock implements Portal {

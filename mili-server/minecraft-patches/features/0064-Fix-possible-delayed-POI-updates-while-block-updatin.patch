@@ -5,10 +5,10 @@ Subject: [PATCH] Fix possible delayed POI updates while block updating
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index f9a23885d3681f9e0c79666da6b72f178545e829..bdd978f54743a543cf8be94a05d928f82716ff6f 100644
+index e8dbf6c..3fab5fd 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -2579,11 +2579,12 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -2595,11 +2595,12 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
          Optional<Holder<PoiType>> newType = PoiTypes.forState(newState);
          if (!Objects.equals(oldType, newType)) {
              BlockPos immutable = pos.immutable();
@@ -21,13 +21,13 @@ index f9a23885d3681f9e0c79666da6b72f178545e829..bdd978f54743a543cf8be94a05d928f8
 -            newType.ifPresent(poiType -> io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueOrExecuteTickTask(this, immutable.getX() >> 4, immutable.getZ() >> 4, () -> { // Folia - region threading
 +            newType.ifPresent(poiType -> /*io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueOrExecuteTickTask(this, immutable.getX() >> 4, immutable.getZ() >> 4,*/scheduler.execute( () -> { // Folia - region threading // Luminol - Instant POI updates
                  // Paper start - Remove stale POIs
-                 if (oldType.isEmpty() && this.getPoiManager().exists(immutable, _ -> true)) {
-                     this.getPoiManager().remove(immutable);
+                 if (oldType.isEmpty() && this.getPoiManager().exists(pos, _ -> true)) {
+                     this.getPoiManager().remove(pos);
 diff --git a/net/minecraft/world/entity/npc/villager/Villager.java b/net/minecraft/world/entity/npc/villager/Villager.java
-index 3fa0ca479922a7c55625c5e7bcd25065210ea44e..b2776ba0c481e4e0090335066b095e0dde0b50da 100644
+index 12e108f..12a926e 100644
 --- a/net/minecraft/world/entity/npc/villager/Villager.java
 +++ b/net/minecraft/world/entity/npc/villager/Villager.java
-@@ -730,7 +730,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+@@ -727,7 +727,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
              this.brain.getMemory(memoryType).ifPresent(memory -> {
                  ServerLevel poiLevel = server.getLevel(memory.dimension());
                  if (poiLevel != null) {
@@ -37,7 +37,7 @@ index 3fa0ca479922a7c55625c5e7bcd25065210ea44e..b2776ba0c481e4e0090335066b095e0d
                      PoiManager poiManager = poiLevel.getPoiManager();
                      Optional<Holder<PoiType>> type = poiManager.getType(memory.pos());
                      BiPredicate<Villager, Holder<PoiType>> poiTypePredicate = POI_MEMORIES.get(memoryType);
-@@ -738,7 +739,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
+@@ -735,7 +736,8 @@ public class Villager extends AbstractVillager implements VillagerDataHolder, Re
                          poiManager.release(memory.pos());
                          poiLevel.debugSynchronizers().updatePoi(memory.pos());
                      }

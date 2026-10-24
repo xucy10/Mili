@@ -6,10 +6,10 @@ Subject: [PATCH] Fix a series issue around entity memory typed GlobalPos
 
 
 diff --git a/net/minecraft/world/entity/ai/Brain.java b/net/minecraft/world/entity/ai/Brain.java
-index 236c793d2655e67bb2f900e6b4481b529e6493a0..f60f4c0589fd12b33f30970582be9adac6d18b74 100644
+index e8dc8b4..747b761 100644
 --- a/net/minecraft/world/entity/ai/Brain.java
 +++ b/net/minecraft/world/entity/ai/Brain.java
-@@ -418,6 +418,24 @@ public class Brain<E extends LivingEntity> {
+@@ -422,6 +422,24 @@ public class Brain<E extends LivingEntity> {
                          continue;
                      }
                  }
@@ -35,7 +35,7 @@ index 236c793d2655e67bb2f900e6b4481b529e6493a0..f60f4c0589fd12b33f30970582be9ada
              }
              slot.tick();
 diff --git a/net/minecraft/world/entity/ai/behavior/BehaviorUtils.java b/net/minecraft/world/entity/ai/behavior/BehaviorUtils.java
-index f744ecd20dc70786311a7162b52aa4ceca0717db..aa60fbfbe7283f1ed9cf5343d59d1222380857dd 100644
+index 7172721..2b22c3f 100644
 --- a/net/minecraft/world/entity/ai/behavior/BehaviorUtils.java
 +++ b/net/minecraft/world/entity/ai/behavior/BehaviorUtils.java
 @@ -81,6 +81,11 @@ public class BehaviorUtils {
@@ -51,7 +51,7 @@ index f744ecd20dc70786311a7162b52aa4ceca0717db..aa60fbfbe7283f1ed9cf5343d59d1222
          walker.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, target);
          walker.getBrain().setMemory(MemoryModuleType.WALK_TARGET, walkTarget);
 diff --git a/net/minecraft/world/entity/ai/behavior/BlockPosTracker.java b/net/minecraft/world/entity/ai/behavior/BlockPosTracker.java
-index 68251875edfa47ac34c64f99510998ad4bbb14b4..d83b353395bad7c6c41dfaa24018fd207904d995 100644
+index 6825187..d83b353 100644
 --- a/net/minecraft/world/entity/ai/behavior/BlockPosTracker.java
 +++ b/net/minecraft/world/entity/ai/behavior/BlockPosTracker.java
 @@ -37,4 +37,11 @@ public class BlockPosTracker implements PositionTracker {
@@ -67,7 +67,7 @@ index 68251875edfa47ac34c64f99510998ad4bbb14b4..d83b353395bad7c6c41dfaa24018fd20
 +    // Luminol end
  }
 diff --git a/net/minecraft/world/entity/ai/behavior/EntityTracker.java b/net/minecraft/world/entity/ai/behavior/EntityTracker.java
-index 3ac52b025ac3e1a3f9135b8e593a385a847afe0f..29c13f18cff52e9950e8932c75cb12fb02f952cb 100644
+index 97fdbe4..9186d7a 100644
 --- a/net/minecraft/world/entity/ai/behavior/EntityTracker.java
 +++ b/net/minecraft/world/entity/ai/behavior/EntityTracker.java
 @@ -55,4 +55,11 @@ public class EntityTracker implements PositionTracker {
@@ -83,7 +83,7 @@ index 3ac52b025ac3e1a3f9135b8e593a385a847afe0f..29c13f18cff52e9950e8932c75cb12fb
 +    // Luminol end
  }
 diff --git a/net/minecraft/world/entity/ai/behavior/PositionTracker.java b/net/minecraft/world/entity/ai/behavior/PositionTracker.java
-index ce6cf5ecfb190428e3ef9b7dd39c98e3d27a7b9d..a4b6c74b1e0897b44dce3247cca4e40705b6d52e 100644
+index ce6cf5e..a4b6c74 100644
 --- a/net/minecraft/world/entity/ai/behavior/PositionTracker.java
 +++ b/net/minecraft/world/entity/ai/behavior/PositionTracker.java
 @@ -10,4 +10,6 @@ public interface PositionTracker {
@@ -94,23 +94,23 @@ index ce6cf5ecfb190428e3ef9b7dd39c98e3d27a7b9d..a4b6c74b1e0897b44dce3247cca4e407
 +    boolean checkThread(net.minecraft.world.level.Level currOwnedByLevel); // Luminol - Fix a series issue around entity memory typed GlobalPos and WalkTarget
  }
 diff --git a/net/minecraft/world/entity/ai/behavior/SleepInBed.java b/net/minecraft/world/entity/ai/behavior/SleepInBed.java
-index 16017d819c28b077f732e2ef571eac179d24e323..977edfc17334fccbb3d176655e9c41b52935a258 100644
+index 112572f..b885496 100644
 --- a/net/minecraft/world/entity/ai/behavior/SleepInBed.java
 +++ b/net/minecraft/world/entity/ai/behavior/SleepInBed.java
-@@ -57,6 +57,11 @@ public class SleepInBed extends Behavior<LivingEntity> {
-             }
-         }
+@@ -55,6 +55,11 @@ public class SleepInBed extends Behavior<LivingEntity> {
+                     }
+                 }
  
-+        // Luminol - Prevent off-tick-region chunk operations
-+        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(level, target.pos())) {
-+            return false;
-+        }
-+        // Luminol -end
-         BlockState blockState = level.getBlockStateIfLoaded(target.pos()); // Paper - Prevent sync chunk loads when villagers try to find beds
-         if (blockState == null) return false; // Paper - Prevent sync chunk loads when villagers try to find beds
-         return target.pos().closerToCenterThan(body.position(), 2.0) && blockState.is(BlockTags.BEDS) && !blockState.getValue(BedBlock.OCCUPIED);
++                // Luminol - Prevent off-tick-region chunk operations
++                if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(level, target.pos())) {
++                    return false;
++                }
++                // Luminol -end
+                 BlockState blockState = level.getBlockStateIfLoaded(target.pos()); // Paper - Prevent sync chunk loads when villagers try to find beds
+                 if (blockState == null) { return false; } // Paper - Prevent sync chunk loads when villagers try to find beds
+                 return target.pos().closerToCenterThan(body.position(), 2.0) && blockState.is(BlockTags.BEDS) && !blockState.getValue(BedBlock.OCCUPIED);
 diff --git a/net/minecraft/world/entity/animal/allay/AllayAi.java b/net/minecraft/world/entity/animal/allay/AllayAi.java
-index c3667e7997551e0f5ce63bc6ee890082d1431400..59a8caeff672fdd7394a46f4d0adb0407634dd0b 100644
+index 0543657..7deb2d7 100644
 --- a/net/minecraft/world/entity/animal/allay/AllayAi.java
 +++ b/net/minecraft/world/entity/animal/allay/AllayAi.java
 @@ -112,6 +112,17 @@ public class AllayAi {
@@ -132,10 +132,10 @@ index c3667e7997551e0f5ce63bc6ee890082d1431400..59a8caeff672fdd7394a46f4d0adb040
                  return Optional.of(new BlockPosTracker(position.pos().above()));
              }
 diff --git a/net/minecraft/world/entity/animal/sniffer/Sniffer.java b/net/minecraft/world/entity/animal/sniffer/Sniffer.java
-index d5394ae7ce56555ad21aeafb2d78c291c62e2988..e6a3e96b704c5925853a28a167b269ca1875735b 100644
+index c947f26..cb6f997 100644
 --- a/net/minecraft/world/entity/animal/sniffer/Sniffer.java
 +++ b/net/minecraft/world/entity/animal/sniffer/Sniffer.java
-@@ -279,7 +279,17 @@ public class Sniffer extends Animal {
+@@ -278,7 +278,17 @@ public class Sniffer extends Animal {
  
      private boolean canDig(final BlockPos position) {
          return this.level().getBlockState(position).is(BlockTags.SNIFFER_DIGGABLE_BLOCK)

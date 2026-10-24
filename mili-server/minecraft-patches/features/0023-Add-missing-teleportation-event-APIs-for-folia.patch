@@ -5,10 +5,10 @@ Subject: [PATCH] Add missing teleportation event APIs for folia
 
 
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 5c2930d586ed8f8e31c41e2805dcc189a1d62424..e842358b52366c1500e553c6f79a0ffd243f5d91 100644
+index 46139be..7780543 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -1768,6 +1768,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -1793,6 +1793,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
                      if (respawnComplete != null) {
                          respawnComplete.accept(ServerPlayer.this);
                      }
@@ -19,10 +19,10 @@ index 5c2930d586ed8f8e31c41e2805dcc189a1d62424..e842358b52366c1500e553c6f79a0ffd
              );
          });
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be13d118a6c 100644
+index c26474f..b484373 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -4490,6 +4490,31 @@ public abstract class Entity
+@@ -4419,6 +4419,31 @@ public abstract class Entity
          }
  
          // TODO any events that can modify go HERE
@@ -54,7 +54,7 @@ index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be1
  
          // check for same region
          if (destination == this.level()
-@@ -4600,6 +4625,17 @@ public abstract class Entity
+@@ -4529,6 +4554,17 @@ public abstract class Entity
              case END: {
                  if (destination.getTypeKey() == net.minecraft.world.level.dimension.LevelStem.END) {
                      BlockPos targetPos = ServerLevel.END_SPAWN_POINT;
@@ -72,7 +72,7 @@ index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be1
                      // need to load chunks so we can create the platform
                      destination.moonrise$loadChunksAsync(
                          targetPos, 16, // load 16 blocks to be safe from block physics
-@@ -4623,6 +4659,17 @@ public abstract class Entity
+@@ -4550,6 +4586,17 @@ public abstract class Entity
                      );
                  } else {
                      BlockPos spawnPos = destination.getRespawnData().pos();
@@ -90,7 +90,7 @@ index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be1
                      // need to load chunk for heightmap
                      destination.moonrise$loadChunksAsync(
                          spawnPos, 0,
-@@ -4676,7 +4723,17 @@ public abstract class Entity
+@@ -4601,7 +4648,17 @@ public abstract class Entity
                  WorldBorder destinationBorder = destination.getWorldBorder();
                  double dimensionScale = net.minecraft.world.level.dimension.DimensionType.getTeleportationScale(origin.dimensionType(), destination.dimensionType());
                  BlockPos targetPos = destination.getWorldBorder().clampToBounds(this.getX() * dimensionScale, this.getY(), this.getZ() * dimensionScale);
@@ -108,7 +108,7 @@ index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be1
                  ca.spottedleaf.concurrentutil.completable.CallbackCompletable<BlockUtil.FoundRectangle> portalFound
                      = new ca.spottedleaf.concurrentutil.completable.CallbackCompletable<>();
  
-@@ -4813,6 +4870,15 @@ public abstract class Entity
+@@ -4738,6 +4795,15 @@ public abstract class Entity
          if (!this.canPortalAsync(destination, takePassengers)) {
              return false;
          }
@@ -125,7 +125,7 @@ index 8f6ad64cf1036d521e33414c322f47498cc385c2..ab10f5dcf32a86520bb2e23a9aef9be1
          Vec3 initialPosition = this.position();
          ChunkPos initialPositionChunk = new ChunkPos(
 diff --git a/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java b/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
-index e29e379f9b2238eafe27545681bb19c710003bcc..fdf220424f7693a7ea3ae385ddd771720825b0f7 100644
+index 832e04b..613b96b 100644
 --- a/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java
 @@ -192,6 +192,18 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {

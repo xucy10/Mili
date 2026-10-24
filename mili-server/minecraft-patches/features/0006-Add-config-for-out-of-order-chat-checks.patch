@@ -5,15 +5,15 @@ Subject: [PATCH] Add config for out-of-order chat checks
 
 
 diff --git a/net/minecraft/network/chat/SignedMessageChain.java b/net/minecraft/network/chat/SignedMessageChain.java
-index 9395c6a58ba37fb00c492065b8045f54de0a2246..04d543384b0faf59bc37cdbe2327c5026fcf4ac8 100644
+index 99a8a8b..d73c35f 100644
 --- a/net/minecraft/network/chat/SignedMessageChain.java
 +++ b/net/minecraft/network/chat/SignedMessageChain.java
 @@ -49,7 +49,7 @@ public class SignedMessageChain {
-                     throw new SignedMessageChain.DecodeException(SignedMessageChain.DecodeException.CHAIN_BROKEN);
-                 }
- 
--                if (body.timeStamp().isBefore(SignedMessageChain.this.lastTimeStamp)) {
-+                if (me.earthme.luminol.config.modules.misc.InorderChatConfig.enabled && body.timeStamp().isBefore(SignedMessageChain.this.lastTimeStamp)) { // Luminol - Add config for out-of-order chat checks
-                     this.setChainBroken();
-                     throw new SignedMessageChain.DecodeException(SignedMessageChain.DecodeException.OUT_OF_ORDER_CHAT, org.bukkit.event.player.PlayerKickEvent.Cause.OUT_OF_ORDER_CHAT); // Paper - kick event causes
-                 }
+                     SignedMessageLink link = SignedMessageChain.this.nextLink;
+                     if (link == null) {
+                         throw new SignedMessageChain.DecodeException(SignedMessageChain.DecodeException.CHAIN_BROKEN);
+-                    } else if (body.timeStamp().isBefore(SignedMessageChain.this.lastTimeStamp)) {
++                    } else if (me.earthme.luminol.config.modules.misc.InorderChatConfig.enabled && body.timeStamp().isBefore(SignedMessageChain.this.lastTimeStamp)) { // Luminol - Add config for out-of-order chat checks
+                         this.setChainBroken();
+                         throw new SignedMessageChain.DecodeException(SignedMessageChain.DecodeException.OUT_OF_ORDER_CHAT, org.bukkit.event.player.PlayerKickEvent.Cause.OUT_OF_ORDER_CHAT); // Paper - kick event causes
+                     } else {

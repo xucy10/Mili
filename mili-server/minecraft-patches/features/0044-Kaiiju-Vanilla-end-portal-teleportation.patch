@@ -5,10 +5,10 @@ Subject: [PATCH] Kaiiju: Vanilla end portal teleportation
 
 
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index a7e9d60da8a4f7babbd8bdcdaea9b19eae2320d0..8f3b139665c265efdb2e8fde86a6ec3604da743d 100644
+index f82a190..e8ccbbd 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -4647,15 +4647,19 @@ public abstract class Entity
+@@ -4576,14 +4576,18 @@ public abstract class Entity
                          targetPos, 16, // load 16 blocks to be safe from block physics
                          ca.spottedleaf.concurrentutil.util.Priority.HIGH,
                          (chunks) -> {
@@ -25,14 +25,13 @@ index a7e9d60da8a4f7babbd8bdcdaea9b19eae2320d0..8f3b139665c265efdb2e8fde86a6ec36
                              portalInfoCompletable.complete(
                                  new net.minecraft.world.level.portal.TeleportTransition(
 -                                    destination, Vec3.atBottomCenterOf(targetPos.below()), Vec3.ZERO, Direction.WEST.toYRot(), 0.0f,
-+                                    destination, finalPos, this.getDeltaMovement(), Direction.WEST.toYRot(), 0.0f, // Kaiiju - Vanilla end teleportation
-                                     false, false,
 -                                    Relative.union(Relative.DELTA, Set.of(Relative.X_ROT)),
++                                    destination, finalPos, this.getDeltaMovement(), Direction.WEST.toYRot(), 0.0f, // Kaiiju - Vanilla end teleportation
 +                                    /*Relative.union(Relative.DELTA, Set.of(Relative.X_ROT))*/Set.of(), // Kaiiju - Vanilla end teleportation
                                      TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET),
-                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL,
-                                     TeleportTransition.PassengerTeleportationMode.POSITION_RIDER
-@@ -4682,11 +4686,15 @@ public abstract class Entity
+                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
+                                 )
+@@ -4609,11 +4613,15 @@ public abstract class Entity
                          ca.spottedleaf.concurrentutil.util.Priority.HIGH,
                          (chunks) -> {
                              BlockPos adjustedSpawn = destination.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
@@ -47,10 +46,10 @@ index a7e9d60da8a4f7babbd8bdcdaea9b19eae2320d0..8f3b139665c265efdb2e8fde86a6ec36
                                  new net.minecraft.world.level.portal.TeleportTransition(
 -                                    destination, Vec3.atBottomCenterOf(adjustedSpawn), Vec3.ZERO, 0.0f, 0.0f,
 +                                    destination, finalPos, this.getDeltaMovement(), 0.0f, 0.0f, // Kaiiju - Vanilla end teleportation
-                                     false, false,
                                      Relative.union(Relative.DELTA, Relative.ROTATION),
                                      TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET),
-@@ -4885,6 +4893,10 @@ public abstract class Entity
+                                     org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.END_PORTAL
+@@ -4810,6 +4818,10 @@ public abstract class Entity
              return false;
          }
          // Luminol end
@@ -61,7 +60,7 @@ index a7e9d60da8a4f7babbd8bdcdaea9b19eae2320d0..8f3b139665c265efdb2e8fde86a6ec36
  
          Vec3 initialPosition = this.position();
          ChunkPos initialPositionChunk = new ChunkPos(
-@@ -4949,9 +4961,14 @@ public abstract class Entity
+@@ -4874,9 +4886,14 @@ public abstract class Entity
                          info.postTeleportTransition().onTransition(teleported);
                      }
  

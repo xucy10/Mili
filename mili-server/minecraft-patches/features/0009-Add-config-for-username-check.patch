@@ -5,7 +5,7 @@ Subject: [PATCH] Add config for username check
 
 
 diff --git a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-index f2329d1a9d9d4bf4c9d771e25e54f2f9ef65a76c..780f52973976bc97bddccfeefd54e187371eecc9 100644
+index d924369..aab1594 100644
 --- a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
 @@ -167,7 +167,8 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
@@ -19,7 +19,7 @@ index f2329d1a9d9d4bf4c9d771e25e54f2f9ef65a76c..780f52973976bc97bddccfeefd54e187
              && !this.iKnowThisMayNotBeTheBestIdeaButPleaseDisableUsernameValidation) {
              Validate.validState(StringUtil.isReasonablePlayerName(packet.name()), "Invalid characters in username");
 diff --git a/net/minecraft/server/players/CachedUserNameToIdResolver.java b/net/minecraft/server/players/CachedUserNameToIdResolver.java
-index 7443744e3f256983e52a1cefcaf66082e4a46a7b..ab6ae4c023d949cd88d4059c4575e4ab739bfc99 100644
+index aecbddd..50c64f4 100644
 --- a/net/minecraft/server/players/CachedUserNameToIdResolver.java
 +++ b/net/minecraft/server/players/CachedUserNameToIdResolver.java
 @@ -67,7 +67,7 @@ public class CachedUserNameToIdResolver implements UserNameToIdResolver {
@@ -29,10 +29,10 @@ index 7443744e3f256983e52a1cefcaf66082e4a46a7b..ab6ae4c023d949cd88d4059c4575e4ab
 -        if (!StringUtil.isValidPlayerName(name)) {
 +        if (!StringUtil.isValidPlayerName(name, false)) {
              return this.createUnknownProfile(name);
-         }
- 
+         } else {
+             final boolean shouldLookup = !org.apache.commons.lang3.StringUtils.isBlank(name) // Paper - Don't lookup a profile with a blank name
 diff --git a/net/minecraft/util/StringUtil.java b/net/minecraft/util/StringUtil.java
-index 7957e0cfc43909c5268698a11c4933d20b4d9155..7ba42c6a020b996419988256b8638f6db6982436 100644
+index 74f9da2..6a80154 100644
 --- a/net/minecraft/util/StringUtil.java
 +++ b/net/minecraft/util/StringUtil.java
 @@ -63,7 +63,14 @@ public class StringUtil {

@@ -5,7 +5,7 @@ Subject: [PATCH] Add config to disable heightmap warning
 
 
 diff --git a/net/minecraft/world/level/levelgen/Heightmap.java b/net/minecraft/world/level/levelgen/Heightmap.java
-index dffa0d4859ecd7e21a9345f946083c56205145a3..7eed6c12ed4fa9c47ae5b34bdd05e9a360c9b06b 100644
+index 3e980d9..dd00411 100644
 --- a/net/minecraft/world/level/levelgen/Heightmap.java
 +++ b/net/minecraft/world/level/levelgen/Heightmap.java
 @@ -128,7 +128,8 @@ public class Heightmap {

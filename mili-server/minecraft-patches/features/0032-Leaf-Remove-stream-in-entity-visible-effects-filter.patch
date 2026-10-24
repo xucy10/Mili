@@ -5,10 +5,10 @@ Subject: [PATCH] Leaf: Remove stream in entity visible effects filter
 
 
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index 1cb8265c1313ad4893d45c344b03007fc4e2de4b..cacf4588d1a48aaf3986e330f95c0e4480105c37 100644
+index 201bcd0..e8be788 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -1034,12 +1034,15 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -1035,12 +1035,15 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      }
  
      private void updateSynchronizedMobEffectParticles() {
