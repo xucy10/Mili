@@ -1,0 +1,105 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@localhost>
+Date: Fri, 24 Oct 2026 17:40:00 +0800
+Subject: [PATCH] Fix 26.1.2 API drift after migrating the 26.2 patch series
+
+
+diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
+index c187d77c2f965ad831de641684cd383fbcbddf6b..685c598033a927be3ca34276d25047e0ad801c8b 100644
+--- a/net/minecraft/server/level/ChunkMap.java
++++ b/net/minecraft/server/level/ChunkMap.java
+@@ -967,10 +967,6 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+         // Paper end - rewrite chunk system
+     }
+ 
+-    public boolean hasEntityWithId(final int id) {
+-        return this.level.moonrise$getEntityLookup().hasEntity(id); // Folia - region threading
+-    }
+-
+     public void addEntity(final Entity entity) {
+         org.spigotmc.AsyncCatcher.catchOp("entity track"); // Spigot
+         // Paper start - ignore and warn about illegal addEntity calls instead of crashing server
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index b30abf40525a16c32abcf89a87ef89daafd356bb..382044683c4df67ceefca8f2e8958ec3b300e7a8 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -542,7 +542,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+ 
+     private static BlockPos findSpawnAround(ServerLevel world, BlockPos selected) {
+         // Luminol start - Correct player respawn place
+-        BlockPos inChunk = PlayerSpawnFinder.getLevelRespawnPos(world, selected.getX(), selected.getZ());
++        BlockPos inChunk = PlayerSpawnFinder.getOverworldRespawnPos(world, selected.getX(), selected.getZ());
+         if (inChunk != null) {
+             AABB checkVolume = PlayerSpawnFinder.PLAYER_DIMENSIONS.makeBoundingBox((double)inChunk.getX() + 0.5, (double)inChunk.getY(), (double)inChunk.getZ() + 0.5);
+ 
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 16b8bc01d16789c4bac3f9fcca2df46bb4d5a98a..e50ec12bc45321d387311f0cc3059ad134860224 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -1172,14 +1172,17 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     }
+ 
+     // CraftBukkit start - Split off from above in order to directly send client and physic updates
+-    public void notifyAndUpdatePhysics(BlockPos pos, LevelChunk chunk, BlockState oldState, BlockState blockState, BlockState newState, @Block.UpdateFlags int updateFlags, int updateLimit) {
++    public void notifyAndUpdatePhysics(BlockPos pos, LevelChunk chunkAt, BlockState oldState, BlockState newState, BlockState currentState, @Block.UpdateFlags int flags, int recursionLeft) {
++        BlockState state = newState;
++        BlockState blockState = oldState;
++        BlockState blockState1 = currentState;
+         boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && newState.getFluidState().isEmpty() && oldState.getFluidState().isEmpty();
+         if (skipUpdates) {
+-            updateFlags &= ~Block.UPDATE_NEIGHBORS;
++            flags &= ~Block.UPDATE_NEIGHBORS;
+         }
+-        if (newState == blockState) {
+-            if (oldState != newState) {
+-                this.setBlocksDirty(pos, oldState, newState);
++        if (blockState1 == state) {
++            if (blockState != blockState1) {
++                this.setBlocksDirty(pos, blockState, blockState1);
+             }
+ 
+             if ((flags & Block.UPDATE_CLIENTS) != 0 && (!this.isClientSide() || (flags & Block.UPDATE_INVISIBLE) == 0) && (this.isClientSide() || chunkAt == null || (chunkAt.getFullStatus() != null && chunkAt.getFullStatus().isOrAfter(FullChunkStatus.FULL)))) { // allow chunk to be null here as chunk.isReady() is false when we send our notification during block placement // Paper - rewrite chunk system - change from ticking to full
+@@ -1193,8 +1196,8 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+                 }
+             }
+ 
+-            if (!skipUpdates && (updateFlags & Block.UPDATE_KNOWN_SHAPE) == 0 && updateLimit > 0) {
+-                int neighbourUpdateFlags = updateFlags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
++            if (!skipUpdates && (flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
++                int i = flags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
+ 
+                 // CraftBukkit start
+                 blockState.updateIndirectNeighbourShapes(this, pos, i, recursionLeft - 1); // Don't call an event for the old block to limit event spam
+diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
+index 18e086bf758d72d82a523311cdf2a5de7e6983d5..381c060f9e42fcc6aef7380ecfba93e55297c81e 100644
+--- a/net/minecraft/world/level/block/RedStoneWireBlock.java
++++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
+@@ -67,28 +67,6 @@ public class RedStoneWireBlock extends Block {
+     private final RedstoneWireEvaluator evaluator = new DefaultRedstoneWireEvaluator(this);
+     //public boolean shouldSignal = true; // Folia - region threading - move to regionised world data
+ 
+-    // Leaves start - behaviour 1.21.1-
+-    @Override
+-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+-        if (!isMoving && !state.is(newState.getBlock())) {
+-            super.onRemove(state, level, pos, newState, isMoving);
+-            for (Direction direction : Direction.values()) {
+-                level.updateNeighborsAt(pos.relative(direction), this);
+-            }
+-
+-            // Paper start - optimize redstone - replace call to updatePowerStrength
+-            if (level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
+-                level.getWireHandler().onWireRemoved(pos, state); // Alternate Current
+-            } else {
+-                this.updateSurroundingRedstone(level, pos, state, null, false); // Vanilla/Eigencraft
+-            }
+-            // Paper end - optimize redstone
+-            this.updateNeighborsOfNeighboringWires(level, pos);
+-        }
+-    }
+-    // Leaves end - behaviour 1.21.1-
+-
+-
+     @Override
+     public MapCodec<RedStoneWireBlock> codec() {
+         return CODEC;
