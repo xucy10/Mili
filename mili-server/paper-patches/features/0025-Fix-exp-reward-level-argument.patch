@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@localhost>
+Date: Fri, 24 Oct 2026 18:03:00 +0800
+Subject: [PATCH] Fix exp reward level argument for 26.1.2 paper-server
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index 6b05f571e0bb062f1521bbd0a16705488f8e18fa..41cf8145a6a5f1542e06af522201fccef1d5f07d 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -970,7 +970,7 @@ public class CraftEventFactory {
+         CraftLivingEntity entity = (CraftLivingEntity) victim.getBukkitEntity();
+         CraftDamageSource bukkitDamageSource = new CraftDamageSource(damageSource);
+         CraftWorld world = (CraftWorld) entity.getWorld();
+-        EntityDeathEvent event = new EntityDeathEvent(entity, bukkitDamageSource, new io.papermc.paper.util.TransformingRandomAccessList<>(drops, Entity.DefaultDrop::stack, FROM_FUNCTION), victim.getExpReward(world.getHandle(), damageSource.getEntity()), victim.getExperienceReward(level, damageSource.getEntity())); // Paper - Restore vanilla drops behavior // Leaves - exp fix
++        EntityDeathEvent event = new EntityDeathEvent(entity, bukkitDamageSource, new io.papermc.paper.util.TransformingRandomAccessList<>(drops, Entity.DefaultDrop::stack, FROM_FUNCTION), victim.getExpReward(world.getHandle(), damageSource.getEntity()), victim.getExperienceReward(world.getHandle(), damageSource.getEntity())); // Paper - Restore vanilla drops behavior // Leaves - exp fix
+         populateFields(victim, event); // Paper - make cancellable
+         Bukkit.getServer().getPluginManager().callEvent(event);
+ 

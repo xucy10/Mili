@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@localhost>
+Date: Fri, 24 Oct 2026 18:02:00 +0800
+Subject: [PATCH] Fix 26.1.2 API drift: BlockEntityType/EntityType names and teammsg lambda
+
+diff --git a/net/minecraft/server/commands/TeamMsgCommand.java b/net/minecraft/server/commands/TeamMsgCommand.java
+index f24de11338d0fbf545286255f7d8d7ae3aa609a8..f46abe413e9b30f219fa1f7fc485de4c8859be90 100644
+--- a/net/minecraft/server/commands/TeamMsgCommand.java
++++ b/net/minecraft/server/commands/TeamMsgCommand.java
+@@ -48,6 +48,7 @@ public class TeamMsgCommand {
+                                         MessageArgument.resolveChatMessage(c, "message", message -> sendMessage(source, entity, team, receivers, message));
+                                     }
+ 
++                                    return receivers.size();
+                                 }
+                             }
+                         )
+diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
+index c695eeb94a7529b5dd3f43c5a285f6f3a1de9f19..6f65da1184ca5b818cd0104e36a775443b58ac33 100644
+--- a/net/minecraft/world/level/block/CarvedPumpkinBlock.java
++++ b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
+@@ -173,7 +173,7 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
+             return;
+         }
+ 
+-        net.minecraft.world.entity.monster.Shulker shulker = EntityTypes.SHULKER.create(level, EntitySpawnReason.TRIGGERED);
++        net.minecraft.world.entity.monster.Shulker shulker = EntityType.SHULKER.create(level, EntitySpawnReason.TRIGGERED);
+         if (shulker == null) {
+             return;
+         }
+diff --git a/net/minecraft/world/level/block/SculkShriekerBlock.java b/net/minecraft/world/level/block/SculkShriekerBlock.java
+index fda0fcfd02e050583a108e9f11ad959c5e62c231..0650d929eb413c3699f9ef998f60162d950dcdc3 100644
+--- a/net/minecraft/world/level/block/SculkShriekerBlock.java
++++ b/net/minecraft/world/level/block/SculkShriekerBlock.java
+@@ -42,7 +42,7 @@ public class SculkShriekerBlock extends BaseEntityBlock implements SimpleWaterlo
+     @Override
+     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+         if (level instanceof ServerLevel serverLevel && state.getValue(SHRIEKING) && !state.is(newState.getBlock())) {
+-            serverLevel.getBlockEntity(pos, BlockEntityTypes.SCULK_SHRIEKER).ifPresent(sculkShrieker -> sculkShrieker.tryRespond(serverLevel));
++            serverLevel.getBlockEntity(pos, BlockEntityType.SCULK_SHRIEKER).ifPresent(sculkShrieker -> sculkShrieker.tryRespond(serverLevel));
+         }
+         super.onRemove(state, level, pos, newState, movedByPiston);
+     }
