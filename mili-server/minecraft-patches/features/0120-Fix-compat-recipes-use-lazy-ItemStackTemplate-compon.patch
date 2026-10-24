@@ -6,7 +6,7 @@ Subject: [PATCH] Fix compat recipes: use lazy ItemStackTemplate (components
 
 
 diff --git a/net/minecraft/world/item/crafting/RecipeManager.java b/net/minecraft/world/item/crafting/RecipeManager.java
-index 3c040e6688414c5b4b0ad93f04795a341375ba04..6802a75fe51d04ef3c5949c14d3b09161dc9881b 100644
+index 14b3ae2..3a91304 100644
 --- a/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -127,7 +127,7 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp

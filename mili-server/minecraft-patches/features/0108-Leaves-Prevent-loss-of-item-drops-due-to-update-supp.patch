@@ -5,14 +5,14 @@ Subject: [PATCH] Leaves-Prevent-loss-of-item-drops-due-to-update-supp
 
 
 diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
-index 13e981bfd070d9351d8880478b5a86e39bcd73ad..d0ac2d15388e842ed56ec39ecdbc99994e0617bc 100644
+index e1de10e..7b0890b 100644
 --- a/net/minecraft/server/level/ServerPlayerGameMode.java
 +++ b/net/minecraft/server/level/ServerPlayerGameMode.java
-@@ -394,7 +394,18 @@ public class ServerPlayerGameMode {
-         this.level.getCurrentWorldData().captureDrops = new java.util.ArrayList<>(); // Folia - region threading
-         // CraftBukkit end
-         BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
--        boolean changed = this.level.removeBlock(pos, false);
+@@ -392,7 +392,18 @@ public class ServerPlayerGameMode {
+                 this.level.getCurrentWorldData().captureDrops = new java.util.ArrayList<>(); // Folia - region threading
+                 // CraftBukkit end
+                 BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
+-                boolean changed = this.level.removeBlock(pos, false);
 +                // Lophine start - preserve drops before update suppression
 +                boolean changed;
 +                org.leavesmc.leaves.util.UpdateSuppressionException updateSuppressionException = null;
@@ -25,12 +25,12 @@ index 13e981bfd070d9351d8880478b5a86e39bcd73ad..d0ac2d15388e842ed56ec39ecdbc9999
 +                    changed = false;
 +                }
 +                // Lophine end - preserve drops before update suppression
-         if (SharedConstants.DEBUG_BLOCK_BREAK) {
-             LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
-         }
-@@ -422,6 +433,11 @@ public class ServerPlayerGameMode {
-         if (event.isDropItems()) {
-             org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
+                 if (SharedConstants.DEBUG_BLOCK_BREAK) {
+                     LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
+                 }
+@@ -511,6 +522,11 @@ public class ServerPlayerGameMode {
+             MenuProvider menuProvider = state.getMenuProvider(level, pos);
+             cancelledBlock = menuProvider == null;
          }
 +                // Lophine start - preserve drops before update suppression
 +                if (updateSuppressionException != null) {
@@ -38,5 +38,5 @@ index 13e981bfd070d9351d8880478b5a86e39bcd73ad..d0ac2d15388e842ed56ec39ecdbc9999
 +                }
 +                // Lophine end - preserve drops before update suppression
  
-         // Drop event experience
-         if (changed) {
+         if (player.getCooldowns().isOnCooldown(itemStack)) {
+             cancelledItem = true; // Paper - correctly handle items on cooldown

@@ -5,10 +5,10 @@ Subject: [PATCH] i18n for /tps output and show global TPS intervals
 
 
 diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e1603578a13293 100644
+index 3b3e86a..1846e48 100644
 --- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 +++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-@@ -37,6 +37,9 @@ import java.lang.management.MemoryUsage;
+@@ -36,6 +36,9 @@ import java.lang.management.MemoryUsage;
  import java.lang.management.RuntimeMXBean;
  import org.jetbrains.annotations.NotNull;
  // Luminol end
@@ -18,7 +18,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
  
  public final class CommandServerHealth extends Command {
  
-@@ -68,23 +71,23 @@ public final class CommandServerHealth extends Command {
+@@ -67,23 +70,23 @@ public final class CommandServerHealth extends Command {
          return Component.text()
                  .append(Component.text(prefix, PRIMARY, TextDecoration.BOLD))
                  .append(Component.text(ONE_DECIMAL_PLACES.get().format(util * 100.0), CommandUtil.getUtilisationColourRegion(util)))
@@ -48,7 +48,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                  .append(Component.text(NO_DECIMAL_PLACES.get().format((long)stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
                  .build();
      }
-@@ -93,7 +96,7 @@ public final class CommandServerHealth extends Command {
+@@ -92,7 +95,7 @@ public final class CommandServerHealth extends Command {
          final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
                  TickRegionScheduler.getCurrentRegion();
          if (region == null) {
@@ -57,7 +57,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
              return true;
          }
  
-@@ -118,7 +121,7 @@ public final class CommandServerHealth extends Command {
+@@ -117,7 +120,7 @@ public final class CommandServerHealth extends Command {
          final String location = world.getWorld().getName() + " (" + centerBlockX + ", " + centerBlockZ + ")";
  
          final Component line = Component.text()
@@ -66,7 +66,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                  .append(Component.text(location, INFORMATION))
                  .append(Component.text(":\n", PRIMARY))
  
-@@ -140,7 +143,7 @@ public final class CommandServerHealth extends Command {
+@@ -139,7 +142,7 @@ public final class CommandServerHealth extends Command {
              try {
                  lowestRegionsCount = Integer.parseInt(args[1]);
              } catch (final NumberFormatException ex) {
@@ -75,7 +75,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                  return true;
              }
          }
-@@ -165,6 +168,16 @@ public final class CommandServerHealth extends Command {
+@@ -164,6 +167,16 @@ public final class CommandServerHealth extends Command {
          final long currTime = System.nanoTime();
          final TickData.TickReportData globalTickReport = RegionizedServer.getGlobalTickData().getTickReport15s(currTime);
  
@@ -92,7 +92,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
          final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
          final MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
          final long usedMemory = heapUsage.getUsed() / (1024 * 1024);
-@@ -232,7 +245,7 @@ public final class CommandServerHealth extends Command {
+@@ -231,7 +244,7 @@ public final class CommandServerHealth extends Command {
          final TextComponent.Builder lowestRegionsBuilder = Component.text();
  
          if (sender instanceof Player) {
@@ -101,7 +101,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
          }
          for (int i = 0, len = Math.min(lowestRegionsCount, regionsBelowThreshold.size()); i < len; ++i) {
              final ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, TickData.TickReportData>
-@@ -259,7 +272,7 @@ public final class CommandServerHealth extends Command {
+@@ -258,7 +271,7 @@ public final class CommandServerHealth extends Command {
  
              final Component line = Component.text()
                      .append(Component.text(" - ", LIST, TextDecoration.BOLD))
@@ -110,10 +110,10 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                      .append(Component.text(location, INFORMATION))
                      .append(Component.text(":\n", PRIMARY))
  
-@@ -278,36 +291,49 @@ public final class CommandServerHealth extends Command {
+@@ -277,36 +290,49 @@ public final class CommandServerHealth extends Command {
                      .build()
  
-                     .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, Payload.string("/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5")))
+                     .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.RUN_COMMAND, "/minecraft:execute as @s in " + world.getWorld().getKey().toString() + " run tp " + centerBlockX + ".5 " + yLoc + " " + centerBlockZ + ".5"))
 -                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text("Click to teleport to " + location, SECONDARY)));
 +                    .hoverEvent(HoverEvent.hoverEvent(HoverEvent.Action.SHOW_TEXT, Component.text(MiliI18n.get("mili.tpscommand.click_teleport_hover", "Click to teleport to %s", location), SECONDARY))); // Mili - i18n
  
@@ -168,7 +168,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                          .append(Component.text(ONE_DECIMAL_PLACES.get().format(totalUtil * 100.0), utilisationColor))
                          .append(Component.text("%", PRIMARY))
                          .append(Component.text(" / ", SECONDARY))
-@@ -315,14 +341,14 @@ public final class CommandServerHealth extends Command {
+@@ -314,14 +340,14 @@ public final class CommandServerHealth extends Command {
                          .append(Component.text("%\n", PRIMARY))
  
                          .append(Component.text(" - ", LIST, TextDecoration.BOLD))
@@ -186,7 +186,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                          .append(Component.text(NO_DECIMAL_PLACES.get().format(usedMemory), memColor))
                          .append(Component.text(" MB", memColor))
                          .append(Component.text(" / ", SECONDARY))
-@@ -334,20 +360,20 @@ public final class CommandServerHealth extends Command {
+@@ -333,20 +359,20 @@ public final class CommandServerHealth extends Command {
                          .append(Component.newline())
  
                          .append(Component.text(" - ", LIST, TextDecoration.BOLD))
@@ -212,7 +212,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
  
                          .append(lowestRegionsBuilder.build())
                          .build()
-@@ -371,13 +397,13 @@ public final class CommandServerHealth extends Command {
+@@ -370,13 +396,13 @@ public final class CommandServerHealth extends Command {
              }
              case "region": {
                  if (!(sender instanceof Entity)) {
@@ -228,7 +228,7 @@ index 74e2b09b0e0927ab556630c4ccb2ea985de23d5c..dbfafc4d399c75c7e217989de0e16035
                  return true;
              }
          }
-@@ -409,10 +435,10 @@ public final class CommandServerHealth extends Command {
+@@ -408,10 +434,10 @@ public final class CommandServerHealth extends Command {
          long seconds = TimeUnit.MILLISECONDS.toSeconds(uptimeMillis) % 60;
  
          StringBuilder sb = new StringBuilder();

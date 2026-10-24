@@ -5,10 +5,10 @@ Subject: [PATCH] Leaf: Reduce block destruction packet allocations
 
 
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index bdd978f54743a543cf8be94a05d928f82716ff6f..dd33558742af12a8142d6bae3215db58eb486c0d 100644
+index 3fab5fd..5cb7596 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -1883,6 +1883,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1895,6 +1895,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
  
      @Override
      public void destroyBlockProgress(final int id, final BlockPos blockPos, final int progress) {
@@ -24,7 +24,7 @@ index bdd978f54743a543cf8be94a05d928f82716ff6f..dd33558742af12a8142d6bae3215db58
          // CraftBukkit start
          Player breakerPlayer = null;
          Entity entity = this.getEntity(id);
-@@ -1899,7 +1908,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1911,7 +1920,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                  .callEvent();
          }
          // Paper end - Add BlockBreakProgressUpdateEvent
@@ -33,7 +33,7 @@ index bdd978f54743a543cf8be94a05d928f82716ff6f..dd33558742af12a8142d6bae3215db58
              if (player.level() == this && player.getId() != id) {
                  double xd = blockPos.getX() - player.getX();
                  double yd = blockPos.getY() - player.getY();
-@@ -1910,7 +1919,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1922,7 +1931,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
                          continue;
                      }
                      // CraftBukkit end

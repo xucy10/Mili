@@ -6,10 +6,10 @@ Subject: [PATCH] Restore lost Leaves protocol lifecycle hooks and async
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 8214d0684d1eca4f94db4cbc87b9662a2eacbd80..a795a899592b55d8f3095ad3469bb799e6f1dd8b 100644
+index 53c2b23..90cb5d4 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
-@@ -2058,6 +2058,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -2077,6 +2077,8 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
              tickable.run();
          }
  
@@ -17,9 +17,9 @@ index 8214d0684d1eca4f94db4cbc87b9662a2eacbd80..a795a899592b55d8f3095ad3469bb799
 +
          profiler.popPush("send chunks");
  
-         // Folia start - region threading - implement flush consolidation
+         if (false) for (ServerPlayer player : this.playerList.getPlayers()) { // Folia - region threading
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index a1fe6b35fe28384834620addb29919a76a6805a9..7f1331e390ad80f06f9169586679b9f3c71a488c 100644
+index 91e988e..2180346 100644
 --- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 @@ -261,6 +261,13 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
@@ -37,10 +37,10 @@ index a1fe6b35fe28384834620addb29919a76a6805a9..7f1331e390ad80f06f9169586679b9f3
          if (this.checkIfClosed(now)) {
              long currTime = System.nanoTime();
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 5eeb426aa0e9e67f328e4e65babe59243846b5e0..745ccc2d257e38aac5aa7c9785a44784b7d766c7 100644
+index 03b7607..9a128a4 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -363,6 +363,13 @@ public abstract class PlayerList {
+@@ -364,6 +364,13 @@ public abstract class PlayerList {
          );
          } // Luminol - Async protocol switch
          playerConnection.suspendFlushing();
@@ -62,7 +62,7 @@ index 5eeb426aa0e9e67f328e4e65babe59243846b5e0..745ccc2d257e38aac5aa7c9785a44784
      }
  
      public void updateEntireScoreboard(final ServerScoreboard scoreboard, final ServerPlayer player) {
-@@ -691,6 +699,7 @@ public abstract class PlayerList {
+@@ -695,6 +703,7 @@ public abstract class PlayerList {
      }
      public net.kyori.adventure.text.@Nullable Component remove(final ServerPlayer player, final net.kyori.adventure.text.Component leaveMessage) {
          // Paper end - Fix kick event leave message not being sent

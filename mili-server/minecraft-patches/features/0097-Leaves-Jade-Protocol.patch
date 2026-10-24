@@ -5,10 +5,10 @@ Subject: [PATCH] Leaves: Jade Protocol
 
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index 822ab2a2ce0084f512d9738ccc644b4028b31aeb..d1c625d0231a749a5c42cd668d9822149144fe1f 100644
+index d9682cc..0f73e05 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -3906,7 +3906,7 @@ public class ServerGamePacketListenerImpl
+@@ -3903,7 +3903,7 @@ public class ServerGamePacketListenerImpl
      }
  
      @Deprecated @io.papermc.paper.annotation.DoNotUse // Paper - Add PlayerLoadedWorldEvent
@@ -18,10 +18,10 @@ index 822ab2a2ce0084f512d9738ccc644b4028b31aeb..d1c625d0231a749a5c42cd668d982214
          this.markClientLoaded(false);
      }
 diff --git a/net/minecraft/world/entity/animal/armadillo/Armadillo.java b/net/minecraft/world/entity/animal/armadillo/Armadillo.java
-index c8c50683597a2314a3c0e72888d5d75dc73fb94a..3663aa490106b05772574ae7c4ac9d4d84574e79 100644
+index 03ec05a..c15f0a3 100644
 --- a/net/minecraft/world/entity/animal/armadillo/Armadillo.java
 +++ b/net/minecraft/world/entity/animal/armadillo/Armadillo.java
-@@ -75,7 +75,7 @@ public class Armadillo extends Animal {
+@@ -72,7 +72,7 @@ public class Armadillo extends Animal {
      public final AnimationState rollOutAnimationState = new AnimationState();
      public final AnimationState rollUpAnimationState = new AnimationState();
      public final AnimationState peekAnimationState = new AnimationState();
@@ -31,10 +31,10 @@ index c8c50683597a2314a3c0e72888d5d75dc73fb94a..3663aa490106b05772574ae7c4ac9d4d
  
      public Armadillo(final EntityType<? extends Animal> type, final Level level) {
 diff --git a/net/minecraft/world/entity/animal/frog/Tadpole.java b/net/minecraft/world/entity/animal/frog/Tadpole.java
-index 296cae1d5f5a3a054949ee03e2a2552bfeae4682..97c49875269dd52c6a4692940b122f1d1f3fd2fb 100644
+index 3d4bfea..d2862d2 100644
 --- a/net/minecraft/world/entity/animal/frog/Tadpole.java
 +++ b/net/minecraft/world/entity/animal/frog/Tadpole.java
-@@ -256,7 +256,7 @@ public class Tadpole extends AbstractFish {
+@@ -255,7 +255,7 @@ public class Tadpole extends AbstractFish {
          }
      }
  
@@ -44,10 +44,10 @@ index 296cae1d5f5a3a054949ee03e2a2552bfeae4682..97c49875269dd52c6a4692940b122f1d
      }
  
 diff --git a/net/minecraft/world/level/storage/loot/LootPool.java b/net/minecraft/world/level/storage/loot/LootPool.java
-index dde475b92375a484cb10a7de5a1256b0741ae5c6..c216b1e047a515a69a0974586a4cd0b536544c66 100644
+index f08a25b..6e76e47 100644
 --- a/net/minecraft/world/level/storage/loot/LootPool.java
 +++ b/net/minecraft/world/level/storage/loot/LootPool.java
-@@ -37,7 +37,7 @@ public class LootPool implements Validatable {
+@@ -36,7 +36,7 @@ public class LootPool implements Validatable {
              )
              .apply(i, LootPool::new)
      );
@@ -57,7 +57,7 @@ index dde475b92375a484cb10a7de5a1256b0741ae5c6..c216b1e047a515a69a0974586a4cd0b5
      private final Predicate<LootContext> compositeCondition;
      private final List<LootItemFunction> functions;
 diff --git a/net/minecraft/world/level/storage/loot/LootTable.java b/net/minecraft/world/level/storage/loot/LootTable.java
-index 14fc07badbd14a5a4c8e8c7d237d08a4eb6a6f12..0aaf2240a0f79b5c4aaa9c22dca7b2f0953dac49 100644
+index 14fc07b..0aaf224 100644
 --- a/net/minecraft/world/level/storage/loot/LootTable.java
 +++ b/net/minecraft/world/level/storage/loot/LootTable.java
 @@ -49,7 +49,7 @@ public class LootTable implements Validatable {
@@ -70,7 +70,7 @@ index 14fc07badbd14a5a4c8e8c7d237d08a4eb6a6f12..0aaf2240a0f79b5c4aaa9c22dca7b2f0
      private final BiFunction<ItemStack, LootContext, ItemStack> compositeFunction;
      public org.bukkit.craftbukkit.CraftLootTable craftLootTable; // CraftBukkit
 diff --git a/net/minecraft/world/level/storage/loot/entries/CompositeEntryBase.java b/net/minecraft/world/level/storage/loot/entries/CompositeEntryBase.java
-index 53e4375a4af610e54309f2978e59985e6ada15f5..615b533caecef09d967c615ae39ef29c80784575 100644
+index 53e4375..615b533 100644
 --- a/net/minecraft/world/level/storage/loot/entries/CompositeEntryBase.java
 +++ b/net/minecraft/world/level/storage/loot/entries/CompositeEntryBase.java
 @@ -17,7 +17,7 @@ public abstract class CompositeEntryBase extends LootPoolEntryContainer {
@@ -83,7 +83,7 @@ index 53e4375a4af610e54309f2978e59985e6ada15f5..615b533caecef09d967c615ae39ef29c
  
      protected CompositeEntryBase(final List<LootPoolEntryContainer> children, final List<LootItemCondition> conditions) {
 diff --git a/net/minecraft/world/level/storage/loot/entries/LootPoolEntryContainer.java b/net/minecraft/world/level/storage/loot/entries/LootPoolEntryContainer.java
-index 83c514c213251dd5470627d0299b5858b850784d..d231f706388e6967d2e29f806a9f52e8f7f5ba61 100644
+index 83c514c..d231f70 100644
 --- a/net/minecraft/world/level/storage/loot/entries/LootPoolEntryContainer.java
 +++ b/net/minecraft/world/level/storage/loot/entries/LootPoolEntryContainer.java
 @@ -15,7 +15,7 @@ import net.minecraft.world.level.storage.loot.predicates.ConditionUserBuilder;
@@ -96,7 +96,7 @@ index 83c514c213251dd5470627d0299b5858b850784d..d231f706388e6967d2e29f806a9f52e8
  
      protected LootPoolEntryContainer(final List<LootItemCondition> conditions) {
 diff --git a/net/minecraft/world/level/storage/loot/entries/NestedLootTable.java b/net/minecraft/world/level/storage/loot/entries/NestedLootTable.java
-index 20520b7071f19af2882a797ee40019cddd76e378..11c4333ab28cffcfb97bcd289930b33c4baae993 100644
+index 20520b7..11c4333 100644
 --- a/net/minecraft/world/level/storage/loot/entries/NestedLootTable.java
 +++ b/net/minecraft/world/level/storage/loot/entries/NestedLootTable.java
 @@ -29,7 +29,7 @@ public class NestedLootTable extends LootPoolSingletonContainer {
@@ -109,7 +109,7 @@ index 20520b7071f19af2882a797ee40019cddd76e378..11c4333ab28cffcfb97bcd289930b33c
      private NestedLootTable(
          final Either<ResourceKey<LootTable>, LootTable> contents,
 diff --git a/net/minecraft/world/level/storage/loot/predicates/CompositeLootItemCondition.java b/net/minecraft/world/level/storage/loot/predicates/CompositeLootItemCondition.java
-index cb821605781050282fd0a28e3d096fa18de833b8..99624ca2e895884a5e92a965af2064803c0d3b14 100644
+index cb82160..99624ca 100644
 --- a/net/minecraft/world/level/storage/loot/predicates/CompositeLootItemCondition.java
 +++ b/net/minecraft/world/level/storage/loot/predicates/CompositeLootItemCondition.java
 @@ -12,7 +12,7 @@ import net.minecraft.world.level.storage.loot.Validatable;

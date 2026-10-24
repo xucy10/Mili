@@ -5,10 +5,10 @@ Subject: [PATCH] Luminol: Add secure seed V2 with Blake3
 
 
 diff --git a/net/minecraft/world/level/levelgen/RandomState.java b/net/minecraft/world/level/levelgen/RandomState.java
-index 7b74440fbbe79c018ad59d24b99da0c6d4a9d007..3f19144ff107aab9f21f9df8e6607d459ce6a977 100644
+index 64e1158..fce8e2d 100644
 --- a/net/minecraft/world/level/levelgen/RandomState.java
 +++ b/net/minecraft/world/level/levelgen/RandomState.java
-@@ -33,10 +33,28 @@ public final class RandomState {
+@@ -34,10 +34,28 @@ public final class RandomState {
      }
  
      private RandomState(final NoiseGeneratorSettings settings, final HolderGetter<NormalNoise.NoiseParameters> noises, final long seed) {
@@ -40,8 +40,8 @@ index 7b74440fbbe79c018ad59d24b99da0c6d4a9d007..3f19144ff107aab9f21f9df8e6607d45
          this.noiseIntances = new ConcurrentHashMap<>();
          this.positionalRandoms = new ConcurrentHashMap<>();
          this.surfaceSystem = new SurfaceSystem(this, settings.defaultBlock(), settings.seaLevel(), this.random);
-@@ -46,6 +64,12 @@ public final class RandomState {
-             private final Map<DensityFunction, DensityFunction> wrapped = new HashMap<>();
+@@ -53,6 +71,12 @@ public final class RandomState {
+             }
  
              private RandomSource newLegacyInstance(final long seedOffset) {
 +                // Luminol start - Add secure seed V2 with Blake3
@@ -53,19 +53,17 @@ index 7b74440fbbe79c018ad59d24b99da0c6d4a9d007..3f19144ff107aab9f21f9df8e6607d45
                  return new LegacyRandomSource(seed + seedOffset);
              }
  
-@@ -71,7 +95,14 @@ public final class RandomState {
-                         : RandomState.this.random.fromHashOf(Identifier.withDefaultNamespace("terrain"));
+@@ -79,7 +103,12 @@ public final class RandomState {
                      return noise.withNewRandom(terrainRandom);
                  } else {
--                    return function instanceof DensityFunctions.EndIslandDensityFunction ? new DensityFunctions.EndIslandDensityFunction(seed) : function;
-+                    return function instanceof DensityFunctions.EndIslandDensityFunction
+                     return (DensityFunction)(function instanceof DensityFunctions.EndIslandDensityFunction
+-                        ? new DensityFunctions.EndIslandDensityFunction(seed)
 +                        //? new DensityFunctions.EndIslandDensityFunction(seed) // Luminol - Add secure seed V2 with Blake3
 +                        // Luminol start - Add secure seed V2 with Blake3
 +                        ? new DensityFunctions.EndIslandDensityFunction((me.earthme.luminol.config.modules.function.SecureSeedConfig.enabled && me.earthme.luminol.config.modules.function.SecureSeedConfig.version == 2)
 +                            ? su.plo.matter.HashingV2.getTerrainSeed(secureWorldSeed, su.plo.matter.HashingV2.TerrainType.SURFACE)
 +                            : seed)
 +                       // Luminol end
-+                        : function;
+                         : function);
                  }
              }
- 

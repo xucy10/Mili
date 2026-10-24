@@ -11,11 +11,10 @@ flush() so every entry point (flushChannel, tickChildren resumeFlushing,
 future callers) is safe for channelless connections.
 
 diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
-index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000000 100644
+index 6b85a5a..53247b8 100644
 --- a/net/minecraft/network/Connection.java
 +++ b/net/minecraft/network/Connection.java
-@@ -652,9 +652,10 @@
-         }
+@@ -530,6 +530,7 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
      }
  
      private void flush() {
@@ -23,8 +22,62 @@ index 0000000000000000000000000000000000000000..00000000000000000000000000000000
          if (this.channel.eventLoop().inEventLoop()) {
              this.channel.flush();
          } else {
-             this.channel.eventLoop().execute(() -> this.channel.flush());
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 414d22a..b30abf4 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -2141,8 +2141,12 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+             // Paper start - Reset shield blocking on dimension change
+             if (this.isBlocking()) {
+                 this.stopUsingItem();
++            }
++            // Paper end - Reset shield blocking on dimension change
++            return this;
          }
--- 
-2.39.5
-
+     }
++    }
+ 
+     @Override
+     public void forceSetRotation(final float yRot, final boolean relativeY, final float xRot, final boolean relativeX) {
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index faf62a6..18ea64e 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -429,6 +429,10 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                     && ((flags & Block.UPDATE_NEIGHBORS) != 0 || movedByPiston)) {
+                     oldState.affectNeighborsAfterRemoval(serverLevel, pos, movedByPiston);
+                 }
++                } else {
++                    oldState.onRemove(this.level, pos, state, movedByPiston);
++                }
++                // Leaves end - behaviour 1.21.1-
+ 
+                 if (!section.getBlockState(localX, localY, localZ).is(newBlock)) {
+                     return null;
+@@ -462,13 +466,13 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                     this.markUnsaved();
+                     return oldState;
+                 }
+-            }
+-        }
+         } catch (org.leavesmc.leaves.util.UpdateSuppressionException exception) {
+             exception.provideBlock(this.level, pos, newBlock);
+             throw exception;
+         }
+         // Lophine end - catch update suppression crash
++            }
++        }
+     }
+ 
+     @Deprecated
+@@ -502,10 +506,6 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                 }
+             }
+         }
+-        } else {
+-            oldState.onRemove(this.level, pos, state, movedByPiston);
+-        }
+-        // Leaves end - behaviour 1.21.1-
+ 
+         if (blockEntity == null) {
+             if (creationType == LevelChunk.EntityCreationType.IMMEDIATE) {

@@ -5,10 +5,10 @@ Subject: [PATCH] Sync dragon part when teleportation or firstly created
 
 
 diff --git a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
-index aa53138b3670a8337b639472a6ab5ce46702ff76..ed27b73e787782f328906b2a061feeca25d42a24 100644
+index b31b55f..75c36cb 100644
 --- a/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
 +++ b/ca/spottedleaf/moonrise/patches/chunk_system/level/entity/server/ServerEntityLookup.java
-@@ -93,6 +93,7 @@ public final class ServerEntityLookup extends EntityLookup {
+@@ -97,6 +97,7 @@ public final class ServerEntityLookup extends EntityLookup {
          if (entity instanceof ThrownEnderpearl enderpearl) {
              this.addEnderPearl(CoordinateUtils.getChunkKey(enderpearl.chunkPosition()), enderpearl.getId()); // Folia - region threading
          }
@@ -17,10 +17,10 @@ index aa53138b3670a8337b639472a6ab5ce46702ff76..ed27b73e787782f328906b2a061feeca
      }
  
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index cffd09a1adacc0cfa6db52ca1be58e1dda78e4d3..12e42d688d95145311c8e3cd14ace9bd70083afd 100644
+index ef814b6..d8c6376 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -4460,6 +4460,7 @@ public abstract class Entity
+@@ -4389,6 +4389,7 @@ public abstract class Entity
          Entity copy = this.getType().create(destination, EntitySpawnReason.DIMENSION_TRAVEL);
          copy.restoreFrom(this);
          copy.transform(pos, yaw, pitch, velocity);
@@ -29,13 +29,13 @@ index cffd09a1adacc0cfa6db52ca1be58e1dda78e4d3..12e42d688d95145311c8e3cd14ace9bd
          // vanilla code used to call remove _after_ copying, and some stuff is required to be after copy - so add hook here
          // for example, clearing of inventory after switching dimensions
 diff --git a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
-index ab921ab4b4cc860abd77744f2bd201013e136e51..fd85816ec78c99f45c740ebf8052ff41f4859ed6 100644
+index 3ffb48f..794e586 100644
 --- a/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
 +++ b/net/minecraft/world/entity/boss/enderdragon/EnderDragon.java
-@@ -1011,4 +1011,12 @@ public class EnderDragon extends Mob implements Enemy {
-         return 500;
+@@ -1001,4 +1001,12 @@ public class EnderDragon extends Mob implements Enemy {
+         return shouldDrop ? xpCount : 0;
      }
-     // Paper end - init expToDrop for already dying spawned dragon
+     // CraftBukkit end
 +
 +    // Luminol start - Sync dragon part when teleportation or firstly created
 +    public void syncDragonPartsAfterTeleportTransform() {

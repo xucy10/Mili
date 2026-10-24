@@ -5,7 +5,7 @@ Subject: [PATCH] Leaves: Support REI protocol
 
 
 diff --git a/net/minecraft/world/item/crafting/SmithingTransformRecipe.java b/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
-index 33f9870a4f966a887023b1debd4ab9ef9d24378f..432bfa6991919a2803846838a1dfe3415ae668c2 100644
+index 33f9870..432bfa6 100644
 --- a/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
 +++ b/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
 @@ -115,6 +115,12 @@ public class SmithingTransformRecipe extends SimpleSmithingRecipe {
@@ -22,7 +22,7 @@ index 33f9870a4f966a887023b1debd4ab9ef9d24378f..432bfa6991919a2803846838a1dfe341
      @Override
      public org.bukkit.inventory.Recipe toBukkitRecipe(org.bukkit.NamespacedKey id) {
 diff --git a/net/minecraft/world/item/crafting/SmithingTrimRecipe.java b/net/minecraft/world/item/crafting/SmithingTrimRecipe.java
-index 93347bd9fbab41888c5d63eb40e7928e74a1f9af..4f9e700ed621cdb556162174bbb9b219403fc05a 100644
+index f9fa7d0..2f32415 100644
 --- a/net/minecraft/world/item/crafting/SmithingTrimRecipe.java
 +++ b/net/minecraft/world/item/crafting/SmithingTrimRecipe.java
 @@ -109,6 +109,12 @@ public class SmithingTrimRecipe extends SimpleSmithingRecipe {

@@ -5,7 +5,7 @@ Subject: [PATCH] Leaf: Initialize line of sight cache with low capacity
 
 
 diff --git a/net/minecraft/world/entity/ai/sensing/Sensing.java b/net/minecraft/world/entity/ai/sensing/Sensing.java
-index 0da4d7d500e4297457081b4c83862296c9b92e72..5073fbdd1ce07f3884cad5807050b220b6f654c9 100644
+index 45f551d..612a544 100644
 --- a/net/minecraft/world/entity/ai/sensing/Sensing.java
 +++ b/net/minecraft/world/entity/ai/sensing/Sensing.java
 @@ -9,8 +9,10 @@ import net.minecraft.world.entity.Mob;

@@ -5,7 +5,7 @@ Subject: [PATCH] Leaf: Carpet-Fixes: Optimized getBiome method
 
 
 diff --git a/net/minecraft/world/level/biome/BiomeManager.java b/net/minecraft/world/level/biome/BiomeManager.java
-index c139f70bf9ddd3f995c0524dad15487e632cd432..0d1a7230275ea8ea5e88aacbb6aaba726171e3e1 100644
+index a0d7f6f..393c31b 100644
 --- a/net/minecraft/world/level/biome/BiomeManager.java
 +++ b/net/minecraft/world/level/biome/BiomeManager.java
 @@ -14,6 +14,7 @@ public class BiomeManager {

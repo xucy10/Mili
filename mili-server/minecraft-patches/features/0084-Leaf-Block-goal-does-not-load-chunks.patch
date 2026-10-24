@@ -5,7 +5,7 @@ Subject: [PATCH] Leaf: Block goal does not load chunks
 
 
 diff --git a/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java b/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
-index c6e9b155c2341c13d569f28f54f0c1d2d7313676..0d21d9b1efbfe7e0f0358fad01cabc2ad3cce52d 100644
+index c6e9b15..0d21d9b 100644
 --- a/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
 +++ b/net/minecraft/world/entity/ai/goal/MoveToBlockGoal.java
 @@ -119,6 +119,7 @@ public abstract class MoveToBlockGoal extends Goal {

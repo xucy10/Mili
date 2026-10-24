@@ -5,7 +5,7 @@ Subject: [PATCH] Fix compilation for MC 26.1.2 API migration
 
 
 diff --git a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
-index e8c02d10901514da1fb2019218a7cc2de81e3487..a1fe6b35fe28384834620addb29919a76a6805a9 100644
+index 21e0563..91e988e 100644
 --- a/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerCommonPacketListenerImpl.java
 @@ -116,6 +116,7 @@ public abstract class ServerCommonPacketListenerImpl implements ServerCommonPack
@@ -47,7 +47,7 @@ index e8c02d10901514da1fb2019218a7cc2de81e3487..a1fe6b35fe28384834620addb29919a7
          if (this.closed) {
              if (now - this.closedListenerTime >= 15000L) {
 diff --git a/net/minecraft/util/debug/ServerDebugSubscribers.java b/net/minecraft/util/debug/ServerDebugSubscribers.java
-index 19caac6d353ed46962134a4e271e0e869e2844eb..97ac74f117547af8d5b6e583d2ba680ae9c9f136 100644
+index 19caac6..97ac74f 100644
 --- a/net/minecraft/util/debug/ServerDebugSubscribers.java
 +++ b/net/minecraft/util/debug/ServerDebugSubscribers.java
 @@ -13,7 +13,7 @@ import net.minecraft.server.players.NameAndId;
@@ -74,18 +74,18 @@ index 19caac6d353ed46962134a4e271e0e869e2844eb..97ac74f117547af8d5b6e583d2ba680a
  
      public void broadcastToAll(final DebugSubscription<?> subscription, final Packet<?> packet) {
 diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
-index 171c929677bfb0906a811ad9346c02a87204758f..aaed0f7a8f3b78e9e2c50014f2cfad536af3adb1 100644
+index 9d3a7b5..46d2122 100644
 --- a/net/minecraft/world/entity/Entity.java
 +++ b/net/minecraft/world/entity/Entity.java
-@@ -356,6 +356,7 @@ public abstract class Entity
+@@ -355,6 +355,7 @@ public abstract class Entity
      private final LongSet visitedBlocks = new LongOpenHashSet();
      private final InsideBlockEffectApplier.StepBasedCollector insideEffectCollector = new InsideBlockEffectApplier.StepBasedCollector();
      private CustomData customData = CustomData.EMPTY;
 +    private net.minecraft.nbt.CompoundTag leavesData = new net.minecraft.nbt.CompoundTag(); // Leaves - Leaves ex data
      // CraftBukkit start
+     public boolean forceDrops;
      public boolean persist = true;
-     public boolean visibleByDefault = true;
-@@ -2788,6 +2789,8 @@ public abstract class Entity
+@@ -2701,6 +2702,8 @@ public abstract class Entity
                  output.store("data", CustomData.CODEC, this.customData);
              }
  
@@ -94,7 +94,7 @@ index 171c929677bfb0906a811ad9346c02a87204758f..aaed0f7a8f3b78e9e2c50014f2cfad53
              this.addAdditionalSaveData(output, includeAll); // CraftBukkit - pass on includeAll
              if (this.isVehicle()) {
                  ValueOutput.ValueOutputList passengersList = output.childrenList("Passengers");
-@@ -2892,6 +2895,7 @@ public abstract class Entity
+@@ -2804,6 +2807,7 @@ public abstract class Entity
                  );
                  // Paper end
                  this.customData = input.read("data", CustomData.CODEC).orElse(CustomData.EMPTY);
@@ -102,7 +102,7 @@ index 171c929677bfb0906a811ad9346c02a87204758f..aaed0f7a8f3b78e9e2c50014f2cfad53
                  this.tags.clear();
                  input.read("Tags", TAG_LIST_CODEC).ifPresent(this.tags::addAll);
                  this.readAdditionalSaveData(input);
-@@ -6600,4 +6604,10 @@ public abstract class Entity
+@@ -6450,4 +6454,10 @@ public abstract class Entity
      }
      // Mili end - entity culling
      public boolean shouldTickHot() { return this.tickCount > 20 * 10 && this.isAlive(); } // KioCG
@@ -114,10 +114,10 @@ index 171c929677bfb0906a811ad9346c02a87204758f..aaed0f7a8f3b78e9e2c50014f2cfad53
 +    // Leaves end - leaves ex data
  }
 diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
-index 7b15e5dcc27876e70ac54b2f45d577b670bee448..d431454e998fb8d53ec3b8d49d5cb2c121c2c0b0 100644
+index caf54f1..891e231 100644
 --- a/net/minecraft/world/entity/player/Player.java
 +++ b/net/minecraft/world/entity/player/Player.java
-@@ -1047,15 +1047,15 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -1038,15 +1038,15 @@ public abstract class Player extends Avatar implements ContainerUser {
              if (this.level() instanceof ServerLevel serverLevel
                  && fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeOneHitKill
                  && this.isCreative()
@@ -138,7 +138,7 @@ index 7b15e5dcc27876e70ac54b2f45d577b670bee448..d431454e998fb8d53ec3b8d49d5cb2c1
                  }
                  return;
 diff --git a/net/minecraft/world/item/ShearsItem.java b/net/minecraft/world/item/ShearsItem.java
-index b7f8b52fcb2600e211293b196dfba168c2a31bb3..fc0a63099a86d5fc722037408eb314cc4e0da3e2 100644
+index 65f3354..6453ba6 100644
 --- a/net/minecraft/world/item/ShearsItem.java
 +++ b/net/minecraft/world/item/ShearsItem.java
 @@ -81,7 +81,7 @@ public class ShearsItem extends Item {
@@ -151,7 +151,7 @@ index b7f8b52fcb2600e211293b196dfba168c2a31bb3..fc0a63099a86d5fc722037408eb314cc
              // Mili end - shears wrench
          }
 diff --git a/net/minecraft/world/item/crafting/RecipeManager.java b/net/minecraft/world/item/crafting/RecipeManager.java
-index e5362305761966f616ac7fabef583d615430de7a..3c040e6688414c5b4b0ad93f04795a341375ba04 100644
+index 9c822e3..14b3ae2 100644
 --- a/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -108,14 +108,26 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
@@ -217,7 +217,7 @@ index e5362305761966f616ac7fabef583d615430de7a..3c040e6688414c5b4b0ad93f04795a34
              )
          );
 diff --git a/net/minecraft/world/item/crafting/SmithingTransformRecipe.java b/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
-index 432bfa6991919a2803846838a1dfe3415ae668c2..89983e7da244434a5346b23b49c748349cd79e34 100644
+index 432bfa6..89983e7 100644
 --- a/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
 +++ b/net/minecraft/world/item/crafting/SmithingTransformRecipe.java
 @@ -117,7 +117,7 @@ public class SmithingTransformRecipe extends SimpleSmithingRecipe {
@@ -230,10 +230,10 @@ index 432bfa6991919a2803846838a1dfe3415ae668c2..89983e7da244434a5346b23b49c74834
      // Leaves end - REI
  
 diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
-index 4134fa658f09a9dcbb674dfdd91d2ffdfda912ba..0f9dd7b3991f18f4d643428ab600b502936bfac7 100644
+index b00387e..3049f95 100644
 --- a/net/minecraft/world/level/block/Block.java
 +++ b/net/minecraft/world/level/block/Block.java
-@@ -722,6 +722,13 @@ public class Block extends BlockBehaviour implements ItemLike {
+@@ -721,6 +721,13 @@ public class Block extends BlockBehaviour implements ItemLike {
      }
      // CraftBukkit end
  
@@ -248,10 +248,10 @@ index 4134fa658f09a9dcbb674dfdd91d2ffdfda912ba..0f9dd7b3991f18f4d643428ab600b502
          @Override
          public boolean equals(final Object o) {
 diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
-index 35e054d503969a7999ff7867bddb65f94596d800..8a13418ef33c1a29d1a04ca5c680dbcc9d9039da 100644
+index 6f65da1..c695eeb 100644
 --- a/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 +++ b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
-@@ -176,7 +176,7 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
+@@ -173,7 +173,7 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
              return;
          }
  
@@ -261,10 +261,10 @@ index 35e054d503969a7999ff7867bddb65f94596d800..8a13418ef33c1a29d1a04ca5c680dbcc
              return;
          }
 diff --git a/net/minecraft/world/level/block/SignBlock.java b/net/minecraft/world/level/block/SignBlock.java
-index 17927fe45d45793a5f9696adb2fbb059231fad39..694b7f6b0240fe79a078def3e445afa93a8a4ce9 100644
+index 0b0c2d5..0694238 100644
 --- a/net/minecraft/world/level/block/SignBlock.java
 +++ b/net/minecraft/world/level/block/SignBlock.java
-@@ -121,7 +121,7 @@ public abstract class SignBlock extends BaseEntityBlock implements SimpleWaterlo
+@@ -120,7 +120,7 @@ public abstract class SignBlock extends BaseEntityBlock implements SimpleWaterlo
                      }
                      if (level.getBlockEntity(pos1) instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity) {
                          BlockState state1 = level.getBlockState(pos1);
@@ -274,10 +274,10 @@ index 17927fe45d45793a5f9696adb2fbb059231fad39..694b7f6b0240fe79a078def3e445afa9
                      return InteractionResult.TRY_WITH_EMPTY_HAND;
                      // Mili end - signContainerPassthrough
 diff --git a/net/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity.java b/net/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity.java
-index 9d14176da1cb9ba0439366363fc2384215420f20..534f258b7b2b2aae14d889c0494392e8e360c0df 100644
+index ca4f318..5fce64f 100644
 --- a/net/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity.java
-@@ -395,7 +395,7 @@ public abstract class AbstractFurnaceBlockEntity extends BaseContainerBlockEntit
+@@ -397,7 +397,7 @@ public abstract class AbstractFurnaceBlockEntity extends BaseContainerBlockEntit
          ItemStack oldStack = this.items.get(slot);
          boolean same = !itemStack.isEmpty() && ItemStack.isSameItemSameComponents(oldStack, itemStack);
          this.items.set(slot, itemStack);
@@ -287,7 +287,7 @@ index 9d14176da1cb9ba0439366363fc2384215420f20..534f258b7b2b2aae14d889c0494392e8
              this.cookingTotalTime = getTotalCookTime(serverLevel, this, this.recipeType, this.cookSpeedMultiplier); // Paper - cook speed multiplier API
              this.cookingTimer = 0;
 diff --git a/net/minecraft/world/level/chunk/storage/RegionFileStorage.java b/net/minecraft/world/level/chunk/storage/RegionFileStorage.java
-index 49fb94848d2336e7c6a2d2c0fa45e9901e8b3005..0e208eac6b7aed80a2c2484d8bc86e1e86c8ae63 100644
+index 9bf0099..b2a38e3 100644
 --- a/net/minecraft/world/level/chunk/storage/RegionFileStorage.java
 +++ b/net/minecraft/world/level/chunk/storage/RegionFileStorage.java
 @@ -65,7 +65,7 @@ public class RegionFileStorage implements AutoCloseable, ca.spottedleaf.moonrise
@@ -300,7 +300,7 @@ index 49fb94848d2336e7c6a2d2c0fa45e9901e8b3005..0e208eac6b7aed80a2c2484d8bc86e1e
          }
  
 diff --git a/net/minecraft/world/level/levelgen/feature/CoralFeature.java b/net/minecraft/world/level/levelgen/feature/CoralFeature.java
-index 0ab324d8435826878861547fe3309ace9c37abe8..6165bb35d2bb37178c0d0d3f284c501b9cbb7364 100644
+index 0ab324d..6165bb3 100644
 --- a/net/minecraft/world/level/levelgen/feature/CoralFeature.java
 +++ b/net/minecraft/world/level/levelgen/feature/CoralFeature.java
 @@ -33,6 +33,12 @@ public abstract class CoralFeature extends Feature<NoneFeatureConfiguration> {

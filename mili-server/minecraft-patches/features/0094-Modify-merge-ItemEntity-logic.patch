@@ -5,15 +5,15 @@ Subject: [PATCH] Modify merge ItemEntity logic
 
 
 diff --git a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java
-index 6f5d3ebb7adc567e5106a3c76fccdbee93f51c27..b1d5d59718e5748b164f0885d4152e795c5d572d 100644
+index aed1641..44b06b1 100644
 --- a/net/minecraft/world/entity/item/ItemEntity.java
 +++ b/net/minecraft/world/entity/item/ItemEntity.java
-@@ -289,7 +289,7 @@ public class ItemEntity extends Entity implements TraceableEntity, ChangePublish
+@@ -287,7 +287,7 @@ public class ItemEntity extends Entity implements TraceableEntity, ChangePublish
          ItemStack thisItemStack = this.getItem();
          ItemStack otherItemStack = other.getItem();
          if (Objects.equals(this.target, other.target) && areMergable(thisItemStack, otherItemStack)) {
 -            if (otherItemStack.getCount() < thisItemStack.getCount()) {
-+            if (fun.bm.lophine.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || otherItemStack.getCount() < thisItemStack.getCount()) { // Lophine - add follow Tick Sequence Merge, see Paper#13073
++            if (fun.bm.mili.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || otherItemStack.getCount() < thisItemStack.getCount()) { // Lophine - add follow Tick Sequence Merge, see Paper#13073
                  merge(this, thisItemStack, other, otherItemStack);
              } else {
                  merge(other, otherItemStack, this, thisItemStack);

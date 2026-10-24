@@ -5,18 +5,24 @@ Subject: [PATCH] Carpet features
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
-index aa575f3b76ef70ffb9f0410e7e5cfe7af384bfbd..ba1471c8a04bc3bf3a4a85f9d4d9f96f40945785 100644
+index d5ff949..ed059f2 100644
 --- a/io/papermc/paper/threadedregions/RegionizedServer.java
 +++ b/io/papermc/paper/threadedregions/RegionizedServer.java
-@@ -232,6 +232,7 @@ public final class RegionizedServer {
-     private long tickCount;
+@@ -325,12 +325,7 @@ public final class RegionizedServer {
+      */
  
      private void globalTick(final long tickCount) {
+-        /*
+-        if (false) {
+-            io.papermc.paper.threadedregions.ThreadedTicketLevelPropagator.main(null);
+-        }
+-        this.randomWalk();
+-         */
 +        final long tickStartNanos = System.nanoTime();
          ++this.tickCount;
          // expire invalid click command callbacks
          io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.handleQueue((int)this.tickCount); // Paper // Folia - region threading - moved to global tick
-@@ -259,6 +260,8 @@ public final class RegionizedServer {
+@@ -358,6 +353,8 @@ public final class RegionizedServer {
              this.globalTick(world, tickCount);
          }
  
@@ -26,14 +32,16 @@ index aa575f3b76ef70ffb9f0410e7e5cfe7af384bfbd..ba1471c8a04bc3bf3a4a85f9d4d9f96f
          this.tickConnections();
  
 diff --git a/net/minecraft/commands/arguments/blocks/BlockInput.java b/net/minecraft/commands/arguments/blocks/BlockInput.java
-index 29dcaa5b33e4f6c649b0918721cfaafe9c74eb01..4543bc1812fb8df297ab4358ca98ca8f8d6f42b7 100644
+index a4b3865..f38001c 100644
 --- a/net/minecraft/commands/arguments/blocks/BlockInput.java
 +++ b/net/minecraft/commands/arguments/blocks/BlockInput.java
-@@ -65,7 +65,9 @@ public class BlockInput implements Predicate<BlockInWorld> {
+@@ -64,8 +64,10 @@ public class BlockInput implements Predicate<BlockInWorld> {
+         return this.test(new BlockInWorld(level, pos, false));
      }
  
-     public boolean place(final ServerLevel level, final BlockPos pos, final @Block.UpdateFlags int update) {
+-    public boolean place(final ServerLevel level, final BlockPos pos, @Block.UpdateFlags final int update) {
 -        BlockState state = (update & Block.UPDATE_KNOWN_SHAPE) != 0 ? this.state : Block.updateFromNeighbourShapes(this.state, level, pos);
++    public boolean place(final ServerLevel level, final BlockPos pos, final @Block.UpdateFlags int update) {
 +        BlockState state = (update & Block.UPDATE_KNOWN_SHAPE) != 0 || (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() && this.state.getFluidState().isEmpty())
 +            ? this.state
 +            : Block.updateFromNeighbourShapes(this.state, level, pos);
@@ -41,7 +49,7 @@ index 29dcaa5b33e4f6c649b0918721cfaafe9c74eb01..4543bc1812fb8df297ab4358ca98ca8f
              state = this.state;
          }
 diff --git a/net/minecraft/core/Direction.java b/net/minecraft/core/Direction.java
-index 96a1769731b17535fdb9e2d9c52db20a7bf421b7..5971299ac866bbb8fc35311d72ddae3a5e4a97eb 100644
+index a077689..e56095d 100644
 --- a/net/minecraft/core/Direction.java
 +++ b/net/minecraft/core/Direction.java
 @@ -136,7 +136,7 @@ public enum Direction implements StringRepresentable, ca.spottedleaf.moonrise.pa
@@ -54,7 +62,7 @@ index 96a1769731b17535fdb9e2d9c52db20a7bf421b7..5971299ac866bbb8fc35311d72ddae3a
          float pitchCos = Mth.cos(pitch);
          float yawSin = Mth.sin(yaw);
 diff --git a/net/minecraft/network/chat/SignedMessageValidator.java b/net/minecraft/network/chat/SignedMessageValidator.java
-index a28958b8ab09b3ffdcedba19e0063af07f177080..f115a1bc5400ef38f339d5ba952b0cc18930a060 100644
+index 5cb6933..0269334 100644
 --- a/net/minecraft/network/chat/SignedMessageValidator.java
 +++ b/net/minecraft/network/chat/SignedMessageValidator.java
 @@ -31,7 +31,9 @@ public interface SignedMessageValidator {
@@ -69,10 +77,10 @@ index a28958b8ab09b3ffdcedba19e0063af07f177080..f115a1bc5400ef38f339d5ba952b0cc1
                      "Received out-of-order chat message from {}: expected index > {} for session {}, but was {} for session {}",
                      message.sender(),
 diff --git a/net/minecraft/server/commands/TickCommand.java b/net/minecraft/server/commands/TickCommand.java
-index e8d6a67143f3f0b4813e51bb273498bc404899b9..43d3e4f2c1c78ab586b1133daa09bf3aeba4ce6c 100644
+index 2dd0a8f..d761217 100644
 --- a/net/minecraft/server/commands/TickCommand.java
 +++ b/net/minecraft/server/commands/TickCommand.java
-@@ -21,7 +21,7 @@ public class TickCommand {
+@@ -20,7 +20,7 @@ public class TickCommand {
      public static void register(final CommandDispatcher<CommandSourceStack> dispatcher) {
          dispatcher.register(
              Commands.literal("tick")
@@ -81,7 +89,7 @@ index e8d6a67143f3f0b4813e51bb273498bc404899b9..43d3e4f2c1c78ab586b1133daa09bf3a
                  .then(Commands.literal("query").executes(c -> tickQuery(c.getSource())))
                  .then(
                      Commands.literal("rate")
-@@ -109,7 +109,12 @@ public class TickCommand {
+@@ -108,7 +108,12 @@ public class TickCommand {
  
      private static int setFreeze(final CommandSourceStack source, final boolean freeze) {
          ServerTickRateManager manager = source.getServer().tickRateManager();
@@ -95,7 +103,7 @@ index e8d6a67143f3f0b4813e51bb273498bc404899b9..43d3e4f2c1c78ab586b1133daa09bf3a
              if (manager.isSprinting()) {
                  manager.stopSprinting();
              }
-@@ -119,14 +124,14 @@ public class TickCommand {
+@@ -118,14 +123,14 @@ public class TickCommand {
              }
          }
  
@@ -113,7 +121,7 @@ index e8d6a67143f3f0b4813e51bb273498bc404899b9..43d3e4f2c1c78ab586b1133daa09bf3a
      }
  
      private static int step(final CommandSourceStack source, final int advance) {
-@@ -164,4 +169,8 @@ public class TickCommand {
+@@ -163,4 +168,8 @@ public class TickCommand {
              return 0;
          }
      }
@@ -123,7 +131,7 @@ index e8d6a67143f3f0b4813e51bb273498bc404899b9..43d3e4f2c1c78ab586b1133daa09bf3a
 +    }
  }
 diff --git a/net/minecraft/server/dedicated/DedicatedPlayerList.java b/net/minecraft/server/dedicated/DedicatedPlayerList.java
-index 8cc4fe9feb57902a4b9a6a26e6175ac00a2cef65..186eac66cd18b4dd35050942bf06ce680815a38a 100644
+index 1a2b57a..1eca392 100644
 --- a/net/minecraft/server/dedicated/DedicatedPlayerList.java
 +++ b/net/minecraft/server/dedicated/DedicatedPlayerList.java
 @@ -14,7 +14,7 @@ public class DedicatedPlayerList extends PlayerList {
@@ -136,23 +144,23 @@ index 8cc4fe9feb57902a4b9a6a26e6175ac00a2cef65..186eac66cd18b4dd35050942bf06ce68
          // Paper start - fix converting txt to json file; moved from constructor
      }
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 508b58584d77aed0ddfc26e53dfa4198999575e4..8b1ae2944f50d820afd0b8b89e6a122994b17392 100644
+index 1a61e7f..df62f68 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -963,7 +963,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -974,7 +974,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
  
                                      profiler.push("tick");
                                      // Lophine start - catch update suppression crash
--                                    if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-                                    if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
 +                                    if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
                                          try {
                                              this.guardEntityTick(this::tickNonPassenger, entity);
                                          } catch (org.leavesmc.leaves.util.UpdateSuppressionException exception) {
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 39e1b726c882cb33ccc11ea3fafee2bee92e2cd4..9b45ec8d09d3cf8cdc3f592d2a77a22faec3414c 100644
+index fc175f8..414d22a 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -259,6 +259,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -256,6 +256,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
      private int requestedViewDistance = 2;
      public String language = null; // Paper - default to null
      public java.util.Locale adventure$locale = java.util.Locale.US; // Paper
@@ -160,16 +168,16 @@ index 39e1b726c882cb33ccc11ea3fafee2bee92e2cd4..9b45ec8d09d3cf8cdc3f592d2a77a22f
      private @Nullable Vec3 startingToFallPosition;
      private @Nullable Vec3 enteredNetherPosition;
      private @Nullable Vec3 enteredLavaOnVehiclePosition;
-@@ -2099,7 +2100,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
-         this.lastSentFood = -1;
-         this.teleportSpectators(transition, oldLevel);
-         // Leaves start - bot support
--        if (fun.bm.lophine.config.modules.function.FakeplayerConfig.enable) {
-+        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
-             this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(this, true)); // Leaves - render bot
-         }
-         // Leaves end - bot support
-@@ -2736,6 +2737,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -2129,7 +2130,7 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+             this.lastSentFood = -1;
+             this.teleportSpectators(transition, oldLevel);
+             // Leaves start - bot support
+-            if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
++            if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
+                 this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(this, true)); // Leaves - render bot
+             }
+             // Leaves end - bot support
+@@ -2766,6 +2767,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          this.setShoulderEntityRight(oldPlayer.getShoulderEntityRight());
          this.setLastDeathLocation(oldPlayer.getLastDeathLocation());
          this.waypointIcon().copyFrom(oldPlayer.waypointIcon());
@@ -179,7 +187,7 @@ index 39e1b726c882cb33ccc11ea3fafee2bee92e2cd4..9b45ec8d09d3cf8cdc3f592d2a77a22f
      }
  
      private void transferInventoryXpAndScore(final Player oldPlayer) {
-@@ -3015,6 +3019,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -3049,6 +3053,9 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          this.particleStatus = information.particleStatus();
          this.getEntityData().set(DATA_PLAYER_MODE_CUSTOMISATION, (byte)information.modelCustomisation());
          this.getEntityData().set(DATA_PLAYER_MAIN_HAND, information.mainHand());
@@ -190,10 +198,10 @@ index 39e1b726c882cb33ccc11ea3fafee2bee92e2cd4..9b45ec8d09d3cf8cdc3f592d2a77a22f
  
      public ClientInformation clientInformation() {
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d6353c02703 100644
+index 8510454..82c77cd 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -2092,7 +2092,13 @@ public class ServerGamePacketListenerImpl
+@@ -2099,7 +2099,13 @@ public class ServerGamePacketListenerImpl
                      this.player.gameMode.capturedBlockEntity = false;
                      this.player.gameMode.captureSentBlockEntities = true;
                      // Paper end - Send block entities after destroy prediction
@@ -208,16 +216,16 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
                      this.ackBlockChangesUpTo(packet.getSequence());
                      // Paper start - Send block entities after destroy prediction
                      this.player.gameMode.captureSentBlockEntities = false;
-@@ -2176,7 +2182,7 @@ public class ServerGamePacketListenerImpl
+@@ -2183,7 +2189,7 @@ public class ServerGamePacketListenerImpl
                  if (ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.player.level(), pos.getX() >> 4, pos.getZ() >> 4, 8) &&  this.player.isWithinBlockInteractionRange(pos, 1.0)) { // Folia - do not allow players to interact with blocks outside the current region
                      Vec3 distance = location.subtract(Vec3.atCenterOf(pos));
                      double limit = 1.0000001;
--                    if (fun.bm.lophine.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(distance.x()) < 1.0000001 && Math.abs(distance.y()) < 1.0000001 && Math.abs(distance.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
+-                    if (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(distance.x()) < 1.0000001 && Math.abs(distance.y()) < 1.0000001 && Math.abs(distance.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
 +                    if (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.needIgnoreDistance() ||Math.abs(distance.x()) < 1.0000001 && Math.abs(distance.y()) < 1.0000001 && Math.abs(distance.z()) < 1.0000001) { // Leaves - disableDistanceCheckForUseItem
                          Direction direction = blockHit.getDirection();
                          this.player.resetLastActionTime();
                          int maxY = level.getMaxY();
-@@ -2197,7 +2203,9 @@ public class ServerGamePacketListenerImpl
+@@ -2204,7 +2210,9 @@ public class ServerGamePacketListenerImpl
                                      this.player.stopUsingItem(); // CraftBukkit - SPIGOT-4706
                                  }
                                  // Luminol end
@@ -228,7 +236,7 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
                                  if (interactionResult.consumesAction()) {
                                      CriteriaTriggers.ANY_BLOCK_USE.trigger(this.player, blockHit.getBlockPos(), itemStack);
                                  }
-@@ -2302,7 +2310,8 @@ public class ServerGamePacketListenerImpl
+@@ -2309,7 +2317,8 @@ public class ServerGamePacketListenerImpl
                  }
                  // CraftBukkit end
  
@@ -238,7 +246,7 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
                      && success.swingSource() == InteractionResult.SwingSource.SERVER) {
                      this.player.swing(hand, true);
                  }
-@@ -2310,6 +2319,14 @@ public class ServerGamePacketListenerImpl
+@@ -2317,6 +2326,14 @@ public class ServerGamePacketListenerImpl
          }
      }
  
@@ -253,7 +261,7 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
      @Override
      public void handleTeleportToEntityPacket(final ServerboundTeleportToEntityPacket packet) {
          PacketUtils.ensureRunningOnSameThread(packet, this, this.player.level());
-@@ -2690,6 +2707,8 @@ public class ServerGamePacketListenerImpl
+@@ -2697,6 +2714,8 @@ public class ServerGamePacketListenerImpl
              if (true) throw new UnsupportedOperationException(); // Folia - region threading
              final String conversationInput = rawMessage;
              this.server.processQueue.add(() -> ServerGamePacketListenerImpl.this.getCraftPlayer().acceptConversationInput(conversationInput));
@@ -262,17 +270,20 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
          } else if (this.player.getChatVisibility() == ChatVisiblity.SYSTEM) { // Re-add "Command Only" flag check
              this.send(new ClientboundSystemChatPacket(Component.translatable("chat.cannotSend").withStyle(ChatFormatting.RED), false));
          } else {
-@@ -2702,6 +2721,9 @@ public class ServerGamePacketListenerImpl
+@@ -2708,8 +2727,10 @@ public class ServerGamePacketListenerImpl
+     }
  
      // Spigot start - spam exclusions
-     private void detectRateSpam(final TickThrottler throttler, final String message) {
+-    private void detectRateSpam(String message) {
+-        // CraftBukkit start - replaced with thread safe throttle
++    private void detectRateSpam(final TickThrottler throttler, final String message) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.antiSpamDisabled) {
 +            return;
 +        }
          if (me.earthme.luminol.config.modules.misc.PaperPacketLimiterConfig.forceDisable) return; // Leaves - disable
          if (org.spigotmc.SpigotConfig.enableSpamExclusions) {
              for (String exclude : org.spigotmc.SpigotConfig.spamExclusions) {
-@@ -3645,8 +3667,10 @@ public class ServerGamePacketListenerImpl
+@@ -3642,8 +3663,10 @@ public class ServerGamePacketListenerImpl
                  this.player.inventoryMenu.broadcastChanges();
                  if (io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.updateEquipmentOnPlayerActions) this.player.detectEquipmentUpdates(); // Paper - Force update attributes.
              } else if (drop && validData) {
@@ -286,32 +297,32 @@ index f605f578db60d6cb6944b28683a01bfc530bc8b1..c794b993e0ebd5b98b90f5727e387d63
                  } else {
                      LOGGER.warn("Player {} was dropping items too fast in creative mode, ignoring.", this.player.getPlainTextName());
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 1921923a53ba7a8218dd0bba291d9ea4e09b4a8b..1273cb9048aa0cecd00c92fef3a772e36cf31074 100644
+index d488247..acb0384 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -279,7 +279,7 @@ public abstract class PlayerList {
+@@ -280,7 +280,7 @@ public abstract class PlayerList {
          // org.leavesmc.leaves.protocol.core.LeavesProtocolManager.handlePlayerJoin(player); // Leaves - protocol
  
          // Leaves start - bot support
--        if (fun.bm.lophine.config.modules.function.FakeplayerConfig.enable) {
+-        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
 +        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
              org.leavesmc.leaves.bot.ServerBot bot = this.server.getBotList().getBotByName(player.getScoreboardName());
              if (bot != null) {
                  this.server.getBotList().removeBot(bot, org.leavesmc.leaves.event.bot.BotRemoveEvent.RemoveReason.INTERNAL, player.getBukkitEntity(), false, false);
-@@ -965,7 +965,7 @@ public abstract class PlayerList {
+@@ -967,7 +967,7 @@ public abstract class PlayerList {
          ).callEvent();
          // Paper end
          // Leaves start - bot support
--        if (fun.bm.lophine.config.modules.function.FakeplayerConfig.enable) {
+-        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
 +        if (fun.bm.mili.config.modules.function.FakeplayerConfig.enable) {
              this.server.getBotList().bots.forEach(bot -> bot.sendFakeDataIfNeed(player, true)); // Leaves - render bot
          }
          // Leaves end - bot support
 diff --git a/net/minecraft/world/entity/ExperienceOrb.java b/net/minecraft/world/entity/ExperienceOrb.java
-index b95c56e0699fbe16e65efcf010cd514f0ac0962f..1217c584677dad68d7b51ce33ee59de0d1c65ee7 100644
+index 2312803..3576eb7 100644
 --- a/net/minecraft/world/entity/ExperienceOrb.java
 +++ b/net/minecraft/world/entity/ExperienceOrb.java
-@@ -356,8 +356,22 @@ public class ExperienceOrb extends Entity {
+@@ -351,8 +351,22 @@ public class ExperienceOrb extends Entity {
      @Override
      public void playerTouch(final Player player) {
          if (player instanceof ServerPlayer serverPlayer) {
@@ -335,7 +346,7 @@ index b95c56e0699fbe16e65efcf010cd514f0ac0962f..1217c584677dad68d7b51ce33ee59de0
                  player.take(this, 1);
                  int remaining = this.repairPlayerItems(serverPlayer, this.getValue());
                  if (remaining > 0) {
-@@ -373,6 +387,10 @@ public class ExperienceOrb extends Entity {
+@@ -368,6 +382,10 @@ public class ExperienceOrb extends Entity {
      }
  
      private int repairPlayerItems(final ServerPlayer player, final int amount) {
@@ -346,7 +357,7 @@ index b95c56e0699fbe16e65efcf010cd514f0ac0962f..1217c584677dad68d7b51ce33ee59de0
          Optional<EnchantedItemInUse> selected = EnchantmentHelper.getRandomItemWith(EnchantmentEffectComponents.REPAIR_WITH_XP, player, ItemStack::isDamaged);
          if (selected.isPresent()) {
              ItemStack itemStack = selected.get().itemStack();
-@@ -402,6 +420,76 @@ public class ExperienceOrb extends Entity {
+@@ -397,6 +415,76 @@ public class ExperienceOrb extends Entity {
          }
      }
  
@@ -424,10 +435,10 @@ index b95c56e0699fbe16e65efcf010cd514f0ac0962f..1217c584677dad68d7b51ce33ee59de0
          return this.entityData.get(DATA_VALUE);
      }
 diff --git a/net/minecraft/world/entity/LivingEntity.java b/net/minecraft/world/entity/LivingEntity.java
-index b1a59ae4bbdf9571df0f5e66ace5263dcd4259a0..bffc023071c5dc385e92c6a736c9663cf91bd8d0 100644
+index b4167c6..8a7e895 100644
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
-@@ -624,7 +624,8 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
+@@ -601,7 +601,8 @@ public abstract class LivingEntity extends Entity implements Attackable, Waypoin
      public boolean broadcastedDeath = false; // Folia - region threading
      protected void tickDeath() {
          this.deathTime++;
@@ -438,24 +449,24 @@ index b1a59ae4bbdf9571df0f5e66ace5263dcd4259a0..bffc023071c5dc385e92c6a736c9663c
              if (!(this instanceof ServerPlayer)) this.remove(Entity.RemovalReason.KILLED, org.bukkit.event.entity.EntityRemoveEvent.Cause.DEATH); // CraftBukkit - add Bukkit remove cause // Folia - region threading - don't remove, we want the tick scheduler to be running
              if ((this instanceof ServerPlayer)) this.unRide(); // Folia - region threading - unmount player when dead
 diff --git a/net/minecraft/world/entity/item/ItemEntity.java b/net/minecraft/world/entity/item/ItemEntity.java
-index b1d5d59718e5748b164f0885d4152e795c5d572d..364d14846999a54965529f48150bfef60e8fdd72 100644
+index 44b06b1..55386c8 100644
 --- a/net/minecraft/world/entity/item/ItemEntity.java
 +++ b/net/minecraft/world/entity/item/ItemEntity.java
-@@ -289,7 +289,7 @@ public class ItemEntity extends Entity implements TraceableEntity, ChangePublish
+@@ -287,7 +287,7 @@ public class ItemEntity extends Entity implements TraceableEntity, ChangePublish
          ItemStack thisItemStack = this.getItem();
          ItemStack otherItemStack = other.getItem();
          if (Objects.equals(this.target, other.target) && areMergable(thisItemStack, otherItemStack)) {
--            if (fun.bm.lophine.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || otherItemStack.getCount() < thisItemStack.getCount()) { // Lophine - add follow Tick Sequence Merge, see Paper#13073
+-            if (fun.bm.mili.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || otherItemStack.getCount() < thisItemStack.getCount()) { // Lophine - add follow Tick Sequence Merge, see Paper#13073
 +            if (fun.bm.mili.config.modules.misc.ItemEntityConfig.followTickSequenceMerge || otherItemStack.getCount() < thisItemStack.getCount()) { // Lophine - add follow Tick Sequence Merge, see Paper#13073
                  merge(this, thisItemStack, other, otherItemStack);
              } else {
                  merge(other, otherItemStack, this, thisItemStack);
 diff --git a/net/minecraft/world/entity/item/PrimedTnt.java b/net/minecraft/world/entity/item/PrimedTnt.java
-index 4e8385b340686531297324983754fab4150e41b8..e0a047dded72eb0b05392d1ee9fab06648f7d41b 100644
+index 42aff39..e747f43 100644
 --- a/net/minecraft/world/entity/item/PrimedTnt.java
 +++ b/net/minecraft/world/entity/item/PrimedTnt.java
-@@ -73,8 +73,12 @@ public class PrimedTnt extends Entity implements TraceableEntity {
-         this(EntityTypes.TNT, level);
+@@ -70,8 +70,12 @@ public class PrimedTnt extends Entity implements TraceableEntity {
+         this(EntityType.TNT, level);
          this.setPos(x, y, z);
          double rot = this.getRandom().nextDouble() * (float) (Math.PI * 2); // Paper - Don't use level random in entity constructors
 -        this.setDeltaMovement(-Math.sin(rot) * 0.02, 0.2F, -Math.cos(rot) * 0.02);
@@ -469,7 +480,7 @@ index 4e8385b340686531297324983754fab4150e41b8..e0a047dded72eb0b05392d1ee9fab066
          this.xo = x;
          this.yo = y;
          this.zo = z;
-@@ -83,7 +87,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
+@@ -80,7 +84,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
  
      @Override
      protected void defineSynchedData(final SynchedEntityData.Builder entityData) {
@@ -478,7 +489,7 @@ index 4e8385b340686531297324983754fab4150e41b8..e0a047dded72eb0b05392d1ee9fab066
          entityData.define(DATA_BLOCK_STATE_ID, DEFAULT_BLOCK_STATE);
      }
  
-@@ -180,7 +184,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
+@@ -177,7 +181,7 @@ public class PrimedTnt extends Entity implements TraceableEntity {
  
      @Override
      protected void readAdditionalSaveData(final ValueInput input) {
@@ -487,7 +498,7 @@ index 4e8385b340686531297324983754fab4150e41b8..e0a047dded72eb0b05392d1ee9fab066
          this.setBlockState(input.read("block_state", BlockState.CODEC).orElse(DEFAULT_BLOCK_STATE));
          this.explosionPower = Mth.clamp(input.getFloatOr("explosion_power", 4.0F), 0.0F, 128.0F);
          this.owner = EntityReference.read(input, "owner");
-@@ -203,6 +207,10 @@ public class PrimedTnt extends Entity implements TraceableEntity {
+@@ -200,6 +204,10 @@ public class PrimedTnt extends Entity implements TraceableEntity {
          this.entityData.set(DATA_FUSE_ID, time);
      }
  
@@ -499,7 +510,7 @@ index 4e8385b340686531297324983754fab4150e41b8..e0a047dded72eb0b05392d1ee9fab066
          return this.entityData.get(DATA_FUSE_ID);
      }
 diff --git a/net/minecraft/world/entity/monster/EnderMan.java b/net/minecraft/world/entity/monster/EnderMan.java
-index 82e1472fb39122dadef700b63cc784be71fd7a69..716a6bb0c3bad23ba702f6577cf3910def7e4326 100644
+index 076e53d..665f06d 100644
 --- a/net/minecraft/world/entity/monster/EnderMan.java
 +++ b/net/minecraft/world/entity/monster/EnderMan.java
 @@ -642,7 +642,7 @@ public class EnderMan extends Monster implements NeutralMob {
@@ -526,10 +537,10 @@ index 82e1472fb39122dadef700b63cc784be71fd7a69..716a6bb0c3bad23ba702f6577cf3910d
      }
  }
 diff --git a/net/minecraft/world/entity/player/Player.java b/net/minecraft/world/entity/player/Player.java
-index eb1a416017b77b2d99ad30593438d0145ebc51ef..7b15e5dcc27876e70ac54b2f45d577b670bee448 100644
+index 606282a..caf54f1 100644
 --- a/net/minecraft/world/entity/player/Player.java
 +++ b/net/minecraft/world/entity/player/Player.java
-@@ -520,7 +520,13 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -516,7 +516,13 @@ public abstract class Player extends Avatar implements ContainerUser {
              }
  
              if (!orbs.isEmpty()) {
@@ -544,7 +555,7 @@ index eb1a416017b77b2d99ad30593438d0145ebc51ef..7b15e5dcc27876e70ac54b2f45d577b6
              }
          }
  
-@@ -1038,6 +1044,22 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -1029,6 +1035,22 @@ public abstract class Player extends Avatar implements ContainerUser {
  
          if (playerAttackEntityEvent.callEvent() && willAttack) { // Logic moved to willAttack local variable.
          // Paper end - PlayerAttackEntityEvent
@@ -567,7 +578,7 @@ index eb1a416017b77b2d99ad30593438d0145ebc51ef..7b15e5dcc27876e70ac54b2f45d577b6
              float baseDamage = this.isAutoSpinAttack() ? this.autoSpinAttackDmg : (float)this.getAttributeValue(Attributes.ATTACK_DAMAGE);
              ItemStack attackingItemStack = this.getWeaponItem();
              DamageSource damageSource = this.createAttackSource(attackingItemStack); final DamageSource dmgSourceFinal = damageSource; // Paper - damage events
-@@ -1097,6 +1119,16 @@ public abstract class Player extends Avatar implements ContainerUser {
+@@ -1086,6 +1108,16 @@ public abstract class Player extends Avatar implements ContainerUser {
          }
      }
  
@@ -585,10 +596,10 @@ index eb1a416017b77b2d99ad30593438d0145ebc51ef..7b15e5dcc27876e70ac54b2f45d577b6
          sendSoundEffect(this, this.getX(), this.getY(), this.getZ(), sound, this.getSoundSource(), 1.0F, 1.0F); // Paper - send while respecting visibility
      }
 diff --git a/net/minecraft/world/item/BlockItem.java b/net/minecraft/world/item/BlockItem.java
-index 2d9c105dc9600b9e9d9766e158840af762300cc2..d98df338cd71db9eae9901067b39a7e12fadc3cb 100644
+index 2c6c8e0..380e17d 100644
 --- a/net/minecraft/world/item/BlockItem.java
 +++ b/net/minecraft/world/item/BlockItem.java
-@@ -150,8 +150,13 @@ public class BlockItem extends Item {
+@@ -147,8 +147,13 @@ public class BlockItem extends Item {
          // CraftBukkit start
          CollisionContext collisionContext = player == null ? CollisionContext.empty() : CollisionContext.placementContext(player);
          Level world = context.getLevel(); // Paper - Cancel hit for vanished players
@@ -604,11 +615,11 @@ index 2d9c105dc9600b9e9d9766e158840af762300cc2..d98df338cd71db9eae9901067b39a7e1
  
          org.bukkit.event.block.BlockCanBuildEvent event = new org.bukkit.event.block.BlockCanBuildEvent(
 diff --git a/net/minecraft/world/item/ServerItemCooldowns.java b/net/minecraft/world/item/ServerItemCooldowns.java
-index ca548c006dfde82bef3f8855e275df63a42b8e09..abf66b4279dc931600554cc17e4f39a9ba8c65d0 100644
+index cf66ce7..da22739 100644
 --- a/net/minecraft/world/item/ServerItemCooldowns.java
 +++ b/net/minecraft/world/item/ServerItemCooldowns.java
-@@ -14,6 +14,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
-     // Paper start - Add PlayerItemCooldownEvent
+@@ -22,6 +22,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
+ 
      @Override
      public void addCooldown(ItemStack item, int duration) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeNoItemCooldown && this.player.isCreative()) {
@@ -617,7 +628,7 @@ index ca548c006dfde82bef3f8855e275df63a42b8e09..abf66b4279dc931600554cc17e4f39a9
          final Identifier cooldownGroup = this.getCooldownGroup(item);
          final io.papermc.paper.event.player.PlayerItemCooldownEvent event = new io.papermc.paper.event.player.PlayerItemCooldownEvent(
              this.player.getBukkitEntity(),
-@@ -30,6 +33,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
+@@ -38,6 +41,9 @@ public class ServerItemCooldowns extends ItemCooldowns {
  
      @Override
      public void addCooldown(Identifier cooldownGroup, int time, boolean callEvent) {
@@ -628,7 +639,7 @@ index ca548c006dfde82bef3f8855e275df63a42b8e09..abf66b4279dc931600554cc17e4f39a9
              final io.papermc.paper.event.player.PlayerItemGroupCooldownEvent event = new io.papermc.paper.event.player.PlayerItemGroupCooldownEvent(
                  this.player.getBukkitEntity(),
 diff --git a/net/minecraft/world/item/crafting/RecipeManager.java b/net/minecraft/world/item/crafting/RecipeManager.java
-index 6812ade4d9de26d507234b8357b109ec7e5cbb50..e5362305761966f616ac7fabef583d615430de7a 100644
+index 2989080..9c822e3 100644
 --- a/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -55,6 +55,9 @@ public class RecipeManager extends SimplePreparableReloadListener<RecipeMap> imp
@@ -716,34 +727,47 @@ index 6812ade4d9de26d507234b8357b109ec7e5cbb50..e5362305761966f616ac7fabef583d61
      public void addRecipe(RecipeHolder<?> holder) {
          org.spigotmc.AsyncCatcher.catchOp("Recipe Add"); // Spigot
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 395bbda866efe5b115ba47cfa14935ba9317ac58..ceb3629941576d7b1debb03a47bf7cf684b9e4a8 100644
+index 306dcad..16b8bc0 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -1179,6 +1179,10 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -1172,13 +1172,14 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     }
  
      // CraftBukkit start - Split off from above in order to directly send client and physic updates
-     public void notifyAndUpdatePhysics(BlockPos pos, LevelChunk chunk, BlockState oldState, BlockState blockState, BlockState newState, @Block.UpdateFlags int updateFlags, int updateLimit) {
+-    public void notifyAndUpdatePhysics(BlockPos pos, LevelChunk chunkAt, BlockState oldState, BlockState newState, BlockState currentState, @Block.UpdateFlags int flags, int recursionLeft) {
+-        BlockState state = newState;
+-        BlockState blockState = oldState;
+-        BlockState blockState1 = currentState;
+-        if (blockState1 == state) {
+-            if (blockState != blockState1) {
+-                this.setBlocksDirty(pos, blockState, blockState1);
++    public void notifyAndUpdatePhysics(BlockPos pos, LevelChunk chunk, BlockState oldState, BlockState blockState, BlockState newState, @Block.UpdateFlags int updateFlags, int updateLimit) {
 +        boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && newState.getFluidState().isEmpty() && oldState.getFluidState().isEmpty();
 +        if (skipUpdates) {
 +            updateFlags &= ~Block.UPDATE_NEIGHBORS;
 +        }
-         if (newState == blockState) {
-             if (oldState != newState) {
-                 this.setBlocksDirty(pos, oldState, newState);
-@@ -1195,7 +1199,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
++        if (newState == blockState) {
++            if (oldState != newState) {
++                this.setBlocksDirty(pos, oldState, newState);
+             }
+ 
+             if ((flags & Block.UPDATE_CLIENTS) != 0 && (!this.isClientSide() || (flags & Block.UPDATE_INVISIBLE) == 0) && (this.isClientSide() || chunkAt == null || (chunkAt.getFullStatus() != null && chunkAt.getFullStatus().isOrAfter(FullChunkStatus.FULL)))) { // allow chunk to be null here as chunk.isReady() is false when we send our notification during block placement // Paper - rewrite chunk system - change from ticking to full
+@@ -1192,8 +1193,8 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
                  }
              }
  
--            if ((updateFlags & Block.UPDATE_KNOWN_SHAPE) == 0 && updateLimit > 0) {
+-            if ((flags & Block.UPDATE_KNOWN_SHAPE) == 0 && recursionLeft > 0) {
+-                int i = flags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
 +            if (!skipUpdates && (updateFlags & Block.UPDATE_KNOWN_SHAPE) == 0 && updateLimit > 0) {
-                 int neighbourUpdateFlags = updateFlags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
++                int neighbourUpdateFlags = updateFlags & ~(Block.UPDATE_SUPPRESS_DROPS | Block.UPDATE_NEIGHBORS);
  
                  // CraftBukkit start
+                 blockState.updateIndirectNeighbourShapes(this, pos, i, recursionLeft - 1); // Don't call an event for the old block to limit event spam
 diff --git a/net/minecraft/world/level/NaturalSpawner.java b/net/minecraft/world/level/NaturalSpawner.java
-index e6488a0b6429f22bb6789e85867cde398e3456ae..a433446865ac307d7e106f0291734723b54927e5 100644
+index bc9b9e8..5145b84 100644
 --- a/net/minecraft/world/level/NaturalSpawner.java
 +++ b/net/minecraft/world/level/NaturalSpawner.java
-@@ -289,6 +289,9 @@ public final class NaturalSpawner {
+@@ -292,6 +292,9 @@ public final class NaturalSpawner {
                      Player nearestPlayer = level.getNearestPlayer(xx, yStart, zz, -1.0, false);
                      if (nearestPlayer != null) {
                          double nearestPlayerDistanceSqr = nearestPlayer.distanceToSqr(xx, yStart, zz);
@@ -753,7 +777,7 @@ index e6488a0b6429f22bb6789e85867cde398e3456ae..a433446865ac307d7e106f0291734723
                          if (level.isLoadedAndInBounds(pos) && isRightDistanceToPlayerAndSpawnPoint(level, chunk, pos, nearestPlayerDistanceSqr)) { // Paper - don't load chunks for mob spawn
                              if (currentSpawnData == null) {
                                  Optional<MobSpawnSettings.SpawnerData> nextSpawnData = getRandomSpawnMobAt(
-@@ -329,6 +332,9 @@ public final class NaturalSpawner {
+@@ -332,6 +335,9 @@ public final class NaturalSpawner {
                                      // SPIGOT-7045: Give ocelot babies back their special spawn reason. Note: This is the only modification required as ocelots count as monsters which means they only spawn during normal chunk ticking and do not spawn during chunk generation as starter mobs.
                                      level.addFreshEntityWithPassengers(mob, (mob instanceof net.minecraft.world.entity.animal.feline.Ocelot && !((org.bukkit.entity.Ageable) mob.getBukkitEntity()).isAdult()) ? org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.OCELOT_BABY : org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.NATURAL);
                                      if (!mob.isRemoved()) {
@@ -763,7 +787,7 @@ index e6488a0b6429f22bb6789e85867cde398e3456ae..a433446865ac307d7e106f0291734723
                                          clusterSize++;
                                          groupSize++;
                                          spawnCallback.run(mob, chunk);
-@@ -412,11 +418,20 @@ public final class NaturalSpawner {
+@@ -415,11 +421,20 @@ public final class NaturalSpawner {
              && canSpawnMobAt(level, structureManager, generator, mobCategory, currentSpawnData, pos)
              && SpawnPlacements.isSpawnPositionOk(type, level, pos)
              && SpawnPlacements.checkSpawnRules(type, level, EntitySpawnReason.NATURAL, pos, level.random)
@@ -785,18 +809,22 @@ index e6488a0b6429f22bb6789e85867cde398e3456ae..a433446865ac307d7e106f0291734723
          try {
              if (type.create(level, EntitySpawnReason.NATURAL) instanceof Mob mob) {
                  return mob;
-@@ -537,7 +552,9 @@ public final class NaturalSpawner {
+@@ -538,9 +553,11 @@ public final class NaturalSpawner {
+                             BlockPos pos = getTopNonCollidingPos(level, spawnerData.type(), x, z);
+                             if (spawnerData.type().canSummon() && SpawnPlacements.isSpawnPositionOk(spawnerData.type(), level, pos)) {
                                  float width = spawnerData.type().getWidth();
-                                 double fx = Mth.clamp(x, (double)xo + width, xo + 16.0 - width);
-                                 double fz = Mth.clamp(z, (double)zo + width, zo + 16.0 - width);
+-                                double fx = Mth.clamp((double)x, (double)xo + width, xo + 16.0 - width);
+-                                double fz = Mth.clamp((double)z, (double)zo + width, zo + 16.0 - width);
 -                                if (!level.noCollision(spawnerData.type().getSpawnAABB(fx, pos.getY(), fz))
++                                double fx = Mth.clamp(x, (double)xo + width, xo + 16.0 - width);
++                                double fz = Mth.clamp(z, (double)zo + width, zo + 16.0 - width);
 +                                if (!(fun.bm.mili.carpet.config.modules.GeneralCompatConfig.lagFreeSpawning
 +                                        ? fun.bm.mili.carpet.LagFreeSpawningCompatHelper.hasNoCollision(level.getLevel(), spawnerData.type().getSpawnAABB(fx, pos.getY(), fz))
 +                                        : level.noCollision(spawnerData.type().getSpawnAABB(fx, pos.getY(), fz)))
                                      || !SpawnPlacements.checkSpawnRules(
                                          spawnerData.type(),
                                          level,
-@@ -569,6 +586,9 @@ public final class NaturalSpawner {
+@@ -572,6 +589,9 @@ public final class NaturalSpawner {
                                          level, level.getCurrentDifficultyAt(mob.blockPosition()), EntitySpawnReason.CHUNK_GENERATION, groupSpawnData
                                      );
                                      level.addFreshEntityWithPassengers(mob, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CHUNK_GEN); // CraftBukkit
@@ -807,7 +835,7 @@ index e6488a0b6429f22bb6789e85867cde398e3456ae..a433446865ac307d7e106f0291734723
                                  }
                              }
 diff --git a/net/minecraft/world/level/ServerExplosion.java b/net/minecraft/world/level/ServerExplosion.java
-index b712d7babed4941d11cf716133c8a07c5bcd51a3..67f27d7c2a4f230023c661bfa0834838644fc93e 100644
+index 769dc39..632b2e4 100644
 --- a/net/minecraft/world/level/ServerExplosion.java
 +++ b/net/minecraft/world/level/ServerExplosion.java
 @@ -371,6 +371,10 @@ public class ServerExplosion implements Explosion {
@@ -822,15 +850,15 @@ index b712d7babed4941d11cf716133c8a07c5bcd51a3..67f27d7c2a4f230023c661bfa0834838
          final ObjectArrayList<BlockPos> ret = new ObjectArrayList<>();
  
 diff --git a/net/minecraft/world/level/block/Block.java b/net/minecraft/world/level/block/Block.java
-index 4866a59594a2db7eabb372f76720e25108c52531..4134fa658f09a9dcbb674dfdd91d2ffdfda912ba 100644
+index 62dec12..b00387e 100644
 --- a/net/minecraft/world/level/block/Block.java
 +++ b/net/minecraft/world/level/block/Block.java
-@@ -520,20 +520,20 @@ public class Block extends BlockBehaviour implements ItemLike {
+@@ -519,20 +519,20 @@ public class Block extends BlockBehaviour implements ItemLike {
      // Leaves start - alternativeBlockPlacement
      public @Nullable BlockState getRealStateForPlacement(final BlockPlaceContext context) {
          BlockState vanillaState = this.getStateForPlacement(context);
--        switch (fun.bm.lophine.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
--            case fun.bm.lophine.enums.EnumAlternativePlaceType.CARPET -> {
+-        switch (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
+-            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET -> {
 +        switch (fun.bm.mili.config.modules.function.protocol.AlternativeBlockPlacementProtocolConfig.alternativeBlockPlacement) {
 +            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET -> {
                  BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacement(this, context);
@@ -838,20 +866,20 @@ index 4866a59594a2db7eabb372f76720e25108c52531..4134fa658f09a9dcbb674dfdd91d2ffd
                      return tryState;
                  }
              }
--            case fun.bm.lophine.enums.EnumAlternativePlaceType.CARPET_FIX -> {
+-            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET_FIX -> {
 +            case fun.bm.mili.enums.EnumAlternativePlaceType.CARPET_FIX -> {
                  BlockState tryState = org.leavesmc.leaves.protocol.CarpetAlternativeBlockPlacement.alternativeBlockPlacementFix(this, context);
                  if (tryState != null) {
                      return tryState;
                  }
              }
--            case fun.bm.lophine.enums.EnumAlternativePlaceType.LITEMATICA -> {
+-            case fun.bm.mili.enums.EnumAlternativePlaceType.LITEMATICA -> {
 +            case fun.bm.mili.enums.EnumAlternativePlaceType.LITEMATICA -> {
                  if (vanillaState != null) {
                      return org.leavesmc.leaves.protocol.LitematicaEasyPlaceProtocol.applyPlacementProtocol(vanillaState, context);
                  }
 diff --git a/net/minecraft/world/level/block/CarvedPumpkinBlock.java b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
-index 5a316fedee1992efd4a21c4678b659c4589d57ec..35e054d503969a7999ff7867bddb65f94596d800 100644
+index a63dddd..6f65da1 100644
 --- a/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 +++ b/net/minecraft/world/level/block/CarvedPumpkinBlock.java
 @@ -59,7 +59,8 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
@@ -873,7 +901,7 @@ index 5a316fedee1992efd4a21c4678b659c4589d57ec..35e054d503969a7999ff7867bddb65f9
      }
  
      private WeatheringCopper.WeatherState getWeatherStateFromPattern(final BlockPattern.BlockPatternMatch copperGolemMatch) {
-@@ -162,6 +165,42 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
+@@ -159,6 +162,42 @@ public class CarvedPumpkinBlock extends HorizontalDirectionalBlock {
          builder.add(FACING);
      }
  
@@ -917,10 +945,10 @@ index 5a316fedee1992efd4a21c4678b659c4589d57ec..35e054d503969a7999ff7867bddb65f9
          if (this.snowGolemBase == null) {
              this.snowGolemBase = BlockPatternBuilder.start()
 diff --git a/net/minecraft/world/level/block/ChestBlock.java b/net/minecraft/world/level/block/ChestBlock.java
-index 70a0d30552d42d91778e0524bb89f6619c1fd0b0..97360c221d304feb94f6dd110cd80e467d9ccc27 100644
+index 69a126a..9544f90 100644
 --- a/net/minecraft/world/level/block/ChestBlock.java
 +++ b/net/minecraft/world/level/block/ChestBlock.java
-@@ -272,7 +272,8 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+@@ -276,7 +276,8 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
          final BlockState state, final Level level, final BlockPos pos, final Player player, final BlockHitResult hitResult
      ) {
          if (level instanceof ServerLevel serverLevel) {
@@ -931,23 +959,23 @@ index 70a0d30552d42d91778e0524bb89f6619c1fd0b0..97360c221d304feb94f6dd110cd80e46
                  player.awardStat(this.getOpenChestStat());
                  PiglinAi.angerNearbyPiglins(serverLevel, player, true);
 diff --git a/net/minecraft/world/level/block/ComparatorBlock.java b/net/minecraft/world/level/block/ComparatorBlock.java
-index eac6501e9242bb5b550bab1aeab4868602eb097b..bd6158d7da8e3b60fb5b43f7a3ea3980c9f6ed75 100644
+index db80f0b..e683377 100644
 --- a/net/minecraft/world/level/block/ComparatorBlock.java
 +++ b/net/minecraft/world/level/block/ComparatorBlock.java
 @@ -60,7 +60,7 @@ public class ComparatorBlock extends DiodeBlock implements EntityBlock {
          final RandomSource random
      ) {
          // Lophine start - redstone ignore upwards update
--        if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
+-        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
              return state;
          }
          // Lophine end - redstone ignore upwards update
 diff --git a/net/minecraft/world/level/block/EnderChestBlock.java b/net/minecraft/world/level/block/EnderChestBlock.java
-index f1a5b9670dd04b800a8d755f32364458a16d924a..e0c6216bdcea8ad384206ec425625ec910752a01 100644
+index 24a2c41..b572cf9 100644
 --- a/net/minecraft/world/level/block/EnderChestBlock.java
 +++ b/net/minecraft/world/level/block/EnderChestBlock.java
-@@ -83,7 +83,8 @@ public class EnderChestBlock extends AbstractChestBlock<EnderChestBlockEntity> i
+@@ -82,7 +82,8 @@ public class EnderChestBlock extends AbstractChestBlock<EnderChestBlockEntity> i
          PlayerEnderChestContainer container = player.getEnderChestInventory();
          if (container != null && level.getBlockEntity(pos) instanceof EnderChestBlockEntity enderChest) {
              BlockPos above = pos.above();
@@ -955,13 +983,13 @@ index f1a5b9670dd04b800a8d755f32364458a16d924a..e0c6216bdcea8ad384206ec425625ec9
 +            boolean canOpenForcibly = fun.bm.mili.carpet.config.modules.GeneralCompatConfig.creativeOpenContainerForcibly && player.isCreative();
 +            if (!canOpenForcibly && level.getBlockState(above).isRedstoneConductor(level, above)) { // Paper - diff on change; make sure that EnderChest#isBlocked uses the same logic
                  return InteractionResult.SUCCESS;
-             }
- 
+             } else {
+                 // Paper start - Fix InventoryOpenEvent cancellation - moved up;
 diff --git a/net/minecraft/world/level/block/ObserverBlock.java b/net/minecraft/world/level/block/ObserverBlock.java
-index 1d68ebf02f4e83a69fc30f36e0b9f688799210c3..03a411e0f5cf2df48d6e55e94586112179dd5f72 100644
+index 9a6ac92..f8f5544 100644
 --- a/net/minecraft/world/level/block/ObserverBlock.java
 +++ b/net/minecraft/world/level/block/ObserverBlock.java
-@@ -89,6 +89,9 @@ public class ObserverBlock extends DirectionalBlock {
+@@ -101,6 +101,9 @@ public class ObserverBlock extends DirectionalBlock {
      }
  
      private void startSignal(final LevelReader level, final ScheduledTickAccess ticks, final BlockPos pos) {
@@ -972,28 +1000,28 @@ index 1d68ebf02f4e83a69fc30f36e0b9f688799210c3..03a411e0f5cf2df48d6e55e945861121
              ticks.scheduleTick(pos, this, 2);
          }
 diff --git a/net/minecraft/world/level/block/RedStoneWireBlock.java b/net/minecraft/world/level/block/RedStoneWireBlock.java
-index 1ccacb7ffa7e8b9c3fdd37910d3e8bded86a4d3a..df9649ddb161f4c6553040bace8eddfe40212d30 100644
+index 7f4ce67..e46ad80 100644
 --- a/net/minecraft/world/level/block/RedStoneWireBlock.java
 +++ b/net/minecraft/world/level/block/RedStoneWireBlock.java
-@@ -180,7 +180,7 @@ public class RedStoneWireBlock extends Block {
+@@ -202,7 +202,7 @@ public class RedStoneWireBlock extends Block {
      ) {
          if (directionToNeighbour == Direction.DOWN) {
              // Lophine start - redstone ignore upwards update
--            return fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced
+-            return fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced
 +            return fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced
                  ? state
                  : !this.canSurviveOn(level, neighbourPos, neighbourState) ? Blocks.AIR.defaultBlockState() : state;
              // Lophine end - redstone ignore upwards update
-@@ -248,7 +248,7 @@ public class RedStoneWireBlock extends Block {
+@@ -270,7 +270,7 @@ public class RedStoneWireBlock extends Block {
          BlockState relativeState = level.getBlockState(relativePos);
          if (canConnectUp) {
              // Lophine start - redstone ignore upwards update
--            boolean isPlaceableAbove = (!fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && relativeState.getBlock() instanceof TrapDoorBlock)
+-            boolean isPlaceableAbove = (!fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && relativeState.getBlock() instanceof TrapDoorBlock)
 +            boolean isPlaceableAbove = (!fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && relativeState.getBlock() instanceof TrapDoorBlock)
                  || this.canSurviveOn(level, relativePos, relativeState);
              // Lophine end - redstone ignore upwards update
              if (isPlaceableAbove && shouldConnectTo(level.getBlockState(relativePos.above()))) {
-@@ -292,7 +292,8 @@ public class RedStoneWireBlock extends Block {
+@@ -314,7 +314,8 @@ public class RedStoneWireBlock extends Block {
       * Note: Added 'source' argument so as to help determine direction of information flow
       */
      private void updateSurroundingRedstone(Level worldIn, BlockPos pos, BlockState state, @Nullable Orientation orientation, boolean blockAdded) {
@@ -1003,7 +1031,7 @@ index 1ccacb7ffa7e8b9c3fdd37910d3e8bded86a4d3a..df9649ddb161f4c6553040bace8eddfe
              // since 24w33a the source pos is no longer given, but instead an Orientation parameter
              // when this is not null, it can be used to find the source pos, which the turbo uses
              // to find the direction of information flow
-@@ -367,7 +368,8 @@ public class RedStoneWireBlock extends Block {
+@@ -389,7 +390,8 @@ public class RedStoneWireBlock extends Block {
      protected void onPlace(final BlockState state, final Level level, final BlockPos pos, final BlockState oldState, final boolean movedByPiston) {
          if (!oldState.is(state.getBlock()) && !level.isClientSide()) {
              // Paper start - optimize redstone - replace call to updatePowerStrength
@@ -1013,7 +1041,37 @@ index 1ccacb7ffa7e8b9c3fdd37910d3e8bded86a4d3a..df9649ddb161f4c6553040bace8eddfe
                  level.getWireHandler().onWireAdded(pos, state); // Alternate Current
              } else {
                  this.updateSurroundingRedstone(level, pos, state, null, true); // Vanilla/Eigencraft
-@@ -392,7 +394,8 @@ public class RedStoneWireBlock extends Block {
+@@ -404,6 +406,29 @@ public class RedStoneWireBlock extends Block {
+         }
+     }
+ 
++    // Leaves start - behaviour 1.21.1-
++    @Override
++    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
++        if (!isMoving && !state.is(newState.getBlock())) {
++            super.onRemove(state, level, pos, newState, isMoving);
++            for (Direction direction : Direction.values()) {
++                level.updateNeighborsAt(pos.relative(direction), this);
++            }
++
++            // Paper start - optimize redstone - replace call to updatePowerStrength
++            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.fastRedstoneDust
++                || level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
++                level.getWireHandler().onWireRemoved(pos, state); // Alternate Current
++            } else {
++                this.updateSurroundingRedstone(level, pos, state, null, false); // Vanilla/Eigencraft
++            }
++            // Paper end - optimize redstone
++            this.updateNeighborsOfNeighboringWires(level, pos);
++        }
++    }
++    // Leaves end - behaviour 1.21.1-
++
++
+     @Override
+     protected void affectNeighborsAfterRemoval(final BlockState state, final ServerLevel level, final BlockPos pos, final boolean movedByPiston) {
+         if (!movedByPiston) {
+@@ -412,7 +437,8 @@ public class RedStoneWireBlock extends Block {
              }
  
              // Paper start - optimize redstone - replace call to updatePowerStrength
@@ -1023,17 +1081,7 @@ index 1ccacb7ffa7e8b9c3fdd37910d3e8bded86a4d3a..df9649ddb161f4c6553040bace8eddfe
                  level.getWireHandler().onWireRemoved(pos, state); // Alternate Current
              } else {
                  this.updateSurroundingRedstone(level, pos, state, null, false); // Vanilla/Eigencraft
-@@ -412,7 +415,8 @@ public class RedStoneWireBlock extends Block {
-             }
- 
-             // Paper start - optimize redstone - replace call to updatePowerStrength
--            if (level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
-+            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.fastRedstoneDust
-+                || level.paperConfig().misc.redstoneImplementation == io.papermc.paper.configuration.WorldConfiguration.Misc.RedstoneImplementation.ALTERNATE_CURRENT) {
-                 level.getWireHandler().onWireRemoved(pos, state); // Alternate Current
-             } else {
-                 this.updateSurroundingRedstone(level, pos, state, null, false); // Vanilla/Eigencraft
-@@ -444,7 +448,8 @@ public class RedStoneWireBlock extends Block {
+@@ -444,7 +470,8 @@ public class RedStoneWireBlock extends Block {
          if (!level.isClientSide()) {
              // Paper start - optimize redstone (Alternate Current)
              // Alternate Current handles breaking of redstone wires in the WireHandler.
@@ -1044,23 +1092,23 @@ index 1ccacb7ffa7e8b9c3fdd37910d3e8bded86a4d3a..df9649ddb161f4c6553040bace8eddfe
              } else
                  // Paper end - optimize redstone (Alternate Current)
 diff --git a/net/minecraft/world/level/block/RepeaterBlock.java b/net/minecraft/world/level/block/RepeaterBlock.java
-index 800539bae071c845864a390f0346707abb899657..8bd6e3841de973978aa568975a0fb7b4ef01c197 100644
+index 1985602..b4bce0a 100644
 --- a/net/minecraft/world/level/block/RepeaterBlock.java
 +++ b/net/minecraft/world/level/block/RepeaterBlock.java
 @@ -71,7 +71,7 @@ public class RepeaterBlock extends DiodeBlock {
          final RandomSource random
      ) {
          // Lophine start - redstone ignore upwards update
--        if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
+-        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.dustTrapdoorReintroduced && directionToNeighbour == Direction.DOWN) {
              return state;
          }
          // Lophine end - redstone ignore upwards update
 diff --git a/net/minecraft/world/level/block/ShulkerBoxBlock.java b/net/minecraft/world/level/block/ShulkerBoxBlock.java
-index ee141211cde5855c71e74e754f73764842b6d710..70a021f07ef36c030f0af9d2083130e047fc91c5 100644
+index 0104387..06e7143 100644
 --- a/net/minecraft/world/level/block/ShulkerBoxBlock.java
 +++ b/net/minecraft/world/level/block/ShulkerBoxBlock.java
-@@ -76,9 +76,10 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
+@@ -88,9 +88,10 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
      protected InteractionResult useWithoutItem(
          final BlockState state, final Level level, final BlockPos pos, final Player player, final BlockHitResult hitResult
      ) {
@@ -1072,17 +1120,17 @@ index ee141211cde5855c71e74e754f73764842b6d710..70a021f07ef36c030f0af9d2083130e0
              && player.openMenu(shulkerBoxBlockEntity).isPresent()) { // Paper - Fix InventoryOpenEvent cancellation
              player.awardStat(Stats.OPEN_SHULKER_BOX);
              PiglinAi.angerNearbyPiglins(serverLevel, player, true);
-@@ -203,7 +204,7 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
+@@ -201,7 +202,7 @@ public class ShulkerBoxBlock extends BaseEntityBlock {
                      AbstractContainerMenu.getRedstoneSignalFromContainer((net.minecraft.world.Container) level.getBlockEntity(pos)) : // Leaves - make cce happy(?)
                      AbstractContainerMenu.getRedstoneSignalFromBlockEntity(level.getBlockEntity(pos));
          } catch (ClassCastException ex) {
--            if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
                  throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, null, this, null, ex);
              }
              throw ex;
 diff --git a/net/minecraft/world/level/block/TntBlock.java b/net/minecraft/world/level/block/TntBlock.java
-index c27fc92d6ff9dd7e07a61513601ef73ff16cf842..62da5ef5bd3a804a2ea9e401d12c0f73a35ce8de 100644
+index 58142c2..286934b 100644
 --- a/net/minecraft/world/level/block/TntBlock.java
 +++ b/net/minecraft/world/level/block/TntBlock.java
 @@ -47,7 +47,8 @@ public class TntBlock extends Block {
@@ -1106,7 +1154,7 @@ index c27fc92d6ff9dd7e07a61513601ef73ff16cf842..62da5ef5bd3a804a2ea9e401d12c0f73
              level.removeBlock(pos, false);
          }
      }
-@@ -154,4 +157,10 @@ public class TntBlock extends Block {
+@@ -156,4 +159,10 @@ public class TntBlock extends Block {
      protected void createBlockStateDefinition(final StateDefinition.Builder<Block, BlockState> builder) {
          builder.add(UNSTABLE);
      }
@@ -1118,40 +1166,40 @@ index c27fc92d6ff9dd7e07a61513601ef73ff16cf842..62da5ef5bd3a804a2ea9e401d12c0f73
 +    }
  }
 diff --git a/net/minecraft/world/level/block/entity/BlockEntityType.java b/net/minecraft/world/level/block/entity/BlockEntityType.java
-index b88b1b123563f06ce00f20ce775a3dfcd5df79de..c530de641d3526d39b0b8720f30b2e094a3e9c0f 100644
+index caead10..4615786 100644
 --- a/net/minecraft/world/level/block/entity/BlockEntityType.java
 +++ b/net/minecraft/world/level/block/entity/BlockEntityType.java
-@@ -28,7 +28,7 @@ public class BlockEntityType<T extends BlockEntity> {
+@@ -301,7 +301,7 @@ public class BlockEntityType<T extends BlockEntity> {
      }
  
      public boolean isValid(final BlockState state) {
--        return fun.bm.lophine.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour || this.validBlocks.contains(state.getBlock()); // Leaves - behaviour 1.21.1-
+-        return fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour || this.validBlocks.contains(state.getBlock()); // Leaves - behaviour 1.21.1-
 +        return fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour || this.validBlocks.contains(state.getBlock()); // Leaves - behaviour 1.21.1-
      }
  
      @Deprecated
 diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 21c64e51550c0e1b4fae84ff88052c90ea9f1478..c6e6c9f15a1320ce419d8cf0b0a5f5d2306c0064 100644
+index 19a4bf2..2709042 100644
 --- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-@@ -241,7 +241,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
-             }
- 
-             // Leaves start - Wool hopper counter
--            if (fun.bm.lophine.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
-+            if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
-                 net.minecraft.world.item.DyeColor woolColor = org.leavesmc.leaves.util.WoolUtils.getWoolColorAtPosition(level, entity.getBlockPos().relative(state.getValue(HopperBlock.FACING)));
-                 if (woolColor != null) {
-                     for (int i = 0; i < Short.MAX_VALUE; i++) {
-@@ -259,7 +259,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
-             if (changed) {
-                 entity.setCooldown(level.spigotConfig.hopperTransfer); // Spigot
-                 // Leaves start - Wool hopper counter
--                if (fun.bm.lophine.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
-+                if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
-                     entity.setCooldown(0);
-                     return true;
+@@ -240,7 +240,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
                  }
+ 
+                 // Leaves start - Wool hopper counter
+-                if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
++                if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled()) {
+                     net.minecraft.world.item.DyeColor woolColor = org.leavesmc.leaves.util.WoolUtils.getWoolColorAtPosition(level, entity.getBlockPos().relative(state.getValue(HopperBlock.FACING)));
+                     if (woolColor != null) {
+                         for (int i = 0; i < Short.MAX_VALUE; i++) {
+@@ -258,7 +258,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+                 if (changed) {
+                     entity.setCooldown(level.spigotConfig.hopperTransfer); // Spigot
+                     // Leaves start - Wool hopper counter
+-                    if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
++                    if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && woolHopperCounter(level, pos, state, HopperBlockEntity.getContainerAt(level, pos))) {
+                         entity.setCooldown(0);
+                         return true;
+                     }
 @@ -321,6 +321,16 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
                  final ItemStack remainingItem = addItem(hopper, destination, movedItem, direction);
                  final int remainingItemCount = remainingItem.getCount();
@@ -1173,29 +1221,29 @@ index 21c64e51550c0e1b4fae84ff88052c90ea9f1478..c6e6c9f15a1320ce419d8cf0b0a5f5d2
      }
  
      public static boolean addItem(final Container container, final ItemEntity entity) {
--        if (fun.bm.lophine.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && entity.isRemoved()) return false; // Leaves - Wool hopper counter
+-        if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && entity.isRemoved()) return false; // Leaves - Wool hopper counter
 +        if (fun.bm.mili.config.modules.function.WoolHopperCounterConfig.unlimitedSpeed && org.leavesmc.leaves.util.HopperCounter.isEnabled() && entity.isRemoved()) return false; // Leaves - Wool hopper counter
          boolean changed = false;
          // CraftBukkit start
          if (org.bukkit.event.inventory.InventoryPickupItemEvent.getHandlerList().getRegisteredListeners().length > 0) { // Paper - optimize hoppers
 diff --git a/net/minecraft/world/level/block/piston/PistonBaseBlock.java b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
-index b4f5d462e4012451328210018c24de5a1d9e8c2e..fbbc07bc8b1a3581f2fa56677c276de0763a623f 100644
+index 5ae07ec..35100e3 100644
 --- a/net/minecraft/world/level/block/piston/PistonBaseBlock.java
 +++ b/net/minecraft/world/level/block/piston/PistonBaseBlock.java
-@@ -387,7 +387,7 @@ public class PistonBaseBlock extends DirectionalBlock {
+@@ -379,7 +379,7 @@ public class PistonBaseBlock extends DirectionalBlock {
  
-         for (int i = toPush.size() - 1; i >= 0; i--) {
-             // Paper start - fix a variety of piston desync dupes
--            boolean allowDesync = io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowPistonDuplication;
-+            boolean allowDesync = !fun.bm.mili.carpet.config.modules.GeneralCompatConfig.tntDupingFix;
-             BlockPos oldPos = toPush.get(i);
-             BlockPos pos = oldPos;
-             BlockState blockState = allowDesync ? level.getBlockState(oldPos) : null;
+             for (int i = toPush.size() - 1; i >= 0; i--) {
+                 // Paper start - fix a variety of piston desync dupes
+-                boolean allowDesync = io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowPistonDuplication;
++                boolean allowDesync = !fun.bm.mili.carpet.config.modules.GeneralCompatConfig.tntDupingFix;
+                 BlockPos oldPos = toPush.get(i);
+                 BlockPos pos = oldPos;
+                 BlockState blockState = allowDesync ? level.getBlockState(oldPos) : null;
 diff --git a/net/minecraft/world/level/block/state/BlockBehaviour.java b/net/minecraft/world/level/block/state/BlockBehaviour.java
-index 9ef4232c98a4c042a8e456c901afb4132a5a8e11..3d8e2eeda2809eac5f53ef92611924813bd46943 100644
+index d1fd66f..3b1256e 100644
 --- a/net/minecraft/world/level/block/state/BlockBehaviour.java
 +++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
-@@ -859,6 +859,9 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
+@@ -848,6 +848,9 @@ public abstract class BlockBehaviour implements FeatureElement, org.leavesmc.lea
          }
  
          public Vec3 getOffset(final BlockPos pos) {
@@ -1206,75 +1254,75 @@ index 9ef4232c98a4c042a8e456c901afb4132a5a8e11..3d8e2eeda2809eac5f53ef9261192481
              return function != null ? function.evaluate(this.asState(), pos) : Vec3.ZERO;
          }
 diff --git a/net/minecraft/world/level/block/state/StateHolder.java b/net/minecraft/world/level/block/state/StateHolder.java
-index 2a5a32ea8757ef9d03d5a9a9cb68be63a31e789a..a2de5f89cbe7917703b3380745d5ad4ec3bddb93 100644
+index 5bf4397..538dcb2 100644
 --- a/net/minecraft/world/level/block/state/StateHolder.java
 +++ b/net/minecraft/world/level/block/state/StateHolder.java
-@@ -119,7 +119,7 @@ public abstract class StateHolder<O, S> implements ca.spottedleaf.moonrise.patch
+@@ -120,7 +120,7 @@ public abstract class StateHolder<O, S> implements ca.spottedleaf.moonrise.patch
          }
          // Lophine start - catch update suppression crash
          IllegalArgumentException iae = new IllegalArgumentException("Cannot get property " + property + " as it does not exist in " + this.owner);
--        if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
              org.leavesmc.leaves.util.UpdateSuppressionException exception = new org.leavesmc.leaves.util.UpdateSuppressionException(null, null, null, null, iae);
              if (exception.getStackTrace()[1].getClassName().startsWith("net.minecraft")) {
                  throw exception;
 diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
-index 3e666d5ce616bdba1ddad42fd61ce43d7983a819..5aa4cefc210c777870622d0094bad2f957af6314 100644
+index 6d0c7bb..faf62a6 100644
 --- a/net/minecraft/world/level/chunk/LevelChunk.java
 +++ b/net/minecraft/world/level/chunk/LevelChunk.java
-@@ -410,10 +410,11 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
-         boolean blockChanged = !oldState.is(newBlock);
-         boolean movedByPiston = (flags & Block.UPDATE_MOVE_BY_PISTON) != 0;
-         boolean sideEffects = (flags & Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS) == 0;
-+        boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && state.getFluidState().isEmpty() && oldState.getFluidState().isEmpty();
-         // Leaves start - behaviour 1.21.1-
--        if (!fun.bm.lophine.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
-+        if (!fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
-         if (blockChanged && oldState.hasBlockEntity() && !state.shouldChangedStateKeepBlockEntity(oldState)) {
--            if (!this.level.isClientSide() && sideEffects) {
-+            if (!this.level.isClientSide() && sideEffects && !skipUpdates) {
-                 BlockEntity blockEntity = this.level.getBlockEntity(pos);
-                 if (blockEntity != null) {
-                     blockEntity.preRemoveSideEffects(pos, oldState);
-@@ -425,6 +426,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+@@ -409,10 +409,11 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                 boolean blockChanged = !oldState.is(newBlock);
+                 boolean movedByPiston = (flags & Block.UPDATE_MOVE_BY_PISTON) != 0;
+                 boolean sideEffects = (flags & Block.UPDATE_SKIP_BLOCK_ENTITY_SIDEEFFECTS) == 0;
++                boolean skipUpdates = (fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates() || fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate) && state.getFluidState().isEmpty() && oldState.getFluidState().isEmpty();
+                 // Leaves start - behaviour 1.21.1-
+-                if (!fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
++                if (!fun.bm.mili.config.modules.experiment.RedStoneConfig.oldBlockRemoveBehaviour) {
+                 if (blockChanged && oldState.hasBlockEntity() && !state.shouldChangedStateKeepBlockEntity(oldState)) {
+-                    if (!this.level.isClientSide() && sideEffects) {
++                    if (!this.level.isClientSide() && sideEffects && !skipUpdates) {
+                         BlockEntity blockEntity = this.level.getBlockEntity(pos);
+                         if (blockEntity != null) {
+                             blockEntity.preRemoveSideEffects(pos, oldState);
+@@ -424,6 +425,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
  
-         if ((blockChanged || newBlock instanceof BaseRailBlock)
-             && this.level instanceof ServerLevel serverLevel
-+            && !skipUpdates
-             && ((flags & Block.UPDATE_NEIGHBORS) != 0 || movedByPiston)) {
-             oldState.affectNeighborsAfterRemoval(serverLevel, pos, movedByPiston);
-         }
-@@ -437,7 +439,10 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
-             return null;
-         }
- 
--        if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.getCurrentWorldData().captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
+                 if ((blockChanged || newBlock instanceof BaseRailBlock)
+                     && this.level instanceof ServerLevel serverLevel
++                    && !skipUpdates
+                     && ((flags & Block.UPDATE_NEIGHBORS) != 0 || movedByPiston)) {
+                     oldState.affectNeighborsAfterRemoval(serverLevel, pos, movedByPiston);
+                 }
+@@ -431,7 +433,10 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                 if (!section.getBlockState(localX, localY, localZ).is(newBlock)) {
+                     return null;
+                 } else {
+-                    if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.getCurrentWorldData().captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
 +        if (!this.level.isClientSide()
 +            && !skipUpdates
 +            && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0
 +            && (!this.level.getCurrentWorldData().captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
-             state.onPlace(this.level, pos, oldState, movedByPiston);
-         }
+                         state.onPlace(this.level, pos, oldState, movedByPiston);
+                     }
  
 diff --git a/net/minecraft/world/level/dimension/end/EnderDragonFight.java b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
-index 7c68effb78bcb17ca64e043f87d6449f90b1b0a7..33ea01251601a4bb13e886393848cee5027f6873 100644
+index 0bdff7b..68ef1e4 100644
 --- a/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 +++ b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 @@ -323,7 +323,7 @@ public class EnderDragonFight extends SavedData {
      private int cachePortalOriginIteratorY = -1;
  
      public BlockPattern.@Nullable BlockPatternMatch findExitPortal() {
--        if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.optimizedDragonRespawn) { // Lophine - redirect
+-        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.optimizedDragonRespawn) { // Lophine - redirect
 +        if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.optimizedDragonRespawn) { // Lophine - redirect
              int i, j;
              for (i = cachePortalChunkIteratorX; i <= 8; ++i) {
                  for (j = cachePortalChunkIteratorZ; j <= 8; ++j) {
 diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
-index 90145a3ea384b568897ee665b80b24cccba1b6c5..65299640a027ebfcae593338ee6f44c0014e61a5 100644
+index a45916c..77141fa 100644
 --- a/net/minecraft/world/level/redstone/NeighborUpdater.java
 +++ b/net/minecraft/world/level/redstone/NeighborUpdater.java
 @@ -42,6 +42,9 @@ public interface NeighborUpdater {
-         final @Block.UpdateFlags int updateFlags,
+         @Block.UpdateFlags final int updateFlags,
          final int updateLimit
      ) {
 +        if ((fun.bm.mili.carpet.config.modules.GeneralCompatConfig.totallyNoBlockUpdate || fun.bm.mili.carpet.InteractionUpdateCompatHelper.shouldSkipUpdates()) && level.getBlockState(pos).getFluidState().isEmpty() && neighborState.getFluidState().isEmpty()) {
@@ -1297,16 +1345,16 @@ index 90145a3ea384b568897ee665b80b24cccba1b6c5..65299640a027ebfcae593338ee6f44c0
              // Spigot start
          } catch (StackOverflowError ex) {
              // Lophine start - catch update suppression crash
--            if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
                  throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, level, changedBlock, null, ex);
              }
              // Lophine end - catch update suppression crash
 @@ -96,7 +102,7 @@ public interface NeighborUpdater {
              // Spigot end
-         } catch (Throwable t) {
+         } catch (Throwable var9) {
              // Lophine start - catch update suppression crash
--            if (fun.bm.lophine.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
 +            if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
                  if (t instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
                      exception.provideBlock(level, pos, changedBlock);

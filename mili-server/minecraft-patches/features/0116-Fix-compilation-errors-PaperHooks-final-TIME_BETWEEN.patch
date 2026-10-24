@@ -8,7 +8,7 @@ Subject: [PATCH] Fix compilation errors: PaperHooks final, TIME_BETWEEN_TICKS
 
 
 diff --git a/ca/spottedleaf/moonrise/paper/PaperHooks.java b/ca/spottedleaf/moonrise/paper/PaperHooks.java
-index 08e3c75672e95248140eb0e0907cae5fbe54da34..dd17339fe2f9d7660b20eed05b61d6231302aa82 100644
+index d097b88..b97d65b 100644
 --- a/ca/spottedleaf/moonrise/paper/PaperHooks.java
 +++ b/ca/spottedleaf/moonrise/paper/PaperHooks.java
 @@ -29,7 +29,7 @@ import net.minecraft.world.phys.AABB;
@@ -21,7 +21,7 @@ index 08e3c75672e95248140eb0e0907cae5fbe54da34..dd17339fe2f9d7660b20eed05b61d623
      private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
  
 diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/papermc/paper/threadedregions/TickRegionScheduler.java
-index dc8f23697c28573c20f6cc292f7c9d15ae9ad913..b8d14279b1b27001150b21cf0522997e75068500 100644
+index 0f4e8ee..d68c2d9 100644
 --- a/io/papermc/paper/threadedregions/TickRegionScheduler.java
 +++ b/io/papermc/paper/threadedregions/TickRegionScheduler.java
 @@ -41,7 +41,7 @@ public final class TickRegionScheduler {
@@ -34,7 +34,7 @@ index dc8f23697c28573c20f6cc292f7c9d15ae9ad913..b8d14279b1b27001150b21cf0522997e
      public static final FoliaWatchdogThread WATCHDOG_THREAD = new FoliaWatchdogThread();
      static {
 diff --git a/io/papermc/paper/threadedregions/TickRegions.java b/io/papermc/paper/threadedregions/TickRegions.java
-index 97c514673a454b752ab86b944fd143725ca8090d..7a433ee0cb3b925edf728d3f3eb9b954f1ae5d0f 100644
+index 02c004b..bb71a59 100644
 --- a/io/papermc/paper/threadedregions/TickRegions.java
 +++ b/io/papermc/paper/threadedregions/TickRegions.java
 @@ -206,6 +206,7 @@ public final class TickRegions implements ThreadedRegionizer.RegionCallbacks<Tic
@@ -46,7 +46,7 @@ index 97c514673a454b752ab86b944fd143725ca8090d..7a433ee0cb3b925edf728d3f3eb9b954
          public volatile ca.spottedleaf.leafprofiler.RegionizedProfiler.Handle profiler; // Folia - profiler
          public final me.earthme.luminol.api.TickRegionData tickRegionDataAPI = new me.earthme.luminol.api.impl.TickRegionDataImpl(this); // Luminol - Tickregion API
 diff --git a/net/minecraft/locale/Language.java b/net/minecraft/locale/Language.java
-index 47cd33bce908744e64356b585853d6a8ecf82443..25ffb5fa8047f7f9c65bb9d66b9bc1fff1e093cf 100644
+index 49c7f81..08f8bfe 100644
 --- a/net/minecraft/locale/Language.java
 +++ b/net/minecraft/locale/Language.java
 @@ -66,7 +66,7 @@ public abstract class Language {
@@ -57,9 +57,9 @@ index 47cd33bce908744e64356b585853d6a8ecf82443..25ffb5fa8047f7f9c65bb9d66b9bc1ff
 +    public static void parseTranslations(final BiConsumer<String, String> output, final String path) {
          try (InputStream stream = Language.class.getResourceAsStream(path)) {
              loadFromJson(stream, output);
-         } catch (IOException | JsonParseException e) {
+         } catch (JsonParseException | IOException var7) {
 diff --git a/net/minecraft/server/ServerTickRateManager.java b/net/minecraft/server/ServerTickRateManager.java
-index eeb2f88723b37bb3cada04bf3098dd46f0ed7316..d487bb35d174ceafbb1832f1e1f5f3c337f6928d 100644
+index 8d0f810..8d90c63 100644
 --- a/net/minecraft/server/ServerTickRateManager.java
 +++ b/net/minecraft/server/ServerTickRateManager.java
 @@ -129,6 +129,8 @@ public class ServerTickRateManager extends TickRateManager {
@@ -72,10 +72,10 @@ index eeb2f88723b37bb3cada04bf3098dd46f0ed7316..d487bb35d174ceafbb1832f1e1f5f3c3
          player.connection.send(ClientboundTickingStatePacket.from(this));
          player.connection.send(ClientboundTickingStepPacket.from(this));
 diff --git a/net/minecraft/server/commands/SaveAllCommand.java b/net/minecraft/server/commands/SaveAllCommand.java
-index 299991905c24a7018f8ac60d0c16e56fa43cd710..fe34c097584a105fef585e7ecce55771cc45c901 100644
+index bc6d019..6a69911 100644
 --- a/net/minecraft/server/commands/SaveAllCommand.java
 +++ b/net/minecraft/server/commands/SaveAllCommand.java
-@@ -12,6 +12,8 @@ import net.minecraft.server.MinecraftServer;
+@@ -11,6 +11,8 @@ import net.minecraft.server.MinecraftServer;
  public class SaveAllCommand {
      private static final SimpleCommandExceptionType ERROR_FAILED = new SimpleCommandExceptionType(Component.translatable("commands.save.failed"));
  
@@ -85,14 +85,14 @@ index 299991905c24a7018f8ac60d0c16e56fa43cd710..fe34c097584a105fef585e7ecce55771
          dispatcher.register(
              Commands.literal("save-all")
 diff --git a/net/minecraft/world/entity/EntityType.java b/net/minecraft/world/entity/EntityType.java
-index 31619890f1bd4f458b6f9a31fac8cefaafe09e8e..cfabd7f1f81e55bf515cda9b02a183135e5215fd 100644
+index d6d572a..3e2fcb1 100644
 --- a/net/minecraft/world/entity/EntityType.java
 +++ b/net/minecraft/world/entity/EntityType.java
-@@ -57,6 +57,7 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T>,
-     private final Holder.Reference<EntityType<?>> builtInRegistryHolder = BuiltInRegistries.ENTITY_TYPE.createIntrusiveHolder(this);
-     public static final Codec<EntityType<?>> CODEC = BuiltInRegistries.ENTITY_TYPE.byNameCodec();
-     public static final StreamCodec<RegistryFriendlyByteBuf, EntityType<?>> STREAM_CODEC = ByteBufCodecs.registry(Registries.ENTITY_TYPE);
+@@ -1209,6 +1209,7 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T>,
+             .updateInterval(5)
+     );
+     private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(FALLING_BLOCK, COMMAND_BLOCK_MINECART, SPAWNER_MINECART);
 +    public boolean skipRaytracningCheck = false; // Leaves - entityculling skip raytrace check
      private final EntityType.EntityFactory<T> factory;
      private final MobCategory category;
-     private final TagKey<Block> immuneTo;
+     private final ImmutableSet<Block> immuneTo;

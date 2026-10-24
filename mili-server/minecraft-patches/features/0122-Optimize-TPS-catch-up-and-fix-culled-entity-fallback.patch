@@ -5,7 +5,7 @@ Subject: [PATCH] Optimize TPS catch-up and fix culled entity fallback
 
 
 diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/papermc/paper/threadedregions/TickRegionScheduler.java
-index b8d14279b1b27001150b21cf0522997e75068500..47e4e374a08266d07b784f9bfdb8b017cc7eb76e 100644
+index d68c2d9..6665b30 100644
 --- a/io/papermc/paper/threadedregions/TickRegionScheduler.java
 +++ b/io/papermc/paper/threadedregions/TickRegionScheduler.java
 @@ -41,7 +41,7 @@ public final class TickRegionScheduler {
@@ -31,10 +31,10 @@ index b8d14279b1b27001150b21cf0522997e75068500..47e4e374a08266d07b784f9bfdb8b017
              if (!this.tryMarkTicking()) {
                  if (!this.cancelled.get()) {
 diff --git a/net/minecraft/server/level/ChunkMap.java b/net/minecraft/server/level/ChunkMap.java
-index 11acddb0b76b8ce2ccee638d9d501bd33c4e0982..05e5d0bce88aa038e0821c013e077a2b544b8360 100644
+index 25cd4ff..c187d77 100644
 --- a/net/minecraft/server/level/ChunkMap.java
 +++ b/net/minecraft/server/level/ChunkMap.java
-@@ -1124,6 +1124,10 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
+@@ -1099,6 +1099,10 @@ public class ChunkMap extends SimpleRegionStorage implements ChunkHolder.PlayerP
                  );
                  if (results != null) {
                      fun.bm.mili.rust.EntityCullHelper.applyCullingResults(entityList, results);

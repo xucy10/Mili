@@ -6,7 +6,7 @@ Subject: [PATCH] Do not pathfind out of tickregion & Recompute or drop
 
 
 diff --git a/net/minecraft/world/entity/ai/navigation/FlyingPathNavigation.java b/net/minecraft/world/entity/ai/navigation/FlyingPathNavigation.java
-index e44814cfb6afb594456b8215bd13a92e93de2c85..c18e2071c699d9c5f4d46b7a58191df4f4d8ab5d 100644
+index e44814c..c18e207 100644
 --- a/net/minecraft/world/entity/ai/navigation/FlyingPathNavigation.java
 +++ b/net/minecraft/world/entity/ai/navigation/FlyingPathNavigation.java
 @@ -60,6 +60,17 @@ public class FlyingPathNavigation extends PathNavigation {
@@ -28,7 +28,7 @@ index e44814cfb6afb594456b8215bd13a92e93de2c85..c18e2071c699d9c5f4d46b7a58191df4
              }
          }
 diff --git a/net/minecraft/world/entity/ai/navigation/PathNavigation.java b/net/minecraft/world/entity/ai/navigation/PathNavigation.java
-index 2ea1ec39a37899ae1510d0036aa670e758077537..9d5d3eed29affd20c07e05420e35486255ac5b92 100644
+index 21ead01..0842e3e 100644
 --- a/net/minecraft/world/entity/ai/navigation/PathNavigation.java
 +++ b/net/minecraft/world/entity/ai/navigation/PathNavigation.java
 @@ -1,6 +1,7 @@
@@ -59,26 +59,26 @@ index 2ea1ec39a37899ae1510d0036aa670e758077537..9d5d3eed29affd20c07e05420e354862
              this.path = null;
              this.path = this.createPath(this.targetPos, this.reachRange);
              this.timeLastRecompute = this.tick; // Folia - region threading
-@@ -188,6 +202,18 @@ public abstract class PathNavigation {
+@@ -181,6 +195,18 @@ public abstract class PathNavigation {
+                 }
              }
-         }
-         // Paper end - EntityPathfindEvent
-+        // Luminol - Do not path find for targets out of current region
-+        if (me.earthme.luminol.config.modules.fixes.PathfindingFixesConfig.doNotPathfindToNotOwnedTargets) {
-+            // filter the targets not owned by current region
-+            targets = new HashSet<>(targets); // well no idea about how to determine if this should be copied to a modifiable one
-+            targets.removeIf(pos -> !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.mob.level(), pos));
+             // Paper end - EntityPathfindEvent
++            // Luminol - Do not path find for targets out of current region
++            if (me.earthme.luminol.config.modules.fixes.PathfindingFixesConfig.doNotPathfindToNotOwnedTargets) {
++                // filter the targets not owned by current region
++                targets = new HashSet<>(targets); // well no idea about how to determine if this should be copied to a modifiable one
++                targets.removeIf(pos -> !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.mob.level(), pos));
 +
-+            // return if no available (observe the logic in the first if block)
-+            if (targets.isEmpty()) {
-+                return null;
++                // return if no available (observe the logic in the first if block)
++                if (targets.isEmpty()) {
++                    return null;
++                }
 +            }
-+        }
-+        // Luminol end
-         ProfilerFiller profiler = Profiler.get();
-         profiler.push("pathfind");
-         BlockPos fromPos = above ? this.mob.blockPosition().above() : this.mob.blockPosition();
-@@ -286,6 +312,17 @@ public abstract class PathNavigation {
++            // Luminol end
+             ProfilerFiller profiler = Profiler.get();
+             profiler.push("pathfind");
+             BlockPos fromPos = above ? this.mob.blockPosition().above() : this.mob.blockPosition();
+@@ -282,6 +308,17 @@ public abstract class PathNavigation {
  
              if (!this.isDone()) {
                  Vec3 target = this.path.getNextEntityPos(this.mob);
