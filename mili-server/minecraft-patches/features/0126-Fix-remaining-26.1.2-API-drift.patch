@@ -1,0 +1,104 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mili <mili@localhost>
+Date: Fri, 24 Oct 2026 17:49:00 +0800
+Subject: [PATCH] Fix remaining 26.1.2 API drift (catch params, packets, advancements)
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 90cb5d40eee1500eb9f00cb68af3feb33aef7d6b..70e0969e4944cca19ae7951df9fd472359e58563 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -2032,9 +2032,9 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             } catch (Throwable var7) {
+                 // Lophine start - catch update suppression crash
+                 org.leavesmc.leaves.util.UpdateSuppressionException updateSuppressionException = null;
+-                if (t instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
++                if (var7 instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
+                     updateSuppressionException = exception;
+-                } else if (t.getCause() instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
++                } else if (var7.getCause() instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
+                     updateSuppressionException = exception;
+                 }
+ 
+diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
+index 7b0890be76b10bf39fbf37a9c469e9f792a37f61..32c5da63484937fb7817b7d32436ed15aa04c6ca 100644
+--- a/net/minecraft/server/level/ServerPlayerGameMode.java
++++ b/net/minecraft/server/level/ServerPlayerGameMode.java
+@@ -522,12 +522,6 @@ public class ServerPlayerGameMode {
+             MenuProvider menuProvider = state.getMenuProvider(level, pos);
+             cancelledBlock = menuProvider == null;
+         }
+-                // Lophine start - preserve drops before update suppression
+-                if (updateSuppressionException != null) {
+-                    throw updateSuppressionException;
+-                }
+-                // Lophine end - preserve drops before update suppression
+-
+         if (player.getCooldowns().isOnCooldown(itemStack)) {
+             cancelledItem = true; // Paper - correctly handle items on cooldown
+         }
+diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 9f75c36b90008aae3ba390fc33b2fb119fb71464..672f511401fa67e6de3407d4fcf22e98ed028739 100644
+--- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -2728,7 +2728,7 @@ public class ServerGamePacketListenerImpl
+     }
+ 
+     // Spigot start - spam exclusions
+-    private void detectRateSpam(final TickThrottler throttler, final String message) {
++    private void detectRateSpam(final String message) {
+         if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.antiSpamDisabled) {
+             return;
+         }
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 9a128a4e30f7f612843a50be70d400ba6d0219a5..56bf376bf185e9239ac21c9e80d3121495b8d5dc 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -242,7 +242,7 @@ public abstract class PlayerList {
+         boolean flag1 = gamerules.get(GameRules.REDUCED_DEBUG_INFO);
+         boolean flag2 = gamerules.get(GameRules.LIMITED_CRAFTING);
+ 
+-        playerconnection.send(new ClientboundLoginPacket(player.getId(), worlddata.isHardcore(), this.server.levelKeys(), this.getMaxPlayers(), io.papermc.paper.FeatureHooks.getViewDistance(worldserver1), io.papermc.paper.FeatureHooks.getSimulationDistance(worldserver1), flag1, !flag, flag2, player.createCommonSpawnInfo(worldserver1), this.server.usesAuthentication(), this.server.enforceSecureProfile()));
++        playerconnection.send(new ClientboundLoginPacket(player.getId(), worlddata.isHardcore(), this.server.levelKeys(), this.getMaxPlayers(), io.papermc.paper.FeatureHooks.getViewDistance(worldserver1), io.papermc.paper.FeatureHooks.getSimulationDistance(worldserver1), flag1, !flag, flag2, player.createCommonSpawnInfo(worldserver1), this.server.usesAuthentication()));
+         player.getBukkitEntity().sendSupportedChannels(); // CraftBukkit
+         playerconnection.send(new ClientboundChangeDifficultyPacket(worlddata.getDifficulty(), worlddata.isDifficultyLocked()));
+         playerconnection.send(new ClientboundPlayerAbilitiesPacket(player.getAbilities()));
+@@ -678,7 +678,7 @@ public abstract class PlayerList {
+         worldserver.removePlayerImmediately(entityplayer, Entity.RemovalReason.UNLOADED_WITH_PLAYER);
+         entityplayer.retireScheduler();
+         entityplayer.getBukkitEntity().packetProcessor.close(); // Folia - region threading
+-        entityplayer.getAdvancements().clearTriggers();
++        entityplayer.getAdvancements().stopListening();
+         this.players.remove(entityplayer);
+         // Leaves - guard name removal so a photographer sharing a real player's name won't evict the real player's mapping
+         final String nameKey = entityplayer.getScoreboardName().toLowerCase(java.util.Locale.ROOT);
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index e50ec12bc45321d387311f0cc3059ad134860224..197bb2bac7dbc611925cd53d80a4b8e2c3061c9c 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -1592,7 +1592,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+             ), null, 1L);
+             // Luminol end
+         } catch (Throwable var6) {
+-            if (me.earthme.luminol.config.modules.experiment.DisableEntityCatchConfig.enabled) throw t; // Luminol
++            if (me.earthme.luminol.config.modules.experiment.DisableEntityCatchConfig.enabled) throw var6; // Luminol
+             // Paper start - Prevent block entity and entity crashes
+             final String msg = String.format("Entity threw exception at %s:%s,%s,%s", io.papermc.paper.util.MCUtil.getLevelName(entity.level()), entity.getX(), entity.getY(), entity.getZ());
+             MinecraftServer.LOGGER.error(msg, var6);
+diff --git a/net/minecraft/world/level/redstone/NeighborUpdater.java b/net/minecraft/world/level/redstone/NeighborUpdater.java
+index cf954b6552db76534bc74446b95fca917cb4ffb2..3e610ff270cd341cc244af09c6edc5c8efd2b9c0 100644
+--- a/net/minecraft/world/level/redstone/NeighborUpdater.java
++++ b/net/minecraft/world/level/redstone/NeighborUpdater.java
+@@ -115,11 +115,11 @@ public interface NeighborUpdater {
+         } catch (Throwable var9) {
+             // Lophine start - catch update suppression crash
+             if (fun.bm.mili.carpet.config.modules.GeneralCompatConfig.mergedUpdateSuppressionCrashEnabled()) {
+-                if (t instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
++                if (var9 instanceof org.leavesmc.leaves.util.UpdateSuppressionException exception) {
+                     exception.provideBlock(level, pos, changedBlock);
+                     throw exception;
+                 }
+-                throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, level, changedBlock, null, t);
++                throw new org.leavesmc.leaves.util.UpdateSuppressionException(pos, level, changedBlock, null, var9);
+             }
+ 
+             // Lophine end - catch update suppression crash

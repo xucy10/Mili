@@ -33,7 +33,7 @@ public class EntityUtils {
     @Nullable
     private static Entity createEntityFromNBTSingle(CompoundTag nbt, Level world) {
         try {
-            Optional<Entity> optional = EntityType.create(TagFactory.input(nbt), world, new EntitySpawnRequest(EntitySpawnReason.LOAD, false));
+            Optional<Entity> optional = EntityType.create(TagFactory.input(nbt), world, EntitySpawnReason.LOAD);
 
             if (optional.isPresent()) {
                 Entity entity = optional.get();
