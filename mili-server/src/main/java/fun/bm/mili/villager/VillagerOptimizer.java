@@ -1,10 +1,8 @@
 package fun.bm.mili.villager;
 
 import fun.bm.mili.config.modules.optimizations.VillagerOptimizerConfig;
-import fun.bm.mili.rust.RustAnalyticsHelper;
 import fun.bm.mili.utils.TPSTracker;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -27,7 +25,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,13 +36,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerOptimizer implements Listener {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
-    private static final PlainTextComponentSerializer PLAIN_TEXT = PlainTextComponentSerializer.plainText();
     // Mili start - fix: instance 字段不是 volatile，可能导致多线程可见性问题
     private static volatile VillagerOptimizer instance;
     // Mili end
 
-    // Mili start - fix: 定时任务在 shutdown 中从不取消，导致任务泄漏
-    private static org.bukkit.scheduler.BukkitTask processTask;
+    // Mili start - fix: 定时任务在 shutdown 中从不取消，导致任务泄漏。
+    // Folia migration: the task is now a region-scheduler ScheduledTask instead of a
+    // legacy BukkitTask (Bukkit.getScheduler() throws under Folia).
+    private static volatile ScheduledTask processTask;
     // Mili end
 
     private final Plugin plugin;
@@ -60,13 +59,6 @@ public final class VillagerOptimizer implements Listener {
     private final Map<Chunk, Long> changedChunks = new ConcurrentHashMap<>();
     private final VillagerActivityPolicy activityPolicy;
     private final BlockClassifier blockClassifier;
-    private final boolean lobotomizePassengers;
-    private final boolean onlyProfessions;
-    private final boolean onlyWithExperience;
-    private final boolean checkRoof;
-    private final boolean ignoreStuckInDoors;
-    private final boolean ignoreNonSolidBlocks;
-    private final Set<String> exemptNames;
 
     private volatile boolean shuttingDown = false;
     private long lastProcessTime = 0;
@@ -80,27 +72,20 @@ public final class VillagerOptimizer implements Listener {
         this.lastRestockCheckDayTimeKey = new NamespacedKey(activePlugin, "mili_last_restock");
         this.restocksTodayKey = new NamespacedKey(activePlugin, "mili_restocks_today");
         this.blockClassifier = BlockClassifier.fromServerRegistry();
-        this.lobotomizePassengers = VillagerOptimizerConfig.lobotomizePassengers;
-        this.onlyProfessions = VillagerOptimizerConfig.onlyProfessions;
-        this.onlyWithExperience = VillagerOptimizerConfig.onlyWithExperience;
-        this.checkRoof = VillagerOptimizerConfig.checkRoof;
-        this.ignoreStuckInDoors = VillagerOptimizerConfig.ignoreStuckInDoors;
-        this.ignoreNonSolidBlocks = VillagerOptimizerConfig.ignoreNonSolidBlocks;
 
         Set<String> exemptNames = new HashSet<>();
         for (String name : VillagerOptimizerConfig.alwaysActiveNames) {
-            exemptNames.add(name.toLowerCase(Locale.ROOT));
+            exemptNames.add(name.toLowerCase());
         }
-        this.exemptNames = Set.copyOf(exemptNames);
 
         this.activityPolicy = new VillagerActivityPolicy(
-                this.lobotomizePassengers,
-                this.onlyProfessions,
-                this.onlyWithExperience,
-                this.checkRoof,
-                this.ignoreStuckInDoors,
-                this.ignoreNonSolidBlocks,
-                this.exemptNames,
+                VillagerOptimizerConfig.lobotomizePassengers,
+                VillagerOptimizerConfig.onlyProfessions,
+                VillagerOptimizerConfig.onlyWithExperience,
+                VillagerOptimizerConfig.checkRoof,
+                VillagerOptimizerConfig.ignoreStuckInDoors,
+                VillagerOptimizerConfig.ignoreNonSolidBlocks,
+                exemptNames,
                 blockClassifier
         );
     }
@@ -111,29 +96,58 @@ public final class VillagerOptimizer implements Listener {
         Plugin activePlugin = instance.getPlugin();
         Bukkit.getPluginManager().registerEvents(instance, activePlugin);
 
-        // Scan existing villagers
+        // Mili start - fix: Folia migration. addVillager() mutates the villager
+        // (setAware / potion effect / PDC), which must happen on the region thread owning the
+        // villager. The scan itself is a read, but every registration is dispatched per entity.
+        // MiliOptimizations.init() now self-bootstraps from the first region tick (see
+        // FoliaSchedulerAdapter#isRunning), i.e. after world load, so this scan does see the
+        // worlds; ChunkLoadEvent remains the path for chunks that load later.
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Villager villager) {
-                    instance.addVillager(villager);
+                    instance.onOwningThread(villager, () -> instance.addVillager(villager));
                 }
             }
         }
+        // Mili end
 
-        // Mili start - fix: 保存定时任务引用以便在 shutdown 中取消
-        // Start chunk processing task
-        processTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (instance != null) {
-                    instance.processChunks();
-                }
+        // Mili start - fix: 保存定时任务引用以便在 shutdown 中取消；Folia migration:
+        // the legacy BukkitRunnable timer is replaced by the global region scheduler.
+        // The body only scans and dispatches, it never touches a villager directly.
+        processTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(activePlugin, task -> {
+            VillagerOptimizer active = instance;
+            if (active == null || active.shuttingDown) {
+                task.cancel();
+                return;
             }
-        }.runTaskTimer(activePlugin, 5L, 5L);
+            active.processChunks();
+        }, 5L, 5L);
         // Mili end
 
         activePlugin.getLogger().info("[Mili] VillagerOptimizer initialized");
     }
+
+    // Mili start - fix: Folia migration helper — run a villager mutation on the region thread
+    // that owns the villager. A villager that is already retired is dropped from tracking.
+    private void onOwningThread(Villager villager, Runnable action) {
+        if (villager == null) return;
+        try {
+            // Fully qualified: Mili has its own fun.bm.mili.scheduler.EntityScheduler, and
+            // lenient imports would make this ambiguous.
+            io.papermc.paper.threadedregions.scheduler.EntityScheduler scheduler = villager.getScheduler();
+            if (scheduler == null) {
+                removeVillager(villager);
+                return;
+            }
+            scheduler.run(getPlugin(), task -> {
+                if (shuttingDown || instance == null) return;
+                action.run();
+            }, () -> removeVillager(villager));
+        } catch (Throwable ignored) {
+            // villager retired between the scan and the dispatch
+        }
+    }
+    // Mili end
 
     private Plugin getPlugin() {
         return plugin;
@@ -321,7 +335,6 @@ public final class VillagerOptimizer implements Listener {
         lastProcessTime = now;
 
         // Process changed chunks
-        List<Villager> changedInactiveVillagers = new ArrayList<>();
         Iterator<Map.Entry<Chunk, Long>> it = changedChunks.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Chunk, Long> entry = it.next();
@@ -330,27 +343,31 @@ public final class VillagerOptimizer implements Listener {
                 it.remove();
                 continue;
             }
-
-            for (Entity entity : chunk.getEntities()) {
-                if (entity instanceof Villager villager && inactiveVillagers.contains(villager)
-                        && villager.isValid() && !villager.isDead()) {
-                    changedInactiveVillagers.add(villager);
-                }
-            }
+            // Mili start - fix: Folia migration — Chunk#getEntities() and every villager mutation
+            // must run on the region owning the chunk, so the whole pass is dispatched instead of
+            // executed on this (global) thread.
+            dispatchChunkScan(chunk);
+            // Mili end
             it.remove();
         }
-        activateVillagersIfNeeded(changedInactiveVillagers);
 
         // Process active villagers
-        List<Villager> activeSnapshot = new ArrayList<>(activeVillagers.size());
         for (Villager villager : activeVillagers) {
             if (!villager.isValid() || villager.isDead()) {
                 removeVillager(villager);
                 continue;
             }
-            activeSnapshot.add(villager);
+            // Mili start - fix: Folia migration — re-evaluate and lobotomize on the owning region
+            // thread; isValid()/isDead() are plain reads used only to prune the tracking set.
+            onOwningThread(villager, () -> {
+                if (!villager.isValid() || villager.isDead()) {
+                    removeVillager(villager);
+                } else if (!shouldBeActive(villager)) {
+                    lobotomize(villager);
+                }
+            });
+            // Mili end
         }
-        lobotomizeVillagersIfNeeded(activeSnapshot);
 
         // Process inactive villagers (restocking)
         for (Villager villager : inactiveVillagers) {
@@ -358,14 +375,44 @@ public final class VillagerOptimizer implements Listener {
                 removeVillager(villager);
                 continue;
             }
-            tryRestock(villager);
+            // Mili start - fix: Folia migration — restock() writes the PDC and the recipe list,
+            // so it runs on the owning region thread too.
+            onOwningThread(villager, () -> {
+                if (!villager.isValid() || villager.isDead()) {
+                    removeVillager(villager);
+                } else {
+                    tryRestock(villager);
+                }
+            });
+            // Mili end
         }
     }
+
+    // Mili start - fix: Folia migration helper — re-scan a changed chunk on the region that owns
+    // it, so Chunk#getEntities() and the resulting activate()/lobotomize() are region-local.
+    private void dispatchChunkScan(Chunk chunk) {
+        if (chunk == null) return;
+        try {
+            Bukkit.getRegionScheduler().run(getPlugin(), chunk.getWorld(), chunk.getX(), chunk.getZ(), task -> {
+                if (shuttingDown || instance == null) return;
+                for (Entity entity : chunk.getEntities()) {
+                    if (entity instanceof Villager villager
+                            && inactiveVillagers.contains(villager)
+                            && shouldBeActive(villager)) {
+                        activate(villager);
+                    }
+                }
+            });
+        } catch (Throwable ignored) {
+            // world unloaded between the scan and the dispatch
+        }
+    }
+    // Mili end
 
     private boolean shouldBeActive(Villager villager) {
         String name = "";
         if (villager.customName() != null) {
-            name = PLAIN_TEXT.serialize(villager.customName()).toLowerCase(Locale.ROOT);
+            name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(villager.customName()).toLowerCase();
         }
 
         // Mili start - fix: call getLocation() once to prevent race condition between multiple calls
@@ -385,70 +432,6 @@ public final class VillagerOptimizer implements Listener {
 
         BlockGrid grid = new BlockGrid(villager.getWorld(), state.blockX(), state.blockY(), state.blockZ(), 1);
         return activityPolicy.shouldBeActive(state, grid);
-    }
-
-    private void activateVillagersIfNeeded(List<Villager> villagers) {
-        if (villagers.isEmpty()) {
-            return;
-        }
-
-        byte[] nativeResults = evaluateVillagerActivityWithRust(villagers);
-        if (nativeResults != null && nativeResults.length >= villagers.size()) {
-            for (int i = 0; i < villagers.size(); i++) {
-                if (nativeResults[i] != 0) {
-                    Villager villager = villagers.get(i);
-                    if (inactiveVillagers.contains(villager)) {
-                        activate(villager);
-                    }
-                }
-            }
-            return;
-        }
-
-        for (Villager villager : villagers) {
-            if (shouldBeActive(villager) && inactiveVillagers.contains(villager)) {
-                activate(villager);
-            }
-        }
-    }
-
-    private void lobotomizeVillagersIfNeeded(List<Villager> villagers) {
-        if (villagers.isEmpty()) {
-            return;
-        }
-
-        byte[] nativeResults = evaluateVillagerActivityWithRust(villagers);
-        if (nativeResults != null && nativeResults.length >= villagers.size()) {
-            for (int i = 0; i < villagers.size(); i++) {
-                if (nativeResults[i] == 0) {
-                    Villager villager = villagers.get(i);
-                    if (activeVillagers.contains(villager)) {
-                        lobotomize(villager);
-                    }
-                }
-            }
-            return;
-        }
-
-        for (Villager villager : villagers) {
-            if (!shouldBeActive(villager) && activeVillagers.contains(villager)) {
-                lobotomize(villager);
-            }
-        }
-    }
-
-    private byte[] evaluateVillagerActivityWithRust(List<Villager> villagers) {
-        return RustAnalyticsHelper.evaluateVillagerActivity(
-                villagers,
-                lobotomizePassengers,
-                onlyProfessions,
-                onlyWithExperience,
-                checkRoof,
-                ignoreStuckInDoors,
-                ignoreNonSolidBlocks,
-                exemptNames,
-                blockClassifier
-        );
     }
 
     private void tryRestock(Villager villager) {

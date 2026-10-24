@@ -164,6 +164,10 @@ abstract class MockitoAgentProvider : CommandLineArgumentProvider {
 dependencies {
     implementation(project(":mili-api")) // Mili
     runtimeOnly(project(":mili-rust")) // Mili - package Rust native libraries (rust/*.dll|so|dylib) into the final jar
+    // Mili start - 26.1.2: paper-server sources reference ca.spottedleaf.concurrentutil
+    // (TickData/TimeUtil, ZeroCollidingReferenceStateTable/IntegerUtil); 26.2 dropped it.
+    implementation("ca.spottedleaf:concurrentutil:0.0.10")
+    // Mili end
     // Luminol start - Dependenices insert
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("io.netty:netty-all:4.2.15.Final") // used for io_uring

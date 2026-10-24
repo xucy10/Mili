@@ -210,6 +210,30 @@ jobs:
           path: /tmp/patch-dump/
           retention-days: 3
 
+      # Diagnostic: on a compile failure, ship the exact generated sources so the
+      # port can be fixed against what CI really sees (line numbers included).
+      - name: Dump generated sources on failure
+        if: failure()
+        run: |
+          set -e
+          DUMP=/tmp/src-dump
+          mkdir -p $DUMP
+          for d in mili-server/src/minecraft/java paper-server/src paper-api/src folia-server/src mili-server/src/main/java mili-api/src/main/java; do
+            if [ -d "$d" ]; then
+              mkdir -p "$DUMP/$(dirname $d)"
+              tar czf "$DUMP/$(echo $d | tr '/' '_').tar.gz" -C "$(dirname $d)" "$(basename $d)" 2>/dev/null || true
+            fi
+          done
+          ls -la $DUMP
+
+      - name: Upload generated sources dump
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated-sources-dump
+          path: /tmp/src-dump/
+          retention-days: 3
+
       - name: Verify Generated Source
         run: |
           echo "=== Checking generated API source dirs ==="

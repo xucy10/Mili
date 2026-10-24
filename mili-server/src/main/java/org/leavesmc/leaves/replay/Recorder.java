@@ -109,7 +109,7 @@ public class Recorder extends Connection {
         metaData.mcversion = SharedConstants.getCurrentVersion().name();
 
         // TODO start event
-        this.savePacket(new ClientboundLoginFinishedPacket(photographer.getGameProfile(), photographer.getUUID()), ConnectionProtocol.LOGIN);
+        this.savePacket(new ClientboundLoginFinishedPacket(photographer.getGameProfile()), ConnectionProtocol.LOGIN);
         this.startConfiguration();
 
         savePacket(ClientboundPlayerPositionPacket.of(photographer.getId(), PositionMoveRotation.of(photographer), Collections.emptySet()));
