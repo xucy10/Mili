@@ -112,8 +112,12 @@ jobs:
       - name: Download Riceear (Hyacinthusclip fork)
         run: |
           mkdir -p libs
-          CLIP_VERSION=$(grep clipVersion gradle.properties | cut -d= -f2)
-          RICEEAR_SHA256=$(grep riceearSha256 gradle.properties | cut -d= -f2)
+          # Anchored + first-match on purpose: gradle.properties comments may
+          # legitimately mention these property names, and an unanchored grep
+          # once folded a comment into CLIP_VERSION -> multiline URL -> curl
+          # exit 3 (bad/illegal URL format).
+          CLIP_VERSION=$(grep '^clipVersion=' gradle.properties | head -n1 | cut -d= -f2-)
+          RICEEAR_SHA256=$(grep '^riceearSha256=' gradle.properties | head -n1 | cut -d= -f2-)
           echo "Downloading riceear v${CLIP_VERSION}"
           curl -sL --retry 3 "https://github.com/xucy10/Hyacinthusclip/releases/download/v${CLIP_VERSION}/riceear-${CLIP_VERSION}.jar" -o libs/riceear.jar
           if [ ! -s libs/riceear.jar ]; then
@@ -382,8 +386,13 @@ jobs:
             # paperclip whose bundled patch set is incomplete does too.
             echo ""
             echo "=== Real patch-application smoke test (paperclip.patchonly) ==="
+            # -Driceear.downloadContext pins the context file and skips
+            # IPUtil.getCountryByIp(): ip-api.com is heavily rate-limited from
+            # GitHub runners and the CN/global contexts are byte-identical
+            # (injectCnDownloadContext), so the probe adds flakiness for zero
+            # coverage.
             SMOKE_DIR="$(mktemp -d)"
-            (cd "$SMOKE_DIR" && java -Dpaperclip.patchonly=true -jar "$GITHUB_WORKSPACE/$JAR")
+            (cd "$SMOKE_DIR" && java -Dpaperclip.patchonly=true -Driceear.downloadContext=download-context -jar "$GITHUB_WORKSPACE/$JAR")
             echo "OK: patch application smoke test passed"
           else
             echo "WARN: No server JAR found at $JAR_PATH"
